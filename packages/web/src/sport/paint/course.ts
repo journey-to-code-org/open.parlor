@@ -109,10 +109,16 @@ export function paintCourse(table: SportView["table"], width: number, height: nu
     return mask;
   };
   /** A shadow thrown inward from a mask's edge onto a layer: what makes a thing look sunk, or lit from one side. */
+  const outsides = new Map<Sheet, Sheet>();
   const inner = (layer: Sheet, mask: Sheet, colour: string, blurBy: number, dx = 0, dy = 0) => {
-    const outside = sheet();
-    everywhere(outside.ctx, "#000");
-    stamp(outside.ctx, mask.canvas, (c) => (c.globalCompositeOperation = "destination-out"));
+    // Everything that isn't the mask, worked out once for each mask however many shadows it throws.
+    let outside = outsides.get(mask);
+    if (!outside) {
+      outside = sheet();
+      everywhere(outside.ctx, "#000");
+      stamp(outside.ctx, mask.canvas, (c) => (c.globalCompositeOperation = "destination-out"));
+      outsides.set(mask, outside);
+    }
     layer.ctx.save();
     layer.ctx.setTransform(1, 0, 0, 1, 0, 0);
     layer.ctx.globalCompositeOperation = "source-atop";
@@ -157,7 +163,6 @@ export function paintCourse(table: SportView["table"], width: number, height: nu
       // rim all round is damp and dark.
       inner(layer, mask, "rgba(110, 76, 30, 0.65)", blur(5));
       inner(layer, mask, "rgba(70, 44, 12, 0.6)", blur(4), sx * 3, sy * 3);
-      inner(layer, mask, "rgba(255, 246, 214, 0.5)", blur(2), -sx * 1.5, -sy * 1.5);
     } else if (surface === "water") {
       // Deep in the middle, pale in the shallows, a bright line where it laps the bank, and the
       // bank's own shadow on the side towards the light.
@@ -167,8 +172,7 @@ export function paintCourse(table: SportView["table"], width: number, height: nu
       layer.ctx.fillStyle = "rgba(8, 44, 110, 0.4)";
       layer.ctx.fillRect(0, 0, W, H);
       layer.ctx.restore();
-      inner(layer, mask, "rgba(150, 236, 232, 0.95)", blur(16));
-      inner(layer, mask, "rgba(190, 248, 240, 0.9)", blur(6));
+      inner(layer, mask, "rgba(160, 240, 234, 0.95)", blur(13));
       inner(layer, mask, "rgba(255, 255, 255, 0.95)", blur(1.6));
       inner(layer, mask, "rgba(0, 30, 60, 0.6)", blur(5), sx * 4, sy * 4);
       // Somewhere for the glints: spots well out from the bank.
@@ -188,8 +192,7 @@ export function paintCourse(table: SportView["table"], width: number, height: nu
       inner(layer, mask, "rgba(40, 20, 6, 0.6)", blur(3));
     } else {
       // Paths, beds and patios: a soft dark edge where the grass overhangs.
-      inner(layer, mask, "rgba(20, 30, 10, 0.55)", blur(4));
-      inner(layer, mask, "rgba(0, 0, 0, 0.35)", blur(3), sx * 2, sy * 2);
+      inner(layer, mask, "rgba(10, 24, 6, 0.6)", blur(4), sx * 1.5, sy * 1.5);
     }
     if (surface === "water") {
       // The bank: a lip of dark earth all round, wider on the side the light comes from.

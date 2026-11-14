@@ -125,6 +125,13 @@ export interface Scene {
   time: number;
   /** Nothing moves by itself: the person has asked for less motion. */
   still: boolean;
+  /**
+   * Something is in motion (a ball rolling, a thumb pulling) and a frame must not be kept waiting.
+   * If the screen has changed size a little since the still part of the table was painted, the
+   * old painting is stretched to fit for now, and painted afresh on the first frame that isn't
+   * in a hurry.
+   */
+  hurry: boolean;
 }
 
 export const toneColour = (tone: SportBody["tone"] | undefined) => TONES[tone ?? "white"][0];
@@ -387,7 +394,8 @@ function drawFlag(b: Brush, x: number, y: number, up: Point, alpha: number, time
   ctx.restore();
 }
 
-let kept: (Painted & { key: string }) | null = null;
+/** The still part of a table, as last painted: for which table, on what size of screen, fitted how. */
+let kept: (Painted & { key: string; table: string; fit: Fit }) | null = null;
 
 /**
  * Draws the whole scene. `width` and `height` are the canvas's size in CSS pixels and `dpr` how
@@ -403,21 +411,33 @@ export function drawScene(ctx: Ctx, width: number, height: number, dpr: number, 
   const up = toWorldVector(fit, 0.22, -0.975);
   const brush: Brush = { ctx, px, light };
 
-  // What never moves: painted the first time this hole is seen at this size, then kept.
+  // What never moves: painted the first time this hole is seen at this size, then kept. Painting
+  // takes a moment, so while something is moving a painting made for a slightly different size
+  // of screen is made to do.
   const key = `${scene.table.key}|${width}|${height}|${dpr}|${fit.scale}|${fit.ox}|${fit.oy}|${fit.turn}`;
-  if (kept?.key !== key) kept = { key, ...paintCourse(scene.table, width, height, dpr, matrix, { px, light }) };
+  const near = kept !== null && kept.table === scene.table.key && kept.fit.turn === fit.turn && Math.abs(kept.fit.scale / fit.scale - 1) < 0.25;
+  if (kept?.key !== key && !(scene.hurry && near)) kept = { key, table: scene.table.key, fit, ...paintCourse(scene.table, width, height, dpr, matrix, { px, light }) };
+  const painted = kept!;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
-  ctx.drawImage(kept.canvas, 0, 0);
+  if (painted.key === key) ctx.drawImage(painted.canvas, 0, 0);
+  else {
+    // Stretched: where a point of the old painting belongs under the new fit.
+    const k = fit.scale / painted.fit.scale;
+    ctx.fillStyle = "#2f6a2f";
+    ctx.fillRect(0, 0, width * dpr, height * dpr);
+    ctx.setTransform(k, 0, 0, k, (fit.ox - painted.fit.ox * k) * dpr, (fit.oy - painted.fit.oy * k) * dpr);
+    ctx.drawImage(painted.canvas, 0, 0);
+  }
   ctx.setTransform(matrix);
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
 
   // Glints on the water: each comes and goes in its own time and drifts a little as it does.
-  if (kept.glints.length) {
+  if (painted.glints.length) {
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 1.3 * px;
-    kept.glints.forEach(([x, y], i) => {
+    painted.glints.forEach(([x, y], i) => {
       const phase = scene.still ? i * 0.37 : scene.time / (1700 + (i % 7) * 260) + i * 0.37;
       const beat = phase - Math.floor(phase);
       const glow = Math.sin(beat * Math.PI);

@@ -197,7 +197,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
       const a = aimRef.current;
       aiming = { x: ball.x, y: ball.y, r: ball.r, angle: (a.angle * Math.PI) / 18000, power: a.power / 1000, pulling: !!pull.current, cancel: !!pull.current?.cancel };
     }
-    drawScene(ctx, w, h, dpr, fit.current, { table, discs, aim: aiming, trace: r?.jump && r.rested !== null ? r.trace : null, trails: r ? [...r.trails.values()] : [], effects, time: now, still: reducedMotion() });
+    drawScene(ctx, w, h, dpr, fit.current, { table, discs, aim: aiming, trace: r?.jump && r.rested !== null ? r.trace : null, trails: r ? [...r.trails.values()] : [], effects, time: now, still: reducedMotion(), hurry: !!r || !!pull.current || slides.current.size > 0 });
   }, []);
 
   /** Draw now, and keep drawing while anything is moving. */
@@ -330,7 +330,10 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     const el = stage.current;
     if (!el) return;
     const measure = () => {
-      const dpr = Math.min(3, window.devicePixelRatio || 1);
+      // Two device pixels to the CSS pixel is as fine as the table is drawn. It is grass, timber
+      // and soft shadows, which look the same at three, and a dense phone screen then has less
+      // than half as many pixels to paint and to copy every frame.
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
       const w = el.clientWidth;
       const h = el.clientHeight;
       box.current = { w, h, dpr };
