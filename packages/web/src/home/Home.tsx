@@ -92,7 +92,8 @@ const EMPTY_BOARD: MiniBoard = { cols: 3, cells: Array(9).fill(null) };
 /** A table sport's tile shows a little table from above: its surface, a hole, a ball or two (in a 100 × 100 box). */
 type MiniTable = { surface: "green" | "felt" | "lane"; cup?: [x: number, y: number]; balls: { x: number; y: number; tone: string }[] };
 const TABLES: Record<string, MiniTable> = {
-  minigolf: { surface: "green", cup: [66, 32], balls: [{ x: 36, y: 72, tone: "white" }] },
+  // Two balls out on the green: they knock into each other.
+  minigolf: { surface: "green", cup: [66, 32], balls: [{ x: 36, y: 72, tone: "white" }, { x: 70, y: 62, tone: "red" }] },
 };
 const EMPTY_TABLE: MiniTable = { surface: "green", balls: [] };
 

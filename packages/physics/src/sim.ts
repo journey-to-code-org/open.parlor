@@ -25,7 +25,7 @@ import { MAX_POWER, PhysicsError, validateShot, validateWorld } from "./validate
  * Bump this whenever a change could alter where anything comes to rest. A room restored by
  * replaying its shots only lands on the same table if the physics is the same physics.
  */
-export const PHYSICS_VERSION = 1;
+export const PHYSICS_VERSION = 2;
 
 // Two things closing on each other slower than this (units per step) are treated as not closing.
 // A bounce leaves rounding dust in the velocity, and without the margin the same contact would be
@@ -46,7 +46,12 @@ interface Disc {
   im: number;
   fixed: boolean;
   rest: number;
+  /** A bumper's least parting speed, per step; 0 for anything else. */
+  kick: number;
   live: boolean;
+  /** Inside a tunnel: which one (-1 when not), and the step after which it comes out. */
+  via: number;
+  away: number;
   pocketed: string | undefined;
   out: string | undefined;
   /** This step: the slope's pull here, whether the ground can hold a still ball, whether it touched anything. */
@@ -65,12 +70,31 @@ interface Seg {
   nx: number;
   ny: number;
   rest: number;
+  oneWay: boolean;
 }
 interface Corner {
   wall: number;
   x: number;
   y: number;
   rest: number;
+  /** For a one-way wall: the pieces that meet here (-1 for none). */
+  oneWay: boolean;
+  before: number;
+  after: number;
+}
+interface Mouth {
+  id: string;
+  x: number;
+  y: number;
+  r2: number;
+  /** Squared, per step. Infinity for a mouth that takes anything. */
+  max2: number;
+  tx: number;
+  ty: number;
+  /** The velocity a ball comes out with, per step. */
+  vx: number;
+  vy: number;
+  ticks: number;
 }
 interface Hole {
   id: string;
@@ -110,6 +134,7 @@ interface State {
   segs: Seg[];
   corners: Corner[];
   holes: Hole[];
+  mouths: Mouth[];
   grounds: Ground[];
   wallIds: string[];
   friction: number;
@@ -122,6 +147,7 @@ interface State {
   lastSkip: Int32Array;
   /** Holes a ball is crossing too fast this step, so the crossing isn't found twice. */
   over: Uint8Array;
+  overMouth: Uint8Array;
   shooter: number;
   firstContact: string | null;
   events: SimEvent[];
@@ -167,7 +193,10 @@ export function start(world: World, shot?: Shot): Run {
     im: b.fixed ? 0 : 1 / (b.mass ?? 1),
     fixed: b.fixed === true,
     rest: b.restitution ?? world.restitution,
+    kick: perTick(b.kick ?? 0),
     live: b.pocketed === undefined && b.out === undefined,
+    via: -1,
+    away: 0,
     pocketed: b.pocketed,
     out: b.out,
     drive: 0,
@@ -180,15 +209,20 @@ export function start(world: World, shot?: Shot): Run {
   world.walls.forEach((wall, wi) => {
     const rest = wall.restitution ?? world.wallRestitution;
     const pts = wall.points;
-    for (const [x, y] of pts) corners.push({ wall: wi, x, y, rest });
+    const oneWay = wall.oneWay === true;
     const n = wall.closed ? pts.length : pts.length - 1;
+    const base = segs.length;
+    pts.forEach(([x, y], k) => {
+      const before = k > 0 ? base + k - 1 : wall.closed ? base + n - 1 : -1;
+      corners.push({ wall: wi, x, y, rest, oneWay, before, after: k < n ? base + k : -1 });
+    });
     for (let k = 0; k < n; k++) {
       const [ax, ay] = pts[k]!;
       const [bx, by] = pts[(k + 1) % pts.length]!;
       const len = Math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay));
       const ex = (bx - ax) / len;
       const ey = (by - ay) / len;
-      segs.push({ wall: wi, ax, ay, ex, ey, len, nx: 0 - ey, ny: ex, rest });
+      segs.push({ wall: wi, ax, ay, ex, ey, len, nx: 0 - ey, ny: ex, rest, oneWay });
     }
   });
 
@@ -199,6 +233,21 @@ export function start(world: World, shot?: Shot): Run {
     r2: p.r * p.r,
     max2: p.maxSpeed === undefined ? Infinity : perTick(p.maxSpeed) * perTick(p.maxSpeed),
   }));
+  const mouths: Mouth[] = (world.tunnels ?? []).map((t) => {
+    const [dx, dy] = direction(t.angle);
+    return {
+      id: t.id,
+      x: t.x,
+      y: t.y,
+      r2: t.r * t.r,
+      max2: t.maxSpeed === undefined ? Infinity : perTick(t.maxSpeed) * perTick(t.maxSpeed),
+      tx: t.to[0],
+      ty: t.to[1],
+      vx: dx * perTick(t.speed),
+      vy: dy * perTick(t.speed),
+      ticks: t.ticks ?? 0,
+    };
+  });
   const grounds: Ground[] = world.regions.map((g) => ({
     id: g.id,
     shape: g.shape,
@@ -231,6 +280,7 @@ export function start(world: World, shot?: Shot): Run {
     segs,
     corners,
     holes,
+    mouths,
     grounds,
     wallIds: world.walls.map((w) => w.id),
     friction: perTick2(world.friction),
@@ -241,6 +291,7 @@ export function start(world: World, shot?: Shot): Run {
     lastWall: new Int32Array(n * world.walls.length).fill(-9),
     lastSkip: new Int32Array(n * holes.length).fill(-9),
     over: new Uint8Array(n * holes.length),
+    overMouth: new Uint8Array(n * mouths.length),
     shooter,
     firstContact: null,
     events: [],
@@ -266,6 +317,32 @@ function drop(s: State, d: Disc, h: Hole, ev: SimEvent[]): void {
   ev.push({ type: "pocket", tick: s.tick, body: d.id, pocket: h.id });
 }
 
+// Into a tunnel: the ball is off the table, waiting at the mouth, until its steps inside are up.
+function enter(s: State, d: Disc, mouth: number, ev: SimEvent[]): void {
+  const m = s.mouths[mouth]!;
+  d.live = false;
+  d.via = mouth;
+  d.away = s.tick + m.ticks;
+  d.x = m.x;
+  d.y = m.y;
+  d.vx = 0;
+  d.vy = 0;
+  ev.push({ type: "tunnel", tick: s.tick, body: d.id, tunnel: m.id });
+}
+
+// Out of the other end, at the tunnel's own speed and heading. Anything standing in the way is
+// met like any other contact, on the step that follows.
+function emerge(s: State, d: Disc, ev: SimEvent[]): void {
+  const m = s.mouths[d.via]!;
+  d.live = true;
+  d.via = -1;
+  d.x = m.tx;
+  d.y = m.ty;
+  d.vx = m.vx;
+  d.vy = m.vy;
+  ev.push({ type: "emerge", tick: s.tick, body: d.id, tunnel: m.id });
+}
+
 // A ball is out when its centre is past the edge of the world or on ground marked out. It stays
 // where it went out, on a whole number, for the game to do what its rules say.
 function checkOut(s: State, d: Disc, ev: SimEvent[]): void {
@@ -285,11 +362,16 @@ function checkOut(s: State, d: Disc, ev: SimEvent[]): void {
 
 function advance(s: State): SimEvent[] {
   const ev: SimEvent[] = [];
-  const { discs, segs, corners, holes } = s;
+  const { discs, segs, corners, holes, mouths } = s;
   const n = discs.length;
   const nh = holes.length;
+  const nm = mouths.length;
   const rate = s.world.tickRate;
   s.tick++;
+
+  // Anything whose time in a tunnel is up comes out before the ground acts, so its first step
+  // on the table is a step like any other.
+  if (nm) for (const d of discs) if (d.via >= 0 && s.tick > d.away) emerge(s, d, ev);
 
   // The ground. A slow ball on ground that can hold it (friction at least as strong as the
   // slope's pull) simply stops: that is the rest threshold. Anything else is pushed by the slope
@@ -330,6 +412,7 @@ function advance(s: State): SimEvent[] {
 
   // A ball already over a hole drops as soon as it is slow enough.
   s.over.fill(0);
+  if (nm) s.overMouth.fill(0);
   for (let i = 0; i < n; i++) {
     const d = discs[i]!;
     if (!d.live || d.fixed) continue;
@@ -344,9 +427,19 @@ function advance(s: State): SimEvent[] {
       }
       s.over[i * nh + p] = 1;
     }
+    // The same for a tunnel's mouth.
+    for (let p = 0; p < nm && d.live; p++) {
+      const m = mouths[p]!;
+      const dx = d.x - m.x;
+      const dy = d.y - m.y;
+      if (dx * dx + dy * dy >= m.r2) continue;
+      if (d.vx * d.vx + d.vy * d.vy <= m.max2) enter(s, d, p, ev);
+      else s.overMouth[i * nm + p] = 1;
+    }
   }
 
-  // The move. Kinds of contact: 1 two discs, 2 a wall piece, 3 a wall corner, 4 the rim of a hole.
+  // The move. Kinds of contact: 1 two discs, 2 a wall piece, 3 a wall corner, 4 the rim of a
+  // hole, 5 the rim of a tunnel's mouth.
   let remaining = 1;
   // If one step needs more contacts than this (balls wedged in a corner, trading the same push
   // back and forth), everything waits where it is for the rest of the step. Nothing is lost but a
@@ -408,6 +501,8 @@ function advance(s: State): SimEvent[] {
           vn = -vn;
           sgn = -1;
         }
+        // A ledge lets through whatever comes at it from its open side.
+        if (g.oneWay && sgn < 0) continue;
         if (vn > -EPS) continue;
         let t = 0;
         if (dist > a.r) {
@@ -433,6 +528,13 @@ function advance(s: State): SimEvent[] {
         if (Math.abs(dx) > a.r + avx || Math.abs(dy) > a.r + avy) continue;
         const closing = dx * a.vx + dy * a.vy;
         if (closing > -EPS * a.r) continue;
+        // A point along a ledge is no more solid than the ledge: a ball on the open side of every
+        // piece that meets there rolls over it.
+        if (c.oneWay) {
+          const g1 = c.before >= 0 ? segs[c.before]! : null;
+          const g2 = c.after >= 0 ? segs[c.after]! : null;
+          if ((!g1 || (a.x - g1.ax) * g1.nx + (a.y - g1.ay) * g1.ny < 0) && (!g2 || (a.x - g2.ax) * g2.nx + (a.y - g2.ay) * g2.ny < 0)) continue;
+        }
         const gap = dx * dx + dy * dy - a.r * a.r;
         let t = 0;
         if (gap > 0) {
@@ -469,6 +571,30 @@ function advance(s: State): SimEvent[] {
         if (t < bt) {
           bt = t;
           kind = 4;
+          bi = i;
+          bj = p;
+        }
+      }
+
+      for (let p = 0; p < nm; p++) {
+        if (s.overMouth[i * nm + p]) continue;
+        const m = mouths[p]!;
+        const dx = a.x - m.x;
+        const dy = a.y - m.y;
+        const closing = dx * a.vx + dy * a.vy;
+        if (closing >= 0) continue;
+        const gap = dx * dx + dy * dy - m.r2;
+        let t = 0;
+        if (gap > 0) {
+          const vv = a.vx * a.vx + a.vy * a.vy;
+          const disc = closing * closing - vv * gap;
+          if (disc < 0) continue;
+          t = (-closing - Math.sqrt(disc)) / vv;
+          if (t < 0) t = 0;
+        }
+        if (t < bt) {
+          bt = t;
+          kind = 5;
           bi = i;
           bj = p;
         }
@@ -510,6 +636,18 @@ function advance(s: State): SimEvent[] {
         a.vy -= push * a.im * ny;
         b.vx += push * b.im * nx;
         b.vy += push * b.im * ny;
+        // A bumper sends things away at its own speed if they would leave any slower.
+        const kick = a.kick > b.kick ? a.kick : b.kick;
+        if (kick > 0 && a.im + b.im > 0) {
+          const parting = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+          if (parting < kick) {
+            const more = (kick - parting) / (a.im + b.im);
+            a.vx -= more * a.im * nx;
+            a.vy -= more * a.im * ny;
+            b.vx += more * b.im * nx;
+            b.vy += more * b.im * ny;
+          }
+        }
       }
       a.contact = true;
       b.contact = true;
@@ -553,6 +691,9 @@ function advance(s: State): SimEvent[] {
       }
       a.contact = true;
       if (vn < -EPS && fresh(s.lastWall, bi * s.wallIds.length + wall, s.tick)) ev.push({ type: "wall", tick: s.tick, body: a.id, wall: s.wallIds[wall]!, speed: -vn * rate });
+    } else if (kind === 5) {
+      if (a.vx * a.vx + a.vy * a.vy <= mouths[bj]!.max2) enter(s, a, bj, ev);
+      else s.overMouth[bi * nm + bj] = 1;
     } else {
       const h = holes[bj]!;
       if (a.vx * a.vx + a.vy * a.vy <= h.max2) drop(s, a, h, ev);
@@ -570,6 +711,11 @@ function advance(s: State): SimEvent[] {
   // that holds it or leaning on something.
   let still = true;
   for (const d of discs) {
+    // Nothing is over while a ball is still on its way through a tunnel.
+    if (d.via >= 0) {
+      still = false;
+      break;
+    }
     if (!d.live || d.fixed) continue;
     if (d.vx === 0 && d.vy === 0) continue;
     if (d.vx * d.vx + d.vy * d.vy < s.rest2 && (d.held || d.contact)) continue;
@@ -594,6 +740,8 @@ function advance(s: State): SimEvent[] {
 // next shot.
 function settle(s: State, ev: SimEvent[]): void {
   for (const d of s.discs) {
+    // Caught inside a tunnel when the steps ran out: it is set down where it would have come out.
+    if (d.via >= 0) emerge(s, d, ev);
     if (!d.live || d.fixed) continue;
     d.vx = 0;
     d.vy = 0;
@@ -618,7 +766,7 @@ function frame(s: State, events: SimEvent[]): Frame {
     tick: s.tick,
     done: s.done,
     events,
-    bodies: s.discs.map((d) => ({ id: d.id, x: d.x, y: d.y, vx: d.vx * rate, vy: d.vy * rate, live: d.live })),
+    bodies: s.discs.map((d) => (d.via >= 0 ? { id: d.id, x: d.x, y: d.y, vx: 0, vy: 0, live: false, in: s.mouths[d.via]!.id } : { id: d.id, x: d.x, y: d.y, vx: d.vx * rate, vy: d.vy * rate, live: d.live })),
   };
 }
 
