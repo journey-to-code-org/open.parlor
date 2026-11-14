@@ -1268,21 +1268,54 @@ html[data-motion="off"] .board-grid .cell.mark-must::before { animation: none; }
 .board-checkers .board-grid .piece.kind-king { box-shadow: 0 max(2px, 0.5cqw) 0 rgba(0, 0, 0, 0.5), 0 max(4px, 1cqw) 0 rgba(0, 0, 0, 0.3), inset 0 0 0 max(2px, 0.6cqw) #e8c46a; }
 .board-checkers .piece.small { border-radius: 50%; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4); font-size: 0.7em; }
 /* ---- The table sports' shared table (Mini Golf…) -----------------------------------------------
-   A canvas in the middle that takes all the room there is: the table screen fits the hole inside
-   it and centres it. The other players sit above, the aim controls and your seat below. */
-.sport-felt { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 8px 8px 10px; min-height: 0; }
+   A canvas that takes all the room there is: the table screen fits the hole inside it, turned on
+   its side if that shows it bigger. On a phone the scores are a row of chips over the canvas, the
+   hole's sign stands on the canvas itself, and the aim controls are below. On a wide screen the
+   sign, the scores and the controls go down the left-hand side and the canvas has the rest. */
+.sport-felt { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 6px 6px 8px; min-height: 0; }
 .sport .status { position: static; }
-.sport-top { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.sport-name { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: var(--ui-l); color: var(--gold); text-align: center; }
-.sport-others { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px clamp(8px, 3vw, 32px); }
-.sport-seat { padding: 3px 10px; gap: 0; }
-.sport-seat strong { font-size: var(--ui-m); }
-.sport-seat span { font-size: calc(var(--ui-s) * 0.9); color: #cfe2d6; }
-.sport-seat.done { opacity: 0.75; }
-.sport-seat.row { align-items: center; gap: 10px; }
-.sport-dot { flex: none; width: 0.8em; height: 0.8em; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.5); box-shadow: inset -1px -2px 2px rgba(0, 0, 0, 0.25); }
-/* The stage is the whole area you can pull on, not just the ball: a thumb can start anywhere. */
-.sport-stage { position: relative; flex: 1; min-height: 220px; border-radius: 12px; outline-offset: 2px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.sport-course { flex: 1; text-align: center; font-family: Georgia, "Times New Roman", serif; font-size: var(--ui-m); color: var(--gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sport-dot { flex: none; width: 0.9em; height: 0.9em; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.55); box-shadow: inset -1px -2px 2px rgba(0, 0, 0, 0.3), inset 1px 1px 1px rgba(255, 255, 255, 0.55); }
+
+/* The scores: a painted wooden tag for each player. */
+.sport-panel { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 6px; }
+.sport-player {
+  display: flex; align-items: center; gap: 5px; min-width: 0; padding: 3px 5px 3px 7px;
+  border-radius: 9px; border: 2px solid #4a2c12; color: #2a1a0a; font-size: var(--ui-s); line-height: 1.15;
+  background: linear-gradient(#f3ddb0, #dfc089);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+.sport-player.is-up { border-color: #ffe27a; background: linear-gradient(#fff3c4, #f2d98a); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 0 0 2px rgba(0, 0, 0, 0.45), 0 2px 0 2px rgba(0, 0, 0, 0.35); }
+.sport-player.is-in { background: linear-gradient(#d9d2bf, #c2b89f); }
+.sport-player-name { max-width: 7.5ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.sport-player.is-me .sport-player-name { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+.sport-player-in { color: #1c6b3a; font-weight: 900; }
+.sport-player-here { min-width: 1.5em; padding: 0 3px; border-radius: 6px; text-align: center; background: rgba(74, 44, 18, 0.16); font-variant-numeric: tabular-nums; }
+.sport-player-total { min-width: 1.6em; padding: 0 4px; border-radius: 6px; text-align: center; background: #4a2c12; color: #fff3c4; font-variant-numeric: tabular-nums; }
+
+/* The hole's sign: a chunky board on the course, a little askew. */
+.sport-sign { position: absolute; left: 6px; top: 6px; z-index: 1; max-width: calc(100% - 12px); pointer-events: none; display: flex; align-items: flex-start; gap: 8px; }
+.sport-sign-board {
+  display: flex; align-items: center; gap: 7px; padding: 4px 11px 4px 5px; transform: rotate(-1.6deg); transform-origin: left center;
+  border: 2px solid #3a1e0a; border-radius: 10px; color: #fff6d8;
+  background: repeating-linear-gradient(178deg, rgba(255, 255, 255, 0.05) 0 3px, rgba(0, 0, 0, 0.06) 3px 7px), linear-gradient(#b5651f, #8a4513);
+  box-shadow: inset 0 2px 0 rgba(255, 220, 160, 0.45), inset 0 -3px 0 rgba(40, 14, 0, 0.35), 0 3px 0 #2a1406, 0 6px 8px rgba(0, 0, 0, 0.4);
+  font-family: ui-rounded, "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+}
+.sport-sign-number {
+  flex: none; min-width: 1.5em; height: 1.5em; padding: 0 0.2em; display: grid; place-items: center; border-radius: 50%;
+  font-size: 1.45rem; font-weight: 900; line-height: 1; color: #5a2c06;
+  background: radial-gradient(circle at 35% 30%, #fff7c2, #ffd23c 60%, #e2a50f); border: 2px solid #3a1e0a;
+  box-shadow: inset 0 -2px 0 rgba(120, 70, 0, 0.4); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.sport-sign-words { display: flex; flex-direction: column; min-width: 0; line-height: 1.05; text-shadow: 0 1px 0 #3a1e0a, 0 2px 2px rgba(0, 0, 0, 0.4); }
+.sport-sign-words strong { font-size: 1rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sport-sign-words em { font-style: normal; font-size: 0.82rem; font-weight: 800; color: #ffd23c; letter-spacing: 0.02em; text-transform: uppercase; }
+.sport-sign-facts { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.sport-sign-facts li:not(.sr-only) { padding: 2px 8px; border-radius: 999px; background: rgba(12, 30, 16, 0.72); color: #f3ecd6; font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+
+.sport-view { position: relative; flex: 1; min-height: 220px; display: flex; }
+.sport-stage { position: relative; flex: 1; min-height: 220px; border-radius: 12px; overflow: hidden; outline-offset: 2px; box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.35), 0 2px 10px rgba(0, 0, 0, 0.35); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .sport-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .sport-stage.can { cursor: grab; }
 .sport-stage.pulling { cursor: grabbing; }
@@ -1290,9 +1323,14 @@ html[data-motion="off"] .board-grid .cell.mark-must::before { animation: none; }
 .sport-skip { position: absolute; right: 6px; bottom: 6px; padding: 8px 14px; border: 0; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: var(--cream); font: inherit; font-weight: 600; font-size: var(--ui-s); cursor: pointer; }
 .sport-skip:hover, .sport-skip:focus-visible { background: rgba(0, 0, 0, 0.75); }
 /* While you pull: how hard, as a bar up the side that fills and reddens. */
-.sport-meter { position: absolute; left: 6px; top: 12%; bottom: 12%; width: 12px; border-radius: 999px; background: rgba(0, 0, 0, 0.45); border: 2px solid rgba(255, 255, 255, 0.6); overflow: hidden; display: flex; align-items: flex-end; pointer-events: none; }
-.sport-meter span { display: block; width: 100%; border-radius: 999px; }
+/* The power gauge while pulling: a brass tube up the right-hand side that fills from the bottom. */
+.sport-meter { position: absolute; right: 8px; top: 16%; bottom: 16%; width: 16px; border-radius: 999px; background: linear-gradient(90deg, #1b1712, #3a332b 45%, #1b1712); border: 2px solid #f1e3b4; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 3px 8px rgba(0, 0, 0, 0.5); overflow: hidden; display: flex; align-items: flex-end; pointer-events: none; }
+.sport-meter span { display: block; width: 100%; border-radius: 999px; box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.4), inset -3px 0 0 rgba(0, 0, 0, 0.25); }
 .sport .center-info { gap: 4px; }
+/* The words under the table keep room for two lines whatever they say, so the table above doesn't
+   change size (and have to be painted again) every time someone putts. */
+.sport .narration { min-height: 2.5em; max-height: 3.75em; line-height: 1.25; margin: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.sport .status { min-height: 2.5em; display: flex; align-items: center; justify-content: center; }
 .sport-controls { display: flex; flex-direction: column; gap: 6px; width: min(100%, 420px); }
 .sport-controls.idle { visibility: hidden; }
 .sport-row { display: flex; align-items: center; gap: 6px; }
@@ -1315,8 +1353,29 @@ html[data-motion="off"] .board-grid .cell.mark-must::before { animation: none; }
 .sport-card .sum { font-weight: 700; font-family: Georgia, serif; }
 .sport .bubble.top { top: 130px; }
 .sport .bubble.bottom { bottom: 110px; }
-/* A wide screen has room to spare: keep the table from sprawling. */
-@media (min-width: 900px) { .sport-stage { min-height: 320px; } }
+.sport-me { padding-top: 0; padding-bottom: max(6px, env(safe-area-inset-bottom)); background: none; min-height: 0; }
+.sport-me:not(:has(.chat-toggle, .chat)) { display: none; }
+
+@media (min-width: 900px) {
+  /* Side by side: everything to read and press on the left, the table on the right. */
+  .sport-felt { display: grid; grid-template-columns: minmax(230px, 280px) 1fr; grid-template-rows: auto auto 1fr; gap: 12px 14px; padding: 12px; }
+  /* The sign comes off the table and heads the column. */
+  .sport-view { display: contents; }
+  .sport-stage { grid-column: 2; grid-row: 1 / -1; min-height: 320px; }
+  .sport-sign { position: static; grid-column: 1; grid-row: 1; flex-direction: column; max-width: none; }
+  .sport-sign-number { font-size: 2rem; }
+  .sport-sign-words strong { font-size: 1.25rem; white-space: normal; }
+  .sport-sign-words em { font-size: 1rem; }
+  .sport-panel { grid-column: 1; grid-row: 2; flex-direction: column; flex-wrap: nowrap; justify-content: flex-start; gap: 6px; }
+  .sport-player { padding: 6px 8px 6px 10px; font-size: var(--ui-m); }
+  .sport-player-name { flex: 1; max-width: none; }
+  .sport-felt .center-info { grid-column: 1; grid-row: 3; align-self: end; align-items: stretch; text-align: center; }
+}
+@media (min-width: 1024px) {
+  /* No oval card table here: the hole is its own table. */
+  .sport .felt { margin: 0; border-radius: 0; background: none; box-shadow: none; }
+  .sport .me { margin-top: 0; }
+}
 
 /* ---------- Turn clock: the time left on a seat, at an online table with a turn timer ---------- */
 .turn-clock {

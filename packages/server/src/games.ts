@@ -79,11 +79,16 @@ export function watchView(game: GameId, views: unknown[]): unknown {
   const seats = views as Any[];
   if (game === "spades") return sharedView(seats, { blank: { hand: [], legal: [], myPass: null }, from: { seat: 0, keys: ["seat", "team", "partner", "teamSeats"] } });
   if (game === "palace") return sharedView(seats, { blank: { hand: [], can: null }, from: { seat: 0, keys: ["you"] } });
-  // A table sport hides nothing, but each seat's table is its own: its world holds that seat's ball
-  // and the others are drawn around it, and the shot it replays may be its own. Compared part by
-  // part those come out as a world with nothing in it, which no table can draw. So the watcher is
-  // given the first seat's table and shot whole, and nothing to strike.
-  if (isSportGame(game)) return sharedView(seats, { blank: { shoot: null, choices: null }, from: { seat: 0, keys: ["me", "table", "last"] } });
+  // A table sport has nothing hidden: every ball is in plain sight of everyone. What can differ
+  // between seats is which table they are shown (played all at once, mini golf gives each seat
+  // the hole with its own ball on it and the others as ghosts, and the last shot it took itself).
+  // Compared part by part those would come out as a ball with no place, so a watcher is given the
+  // first seat's table and the shot that goes with it, whole, and nobody's aim or buttons.
+  if (isSportGame(game)) {
+    const view = sharedView(seats, { blank: { shoot: null, choices: null }, from: { seat: 0, keys: ["me", "table", "last"] } });
+    if (Array.isArray(view.info)) view.info = view.info.filter((line) => typeof line === "string");
+    return view;
+  }
   // A board that belongs to one seat (a fleet in Combat) is nobody else's, and neither is what that
   // seat holds off the board. Left in, two fleets that happened to overlap would show where: the
   // seats' views are compared part by part, and a watcher can be someone sitting at the table.
