@@ -1,9 +1,15 @@
 // Watch a game: the tables playing now, and tables of computer players that anyone can deal to
 // watch and learn from.
 //
+// Quiet when nothing is happening: what's playing comes first, a line or two when nothing is, and
+// dealing the computers a game is one button that opens a short form. The server lists only
+// what's really going (see spectate.ts): games this card room has and hasn't switched off, at
+// tables someone is still playing.
+//
 // The page is Solid; everything on it is a zubra-ui component (see zubra.ts). They're custom
 // elements: Solid sets their properties with `prop:` and listens to their events with `on:`.
 import { For, Match, Show, Switch, createMemo, createResource, createSignal, onCleanup } from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
 
 interface Game {
   id: string;
@@ -25,6 +31,8 @@ interface Table {
   computers: boolean;
   seats: { name: string | null; bot: boolean }[];
   standing: string;
+  /** When someone last moved (ms). */
+  moved: number;
 }
 
 interface Live {
@@ -36,7 +44,7 @@ interface Live {
 
 /** The server's endpoints sit beside the page: /watch/ → /spectate, /catalogue. */
 const beside = (path: string) => new URL(`../${path}`, document.baseURI).href;
-const REFRESH_MS = 4000;
+const REFRESH_MS = 5000;
 
 const SKILLS = [
   { value: "mixed", label: "Their own way" },
@@ -66,19 +74,50 @@ async function ask<T>(path: string, body?: unknown): Promise<T> {
 /** zubra-ui's <toast-region> listens on the document: any code shows a toast with an event. */
 const toast = (message: string, variant: "danger" | "info" = "info") => document.dispatchEvent(new CustomEvent("toast", { detail: { message, variant } }));
 
-export function App() {
-  // What's on now, asked again every few seconds while the page is in view.
-  const [live, { refetch }] = createResource<Live | null>(() => ask<Live>("spectate").catch(() => null));
-  const timer = setInterval(() => document.visibilityState === "visible" && void refetch(), REFRESH_MS);
-  onCleanup(() => clearInterval(timer));
+/** "brokennil, Pappy and Rick". */
+const listed = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : (names[0] ?? ""));
 
+export function App() {
+  // What's on now, asked again every few seconds while the page is in view. The list is kept in a
+  // store matched up by table, so a refresh only touches what changed: nothing flickers.
+  const [live, setLive] = createStore<{ ready: boolean; offline: boolean; tables: Table[]; watching: boolean; full: boolean; limit: number }>({
+    ready: false,
+    offline: false,
+    tables: [],
+    watching: true,
+    full: false,
+    limit: 0,
+  });
+  async function load() {
+    try {
+      const now = await ask<Live>("spectate");
+      setLive({ ready: true, offline: false, watching: now.watching, full: now.computerTables.going >= now.computerTables.limit, limit: now.computerTables.limit });
+      setLive("tables", reconcile(now.tables, { key: "id" }));
+    } catch {
+      // A missed refresh keeps what's showing; only a page that never loaded says it can't.
+      if (!live.ready) setLive({ ready: true, offline: true });
+    }
+  }
+  void load();
+  const timer = setInterval(() => document.visibilityState === "visible" && void load(), REFRESH_MS);
+  const back = () => document.visibilityState === "visible" && void load();
+  document.addEventListener("visibilitychange", back);
+  onCleanup(() => {
+    clearInterval(timer);
+    document.removeEventListener("visibilitychange", back);
+  });
+
+  const people = createMemo(() => live.tables.filter((t) => !t.computers));
+  const computers = createMemo(() => live.tables.filter((t) => t.computers));
+
+  // Dealing the computers a game: closed until asked for.
   const [games] = createResource<Game[]>(() =>
     ask<{ games: Game[] }>("catalogue").then(
       (c) => c.games.filter((g) => g.on),
       () => [],
     ),
   );
-
+  const [dealOpen, setDealOpen] = createSignal(false);
   const [game, setGame] = createSignal("");
   const [players, setPlayers] = createSignal("");
   const [skill, setSkill] = createSignal("hard");
@@ -93,7 +132,6 @@ export function App() {
     return Array.from({ length: g.seats[1] - g.seats[0] + 1 }, (_, i) => String(g.seats[0] + i)).map((n) => ({ value: n, label: n }));
   });
   const seats = createMemo(() => (counts().some((c) => c.value === players()) ? players() : (counts()[Math.min(1, counts().length - 1)]?.value ?? "")));
-  const full = createMemo(() => !!live() && live()!.computerTables.going >= live()!.computerTables.limit);
 
   const tableLink = (id: string) => `../?table=${encodeURIComponent(id)}`;
 
@@ -108,11 +146,32 @@ export function App() {
     } catch (error) {
       toast((error as Error).message, "danger");
       setDealing(false);
-      void refetch();
+      void load();
     }
   }
 
-  const people = (table: Table) => table.seats.filter((s) => s.name);
+  const who = (table: Table) => listed(table.seats.flatMap((s) => (s.name ? [s.name] : [])));
+
+  const Row = (props: { table: Table }) => (
+    <li class="row">
+      <span class="emoji" aria-hidden="true">
+        {props.table.emoji}
+      </span>
+      <span class="what">
+        <strong>{props.table.gameName}</strong>
+        <span class="who">{who(props.table)}</span>
+        <span class="where">{[props.table.standing || "Just dealt", props.table.rules].filter(Boolean).join(" · ")}</span>
+      </span>
+      <action-button
+        prop:size="sm"
+        prop:variant={props.table.computers ? "outline" : "primary"}
+        prop:href={tableLink(props.table.id)}
+        prop:label={props.table.computers ? `Watch the computers play ${props.table.gameName}` : `Watch ${who(props.table)} play ${props.table.gameName}`}
+      >
+        Watch
+      </action-button>
+    </li>
+  );
 
   return (
     <>
@@ -123,16 +182,15 @@ export function App() {
             <span aria-hidden="true">←</span> Card Room
           </a>
           <h1>Watch a game</h1>
-          <p class="quiet">Look in on the tables playing now, or deal a table of computer players and see how the game goes.</p>
         </header>
 
         <Switch>
-          <Match when={live.loading && live() === undefined}>
+          <Match when={!live.ready}>
             <div class="waiting">
               <loading-spinner prop:label="Finding the tables" prop:inline={true} />
             </div>
           </Match>
-          <Match when={live() === null}>
+          <Match when={live.offline}>
             <alert-banner prop:variant="info" prop:heading="Nothing to watch here">
               <span>This copy of the card room has no server behind it, so there are no tables to watch. You can still practise against the computer.</span>
               <action-button slot="actions" prop:variant="outline" prop:size="sm" prop:href="../">
@@ -140,25 +198,63 @@ export function App() {
               </action-button>
             </alert-banner>
           </Match>
-          <Match when={live()}>
-            {(now) => (
-              <>
-                <section class="panel" aria-labelledby="deal-heading">
-                  <h2 id="deal-heading">Learn from the computer</h2>
-                  <p class="quiet">Pick a game and the computer players sit down and play it out. You see every hand, from any seat.</p>
-                  <form class="deal" onSubmit={deal}>
-                    <select-field
-                      prop:label="Game"
-                      prop:options={(games() ?? []).map((g) => ({ value: g.id, label: `${g.emoji} ${g.name}` }))}
-                      prop:value={chosen()?.id ?? ""}
-                      on:valuechange={(event: CustomEvent<string>) => setGame(event.detail)}
-                    />
-                    <Show when={counts().length}>
-                      <div class="group">
-                        <span class="label">Players</span>
-                        <segmented-control prop:label="Players" prop:options={counts()} prop:value={seats()} on:valuechange={(event: CustomEvent<string>) => setPlayers(event.detail)} />
-                      </div>
-                    </Show>
+          <Match when={live.ready}>
+            <Show when={people().length}>
+              <section aria-labelledby="people-heading">
+                <h2 id="people-heading">Playing now</h2>
+                <ul class="rows">
+                  <For each={people()}>{(table) => <Row table={table} />}</For>
+                </ul>
+                <p class="quiet note">You see the table and the score, not anyone's hand.</p>
+              </section>
+            </Show>
+
+            <Show when={computers().length}>
+              <section aria-labelledby="computers-heading">
+                <h2 id="computers-heading">The computers playing</h2>
+                <ul class="rows">
+                  <For each={computers()}>{(table) => <Row table={table} />}</For>
+                </ul>
+                <p class="quiet note">At these tables you see every hand.</p>
+              </section>
+            </Show>
+
+            <Show when={!live.tables.length}>
+              <section class="calm" aria-live="polite">
+                <p class="lead">Nobody's playing right now.</p>
+                <p class="quiet">{live.watching ? "When someone is, their table shows up here." : "This card room keeps people's tables private; the computers' tables show up here."}</p>
+              </section>
+            </Show>
+            <Show when={live.tables.length && !live.watching}>
+              <p class="quiet">This card room keeps people's tables private.</p>
+            </Show>
+
+            <section class="deal-box" aria-labelledby="deal-heading">
+              <Show
+                when={dealOpen()}
+                fallback={
+                  <action-button prop:variant={live.tables.length ? "outline" : "primary"} prop:disabled={live.full} on:click={() => setDealOpen(true)}>
+                    <span>{live.full ? "The computers' tables are all busy" : "Deal the computers a game"}</span>
+                  </action-button>
+                }
+              >
+                <h2 id="deal-heading">Deal the computers a game</h2>
+                <p class="quiet">They sit down and play it out; you see every hand.</p>
+                <form class="deal" onSubmit={deal}>
+                  <select-field
+                    prop:label="Game"
+                    prop:options={(games() ?? []).map((g) => ({ value: g.id, label: `${g.emoji} ${g.name}` }))}
+                    prop:value={chosen()?.id ?? ""}
+                    on:valuechange={(event: CustomEvent<string>) => setGame(event.detail)}
+                  />
+                  <Show when={counts().length}>
+                    <div class="group">
+                      <span class="label">Players</span>
+                      <segmented-control prop:label="Players" prop:options={counts()} prop:value={seats()} on:valuechange={(event: CustomEvent<string>) => setPlayers(event.detail)} />
+                    </div>
+                  </Show>
+                  <details class="more">
+                    <summary>More options</summary>
                     <div class="group">
                       <span class="label">How well they play</span>
                       <segmented-control prop:label="How well they play" prop:options={SKILLS} prop:value={skill()} on:valuechange={(event: CustomEvent<string>) => setSkill(event.detail)} />
@@ -167,77 +263,21 @@ export function App() {
                       <span class="label">How fast</span>
                       <segmented-control prop:label="How fast" prop:options={PACES} prop:value={pace()} on:valuechange={(event: CustomEvent<string>) => setPace(event.detail)} />
                     </div>
-                    <Show when={full()}>
-                      <alert-banner prop:variant="warning" prop:heading="The computers' tables are all busy">
-                        <span>
-                          {now().computerTables.limit} games are going. Watch one of those, or deal a new one when a game ends.
-                        </span>
-                      </alert-banner>
-                    </Show>
-                    <action-button prop:type="submit" prop:loading={dealing()} prop:disabled={full() || !chosen()}>
-                      <span>{chosen() ? `Deal ${chosen()!.name} and watch` : "Deal and watch"}</span>
+                  </details>
+                  <Show when={live.full}>
+                    <p class="quiet">{live.limit} computer games are going. Watch one of those, or deal a new one when a game ends.</p>
+                  </Show>
+                  <cluster-layout prop:gap="0.75rem">
+                    <action-button prop:type="submit" prop:loading={dealing()} prop:disabled={live.full || !chosen()}>
+                      <span>{chosen() ? `Deal ${chosen()!.name}` : "Deal"}</span>
                     </action-button>
-                  </form>
-                </section>
-
-                <section aria-labelledby="now-heading">
-                  <h2 id="now-heading">Playing now</h2>
-                  <Show when={!now().watching}>
-                    <p class="quiet note">This card room's host has kept tables with players private. The computers' tables are always open.</p>
-                  </Show>
-                  <Show
-                    when={now().tables.length}
-                    fallback={
-                      <empty-state prop:heading="No games going right now">
-                        <span>When someone's playing, their table shows up here. Until then, deal the computers a game.</span>
-                      </empty-state>
-                    }
-                  >
-                    <auto-grid prop:min="17rem" prop:gap="1rem">
-                      <For each={now().tables}>
-                        {(table) => (
-                          <content-card prop:heading={`${table.emoji} ${table.gameName}`}>
-                            <cluster-layout prop:gap="0.4rem">
-                              <Show when={table.computers} fallback={<status-badge prop:variant="primary" prop:dot={true}>Players at the table</status-badge>}>
-                                <status-badge prop:variant="success" prop:dot={true}>
-                                  Computers playing
-                                </status-badge>
-                              </Show>
-                              <Show when={table.rules}>
-                                <status-badge prop:variant="outline">
-                                  <span>{table.rules}</span>
-                                </status-badge>
-                              </Show>
-                            </cluster-layout>
-                            <ul class="seats">
-                              <For each={people(table)}>
-                                {(seat) => (
-                                  <li>
-                                    <user-avatar prop:name={seat.name ?? ""} prop:size="sm" />
-                                    <span>{seat.name}</span>
-                                  </li>
-                                )}
-                              </For>
-                            </ul>
-                            <p class="standing">{table.standing || "Just dealt"}</p>
-                            <cluster-layout slot="footer" prop:gap="0.75rem">
-                              <action-button
-                                prop:size="sm"
-                                prop:href={tableLink(table.id)}
-                                prop:label={table.computers ? `Watch the computers play ${table.gameName}` : `Watch ${people(table).map((s) => s.name).join(", ")} play ${table.gameName}`}
-                              >
-                                Watch
-                              </action-button>
-                              <span class="quiet">{table.computers ? "You see every hand." : "You see the table, not their hands."}</span>
-                            </cluster-layout>
-                          </content-card>
-                        )}
-                      </For>
-                    </auto-grid>
-                  </Show>
-                </section>
-              </>
-            )}
+                    <action-button prop:variant="ghost" on:click={() => setDealOpen(false)}>
+                      Cancel
+                    </action-button>
+                  </cluster-layout>
+                </form>
+              </Show>
+            </section>
           </Match>
         </Switch>
       </div>

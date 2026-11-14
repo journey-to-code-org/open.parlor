@@ -31,7 +31,15 @@ export function checkSportView(v: SportView, seat: number) {
   const regions = new Set(v.table.world.regions.map((r) => r.id));
   for (const r of v.table.look.regions) expect(regions.has(r.id)).toBe(true);
   const walls = new Set(v.table.world.walls.map((w) => w.id));
-  for (const id of v.table.look.blocks) expect(walls.has(id)).toBe(true);
+  // Everything the look describes is in the world, and is the kind of thing it says.
+  for (const b of v.table.look.blocks) expect(walls.has(b.wall) && b.height > 0).toBe(true);
+  for (const r of v.table.look.rails) expect(walls.has(r.wall) && r.width > 0 && r.height > 0).toBe(true);
+  for (const l of v.table.look.ledges) expect(v.table.world.walls.find((w) => w.id === l.wall)?.oneWay).toBe(true);
+  const tunnels = new Set((v.table.world.tunnels ?? []).map((t) => t.id));
+  for (const t of v.table.look.tunnels) expect(tunnels.has(t.id)).toBe(true);
+  expect(v.table.look.ground.length).toBeGreaterThan(0);
+  // A view is for any renderer: it names kinds and gives sizes, and never a colour or a pixel.
+  expect(JSON.stringify(v.table.look)).not.toMatch(/#[0-9a-f]{3,8}\b|rgb|px/i);
   const f = v.table.look.frame;
   expect(f.w > 0 && f.h > 0).toBe(true);
   if (v.shoot) {

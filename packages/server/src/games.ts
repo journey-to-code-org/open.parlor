@@ -79,17 +79,32 @@ export function watchView(game: GameId, views: unknown[]): unknown {
   const seats = views as Any[];
   if (game === "spades") return sharedView(seats, { blank: { hand: [], legal: [], myPass: null }, from: { seat: 0, keys: ["seat", "team", "partner", "teamSeats"] } });
   if (game === "palace") return sharedView(seats, { blank: { hand: [], can: null }, from: { seat: 0, keys: ["you"] } });
-  // A table sport hides nothing, but each seat's table is its own: its world holds that seat's ball
-  // and the others are drawn around it, and the shot it replays may be its own. Compared part by
-  // part those come out as a world with nothing in it, which no table can draw. So the watcher is
-  // given the first seat's table and shot whole, and nothing to strike.
-  if (isSportGame(game)) return sharedView(seats, { blank: { shoot: null, choices: null }, from: { seat: 0, keys: ["me", "table", "last"] } });
+  // A table sport has nothing hidden: every ball is in plain sight of everyone. What can differ
+  // between seats is which table they are shown (played all at once, mini golf gives each seat
+  // the hole with its own ball on it and the others as ghosts, and the last shot it took itself).
+  // Compared part by part those would come out as a ball with no place, so a watcher is given the
+  // first seat's table and the shot that goes with it, whole, and nobody's aim or buttons.
+  if (isSportGame(game)) {
+    const view = sharedView(seats, { blank: { shoot: null, choices: null }, from: { seat: 0, keys: ["me", "table", "last"] } });
+    if (Array.isArray(view.info)) view.info = view.info.filter((line) => typeof line === "string");
+    return view;
+  }
   // A board that belongs to one seat (a fleet in Combat) is nobody else's, and neither is what that
   // seat holds off the board. Left in, two fleets that happened to overlap would show where: the
   // seats' views are compared part by part, and a watcher can be someone sitting at the table.
   // Only on a board: a card game's grids (Golf's cards in front of each player) have an owner too,
   // and those are for everyone to see.
-  const open = !isBoardGame(game) ? seats : seats.map((v) => (Array.isArray(v.grids) && v.grids.some((g) => (g as Any).owner !== undefined) ? { ...v, grids: v.grids.filter((g) => (g as Any).owner === undefined), reserves: [] } : v));
+  const owned = isBoardGame(game) && seats.some((v) => Array.isArray(v.grids) && v.grids.some((g) => (g as Any).owner !== undefined));
+  let open = !owned ? seats : seats.map((v) => (Array.isArray(v.grids) ? { ...v, grids: v.grids.filter((g) => (g as Any).owner === undefined), reserves: [] } : v));
+  // What's left then is each seat's picture of someone else's board (in Combat, the other player's
+  // waters): not one board that every seat sees, so its squares can't be compared place by place.
+  // Two sunk ships that happened to lie in the same spot would come out as a hull on a board that
+  // is neither player's. Unless every seat sees such a board exactly alike, a watcher sees it empty.
+  if (owned) {
+    const cells = (v: Any, i: number) => JSON.stringify(((v.grids as Any[] | undefined)?.[i] ?? null)?.cells ?? null);
+    const alike = (i: number) => open.every((v) => cells(v, i) === cells(open[0]!, i));
+    open = open.map((v) => (Array.isArray(v.grids) ? { ...v, grids: (v.grids as Any[]).map((g, i) => (alike(i) || !Array.isArray(g.cells) ? g : { ...g, cells: g.cells.map(() => null), marks: [] })) } : v));
+  }
   // Dice and a score sheet (Yacht): the dice are the table's unless they are one seat's own (everyone
   // rolling at once), and those go the way of a private grid. What a seat could do with them, keep a
   // die or fill in a box, is that seat's alone.

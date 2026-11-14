@@ -279,6 +279,9 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .mini-table svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .mini-table .rail { fill: #e9dcc3; stroke: #5b3d22; stroke-width: 2; }
 .mini-table .cloth { fill: #3f9c58; }
+/* A green has timber rails, like the holes themselves. */
+.mini-table.surface-green .rail { fill: #c08a52; stroke: #4a2c12; stroke-width: 2.5; }
+.mini-table.surface-green .cloth { fill: #3aa15a; stroke: rgba(8, 40, 16, 0.5); stroke-width: 2; }
 .mini-table.surface-felt .cloth { fill: #2f8a5b; }
 .mini-table.surface-lane .cloth { fill: #e0b877; }
 .mini-table .aim { stroke: rgba(255, 255, 255, 0.8); stroke-width: 2.5; stroke-dasharray: 1 6; stroke-linecap: round; }
