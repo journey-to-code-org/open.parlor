@@ -34,6 +34,7 @@ import { OfferBanner, OffersMenu } from "./Offers";
 import { PieceSet, usePieceArt } from "./pieces";
 import { RecordStrip } from "./Record";
 import { SeatClock } from "./SeatClock";
+import { SoundButton } from "../SoundButton";
 
 export interface BoardTableProps {
   view: BoardView;
@@ -284,9 +285,7 @@ export function BoardTable({ view, names, act, onLeave, banner, watching, chat, 
           {/* Resign, offer a draw, ask to take a move back: whatever the view says this seat may do. */}
           {view.offers && !watching && <OffersMenu can={view.offers.can} onSend={(move) => void send(move, true)} />}
           {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} stones={stones} />}
-          <button type="button" className="sound-toggle inline" onClick={toggleSound} aria-pressed={soundOn} aria-label={soundOn ? "Turn sounds off" : "Turn sounds on"}>
-            {soundOn ? "🔊" : "🔇"}
-          </button>
+          <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>
       </header>
       {banner}

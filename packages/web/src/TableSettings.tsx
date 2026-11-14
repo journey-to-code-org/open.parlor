@@ -11,6 +11,7 @@ import {
   saveDisplay,
   type DisplaySettings,
 } from "./display";
+import { putEverythingBack, useAnythingMoved, useDragPlace } from "./useDragPlace";
 
 /**
  * Whether these settings are a table's on the server. Only there is a turn timer offered: the server
@@ -232,17 +233,25 @@ export function TableSettingsButton({
 }) {
   const [open, setOpen] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const drag = useDragPlace<HTMLButtonElement>("settings");
+  const anythingMoved = useAnythingMoved();
   return (
     <>
+      {drag.lift(
       <button
         type="button"
-        className="settings-toggle"
+        ref={drag.target}
+        className={`settings-toggle movable ${drag.moved ? "moved" : ""}`}
+        style={drag.style}
+        {...drag.handle}
         aria-label={solo ? "Table settings: animations and suit colours" : "Table settings: opponents, speed and animations"}
         aria-expanded={open}
-        onClick={() => setOpen(true)}
+        title="Table settings (drag to move)"
+        onClick={() => !drag.wasDrag() && setOpen(true)}
       >
         ⚙︎
-      </button>
+      </button>,
+      )}
       {open &&
         createPortal(
           <>
@@ -273,6 +282,11 @@ export function TableSettingsButton({
               <PlayersFields />
               {!solo && <h3>On this device</h3>}
               <DisplayFields sport={sport} stones={stones} />
+              {anythingMoved && (
+                <button type="button" className="link" onClick={putEverythingBack}>
+                  Put the buttons I've moved back
+                </button>
+              )}
               <ReportLink before={() => setOpen(false)} />
               <button
                 type="button"

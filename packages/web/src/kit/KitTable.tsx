@@ -23,6 +23,7 @@ import { seatAround } from "../palace/PalaceTable";
 import { TableSettingsButton } from "../TableSettings";
 import { HandSortBar, useHandOrder } from "../HandSort";
 import { cardKey } from "../handOrder";
+import { SoundButton } from "../SoundButton";
 
 const NO_CARDS: KCard[] = [];
 
@@ -284,15 +285,7 @@ export function KitTable({
               solo={view.seats === 1}
             />
           )}
-          <button
-            type="button"
-            className="sound-toggle inline"
-            onClick={toggleSound}
-            aria-pressed={soundOn}
-            aria-label={soundOn ? "Turn sounds off" : "Turn sounds on"}
-          >
-            {soundOn ? "🔊" : "🔇"}
-          </button>
+          <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>
       </header>
       {banner}
@@ -810,35 +803,12 @@ function CenterArea({
         {center.spread && (
           <div className="pile pile-spread-area">
             {center.discard.length + (center.spreadHidden ?? 0) ? (
-              <div
-                className="pile-spread"
-                style={{ "--n": center.discard.length } as React.CSSProperties}
-              >
-                {center.discard.map((c) =>
-                  center.spread!.cards.includes(c.id) ? (
-                    <button
-                      key={c.id}
-                      type="button"
-                      className="spread-card pile-button"
-                      aria-label={`Take the pile from here`}
-                      onClick={() =>
-                        send({ type: center.spread!.type, card: c.id })
-                      }
-                    >
-                      <PlayingCard card={c} size="table" data-flip={c.id} />
-                    </button>
-                  ) : (
-                    <span key={c.id} className="spread-card">
-                      <PlayingCard card={c} size="table" data-flip={c.id} />
-                    </span>
-                  ),
-                )}
-                {Array.from({ length: center.spreadHidden ?? 0 }, (_, i) => (
-                  <span key={`hidden-${i}`} className="spread-card">
-                    <PlayingCard back size="table" />
-                  </span>
-                ))}
-              </div>
+              <SpreadPile
+                cards={center.discard}
+                hidden={center.spreadHidden ?? 0}
+                takeable={center.spread.cards}
+                onTake={(id) => send({ type: center.spread!.type, card: id })}
+              />
             ) : (
               <div className="empty-slot">
                 {center.discardLabel ? "" : "Discards"}
@@ -1289,6 +1259,58 @@ function CardGrid({
           </span>
         );
       })}
+    </div>
+  );
+}
+
+
+/** The spread-out discard pile. It stays a fixed size however long it gets: past a dozen cards
+ * the cards shrink and split into up to three rows, and each row packs its cards tighter so
+ * the whole pile fits, leaving every card's corner showing. A long pile used to wrap row after
+ * row, push the table taller than the window and hide everyone's melds (issue #134). */
+function SpreadPile({
+  cards,
+  hidden,
+  takeable,
+  onTake,
+}: {
+  cards: KCard[];
+  hidden: number;
+  takeable: string[];
+  onTake: (id: string) => void;
+}) {
+  const total = cards.length + hidden;
+  const rows = total <= 12 ? 1 : total <= 30 ? 2 : 3;
+  const per = Math.ceil(total / rows);
+  const slots: (KCard | null)[] = [...cards, ...Array.from({ length: hidden }, () => null)];
+  const chunks = Array.from({ length: rows }, (_, r) => slots.slice(r * per, r * per + per)).filter((c) => c.length);
+  return (
+    <div className={`pile-spread${total > 12 ? " dense" : ""}`} style={{ "--n": total } as React.CSSProperties}>
+      {chunks.map((row, r) => (
+        <div key={r} className="pile-spread-row" style={{ "--k": row.length } as React.CSSProperties}>
+          {row.map((c, i) =>
+            !c ? (
+              <span key={`hidden-${r}-${i}`} className="spread-card">
+                <PlayingCard back size="table" />
+              </span>
+            ) : takeable.includes(c.id) ? (
+              <button
+                key={c.id}
+                type="button"
+                className="spread-card pile-button"
+                aria-label="Take the pile from here"
+                onClick={() => onTake(c.id)}
+              >
+                <PlayingCard card={c} size="table" data-flip={c.id} />
+              </button>
+            ) : (
+              <span key={c.id} className="spread-card">
+                <PlayingCard card={c} size="table" data-flip={c.id} />
+              </span>
+            ),
+          )}
+        </div>
+      ))}
     </div>
   );
 }
