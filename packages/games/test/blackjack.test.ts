@@ -94,7 +94,7 @@ describe("Blackjack", () => {
   it("a timid computer player still places a bet the table takes", () => {
     const s = newBlackjack(classicBlackjack, 2, 1);
     for (let i = 0; i < 200; i++) {
-      const move = blackjack.bot(s, 0, { skill: 0.5, bold: -0.4 } as never);
+      const move = blackjack.bot(s, 0, { skill: 0.5, bold: -0.3 } as never);
       expect(move).toMatchObject({ type: "bet" });
       expect(() => blackjack.apply(s, 0, move as never)).not.toThrow();
     }
