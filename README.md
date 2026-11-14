@@ -383,7 +383,7 @@ bit.
    `packages/web/src/home/Home.tsx`.
 
 The table screen (`packages/web/src/sport/`) needs nothing: it fits any `SportView` to the screen
-(turned on its side if that shows the table bigger), aims (pull back and let go, or the arrow
+(turned on its side only if that shows the table a good deal bigger), aims (pull back and let go, or the arrow
 keys, or the buttons), and plays each shot with its sounds. Keep the state safe to replay: the room rebuilds a table after a restart by running its
 logged shots through `apply` again, which gives the same table under the same `PHYSICS_VERSION`
 and the same table data (the header of `minigolf.ts` says what that does and doesn't promise).
@@ -392,17 +392,43 @@ and the same table data (the header of `minigolf.ts` says what that does and doe
 world's own units and named by kind. `SportLook` says a wall is a timber rail so wide and so high
 standing to one side of its line, a closed wall is a rock or a flowerpot of some height, a
 one-way wall is a step with a drop, a patch of ground is grass, sand, water or paving and how far
-above the rest it stands, a tunnel is a pipe, a hose or a burrow, and the scenery is a gnome here
-and a wheelbarrow there, facing this way. There are no colours, pixels or drawing decisions in an
+above the garden it stands, a slope rises so far, a tunnel is a pipe, a hose or a burrow, and the
+scenery is a gnome here and a wheelbarrow there, facing this way. There are no colours, pixels or drawing decisions in an
 engine, in course data or in `SportView` (the shared sport test checks), heights are kept even
 though the physics is flat, every body, wall and tunnel keeps a stable id, and the physics'
 events say what happened to which of them and on which step. All drawing is behind one function,
 `drawScene(ctx, width, height, dpr, fit, scene)` in `packages/web/src/sport/draw.ts`: the table
 screen builds a `Scene` (the view's table, where each ball is this instant, the aim, what has just
-splashed) and calls it. Today that draws a model seen from straight above on a 2D canvas, with
-textures painted in code (`paint/`), the still part of a hole painted once and kept. A renderer in
-three dimensions would take the same `Scene` and replace that one function; nothing in the
-engines, the views, the server or the table screen's aiming and playback would change.
+splashed) and calls it.
+
+Today that draws a model looked down on from an angle, on a 2D canvas, with textures painted in
+code (`paint/`): no 3D library, no WebGL and no picture files.
+
+- **The projection** is one small file, `projection.ts`: world x, y and height to the screen, and
+  back again on the ground. It is a camera tipped back about 40° from overhead with no
+  perspective, looking up the screen: the plan is not rotated (left is left, up is away), depth
+  is foreshortened, and height goes straight up the screen, so everything shows its top and the
+  face towards you. Drawing and the pointer both go through it, which is why a pull of the thumb
+  sends the ball exactly the opposite way along the ground (`test/projection.test.ts` in the web
+  package sweeps that). A table that fits the screen better on its side is turned before it is
+  looked at, so the camera never looks sideways.
+- **Heights are the view's.** Rails, blocks and bumpers carry a height, a patch of ground a
+  `level`, a ledge a `drop`, a slope a `rise`, scenery an optional `height` (left out: what such
+  a thing usually is). The renderer only adds what a view leaves open: water and sand lie a
+  little below what they are set in (`paint/terrain.ts`). Ground that a ball plays on should not
+  lie below the garden round it, or its near edge hides the ball: raise the rest instead (the
+  last hole is a raised bed with a step down to the lawn).
+- **What is in front hides what is behind.** The still part of a hole is painted once for a hole
+  and a screen size and kept: the ground at its heights, then everything that stands up, the
+  furthest first (`paint/course.ts`, `paint/order.ts`). Each frame copies that painting and draws
+  what moves from the back of the table to the front; whatever stands in front of a ball is drawn
+  again over it, and a ball that ends up mostly hidden is shown through as a ring.
+- **From straight above** is the same drawing with no tilt: a choice in the ⚙︎ sheet at a table
+  sport, kept on the device.
+
+A renderer in three dimensions would take the same `Scene` and replace that one function; nothing in the
+engines, the views, the server or the table screen's playback would change (its pointer maths
+would use the new renderer's own way from the screen to the ground).
 
 **Adding a mini golf hole** is adding data: a `hole({ … })` in
 `packages/games/src/minigolfcourse.ts` with a name, a par, a tip, the tee, the cup, the patches of

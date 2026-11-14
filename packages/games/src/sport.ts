@@ -41,7 +41,11 @@ export type SportMaterial = "timber" | "brick" | "stone";
 export interface SportGround {
   shape: Shape;
   surface: SportSurface;
-  /** How far above the rest of the ground this patch stands (a terrace; less than nothing, a pit), in world units. Left out: level with it. */
+  /**
+   * How far above the ground round the table this patch stands (a terrace, a raised bed), in world
+   * units. Left out: it lies on whatever was laid under it, and if it is water or sand, the
+   * screen may sink it a little.
+   */
   level?: number;
 }
 
@@ -157,6 +161,8 @@ export interface SportDecor {
   angle?: number;
   /** A length, for the things that are longer than they are wide (a plank, a bench). */
   length?: number;
+  /** How high it stands, in world units. Left out: as high as such a thing usually is. */
+  height?: number;
   tone?: SportTone;
 }
 
@@ -168,8 +174,11 @@ export interface SportLook {
   base: SportSurface;
   /** Patches of ground, laid in order: the scenery first, then what is played on (the green of a hole, the cloth of a pool table). */
   ground: SportGround[];
-  /** What each region of the world is drawn as, in drawing order. A region left out is not drawn. */
-  regions: { id: string; surface: SportSurface }[];
+  /**
+   * What each region of the world is drawn as, in drawing order. A region left out is not drawn.
+   * `rise` is for a slope: how much higher its top is than its foot, in world units.
+   */
+  regions: { id: string; surface: SportSurface; rise?: number }[];
   /** The walls that are rails. A wall named nowhere in the look is not drawn. */
   rails: SportRail[];
   /** Closed walls that are solid things standing on the table (a rock, a planter). */

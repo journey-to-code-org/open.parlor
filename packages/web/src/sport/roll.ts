@@ -22,6 +22,8 @@ export interface Roll {
   at: Map<string, { x: number; y: number; r: number; live: boolean }>;
   /** When each ball dropped into a pocket (ms on the roll's own clock). */
   sunk: Map<string, number>;
+  /** When each ball that is inside a tunnel went in, and which tunnel. */
+  entered: Map<string, { at: number; tunnel: string }>;
   /** Brief things to draw where they happened: a splash, a puff of sand, a ball popping out of a tunnel, one dropping in the cup. */
   effects: { kind: "splash" | "sand" | "pop" | "drop"; x: number; y: number; at: number }[];
   /** When each bumper was last hit. */
@@ -59,6 +61,7 @@ export function beginRoll(target: SportView, jump: boolean): Roll {
     run: canStep(record) ? start(world, record.shot) : null,
     at: new Map(world.bodies.map((b) => [b.id, { x: b.x, y: b.y, r: b.r, live: b.pocketed === undefined && b.out === undefined }])),
     sunk: new Map(),
+    entered: new Map(),
     effects: [],
     struck: new Map(),
     trails: new Map(),
@@ -122,6 +125,8 @@ function tick(roll: Roll): SimEvent[] {
       if (at) roll.effects.push({ kind: "drop", x: at.x, y: at.y, at: roll.clock });
     }
     if (e.type === "out" && at && roll.water.has(e.region)) roll.effects.push({ kind: "splash", x: at.x, y: at.y, at: roll.clock });
+    if (e.type === "tunnel") roll.entered.set(e.body, { at: roll.clock, tunnel: e.tunnel });
+    if (e.type === "emerge") roll.entered.delete(e.body);
     if (e.type === "emerge" && at) roll.effects.push({ kind: "pop", x: at.x, y: at.y, at: roll.clock });
     if (e.type === "hit") for (const id of [e.a, e.b]) if (roll.world.bodies.find((b) => b.id === id)?.fixed) roll.struck.set(id, roll.clock);
     if (e.type === "pocket" || e.type === "out") roll.hold = 700;
