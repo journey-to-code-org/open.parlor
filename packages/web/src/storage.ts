@@ -115,3 +115,23 @@ export const saveKitSeats = (game: KitGameId, n: number) => write(`cardroom:${ga
 const SAME_RULES_KEY = "cardroom:lobby:sameRules";
 export const loadSameRules = () => read<boolean>(SAME_RULES_KEY, false) === true;
 export const saveSameRules = (only: boolean) => write(SAME_RULES_KEY, only);
+
+// ---- Where this player has dragged things on the table (the chat button, the chat itself) --------
+/** A spot on the screen, as shares (0 to 1) of the room there is to move in, so it survives a resize or a turn of the phone. */
+export interface Place {
+  x: number;
+  y: number;
+}
+export const loadPlace = (what: string): Place | null => {
+  const p = read<Partial<Place> | null>(`cardroom:place:${what}`, null);
+  return p && Number.isFinite(p.x) && Number.isFinite(p.y) ? { x: Math.min(Math.max(p.x!, 0), 1), y: Math.min(Math.max(p.y!, 0), 1) } : null;
+};
+export function savePlace(what: string, place: Place | null) {
+  if (place) write(`cardroom:place:${what}`, place);
+  else
+    try {
+      localStorage.removeItem(`cardroom:place:${what}`);
+    } catch {
+      /* ignore */
+    }
+}
