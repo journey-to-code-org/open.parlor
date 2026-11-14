@@ -133,8 +133,13 @@ export const goPoint = (n: number, cell: number) => `${LETTERS[cell % n]}${n - M
 
 /** The last few boards built from a state's string: trying every move a view offers asks for the same one hundreds of times. */
 const BUILT = new Map<string, GoBoard>();
-/** A board for this state to be played on: the caller's own copy. */
-function boardOf(s: Pick<GoState, "board" | "rules" | "ko" | "last">): GoBoard {
+/** One board of each size that `boardOf` hands out again and again: a move tried is a board copied, hundreds of times a turn. */
+const LENT = new Map<number, GoBoard>();
+/**
+ * A board for this state, to look at or play on. It is lent: the next call for the same size gets
+ * the same one, set up afresh. A caller that keeps its board across other calls here asks for its `own`.
+ */
+function boardOf(s: Pick<GoState, "board" | "rules" | "ko" | "last">, own = false): GoBoard {
   const n = s.rules.size;
   const key = `${n}:${s.board}`;
   let made = BUILT.get(key);
@@ -143,17 +148,23 @@ function boardOf(s: Pick<GoState, "board" | "rules" | "ko" | "last">): GoBoard {
     if (BUILT.size >= 4) BUILT.delete(BUILT.keys().next().value!);
     BUILT.set(key, made);
   }
-  const b = made.clone();
+  let b: GoBoard;
+  if (own) b = made.clone();
+  else {
+    if (!LENT.has(n)) LENT.set(n, new GoBoard(made.g));
+    b = LENT.get(n)!.copyFrom(made);
+  }
   b.ko = s.ko === null ? 0 : b.g.at[s.ko]!;
   b.last = s.last === null ? 0 : b.g.at[s.last]!;
   return b;
 }
 
+const CODES = [CHARS.charCodeAt(0), CHARS.charCodeAt(1), CHARS.charCodeAt(2)];
 function boardString(b: GoBoard): string {
   const { at } = b.g;
-  let out = "";
-  for (let i = 0; i < at.length; i++) out += CHARS[b.color[at[i]!]!];
-  return out;
+  const codes = new Array<number>(at.length);
+  for (let i = 0; i < at.length; i++) codes[i] = CODES[b.color[at[i]!]!]!;
+  return String.fromCharCode.apply(null, codes);
 }
 
 /** A spare board of each size to try a move on: one is enough, since nothing here is ever in the middle of two things. */
@@ -217,7 +228,7 @@ export function proposedDead(s: Pick<GoState, "board" | "rules" | "ko" | "last">
   const key = `${n}:${toMove}:${s.board}`;
   let dead = PROPOSED.get(key);
   if (!dead) {
-    const b = boardOf({ ...s, ko: null, last: null });
+    const b = boardOf({ ...s, ko: null, last: null }, true);
     dead = deadFromOwners(n, cellsOf(s.board), estimateOwners(b, toMove, estimateGames(n), b.lo ^ 0x51ed27));
     if (PROPOSED.size >= 8) PROPOSED.delete(PROPOSED.keys().next().value!);
     PROPOSED.set(key, dead);
@@ -490,7 +501,8 @@ function view(s: GoState, seat: number): BoardView {
     reserves: [0, 1].map((i) => ({ owner: i, label: "Captured", pieces: [{ piece: stoneOf(s, other(i)), count: s.captured[i]! }] })),
     choices,
     players: [0, 1].map((i) => ({
-      line: `${s.captured[i]} captured${many ? ` · ${plural(s.wins[i]!, "win")}` : ""}`,
+      // (The stones each has taken are beside the name already: see `reserves`.)
+      line: many ? plural(s.wins[i]!, "win") : "",
       piece: stoneOf(s, i),
       badge: counting ? (s.agreed[i] ? "Agreed" : undefined) : !playing ? undefined : s.passes === 1 && s.turn === other(i) ? "Passed" : s.moves === 0 && s.turn === i ? "Goes first" : undefined,
     })),
@@ -529,9 +541,11 @@ function view(s: GoState, seat: number): BoardView {
 // simply the move that looks best at a glance. Asked with no budget (a test, a replay) the ration
 // is `UNTIMED_MS` worth and the clock is never read.
 //
-// When to stop: it passes when every point on the board is clearly somebody's in its playouts, when
-// the other player has passed and it is ahead by its own count, when it has no move that isn't
-// filling its own eye, and (so that two of them always finish) when the game has gone on absurdly long.
+// When to stop: it passes when every stone and point on the board is clearly somebody's, both in
+// its playouts and in the count the game would propose (so the borders are closed, and nothing is
+// left for either side to take); when the other player has passed and that count is a win; when it
+// has no move that isn't filling its own eye; and (so that two of them always finish) when the game
+// has gone on absurdly long. It doesn't give up a lost game: a person who wants out resigns.
 
 /** Playouts a millisecond for a full-strength player, by board size. */
 const PLAYOUTS_PER_MS: Record<number, number> = { 9: 8, 13: 3.2, 19: 1.2 };
@@ -558,6 +572,8 @@ export function goEffort(n: number, skill: number, budget?: ThinkBudget): GoEffo
 const SETTLED = 0.7;
 /** Playouts needed before the picture they give of the board is believed. */
 const ENOUGH = 16;
+/** The most points that can be unsettled for the game still to be over: the liberties shared in a seki or two. */
+const SHARED = 8;
 
 /**
  * The computer player's move in a game being played: a crossing, or a pass. `effort` says how hard
@@ -568,7 +584,7 @@ export function goBotMove(s: GoState, seat: number, effort: GoEffort, rand: () =
   // No game of Go is this long: two computer players that somehow got here stop.
   if (s.moves >= n * n * 3) return { type: "pass" };
   const colour = colourOf(s, seat);
-  const b = boardOf(s);
+  const b = boardOf(s, true);
   const legal = legalGoMoves(s, seat);
   const seed = Math.floor(rand() * 4294967296);
   if (sloppy) {
@@ -577,26 +593,32 @@ export function goBotMove(s: GoState, seat: number, effort: GoEffort, rand: () =
     if (fair.length) return { type: "place", cell: fair[Math.floor(rand() * fair.length)]! };
   }
   const komi = komiOf(s.rules);
-  const thought = searchGo(b, colour, legal, { ...effort, komi, seed, passed: s.passes === 1, canPass: s.passes === 1 || s.moves > (n * n) / 2 });
+  const thought = searchGo(b, colour, legal, { ...effort, komi, seed, passed: s.passes === 1, canPass: s.passes === 1 });
   if (thought.cell === null) return { type: "pass" };
   if (thought.playouts >= ENOUGH) {
     const cells = cellsOf(s.board);
-    let open = 0;
     let unsure = 0;
-    for (let cell = 0; cell < cells.length; cell++) {
-      if (Math.abs(thought.owners[cell]!) >= SETTLED) continue;
-      unsure++;
-      if (cells[cell] === EMPTY) open++;
-    }
-    // Nothing left to argue about.
-    if (unsure === 0) return { type: "pass" };
-    // They have passed: if the board as it sees it is a win, so does it.
+    for (let cell = 0; cell < cells.length; cell++) if (Math.abs(thought.owners[cell]!) < SETTLED) unsure++;
+    // What the count would be if play stopped here: the marking the game itself would propose
+    // (after this pass, and the other player's if they haven't yet).
+    const stopped = () => scoreGo(s, proposedDead(s, s.passes === 1 ? colourOf(s, other(seat)) : colour));
+    // They have passed: if the count as it would stand is a win, so does it.
     if (s.passes === 1) {
-      const { totals } = scoreGo(s, deadFromOwners(n, cells, thought.owners));
+      const { totals } = stopped();
       if (totals[seat]! > totals[other(seat)]!) return { type: "pass" };
     }
-    // A point or two nobody will ever own (a seki's shared liberties), and passing does as well as anything.
-    if (open <= 4 && thought.passing !== null && thought.passing >= thought.winning - 0.01) return { type: "pass" };
+    // Nothing left to do: every stone and every point is clearly somebody's, in its playouts and in
+    // that count. A point the count gives to nobody is still to be played for, unless a stone there
+    // would only be thrown away (the liberties two groups share in a seki), which is nobody's for good.
+    if (unsure <= SHARED) {
+      const { count } = stopped();
+      let todo = false;
+      for (let cell = 0; cell < cells.length && !todo; cell++) {
+        if (cells[cell] === EMPTY && count.owner[cell] === EMPTY) todo = b.legal(b.g.at[cell]!, colour) && b.selfAtari(b.g.at[cell]!, colour) === 0;
+        else todo = Math.abs(thought.owners[cell]!) < SETTLED;
+      }
+      if (!todo) return { type: "pass" };
+    }
   }
   return { type: "place", cell: thought.cell };
 }
@@ -628,7 +650,7 @@ function bot(s: GoState, seat: number, style: PlayStyle, rand: () => number = Ma
 function standing(s: GoState, seat: number): number | null {
   if (s.phase !== "playing") return null;
   const n = s.rules.size;
-  const b = boardOf({ ...s, ko: null, last: null });
+  const b = boardOf({ ...s, ko: null, last: null }, true);
   const owners = estimateOwners(b, colourOf(s, s.turn), Math.round(estimateGames(n) / 2), b.lo ^ 0x51ed27);
   let margin = -komiOf(s.rules);
   for (let cell = 0; cell < owners.length; cell++) margin += owners[cell]!;

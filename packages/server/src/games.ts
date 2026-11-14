@@ -131,6 +131,9 @@ export function watchView(game: GameId, views: unknown[]): unknown {
   // An offer at a board (a draw, a move taken back) is the table's to see and the players' to act
   // on: a watcher is shown what is open and how it came out, and nothing to press.
   if (view.offers && typeof view.offers === "object") view.offers = { ...(view.offers as Any), can: [], answer: false };
+  // What may be tapped or picked up on a board is the players' and never a watcher's, even where
+  // every seat is offered the same (either player marking dead stones when a game of Go is counted).
+  if (isBoardGame(game) && Array.isArray(view.grids)) view.grids = (view.grids as Any[]).map((g) => (g && typeof g === "object" ? { ...g, tap: null, select: null } : g));
   return view;
 }
 
