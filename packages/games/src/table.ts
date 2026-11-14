@@ -11,7 +11,7 @@ import { mulberry32, type PlayStyle } from "@spades/rules";
 /** The games that are played with cards. */
 export type CardGameId = "hearts" | "ohhell" | "euchre" | "crazy8" | "gin" | "pinochle" | "canasta" | "gofish" | "oldmaid" | "war" | "whist" | "golf" | "rummy500" | "president" | "klondike" | "freecell" | "handfoot" | "cribbage" | "fivedraw" | "holdem" | "bluff" | "liarspoker" | "switch" | "thirtyone" | "kingscorner" | "blackjack" | "spite" | "pitch" | "fivehundred" | "durak" | "bridge" | "fruitsalad" | "slapjack" | "speed" | "memory" | "sevens" | "cuckoo" | "contractrummy" | "spider" | "pyramid" | "ridethebus" | "kingscup" | "horserace" | "drinkingpyramid";
 /** The games that are played on a board. */
-export type BoardGameId = "tictactoe" | "dropfour" | "combat" | "reversi" | "checkers";
+export type BoardGameId = "tictactoe" | "dropfour" | "combat" | "reversi" | "checkers" | "yacht";
 /** The games that are played by striking a ball across a table. */
 export type SportGameId = "minigolf";
 /** Every game on the kit. (Rooms, houses and saved rules have always called these "kit" games.) */
@@ -75,6 +75,48 @@ export interface RoundResult {
 export interface GameOver {
   winners: number[];
   title: string;
+}
+
+/**
+ * A score sheet: a column per thing that is scored (a hole, a frame, a category of dice) and a row
+ * per player. Mini Golf's scorecard and Yacht's sheet are both one of these; how it is laid out
+ * (holes across the page, categories down it) is the table's business.
+ */
+export interface ScoreSheet {
+  title: string;
+  columns: SheetColumn[];
+  /** The column being played, if any. */
+  current: number | null;
+  rows: SheetRow[];
+  /** What `total` and `note` are, for the headings: "Total", "To par". */
+  totalLabel: string;
+  noteLabel?: string;
+  /** The cell filled in last, so the table can point at it. */
+  last?: { seat: number; column: number } | null;
+  /**
+   * Cells of this seat's own row that it can choose now (score this roll as a full house). Each
+   * says what it would score; tapping one sends `{ type, cell }` with the column's `id`. Only ever
+   * sent to the seat that can choose.
+   */
+  pick?: { type: string; cells: { column: number; would: string }[] } | null;
+}
+
+export interface SheetColumn {
+  label: string;
+  /** A second line under the label: a hole's par, what a category scores. */
+  sub?: string;
+  /** Names this column in a move. Needed only where a cell can be chosen. */
+  id?: string;
+  /** A column nobody fills in: it is worked out from the others (a bonus). */
+  kind?: "sum";
+}
+
+export interface SheetRow {
+  seat: number;
+  /** One per column; "" for a cell not filled in yet. */
+  cells: string[];
+  total: string;
+  note?: string;
 }
 
 /** A finished or running game, in a few words, for lobbies, houses, leaderboards and tournaments. */

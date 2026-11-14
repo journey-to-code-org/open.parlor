@@ -14,7 +14,12 @@
 //
 // The engine lists exactly what is legal, so the table never has to know a game's rules, and the
 // server still refuses anything else.
-import type { BaseRules, BoardGameId, Choices, GameOver, RoundResult, Scores, TableGame } from "./table.js";
+//
+// Two more things can be on the table beside the grids, or instead of them: `dice` (five dice and a
+// scorecard need no board at all, so `grids` may be empty) and a score `sheet` whose cells can be
+// chosen. Dice are thrown by the engine from its seeded random source, like a deal; a view only
+// ever says what each die shows.
+import type { BaseRules, BoardGameId, Choices, GameOver, RoundResult, Scores, ScoreSheet, TableGame } from "./table.js";
 
 /** The colours a piece or a cell mark can take; the table decides what each looks like. */
 export type BoardTone = "light" | "dark" | "red" | "blue" | "gold" | "green";
@@ -135,6 +140,38 @@ export interface BoardReserve {
   pieces: { piece: BoardPiece; count: number }[];
 }
 
+/** One die on the table. `value` is null before it has been rolled. */
+export interface BoardDie {
+  /** The same die keeps the same id from throw to throw. */
+  id: number;
+  value: number | null;
+  /** Kept back from the next throw. */
+  held?: boolean;
+  /** Played already, or left over from the turn before: drawn dimmed. */
+  used?: boolean;
+  /** Whose die it is, when the dice on the table aren't all one player's. */
+  owner?: number | null;
+}
+
+/**
+ * The dice a seat sees. `roll` goes up by one with every throw, so the table knows to tumble them
+ * (the dice that aren't `held` are the ones that were thrown). `tap`, when set, makes each listed
+ * die a button that sends `{ type, die: id }` (hold or release a die).
+ */
+export interface BoardDice {
+  dice: BoardDie[];
+  roll: number;
+  /** How many faces a die has: six when left out. */
+  sides?: number;
+  tap?: { type: string; dice: number[] } | null;
+  /**
+   * Dice only one seat can see (everyone rolling at once, each with their own): whose they are.
+   * Left out for dice the whole table sees. Like a private grid, they are only ever sent to that
+   * seat, and someone watching is shown none.
+   */
+  owner?: number;
+}
+
 export interface BoardSeat {
   /** A short line under the name: "2 wins", "12 discs". */
   line: string;
@@ -156,9 +193,13 @@ export interface BoardView {
   phase: string;
   /** Whose move it is, or null when everyone may move (both placing their ships, say). */
   turn: number | null;
-  /** The boards, the main one first. A second is drawn smaller beside or under it. */
+  /** The boards, the main one first. A second is drawn smaller beside or under it. None for a game of dice and a sheet. */
   grids: BoardGrid[];
   reserves: BoardReserve[];
+  /** The dice on the table, for a game that has them. */
+  dice?: BoardDice | null;
+  /** A score sheet, for a game that is scored on one (Yacht's scorecard). */
+  sheet?: ScoreSheet | null;
   /** Buttons: "Pass", "Offer a draw", a promotion, "Next game". */
   choices: Choices | null;
   players: BoardSeat[];
@@ -223,7 +264,7 @@ export function lineThrough(rows: number, cols: number, cell: number, need: numb
 
 /**
  * Everything a seat can send from a view, as moves: every tappable cell, every piece and each
- * place it can go, every button. The table sends exactly these, and the shared tests check an
+ * place it can go, every cell of the sheet it can choose, every die it can tap, every button. The table sends exactly these, and the shared tests check an
  * engine accepts each one it offers.
  */
 export function movesOffered(view: BoardView): Record<string, unknown>[] {
@@ -237,6 +278,8 @@ export function movesOffered(view: BoardView): Record<string, unknown>[] {
     }
     for (const s of g.select?.sources ?? []) for (const to of s.to) out.push({ type: g.select!.type, from: s.from, to, ...grid });
   }
+  for (const c of view.sheet?.pick?.cells ?? []) out.push({ type: view.sheet!.pick!.type, cell: view.sheet!.columns[c.column]?.id });
+  for (const die of view.dice?.tap?.dice ?? []) out.push({ type: view.dice!.tap!.type, die });
   for (const o of view.choices?.options ?? []) out.push(o.move);
   return out;
 }

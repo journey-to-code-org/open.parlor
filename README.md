@@ -1,6 +1,6 @@
 # Card Room
 
-Family card and board games online: fifty-two games with house rules saved as presets, family
+Family card and board games online: fifty-three games with house rules saved as presets, family
 **houses** with their own tables, leaderboards and tournaments, computer players with personalities,
 challenge links, and a widget that puts a game on any site, including [open.blog](https://github.com/journey-to-code-org/open.blog) ones.
 
@@ -9,11 +9,11 @@ yourself (Docker or Railway), and practice games work anywhere, including the Gi
 
 ## The games
 
-Spades and Palace have tables of their own; the other fifty are built on a shared game kit
+Spades and Palace have tables of their own; the other fifty-one are built on a shared game kit
 (`packages/games`), so they all get the same setup screen, house rules editor, computer players,
 houses, challenges and tournaments. The kit has three tables: one that draws any card game, one
-that draws any board game (Tic-Tac-Toe is the first), and one that draws any table sport on a
-canvas (Mini Golf is the first).
+that draws any board game (Tic-Tac-Toe is the first; Yacht's dice and scorecard are drawn by it
+too), and one that draws any table sport on a canvas (Mini Golf is the first).
 
 | Game | Players | |
 | --- | --- | --- |
@@ -68,6 +68,7 @@ canvas (Mini Golf is the first).
 | Combat | 2 | A board game: hide your fleet, then take turns calling shots. Classic, Admirals (ten ships that can't touch), Salvo, or a quick 7×7 |
 | Reversi | 2 | A board game: trap their discs between yours and flip them, on 6×6, 8×8 or 10×10 |
 | Checkers | 2 | A board game: American, International on 10×10 with flying kings, Russian, or friendly with no forced jumps |
+| Yacht | 1 to 6 | A dice game: five dice, three rolls and a scorecard to fill. The classic sheet, Yatzy's or a quick seven boxes, in turn or everyone at once; with drinking mode on it's Shotzee 🍺 |
 | Mini Golf | 1 to 6 | A table sport: nine holes of putting, in turn or everyone at once |
 
 Poker and Blackjack are for chips only: everyone starts with the same stack, and the chips are
@@ -77,7 +78,8 @@ The 🍺 games are drinking games for adults (water counts). Party games (Thirty
 Bluff, Liar's Poker, Durak, Slapjack, Sevens, Cuckoo) also have a drinking-mode house rule, off
 unless a table turns it on. Kids' games have none. Drop Four's drinking mode is a shot clock: once
 the other player's disc lands you have three seconds to drop yours, or you take a drink and lose
-your turn.
+your turn. Yacht's drinking mode is a table called Shotzee: roll five of a kind and everyone else
+takes a shot; put a zero on your scorecard and you drink.
 
 ## Holding your hand
 
@@ -107,6 +109,8 @@ before the end.
   person who still owes a move. In those phases it counts from the last move anyone made.
 - Computer players keep their own time, a race (Speed, a slap in Slapjack) has no clock, and
   neither does a game for one. In Mini Golf the timer's move is a putt: the computer player's aim.
+  In Yacht it is one step of a turn (a roll, a die kept back, a box filled in), so a turn left to
+  the timer takes a few of them.
 - The server keeps the time, and it survives a restart (see [Clocks and deadlines](#clocks-and-deadlines)).
   "A day" is for games played a move at a time over a week.
 - Practice games on your own device have no timer: nobody is waiting on you.
@@ -181,7 +185,7 @@ an issue's comments count how many want it. Requests share the reports' limits.
 
 | Package | |
 | --- | --- |
-| [`packages/games`](packages/games) | The game kit and the fifty games built on it: `table.ts` (the `TableGame` engine contract every game shares), `kit.ts` (the card kit: `CardGame`, cards, decks, `KitView`), `board.ts` (the board kit: `BoardGame`, grids, pieces, `BoardView`) and `sport.ts` (the table-sports kit: `SportGame`, shots, `SportView`) |
+| [`packages/games`](packages/games) | The game kit and the fifty-one games built on it: `table.ts` (the `TableGame` engine contract every game shares), `kit.ts` (the card kit: `CardGame`, cards, decks, `KitView`), `board.ts` (the board kit: `BoardGame`, grids, pieces, dice, `BoardView`) and `sport.ts` (the table-sports kit: `SportGame`, shots, `SportView`) |
 | [`packages/rules`](packages/rules) | Spades rules engine, bots, and the personas who play every game |
 | [`packages/palace`](packages/palace) | Palace rules engine: house-rule presets, seat views, bots and table talk |
 | [`packages/physics`](packages/physics) | A small deterministic 2D physics core for the table sports: the same shot gives the same table on the server and in every browser, which is how Mini Golf's server decides a putt and every browser animates it |
@@ -343,15 +347,42 @@ what `view` returns.
    move, the seat keeps the turn, and the capture in progress lives in the engine's state); and
    the `must` mark rings a piece that has to move. A piece with `faded` set is drawn faintly: a
    piece jumped but not yet taken off.
+
+   A view can also have **dice** and a **score sheet**, beside its grids or instead of them
+   (`grids: []` is a fine view). `yacht.ts` is the worked example of both, with no board at all:
+   - **`dice`** (`BoardDice`): the dice on the table, each `{ id, value }` with `value` null
+     before it has been rolled, `held` for a die kept back from the next throw, `used` for one
+     that has been played or is left over (drawn dimmed), and `owner` when the dice aren't all
+     one player's. A die keeps its id from throw to throw. The engine throws them, from its
+     seeded random source (`nextRandom`), like a deal: a view only says what each die shows, and
+     the table only animates towards that. `roll` goes up by one with every throw, which is how
+     the table knows to tumble the dice that aren't held (and to make the sound). `tap` lists
+     the dice a seat can tap now, each sending `{ type, die }`. Dice that belong to one seat
+     alone (everyone rolling at once) say so with the `owner` of the whole `dice`, exactly like
+     a private grid: they are only in that seat's view, and a watcher is shown none.
+   - **`sheet`** (`ScoreSheet`, in `table.ts`; Mini Golf's scorecard is the same type): a
+     column per thing scored and a row per player, all strings. A column nobody fills in (a
+     bonus) has `kind: "sum"`. `pick` lists the cells of the seat's own row it can choose now
+     and what each `would` score; choosing one sends `{ type, cell }` with the column's `id`.
+     `last` is the cell filled in last. The board table draws a sheet with the boxes down the
+     page and a column a player, your own first; on a phone it shows your own sheet folded in two.
+   - Nothing about how a die or the sheet looks belongs in a view: a die is an `id` and a
+     `value`, and the table (`Dice.tsx`, `Sheet.tsx` in `packages/web/src/board/`) decides the rest.
+   - A turn of several steps (roll, keep, roll, score) is a move a step, as a run of jumps is in
+     Checkers. The computer player has to give the same answer each time it's asked between two
+     steps: Yacht's decides whether it is having a careless moment from the dice, not from
+     `Math.random()`.
 2. **Register it:** add its id to `BoardGameId` in `table.ts`, add it to `BOARD_GAMES` in
    `registry.ts`, and export it from `index.ts`.
 3. **Tests:** `packages/games/test/<game>.test.ts` for its rules. The shared board tests
    (`test/board.test.ts`) play every registered board game automatically: computer players finish
    whole games with every preset at every table size, a game can be played from nothing but what
    its views offer, every move a view offers is accepted, the same seed always starts the same
-   game, and refused moves change nothing.
+   game, and refused moves change nothing. Dice and a sheet are checked too: dice have ids of
+   their own and show faces they have, a die that can be tapped is on the table, a cell that
+   can be chosen is an empty one in the seat's own row.
 4. **Its tile on the front page:** a little board position in `BOARDS` in
-   `packages/web/src/home/Home.tsx`.
+   `packages/web/src/home/Home.tsx`, or for a dice game a few dice in `DICE`.
 
 ### A table sport
 

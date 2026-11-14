@@ -96,6 +96,12 @@ const TABLES: Record<string, MiniTable> = {
 };
 const EMPTY_TABLE: MiniTable = { surface: "green", balls: [] };
 
+/** A dice game's tile shows a few dice instead of a board: the faces they landed on. */
+const DICE: Record<string, number[]> = {
+  // Three fives up and two to come: most of the way to a Yacht.
+  yacht: [5, 5, 5],
+};
+
 const SEATS: Record<string, { seats: [number, number]; teams: boolean }> = {
   spades: { seats: [4, 4], teams: true },
   palace: { seats: [2, 6], teams: false },
@@ -113,7 +119,7 @@ export function Home({ last, onPick, onOpenHouse, onLobby }: { last: GameId | nu
 
   useEffect(() => {
     // The games the card room's host offers, in their order (every game, where there's no server).
-    const games = () => arranged(GAME_LIST).map((g) => ({ ...g, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, board: isBoardGame(g.id) ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
+    const games = () => arranged(GAME_LIST).map((g) => ({ ...g, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: isBoardGame(g.id) && !DICE[g.id] ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
     const props = reactive({
       games: games(),
       houses: loadMyHouses(),
