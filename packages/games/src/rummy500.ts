@@ -59,9 +59,13 @@ export interface Rummy500State {
   pile: KCard[];
   melds: TableMeld[];
   turn: number;
-  /** A card taken from the pile that must be melded this turn, and how to put things back. */
+  /**
+   * A card taken from the pile that must be melded this turn, and how to put things back. The way
+   * back stays open until that card is melded, so a card that turns out to fit nowhere never ends
+   * the game for you: putting it back also lifts anything melded since.
+   */
   mustUse: string | null;
-  undo: { pile: KCard[]; hand: KCard[] } | null;
+  undo: { pile: KCard[]; hand: KCard[]; melds: TableMeld[] } | null;
   /** A pile card put back this turn: it isn't taken again until the turn is over. */
   declined: string | null;
   scores: number[];
@@ -173,7 +177,7 @@ function apply(state: Rummy500State, seat: number, move: Move): Rummy500State {
       const at = move.card ? s.pile.findIndex((c) => c.id === move.card) : s.pile.length - 1;
       if (at < 0) throw new GameError("That card isn't in the pile.");
       if (s.pile[at]!.id === s.declined) throw new GameError("You put that one back this turn: draw from the stock, or take another.");
-      s.undo = { pile: [...s.pile], hand: [...hand()] };
+      s.undo = { pile: [...s.pile], hand: [...hand()], melds: clone(s.melds) };
       const taken = s.pile.slice(at);
       s.pile = s.pile.slice(0, at);
       const deep = at < s.undo.pile.length - 1;
@@ -188,6 +192,7 @@ function apply(state: Rummy500State, seat: number, move: Move): Rummy500State {
       s.declined = s.undo.pile[s.pile.length]?.id ?? null;
       s.pile = s.undo.pile;
       s.hands[seat] = s.undo.hand;
+      s.melds = s.undo.melds ?? s.melds; // (a turn begun before melds were kept)
       s.undo = null;
       s.mustUse = null;
       s.phase = "draw";
@@ -206,7 +211,8 @@ function apply(state: Rummy500State, seat: number, move: Move): Rummy500State {
       else s.melds.push({ kind: where.kind, owner: seat, cards: placed });
       s.hands[seat] = hand().filter((c) => !ids.includes(c.id));
       if (s.mustUse && ids.includes(s.mustUse)) s.mustUse = null;
-      s.undo = null;
+      // Still owing the pile card: keep the way back, or it could fit nowhere with no way out.
+      if (!s.mustUse) s.undo = null;
       s.narration = where.onto >= 0 ? `${who(seat)} laid off on ${meldLabel(s.melds[where.onto]!)}` : `${who(seat)} melded ${meldLabel(s.melds.at(-1)!)}`;
       if (!hand().length) scoreHand(s, seat);
       return s;
@@ -217,13 +223,14 @@ function apply(state: Rummy500State, seat: number, move: Move): Rummy500State {
       if (ids.length !== 1) throw new GameError("Pick one card to discard.");
       const card = hand().find((c) => c.id === ids[0]);
       if (!card) throw new GameError("You don't have that card.");
-      if (s.mustUse) {
+      if (owedCard(s)) {
         const owed = hand().find((c) => c.id === s.mustUse);
-        throw new GameError(`You took the ${owed ? name(owed) : "card"} from the pile: meld it this turn, or put the cards back.`);
+        throw new GameError(`You took the ${owed ? name(owed) : "card"} from the pile: meld it this turn, or ${meldedSince(s) ? "take the turn back" : "put the cards back"}.`);
       }
       s.hands[seat] = hand().filter((c) => c.id !== card.id);
       s.pile.push(card);
       s.undo = null;
+      s.mustUse = null;
       s.declined = null;
       s.narration = `${who(seat)} discarded the ${name(card)}`;
       if (!hand().length) {
@@ -240,6 +247,15 @@ function apply(state: Rummy500State, seat: number, move: Move): Rummy500State {
       throw new GameError("That's not a move in Rummy 500.");
   }
 }
+
+/**
+ * The pile card still owed a meld. Only while there's a way to put it back: a table saved in the
+ * old dead end (the card owed, the way back gone) is let off, so its player can discard and play on.
+ */
+const owedCard = (s: Rummy500State) => (s.undo ? s.mustUse : null);
+
+/** Has anything been melded since the pile was taken from? Then putting back takes those melds back too. */
+const meldedSince = (s: Rummy500State) => !!s.undo?.melds && s.melds.reduce((n, m) => n + m.cards.length, 0) !== s.undo.melds.reduce((n, m) => n + m.cards.length, 0);
 
 function scoreHand(s: Rummy500State, out: number | null) {
   const melded = Array.from({ length: s.seats }, () => 0);
@@ -261,7 +277,7 @@ function winners(s: Rummy500State): number[] {
 function view(s: Rummy500State, seat: number): KitView {
   const over = s.phase === "finished";
   const mine = s.turn === seat && (s.phase === "draw" || s.phase === "meld");
-  const owed = s.mustUse ? s.hands[seat]!.find((c) => c.id === s.mustUse) : undefined;
+  const owed = owedCard(s) ? s.hands[seat]!.find((c) => c.id === s.mustUse) : undefined;
   const melds: Meld[] = s.melds.map((m) => ({ owner: m.owner, label: meldLabel(m), cards: m.cards.map((x) => x.card) }));
   const w = over ? winners(s) : [];
   return {
@@ -287,7 +303,7 @@ function view(s: Rummy500State, seat: number): KitView {
             ],
           }
         : null,
-    choices: mine && s.undo && s.phase === "meld" ? { prompt: "", options: [{ label: "Put them back", move: { type: "putback" } }] } : s.phase === "scored" ? nextHandChoices(s.ready, seat, false) : null,
+    choices: mine && s.undo && s.phase === "meld" ? { prompt: "", options: [{ label: meldedSince(s) ? "Take the turn back" : "Put them back", move: { type: "putback" } }] } : s.phase === "scored" ? nextHandChoices(s.ready, seat, false) : null,
     players: s.hands.map((h, i) => ({ cards: h.length, line: "", dealer: i === s.dealer })),
     center: {
       kind: "piles",
@@ -375,7 +391,7 @@ function bot(s: Rummy500State, seat: number, style: PlayStyle): Move | null {
     return s.stock.length ? { type: "draw" } : { type: "take" };
   }
   // A card owed from the pile comes first.
-  if (s.mustUse) {
+  if (owedCard(s)) {
     const owed = hand.find((c) => c.id === s.mustUse)!;
     const use = useFor(s, hand, owed);
     if (use) return { type: "meld", cards: use.map((c) => c.id) };
