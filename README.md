@@ -1,6 +1,6 @@
 # Card Room
 
-Family card and board games online: fifty-three games with house rules saved as presets, family
+Family card and board games online: fifty-four games with house rules saved as presets, family
 **houses** with their own tables, leaderboards and tournaments, computer players with personalities,
 challenge links, and a widget that puts a game on any site, including [open.blog](https://github.com/journey-to-code-org/open.blog) ones.
 
@@ -9,7 +9,7 @@ yourself (Docker or Railway), and practice games work anywhere, including the Gi
 
 ## The games
 
-Spades and Palace have tables of their own; the other fifty-one are built on a shared game kit
+Spades and Palace have tables of their own; the other fifty-two are built on a shared game kit
 (`packages/games`), so they all get the same setup screen, house rules editor, computer players,
 houses, challenges and tournaments. The kit has three tables: one that draws any card game, one
 that draws any board game (Tic-Tac-Toe is the first), and one that draws any table sport on a
@@ -68,6 +68,7 @@ canvas (Mini Golf is the first).
 | Combat | 2 | A board game: hide your fleet, then take turns calling shots. Classic, Admirals (ten ships that can't touch), Salvo, or a quick 7×7 |
 | Reversi | 2 | A board game: trap their discs between yours and flip them, on 6×6, 8×8 or 10×10 |
 | Checkers | 2 | A board game: American, International on 10×10 with flying kings, Russian, or friendly with no forced jumps |
+| Go (Weiqi, Baduk) | 2 | A board game: surround more of the board than they do, on 9×9, 13×13 or 19×19, with Chinese or Japanese counting and handicaps |
 | Chess | 2 | A board game: the whole of it, with a chess clock (bullet, blitz, rapid, a day a move), Chess960, and the moves written down as you play |
 | Mini Golf | 1 to 6 | A table sport: nine holes round a garden (a drainpipe, a pond, toadstools that kick, a mole's tunnels), in turn with balls that knock into each other, or everyone at once |
 
@@ -79,6 +80,56 @@ Bluff, Liar's Poker, Durak, Slapjack, Sevens, Cuckoo) also have a drinking-mode 
 unless a table turns it on. Kids' games have none. Drop Four's drinking mode is a shot clock: once
 the other player's disc lands you have three seconds to drop yours, or you take a drink and lose
 your turn.
+
+## Go
+
+Go is called Weiqi in China and Baduk in Korea; it is the same game. Stones go on the crossings of
+the lines, a group with no empty crossing beside it is captured, and a table picks its board (9×9
+to learn on and for a phone, 13×13, or the full 19×19) and its rules:
+
+- **Counting.** *Chinese (area)*, the default: your stones on the board plus the empty points only
+  you surround, and White gets 7.5 (komi) for moving second. *Japanese (territory)*: the empty
+  points only you surround plus the stones you captured, and White gets 6.5. The komi is a house
+  rule; a whole number allows a drawn game.
+- **Ko.** By default the board may never be put back the way it has been before in the game
+  (positional superko). The house rule "simple ko" only stops a stone being taken straight back.
+  Suicide is not allowed unless a table switches it on.
+- **Handicap.** Two to nine stones for Black on the star points, with White moving first and
+  getting half a point; "just no komi" is the smallest handicap. Who plays Black is the luck of the
+  draw unless a table says (by custom, the less experienced player).
+- **The count.** When both players pass, play stops. The game proposes which stones are dead (it
+  plays the position out a hundred or so times and sees which groups don't survive), shows them
+  faded with each side's territory tinted and the score running in the bar, and either player may
+  tap a group to change it. The count stands when both press **Agree**; a changed marking has to
+  be agreed afresh. **Play on** goes back to the board instead, with the other player to move:
+  capturing the stones is the one answer nobody can argue with. A computer player agrees to the
+  game's own marking, or to any that costs it nothing; against one that does, it plays on, once,
+  and after that lets the marking stand (it can be wrong, and you are not held at the board).
+- **Where this is simpler than the real Japanese rules.** Nothing is ruled dead or alive by the
+  book: seki, bent four in the corner and the like are whatever the two players agree in the
+  count. Points inside a seki are counted like any others, there are no pass stones, and a
+  handicap adds no compensation under Chinese counting.
+
+Resigning is under ⚑, and is how most games of Go end. The same menu offers a draw and a move
+taken back; a table that wants neither sets the house rule Offers to "Neither".
+
+**On a phone**, the full board's crossings are about 18 pixels apart, closer than a finger is
+wide. There a stone takes two taps: the first shows it, see-through, with gold lines along its row
+and column, and it can be nudged with the arrows under the board; tapping it again, or **Play**,
+puts it down. ⚙︎ has "Putting a stone down" (two taps only when the crossings are small and the
+screen is touched, always two, or always one) and whether the coordinates are drawn. With a
+keyboard the arrow keys walk the crossings and Enter plays; each is read out ("Q16: white stone,
+last move").
+
+**The computer player** is our own: Monte Carlo tree search over quick playouts, on an engine
+that keeps each group's liberties as stones come and go (`packages/games/src/goboard.ts`). On 9×9
+it is a sensible opponent: Hard should give a beginner a real game, and Easy plays half its moves
+without reading and can be beaten by someone who has learnt to capture and to surround. On 13×13
+and 19×19 it is weak. It knows the basics (take stones in atari, save its own, don't fill its own
+eyes, play near what is on the board and on the third and fourth lines early, pass when the game
+is over) but an experienced player will beat it easily. Its think is rationed in playouts for each
+millisecond the table grants, so the same dice give the same move on any machine quick enough,
+and it stops at three quarters of its budget whatever it has done. It never resigns.
 
 ## Holding your hand
 
@@ -117,7 +168,7 @@ before the end.
 
 ## Resigning, draws and taking a move back
 
-At a board game for two (Tic-Tac-Toe, Drop Four, Reversi, Checkers, Chess, Combat) the ⚑ in the bar has
+At a board game for two (Tic-Tac-Toe, Drop Four, Reversi, Checkers, Chess, Go, Combat) the ⚑ in the bar has
 the things a player rarely does:
 
 - **Resign.** Any time a game is on, your turn or not, and it asks again before it's sent. The
@@ -259,7 +310,7 @@ an issue's comments count how many want it. Requests share the reports' limits.
 
 | Package | |
 | --- | --- |
-| [`packages/games`](packages/games) | The game kit and the fifty-one games built on it: `table.ts` (the `TableGame` engine contract every game shares), `kit.ts` (the card kit: `CardGame`, cards, decks, `KitView`), `board.ts` (the board kit: `BoardGame`, grids, pieces, `BoardView`) and `sport.ts` (the table-sports kit: `SportGame`, shots, `SportView`) |
+| [`packages/games`](packages/games) | The game kit and the fifty-two games built on it: `table.ts` (the `TableGame` engine contract every game shares), `kit.ts` (the card kit: `CardGame`, cards, decks, `KitView`), `board.ts` (the board kit: `BoardGame`, grids, pieces, `BoardView`) and `sport.ts` (the table-sports kit: `SportGame`, shots, `SportView`) |
 | [`packages/rules`](packages/rules) | Spades rules engine, bots, and the personas who play every game |
 | [`packages/palace`](packages/palace) | Palace rules engine: house-rule presets, seat views, bots and table talk |
 | [`packages/physics`](packages/physics) | A small deterministic 2D physics core for the table sports: the same shot gives the same table on the server and in every browser, which is how Mini Golf's server decides a putt and every browser animates it |
@@ -288,7 +339,7 @@ thread, so a think that takes a while would hold up everyone. It doesn't have to
 - **Quick thinks stay on the main thread.** A card game's bot answers in a few hundredths of a
   millisecond; sending the state to another thread and the move back costs about a tenth of one.
 - **Heavy thinks go to a worker thread.** A game says which those are with `TableGame.heavy(state,
-  seat)` (a search in Checkers, Reversi, Drop Four and the big Tic-Tac-Toe boards; hundreds of
+  seat)` (a search in Checkers, Reversi, Go, Drop Four and the big Tic-Tac-Toe boards; hundreds of
   simulated putts in Mini Golf). The server keeps a small pool of `worker_threads`
   (`packages/server/src/botpool.ts`), each running the same engine code, and the room waits for the
   answer. In practice mode the browser does the same with a Web Worker.
@@ -300,8 +351,9 @@ thread, so a think that takes a while would hold up everyone. It doesn't have to
   The move itself goes through the room's `act` and into the move log like anyone's.
 - **A think has a budget and a ceiling.** `bot(state, seat, style, rand, budget)` is told how long
   it may take (`budget.ms`, from `CARDROOM_BOT_BUDGET`, 2000 by default). Most bots ignore it:
-  they ration themselves by work done, so they play the same move on any machine. Chess sizes
-  its ration of work from the budget, and on a chess clock searches by the time and stops inside it. A think still running at the
+  they ration themselves by work done, so they play the same move on any machine. Go uses it (its
+  ration grows with the budget, and the clock is the hard stop: see [Go](#go)). Chess sizes its
+  ration of work from the budget, and on a chess clock searches by the time and stops inside it. A think still running at the
   ceiling (`CARDROOM_BOT_CEILING`, three times the budget by default) is abandoned: its worker is
   terminated and replaced, and the seat plays a quick move instead (the same bot asked with
   `QUICK_STYLE` and `QUICK_BUDGET`: no skill, no time), so one runaway search can never hang a table.
@@ -470,6 +522,13 @@ main thread, which is right for anything quick.
    the `must` mark rings a piece that has to move. A piece with `faded` set is drawn faintly: a
    piece jumped but not yet taken off.
 
+   `go.ts` is the worked example for a board of crossings: `points` on a grid puts the pieces
+   where the lines cross (the table draws the lines and any `"spot"` cells as star points, and
+   on a touch screen with small crossings asks for two taps to put a piece down), the `barred`
+   mark is an empty cell that can't be played this turn, and `claimed` marks (with an `owner`)
+   are cells counted as a side's own. A button with `confirm` asks its question before it is
+   sent. It is also the example of a computer player that uses its `budget`, and of a phase in
+   which both players act at once on the same board (agreeing the count: `turn` is null).
    `chess.ts` added three more. `select.choose` lists moves that need one more thing said (what a
    pawn becomes): the table asks on the square and sends the answer with the move. `record` in
    the view is the game so far in its own notation, with what each move changed, so the table can

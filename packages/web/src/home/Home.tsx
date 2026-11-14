@@ -63,7 +63,7 @@ const FANS: Record<string, object[]> = {
 };
 
 /** A board game's tile shows a little board instead: a position that says what the game is about. */
-type MiniBoard = { cols: number; cells: ({ glyph: string; tone: string; shade?: "dark" } | null)[]; shade?: "green" };
+type MiniBoard = { cols: number; cells: ({ glyph: string; tone: string; shade?: "dark" } | null)[]; shade?: "green" | "wood" };
 const X = { glyph: "✕", tone: "red" };
 const O = { glyph: "◯", tone: "blue" };
 const DARK = { glyph: "●", tone: "dark" };
@@ -91,6 +91,8 @@ const BOARDS: Record<string, MiniBoard> = {
   checkers: { cols: 4, cells: [null, MAN_LIGHT, null, MAN_LIGHT, SQUARE, null, KING_DARK, null, null, MAN_LIGHT, null, SQUARE, MAN_DARK, null, MAN_DARK, null] },
   chess: { cols: 4, cells: [LIGHT_SQUARE, on("♞\uFE0E", "dark", true), LIGHT_SQUARE, SQUARE, SQUARE, LIGHT_SQUARE, on("♝\uFE0E", "dark", true), LIGHT_SQUARE, on("♟\uFE0E", "light", false), on("♟\uFE0E", "light", true), on("♟\uFE0E", "light", false), SQUARE, SQUARE, on("♜\uFE0E", "light", false), on("♚\uFE0E", "light", true), LIGHT_SQUARE] },
 };
+// Go: a corner of the board with a ko on it. Black has just taken a stone, and White may not take straight back.
+BOARDS.go = { cols: 5, shade: "wood", cells: [null, null, null, null, null, null, DARK, LIGHT, null, null, DARK, null, DARK, LIGHT, null, null, DARK, LIGHT, null, null, null, null, null, null, null] };
 const EMPTY_BOARD: MiniBoard = { cols: 3, cells: Array(9).fill(null) };
 
 /** A table sport's tile shows a little table from above: its surface, a hole, a ball or two (in a 100 × 100 box). */
