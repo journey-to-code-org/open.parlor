@@ -105,7 +105,18 @@ export function watchView(game: GameId, views: unknown[]): unknown {
     const alike = (i: number) => open.every((v) => cells(v, i) === cells(open[0]!, i));
     open = open.map((v) => (Array.isArray(v.grids) ? { ...v, grids: (v.grids as Any[]).map((g, i) => (alike(i) || !Array.isArray(g.cells) ? g : { ...g, cells: g.cells.map(() => null), marks: [] })) } : v));
   }
-  const view = sharedView(open, { blank: { hand: [], tap: null, pick: null, choices: null, gridTap: null }, from: { seat: 0, keys: ["me"] } });
+  // Dice and a score sheet (Yacht): the dice are the table's unless they are one seat's own (everyone
+  // rolling at once), and those go the way of a private grid. What a seat could do with them, keep a
+  // die or fill in a box, is that seat's alone.
+  const plain = !isBoardGame(game)
+    ? open
+    : open.map((v) => {
+        const dice = v.dice as Any | null | undefined;
+        const sheet = v.sheet as Any | null | undefined;
+        if (!dice && !sheet) return v;
+        return { ...v, ...(dice ? { dice: dice.owner !== undefined ? null : { ...dice, tap: null } } : {}), ...(sheet ? { sheet: { ...sheet, pick: null } } : {}) };
+      });
+  const view = sharedView(plain, { blank: { hand: [], tap: null, pick: null, choices: null, gridTap: null }, from: { seat: 0, keys: ["me"] } });
   // A line of table talk only one seat was shown ("You were passed…") is nobody else's.
   if (Array.isArray(view.info)) view.info = view.info.filter((line) => typeof line === "string");
   return view;

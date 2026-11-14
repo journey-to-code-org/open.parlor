@@ -3,6 +3,9 @@
 // up and where each can go, the buttons, the scores. This only lays it out and sends what the view
 // offers: the other players above, the board in the middle, you below.
 //
+// A game with dice has them drawn by `Dice`, and a game scored on a sheet has it drawn by `Sheet`;
+// a game of dice and a scorecard (Yacht) has no grid at all, and the sheet takes the board's place.
+//
 // Every cell is a button with a spoken name ("centre: X, yours"), the arrow keys walk the board,
 // and what just happened is read out, so the board can be played without seeing it.
 //
@@ -19,6 +22,9 @@ import { loadFeedbackSettings, play, saveFeedbackSettings } from "../feedback/so
 import { named, ResultTable, sideName } from "../kit/KitTable";
 import { motionScale, useCardFlip } from "../motion";
 import { TableSettingsButton } from "../TableSettings";
+import { Dice } from "./Dice";
+import { Sheet } from "./Sheet";
+import { isPointsTrack, Track } from "./Track";
 import { SoundButton } from "../SoundButton";
 
 export interface BoardTableProps {
@@ -69,6 +75,8 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<Picked | null>(null);
   const [soundOn, setSoundOn] = useState(() => loadFeedbackSettings().sound);
+  // While thrown dice are in the air the sheet doesn't say what they'll score.
+  const [tumbling, setTumbling] = useState(false);
   const bubbles = useBubbles(chat?.messages ?? []);
   const root = useRef<HTMLElement>(null);
   // Pieces that keep an id from move to move slide to where they went, the way cards do.
@@ -96,7 +104,7 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
   }, [error]);
 
   // Sounds: a piece landing, your turn, the end.
-  const boardKey = JSON.stringify(view.grids.map((g) => g.cells.map((p) => (p ? [p.owner, p.kind] : 0))));
+  const boardKey = JSON.stringify(view.grids.map((g) => g.cells.map((p) => (p ? [p.owner, p.kind, p.count ?? 1] : 0))));
   const pieces = view.grids.reduce((n, g) => n + g.cells.filter(Boolean).length, 0);
   const seen = useRef<string | null>(null);
   useEffect(() => {
@@ -109,6 +117,23 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
     if (view.turn === me && !turnSeen.current) play("yourTurn");
     turnSeen.current = view.turn === me;
   }, [view.turn, me]);
+  // Alone at a table the score to beat is your own best, which this device remembers (one for each
+  // kind of sheet a game has).
+  const [best, setBest] = useState<{ was: number | null } | null>(null);
+  useEffect(() => {
+    if (!view.over || view.seats !== 1 || best) return;
+    const key = `cardroom.best.${view.game}.${view.sheet?.columns.length ?? 0}`;
+    const score = view.scores[0]?.value ?? 0;
+    let was: number | null = null;
+    try {
+      const saved = localStorage.getItem(key);
+      was = saved !== null && Number.isFinite(Number(saved)) ? Number(saved) : null;
+      if (was === null || score > was) localStorage.setItem(key, String(score));
+    } catch {
+      /* storage unavailable: there's no best to show */
+    }
+    setBest({ was });
+  }, [view.over]);
   const overSeen = useRef(!!view.over);
   useEffect(() => {
     if (view.over && !overSeen.current) play(draw ? "handDone" : won ? "won" : "lost");
@@ -132,6 +157,8 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
     const holding = held?.grid === grid.id ? sources.find((s) => s.from === held.from) : undefined;
     if (holding?.to.includes(cell)) return void send({ type: grid.select!.type, from: holding.from, to: cell, ...onGrid(grid) });
     const source = sourceAt(grid, cell);
+    // One tap moves (a table setting): a piece with one place to go is played by tapping it.
+    if (source && grid.select?.quick && source.to.length === 1 && !(picked?.grid === grid.id && picked.from === source.from)) return void send({ type: grid.select.type, from: source.from, to: source.to[0], ...onGrid(grid) });
     if (source) return setPicked(picked?.grid === grid.id && picked.from === source.from ? null : { grid: grid.id, from: source.from });
     if (grid.tap) {
       if (grid.tap.by === "col") {
@@ -153,7 +180,8 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
     setSoundOn(next.sound);
   }
 
-  const canMove = view.grids.some((g) => g.tap?.cells.length || g.select?.sources.length);
+  // Dice to keep, a box to fill in, or the dice to roll: all of them are a move to make.
+  const canMove = view.grids.some((g) => g.tap?.cells.length || g.select?.sources.length) || !!view.dice?.tap?.dice.length || !!view.sheet?.pick?.cells.length || (!!view.dice && !!view.choices?.options.length);
   const status = error ? (
     <span className="error">{error}</span>
   ) : view.over || view.result ? null : held ? (
@@ -170,6 +198,66 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
   const reserveOf = (seat: number) => view.reserves.filter((r) => r.owner === seat);
   // A piece in your reserve can be picked up when some grid lists its kind as a source.
   const reserveGrid = (kind: string) => view.grids.find((g) => g.select?.sources.some((s) => s.from === kind));
+
+  // The others, the boards, the dice, and what's going on. With a score sheet on the table this is
+  // one half of it and the sheet the other (side by side where there's room).
+  const middle = (
+    <>
+      {others.length > 0 && (
+        <div className="board-others">
+          {others.map((seat) => (
+            <div key={seat} className="opp top" data-seat={seat}>
+              <BoardSeat view={view} seat={seat} name={names[seat] ?? `Seat ${seat + 1}`} />
+              {reserveOf(seat).map((r, i) => (
+                <Reserve key={i} reserve={r} names={names} />
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {view.grids.length > 0 && (
+        <div className={`boards${view.grids.length > 1 ? " many" : ""}`}>
+          {view.grids.map((grid, i) =>
+            isPointsTrack(grid) ? (
+              // A track of points has its dice and its cube on the board itself.
+              <Track key={grid.id} grid={grid} view={view} names={names} picked={held?.grid === grid.id ? held.from : null} onCell={(cell) => tapCell(grid, cell)} onPick={(cell) => setPicked({ grid: grid.id, from: cell })} onMove={(from, to) => void send({ type: grid.select!.type, from, to, ...onGrid(grid) })} dice={view.dice ?? null} cube={view.cube ?? null} still={motionScale(settings?.value.pace) === 0} onTumble={setTumbling} />
+            ) : (
+            <Grid key={grid.id} grid={grid} view={view} names={names} side={i > 0} titled={view.grids.length > 1} picked={held?.grid === grid.id ? held.from : null} onCell={(cell) => tapCell(grid, cell)} onPick={(cell) => setPicked({ grid: grid.id, from: cell })} onMove={(from, to) => void send({ type: grid.select!.type, from, to, ...onGrid(grid) })} />
+            ),
+          )}
+        </div>
+      )}
+      {view.dice && !view.grids.some(isPointsTrack) && <Dice dice={view.dice} still={motionScale(settings?.value.pace) === 0} onTumble={setTumbling} onTap={(die) => void send({ type: view.dice!.tap!.type, die })} />}
+
+      <div className="center-info">
+        {view.info.length > 0 && (
+          <ul className="kit-info">
+            {view.info.map((line, i) => (
+              <li key={i}>{named(line, names)}</li>
+            ))}
+          </ul>
+        )}
+        <p className="narration" aria-live="polite">
+          {view.narration ? named(view.narration, names) : null}
+        </p>
+        <div className="status" role="status">
+          {status}
+        </div>
+        {view.choices && !view.result && (
+          <div className={`felt-actions kit-choices ${view.choices.layout ?? ""}`}>
+            {view.choices.prompt && <p>{named(view.choices.prompt, names)}</p>}
+            {view.choices.options.map((o, i) => (
+              <button key={i} type="button" className={o.primary ? "primary" : "secondary"} title={o.hint} onClick={() => void send(o.move, true)}>
+                {named(o.label, names)}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+  const main = view.sheet ? <div className="board-main">{middle}</div> : middle;
 
   return (
     <main className={`table kit board board-${view.game}`} ref={root} onKeyDown={(e) => e.key === "Escape" && setPicked(null)}>
@@ -192,51 +280,9 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
       </header>
       {banner}
 
-      <div className="felt board-felt">
-        {others.length > 0 && (
-          <div className="board-others">
-            {others.map((seat) => (
-              <div key={seat} className="opp top" data-seat={seat}>
-                <BoardSeat view={view} seat={seat} name={names[seat] ?? `Seat ${seat + 1}`} />
-                {reserveOf(seat).map((r, i) => (
-                  <Reserve key={i} reserve={r} names={names} />
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className={`boards${view.grids.length > 1 ? " many" : ""}`}>
-          {view.grids.map((grid, i) => (
-            <Grid key={grid.id} grid={grid} view={view} names={names} side={i > 0} titled={view.grids.length > 1} picked={held?.grid === grid.id ? held.from : null} onCell={(cell) => tapCell(grid, cell)} onPick={(cell) => setPicked({ grid: grid.id, from: cell })} onMove={(from, to) => void send({ type: grid.select!.type, from, to, ...onGrid(grid) })} />
-          ))}
-        </div>
-
-        <div className="center-info">
-          {view.info.length > 0 && (
-            <ul className="kit-info">
-              {view.info.map((line, i) => (
-                <li key={i}>{named(line, names)}</li>
-              ))}
-            </ul>
-          )}
-          <p className="narration" aria-live="polite">
-            {view.narration ? named(view.narration, names) : null}
-          </p>
-          <div className="status" role="status">
-            {status}
-          </div>
-          {view.choices && !view.result && (
-            <div className={`felt-actions kit-choices ${view.choices.layout ?? ""}`}>
-              {view.choices.prompt && <p>{named(view.choices.prompt, names)}</p>}
-              {view.choices.options.map((o, i) => (
-                <button key={i} type="button" className={o.primary ? "primary" : "secondary"} title={o.hint} onClick={() => void send(o.move, true)}>
-                  {named(o.label, names)}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+      <div className={`felt board-felt${view.sheet ? " with-sheet" : ""}`}>
+        {main}
+        {view.sheet && <Sheet sheet={view.sheet} names={names} me={me} waiting={tumbling} onPick={(type, cell) => void send({ type, cell })} />}
       </div>
 
       <section className="me" data-seat={me}>
@@ -282,8 +328,10 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
       {won && <Confetti />}
       {view.over && (
         <div className="sheet won-sheet board-over">
-          <h2>{won ? "You won! 🏆" : named(view.over.title, names)}</h2>
+          {/* Alone at the table there was nobody to beat: the score is the news. */}
+          <h2>{won && view.seats > 1 ? "You won! 🏆" : named(view.over.title, names)}</h2>
           {won && !view.result && !view.over.title.includes(`{${me}}`) && <p className="won-line">{named(view.over.title, names)}</p>}
+          {best && <p className="won-line">{best.was === null ? "That's your score to beat." : (view.scores[0]?.value ?? 0) > best.was ? `A new best! It was ${best.was}.` : `Your best is ${best.was}.`}</p>}
           {view.result && <ResultTable result={view.result} names={names} me={me} untitled />}
           <button type="button" className="primary" onClick={onLeave}>
             Play again
@@ -377,7 +425,8 @@ function Grid({ grid, view, names, side, titled, picked, onCell, onPick, onMove 
   // so the tab order, the arrow keys and the edges all follow what is on the screen.
   const flip = !!grid.flip;
   const size = grid.rows * grid.cols;
-  const shown = (cell: number) => (flip ? size - 1 - cell : cell);
+  // "rows" turns the board over (the last row at the top) without swapping left and right.
+  const shown = (cell: number) => (grid.flip === "rows" ? (grid.rows - 1 - rowOf(grid.cols, cell)) * grid.cols + colOf(grid.cols, cell) : flip ? size - 1 - cell : cell);
   // One cell is in the tab order; the arrow keys move from it.
   const [focus, setFocus] = useState(flip ? size - 1 : 0);
   const marks = useMemo(() => {
