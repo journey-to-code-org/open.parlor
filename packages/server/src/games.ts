@@ -94,7 +94,17 @@ export function watchView(game: GameId, views: unknown[]): unknown {
   // seats' views are compared part by part, and a watcher can be someone sitting at the table.
   // Only on a board: a card game's grids (Golf's cards in front of each player) have an owner too,
   // and those are for everyone to see.
-  const open = !isBoardGame(game) ? seats : seats.map((v) => (Array.isArray(v.grids) && v.grids.some((g) => (g as Any).owner !== undefined) ? { ...v, grids: v.grids.filter((g) => (g as Any).owner === undefined), reserves: [] } : v));
+  const owned = isBoardGame(game) && seats.some((v) => Array.isArray(v.grids) && v.grids.some((g) => (g as Any).owner !== undefined));
+  let open = !owned ? seats : seats.map((v) => (Array.isArray(v.grids) ? { ...v, grids: v.grids.filter((g) => (g as Any).owner === undefined), reserves: [] } : v));
+  // What's left then is each seat's picture of someone else's board (in Combat, the other player's
+  // waters): not one board that every seat sees, so its squares can't be compared place by place.
+  // Two sunk ships that happened to lie in the same spot would come out as a hull on a board that
+  // is neither player's. Unless every seat sees such a board exactly alike, a watcher sees it empty.
+  if (owned) {
+    const cells = (v: Any, i: number) => JSON.stringify(((v.grids as Any[] | undefined)?.[i] ?? null)?.cells ?? null);
+    const alike = (i: number) => open.every((v) => cells(v, i) === cells(open[0]!, i));
+    open = open.map((v) => (Array.isArray(v.grids) ? { ...v, grids: (v.grids as Any[]).map((g, i) => (alike(i) || !Array.isArray(g.cells) ? g : { ...g, cells: g.cells.map(() => null), marks: [] })) } : v));
+  }
   const view = sharedView(open, { blank: { hand: [], tap: null, pick: null, choices: null, gridTap: null }, from: { seat: 0, keys: ["me"] } });
   // A line of table talk only one seat was shown ("You were passed…") is nobody else's.
   if (Array.isArray(view.info)) view.info = view.info.filter((line) => typeof line === "string");
