@@ -56,6 +56,7 @@ export function validateWorld(world: unknown): string[] {
       if (body.mass !== undefined && (!isNum(body.mass) || body.mass <= 0 || body.mass > 1e6 || body.mass < 1e-6)) bad.push(`${at} has a mass that isn't a sensible positive number`);
       if (body.fixed !== undefined && typeof body.fixed !== "boolean") bad.push(`${at}: fixed must be true or false`);
       if (body.restitution !== undefined && (!isNum(body.restitution) || body.restitution < 0 || body.restitution > 1)) bad.push(`${at}: restitution must be from 0 to 1`);
+      if (body.kick !== undefined && (!isNum(body.kick) || body.kick < 0 || body.kick > 1e9)) bad.push(`${at}: kick must be zero or more`);
       for (const k of ["vx", "vy"] as const) if (body[k] !== undefined && (!isNum(body[k]) || Math.abs(body[k] as number) > 1e9)) bad.push(`${at}: ${k} must be a number`);
       for (const k of ["pocketed", "out"] as const) if (body[k] !== undefined && typeof body[k] !== "string") bad.push(`${at}: ${k} must be an id`);
       if (!spinIsZero(body.spin)) bad.push(`${at}: spin is not simulated yet and must be left out or zero`);
@@ -84,6 +85,7 @@ export function validateWorld(world: unknown): string[] {
         if (p[0] === q[0] && p[1] === q[1]) bad.push(`${at} has the same point twice in a row`);
       }
       if (wall.restitution !== undefined && (!isNum(wall.restitution) || wall.restitution < 0 || wall.restitution > 1)) bad.push(`${at}: restitution must be from 0 to 1`);
+      if (wall.oneWay !== undefined && typeof wall.oneWay !== "boolean") bad.push(`${at}: oneWay must be true or false`);
     });
   }
 
@@ -117,6 +119,30 @@ export function validateWorld(world: unknown): string[] {
       if (r.slope !== undefined && !(Array.isArray(r.slope) && r.slope.length === 2 && isNum(r.slope[0]) && isNum(r.slope[1]))) bad.push(`${at}: slope must be [x, y]`);
       if (r.out !== undefined && typeof r.out !== "boolean") bad.push(`${at}: out must be true or false`);
     });
+  }
+
+  if (w.tunnels !== undefined) {
+    if (!Array.isArray(w.tunnels)) bad.push("tunnels must be a list");
+    else {
+      const id = ids("tunnels");
+      w.tunnels.forEach((t: unknown, i: number) => {
+        const at = `Tunnel ${i}`;
+        if (!isObj(t)) return void bad.push(`${at} must be an object`);
+        id(t.id, at);
+        if (!isCoord(t.x) || !isCoord(t.y)) bad.push(`${at} needs whole-number x and y for its mouth`);
+        if (!isInt(t.r) || t.r < 1 || t.r > MAX_COORD) bad.push(`${at} needs a whole-number radius for its mouth`);
+        if (t.maxSpeed !== undefined && (!isNum(t.maxSpeed) || t.maxSpeed < 0)) bad.push(`${at}: maxSpeed must be zero or more`);
+        if (!isPoint(t.to)) bad.push(`${at} needs a whole-number point to come out at`);
+        else {
+          if (isObj(b) && isNum(b.x) && isNum(b.y) && isNum(b.w) && isNum(b.h) && (t.to[0] < b.x || t.to[0] > b.x + b.w || t.to[1] < b.y || t.to[1] > b.y + b.h)) bad.push(`${at} comes out outside the bounds`);
+          // Out inside its own mouth, a ball would go round for ever.
+          if (isCoord(t.x) && isCoord(t.y) && isInt(t.r) && (t.to[0] - t.x) * (t.to[0] - t.x) + (t.to[1] - t.y) * (t.to[1] - t.y) < t.r * t.r) bad.push(`${at} comes out inside its own mouth`);
+        }
+        if (!isInt(t.angle) || t.angle < 0 || t.angle >= ANGLE_UNITS) bad.push(`${at}: angle must be a whole number from 0 to ${ANGLE_UNITS - 1}`);
+        if (!isNum(t.speed) || t.speed < 0 || t.speed > 1e9) bad.push(`${at}: speed must be zero or more`);
+        if (t.ticks !== undefined && (!isInt(t.ticks) || t.ticks < 0 || t.ticks > 100_000)) bad.push(`${at}: ticks must be a whole number, zero or more`);
+      });
+    }
   }
   return bad;
 }

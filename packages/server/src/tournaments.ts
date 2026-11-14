@@ -9,7 +9,7 @@
 import type { PalaceRules } from "@cardroom/palace";
 import { cleanSettings, mulberry32, pickPersonas, type RulePreset, type TableSettings } from "@spades/rules";
 import type { RoomDoc } from "@spades/rooms/server";
-import { isKitGame, kitGame, type KitSummary } from "@cardroom/games";
+import { isKitGame, kitGame, matchRules, type KitSummary } from "@cardroom/games";
 import { gameEmoji, gameName, isGameId, type GameId, type TableOptions } from "./games.js";
 import { kitOptions } from "./kit.js";
 import { palaceOptions } from "./palace.js";
@@ -218,7 +218,8 @@ export function createTournaments(rooms: Rooms, { push, saveHouse }: { push?: Pu
       teamSize(t.game) === 2 ? [a.players[0]!, b.players[0]!, a.players[1]!, b.players[1]!] : [a.players[0]!, b.players[0]!, ...computers(t, matchSeats(t.game) - 2)];
     const people = seats.filter((p): p is { member: string } => "member" in p);
     const options: TableOptions = isKitGame(t.game)
-      ? kitOptions(kitGame(t.game)!, t.rules, matchSeats(t.game))
+      ? // A match that counts: moves can't be taken back in it (the game's own rules say so from here on).
+        kitOptions(kitGame(t.game)!, matchRules(kitGame(t.game)!, t.rules), matchSeats(t.game))
       : t.game === "palace"
         ? palaceOptions(t.rules as PalaceRules, 2)
         : (t.rules as RulePreset);

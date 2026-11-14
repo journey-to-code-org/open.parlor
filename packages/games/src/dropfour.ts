@@ -11,6 +11,7 @@
 // (see `deadline` at the bottom, and `TableGame.deadline`): once the other player's disc has landed
 // you have three seconds to drop yours, or you take a drink and lose your turn.
 import type { PlayStyle } from "@spades/rules";
+import { settleMatch, withOffers } from "./offers.js";
 import { cellAt, colOf, lineThrough, type BoardGame, type BoardGrid, type BoardPiece, type BoardView } from "./board.js";
 import { drink, newTally, type Tally } from "./drinks.js";
 import { drinkingField } from "./kit.js";
@@ -574,7 +575,7 @@ function normalize(rules: unknown): DropFourRules {
   };
 }
 
-export const dropFour: BoardGame<DropFourRules, DropFourState, DropFourMove> = {
+const rules: BoardGame<DropFourRules, DropFourState, DropFourMove> = {
   id: "dropfour",
   name: "Drop Four",
   emoji: "🔴",
@@ -641,3 +642,15 @@ export const dropFour: BoardGame<DropFourRules, DropFourState, DropFourMove> = {
     };
   },
 };
+
+/** Drop Four, with resigning, draw offers and taking a move back (see offers.ts). */
+export const dropFour = withOffers<DropFourRules, DropFourState, DropFourMove>(rules, {
+  // Not against the shot clock: a drop taken back would be a drink taken back, and a turn had twice.
+  takeBack: (s) => !s.rules.drinking,
+  settle(s, result) {
+    s.clock = false;
+    settleMatch(s, result);
+  },
+  // What each side is building, as the computer player weighs it.
+  standing: (s, seat) => evaluate(rackOf(s), seat + 1),
+});

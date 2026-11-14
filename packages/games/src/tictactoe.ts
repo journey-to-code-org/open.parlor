@@ -6,6 +6,7 @@
 // X always goes first. A table can play one game or a short match; in a match the players take
 // turns going first.
 import type { PlayStyle } from "@spades/rules";
+import { settleMatch, withOffers } from "./offers.js";
 import { cellAt, cellName, chessCoords, colOf, lineThrough, rowOf, type BoardGame, type BoardGrid, type BoardPiece, type BoardView } from "./board.js";
 import { careless, clone, GameError, markReady, nextHandChoices, nextRandom, pickRandom, thinkFor, who, type BaseRules } from "./table.js";
 
@@ -494,7 +495,7 @@ function normalize(rules: unknown): TicTacToeRules {
   };
 }
 
-export const ticTacToe: BoardGame<TicTacToeRules, TicTacToeState, TicTacToeMove> = {
+const rules: BoardGame<TicTacToeRules, TicTacToeState, TicTacToeMove> = {
   id: "tictactoe",
   name: "Tic-Tac-Toe",
   emoji: "⭕",
@@ -558,3 +559,12 @@ export const ticTacToe: BoardGame<TicTacToeRules, TicTacToeState, TicTacToeMove>
     };
   },
 };
+
+/** Tic-Tac-Toe, with resigning, draw offers and taking a move back (see offers.ts). */
+export const ticTacToe = withOffers<TicTacToeRules, TicTacToeState, TicTacToeMove>(rules, {
+  takeBack: true,
+  settle: settleMatch,
+  // The 3×3 game is known to the end, so a level position is a drawn one however early; the bigger boards aren't judged.
+  levelAfter: 2,
+  standing: (s, seat) => (s.rules.board === "single" && s.rules.size === 3 && s.rules.line === 3 ? solve3([...s.cells], s.turn) * (s.turn === seat ? 1 : -1) : null),
+});

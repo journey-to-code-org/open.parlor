@@ -140,6 +140,16 @@ export const QUICK_STYLE: PlayStyle = { skill: 0, sloppy: 0 };
 export const QUICK_BUDGET: ThinkBudget = { ms: 10 };
 
 /**
+ * When a move was made, as the table that keeps the time tells it (a room on the server, the
+ * browser in practice). Only a game that keeps time in its state needs it, and a table that keeps
+ * no time leaves it out.
+ */
+export interface MoveTime {
+  /** Ms since the move before it (or since the game began). */
+  elapsed: number;
+}
+
+/**
  * A game, apart from what its table looks like: `View` is what one seat sees (a `KitView` for a
  * card game, a `BoardView` for a board game, a `SportView` for a table sport).
  */
@@ -163,7 +173,7 @@ export interface TableGame<R extends BaseRules = BaseRules, S = unknown, M = Rec
   describe(rules: R): string[];
   newGame(rules: R, seats: number, seed: number): S;
   /** Apply a seat's move; throws GameError when it isn't allowed. Never changes the given state. */
-  apply(state: S, seat: number, move: M): S;
+  apply(state: S, seat: number, move: M, time?: MoveTime): S;
   view(state: S, seat: number): View;
   /**
    * The move a computer player makes now, or null when it has nothing to do. Whether there is a move
@@ -187,6 +197,12 @@ export interface TableGame<R extends BaseRules = BaseRules, S = unknown, M = Rec
    * think to another thread costs a little too.
    */
   heavy?(state: S, seat: number): boolean;
+  /**
+   * The computer player's move on the board alone, when `bot` may do something else first (answer
+   * an offer: see offers.ts). The turn timer plays this for a person who has run out of time; a
+   * game without it is played `bot`'s move.
+   */
+  play?(state: S, seat: number, style: PlayStyle, rand?: () => number, budget?: ThinkBudget): M | null;
   /** How long a person would think here, in ms (before the persona's own pace). */
   thinkingTime(state: S, seat: number): number;
   /**
@@ -202,6 +218,12 @@ export interface TableGame<R extends BaseRules = BaseRules, S = unknown, M = Rec
    * computer player in the seat is never held to it (and never takes longer than it).
    */
   deadline?(state: S): GameDeadline<M> | null;
+  /**
+   * Ms of the wait for the next move on the board that have already gone by, over moves that
+   * aren't one (an offer and its answer). The table's clocks count from the last move of any kind,
+   * so the turn timer takes this off; a game's own `deadline` has already allowed for it.
+   */
+  spent?(state: S): number;
   summary(state: S): KitSummary;
 }
 

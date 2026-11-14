@@ -83,6 +83,13 @@ const YOU_VERBS: Record<string, string> = {
   holes: "hole",
   finds: "find",
   runs: "run",
+  offers: "offer",
+  asks: "ask",
+  turns: "turn",
+  lets: "let",
+  resigns: "resign",
+  moves: "move",
+  jumps: "jump",
 };
 
 export const named = (text: string, names: string[]) =>

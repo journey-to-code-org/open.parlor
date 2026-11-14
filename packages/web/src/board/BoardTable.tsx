@@ -19,6 +19,7 @@ import { loadFeedbackSettings, play, saveFeedbackSettings } from "../feedback/so
 import { named, ResultTable, sideName } from "../kit/KitTable";
 import { motionScale, useCardFlip } from "../motion";
 import { TableSettingsButton } from "../TableSettings";
+import { OfferBanner, OffersMenu } from "./Offers";
 
 export interface BoardTableProps {
   view: BoardView;
@@ -27,6 +28,8 @@ export interface BoardTableProps {
   act: (move: Record<string, unknown>) => Promise<string | null>;
   onLeave: () => void;
   banner?: React.ReactNode;
+  /** Looking on without a seat: nothing to press, offers included. */
+  watching?: boolean;
   chat?: ChatProps;
   settings?: {
     value: TableSettings;
@@ -62,7 +65,7 @@ function Piece({ piece, small }: { piece: BoardPiece; small?: boolean }) {
   );
 }
 
-export function BoardTable({ view, names, act, onLeave, banner, chat, settings }: BoardTableProps) {
+export function BoardTable({ view, names, act, onLeave, banner, watching, chat, settings }: BoardTableProps) {
   const game = kitGame(view.game)!;
   const me = view.me;
   const [error, setError] = useState<string | null>(null);
@@ -158,7 +161,7 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
   ) : view.over || view.result ? null : held ? (
     // A piece whose only place to go is where it already is (a disc popped out of a rack) is tapped twice.
     <span className="mine">{view.grids.some((g) => g.id === held.grid && g.select?.sources.some((s) => s.from === held.from && s.to.length === 1 && s.to[0] === s.from)) ? "Tap it again to take it out" : "Now pick where it goes"}</span>
-  ) : view.turn === me || (view.turn === null && canMove) ? (
+  ) : !watching && (view.turn === me || (view.turn === null && canMove)) ? (
     <span className="mine">Your turn</span>
   ) : view.turn !== null ? (
     `${names[view.turn] ?? "Someone"} is thinking…`
@@ -185,6 +188,8 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
           ))}
         </div>
         <span className="bar-buttons">
+          {/* Resign, offer a draw, ask to take a move back: whatever the view says this seat may do. */}
+          {view.offers && !watching && <OffersMenu can={view.offers.can} onSend={(move) => void send(move, true)} />}
           {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} />}
           <button type="button" className="sound-toggle inline" onClick={toggleSound} aria-pressed={soundOn} aria-label={soundOn ? "Turn sounds off" : "Turn sounds on"}>
             {soundOn ? "🔊" : "🔇"}
@@ -224,6 +229,7 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
           <p className="narration" aria-live="polite">
             {view.narration ? named(view.narration, names) : null}
           </p>
+          {view.offers && <OfferBanner offers={view.offers} names={names} me={me} watching={!!watching} onSend={(move) => void send(move, true)} />}
           <div className="status" role="status">
             {status}
           </div>

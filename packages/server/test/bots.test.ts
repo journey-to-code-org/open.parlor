@@ -201,6 +201,19 @@ describe("the card room's bots", () => {
     }
   });
 
+  it("answering an offer is never a heavy think, though the move on the board is", () => {
+    const game = kitGame("checkers")!;
+    const state = tableRoom.setup({ game: "checkers", rules: game.presets[0], seats: 2 }, 3);
+    const mover = [0, 1].find((s) => kitHeavy(state as never, s))!;
+    // The other player offers a draw: the mover's bot answers that first, and at once.
+    const offered = tableRoom.act(state, 1 - mover, { type: "offer", offer: "draw" }, { at: 0, elapsed: 0 });
+    expect(kitHeavy(offered as never, mover)).toBe(false);
+    expect(think({ state: offered, seat: mover, name: "Bot", settings: null })).toMatchObject({ type: expect.stringMatching(/accept|decline/) });
+    // The turn timer's move for a person in that seat is still the move on the board.
+    const table = { settings: tableRoom.settings!({ timer: "15s" }), seats: [0, 1].map(() => ({ name: "Ann", bot: false })) };
+    expect(tableRoom.deadline!(offered, table)!.move()).toMatchObject({ type: "move" });
+  });
+
   it("reads CARDROOM_BOT_WORKERS", () => {
     expect(workersFrom(undefined)).toBe(defaultWorkers());
     expect(workersFrom("")).toBe(defaultWorkers());

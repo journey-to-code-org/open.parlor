@@ -61,7 +61,8 @@ export const kitRoom: RoomDefinition<{ game: KitGameId } & Record<string, unknow
     const o = kitOptions(game, options.rules, options.seats);
     return game.newGame(o.rules, o.seats, seed);
   },
-  act: (state, seat, move) => gameFor(state.game).apply(state, seat, move),
+  // A game is told how long the move took: one that keeps time in its state (offers.ts) needs it.
+  act: (state, seat, move, time) => gameFor(state.game).apply(state, seat, move, time),
   view: (state, seat) => gameFor(state.game).view(state, seat),
   summary: (state) => gameFor(state.game).summary(state),
   finished: (state) => gameFor(state.game).summary(state).over,
@@ -87,6 +88,21 @@ export function kitBot(state: KitState, seat: number, name: string, settings?: T
 
 /** Whether that move is worth working out off the main thread (see `TableGame.heavy`). */
 export const kitHeavy = (state: KitState, seat: number): boolean => gameFor(state.game).heavy?.(state, seat) ?? false;
+
+/**
+ * The move the turn timer makes for a person who has run out of time: the computer player's move
+ * on the board. Where a game's computer player would do something else first (answer an offer),
+ * the game says what that move is (`TableGame.play`); nobody's offer is answered for them. It is
+ * worked out on the main thread, there and then, so a game that thinks by the clock is given a short
+ * `budget` for it.
+ */
+export function kitTimeoutMove(state: { game: KitGameId } & Record<string, unknown>, seat: number, name: string, settings?: TableSettings, budget?: ThinkBudget): Record<string, unknown> | null {
+  const game = gameFor(state.game);
+  return (game.play ?? game.bot).call(game, state, seat, styleFor(personaFor(name).style, settings?.skill), undefined, budget);
+}
+
+/** Ms of the wait for the next move that have gone by already, over an offer and its answer (`TableGame.spent`). */
+export const kitSpent = (state: { game: KitGameId } & Record<string, unknown>): number => gameFor(state.game).spent?.(state) ?? 0;
 
 /**
  * The table sports simulate their shots, and a computer player simulates hundreds to choose one.

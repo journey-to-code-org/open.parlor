@@ -45,6 +45,7 @@ export * from "./drinks.js";
 export * from "./ridethebus.js";
 export * from "./kingscup.js";
 export * from "./board.js";
+export * from "./offers.js";
 export * from "./tictactoe.js";
 export * from "./dropfour.js";
 export * from "./combat.js";

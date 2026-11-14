@@ -6,6 +6,7 @@ import { movesOffered, type BoardView } from "@cardroom/games";
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCardRoom } from "../src/app.js";
+import { watchView } from "../src/games.js";
 
 const BASE = "http://test";
 let open: ReturnType<typeof createCardRoom>[] = [];
@@ -67,9 +68,10 @@ describe("Combat in the card room", () => {
       // She is never sent the other seat's view, and the room anyone can read has no ships in it.
       expect(changes.some((c) => c.collection === "views" && c.key !== `${id}/0` && c.key !== `${id}/watch`)).toBe(false);
       // What a watcher is shown (and she could read it too) is only what both seats see alike, with no
-      // board of anyone's own in it: so nothing she isn't already shown herself.
+      // board of anyone's own in it and no hulls: so nothing she isn't already shown herself.
       for (const c of changes) {
         if (c.collection !== "views" || c.key !== `${id}/watch` || c.field !== "view") continue;
+        expect(JSON.stringify(c.value)).not.toMatch(/"span"/);
         expect((c.value.grids ?? []).every((g: { owner?: number } | null) => g?.owner === undefined)).toBe(true);
         expect(c.value.reserves ?? []).toEqual([]);
       }
@@ -147,5 +149,31 @@ describe("Combat in the card room", () => {
     expect(["hit", "miss"]).toContain(grid(after, "theirs").cells[0]!.kind);
     expect(grid(after, "theirs").cells.filter(Boolean)).toHaveLength(1);
     expect(grid((await viewOf(grammi, id, 0))!, "mine").marks).toEqual([{ cell: 0, mark: "last" }]);
+  });
+
+  it("a watcher isn't shown a hull where two sunk ships happen to lie in the same spot", () => {
+    // Each seat's "theirs" is the other player's waters: two different boards. Both have a sunk
+    // ship with its bow on the first square.
+    const sunk = (owner: number) => ({ owner, kind: "sunk", glyph: "✕", label: "sunk destroyer", tone: "red", span: "theirs-0" });
+    const seat = (me: number) => ({
+      game: "combat",
+      seats: 2,
+      me,
+      phase: "shooting",
+      grids: [
+        { id: "mine", owner: me, rows: 1, cols: 3, cells: [null, null, null] },
+        { id: "theirs", rows: 1, cols: 3, cells: [sunk(1 - me), sunk(1 - me), me === 0 ? { kind: "miss" } : null], marks: [{ cell: 2, mark: "last" }] },
+      ],
+      reserves: [{ owner: me, pieces: [] }],
+    });
+    const watch = watchView("combat", [seat(0), seat(1)]) as { grids: { id: string; cells: unknown[]; marks: unknown[] }[]; reserves: unknown[] };
+    expect(watch.grids).toHaveLength(1);
+    expect(watch.grids[0]).toMatchObject({ id: "theirs", rows: 1, cols: 3, cells: [null, null, null], marks: [] });
+    expect(watch.reserves).toEqual([]);
+    expect(JSON.stringify(watch)).not.toMatch(/"span"|sunk/);
+
+    // A board every seat does see alike (Tic-Tac-Toe's) is shown as it is.
+    const shared = (me: number) => ({ game: "tictactoe", seats: 2, me, grids: [{ id: "board", rows: 1, cols: 2, cells: [{ owner: 0, kind: "mark", glyph: "✕" }, null] }] });
+    expect((watchView("tictactoe", [shared(0), shared(1)]) as { grids: { cells: unknown[] }[] }).grids[0]!.cells).toEqual([{ owner: 0, kind: "mark", glyph: "✕" }, null]);
   });
 });

@@ -4,7 +4,7 @@
 // game, and refused moves don't change anything.
 import { mulberry32 } from "@spades/rules";
 import { describe, expect, it } from "vitest";
-import { BOARD_GAMES, GameError, KIT_GAMES, cellAt, cellName, chessCoords, colOf, isBoardGame, isCardGame, isKitGame, isSportGame, kitGame, lineThrough, movesOffered, rowOf, type BoardGame, type BoardView } from "../src/index.js";
+import { BOARD_GAMES, GameError, KIT_GAMES, cellAt, cellName, chessCoords, colOf, isBoardGame, isCardGame, isKitGame, isSportGame, kitGame, lineThrough, movesOffered, offerMoves, rowOf, type BoardGame, type BoardView } from "../src/index.js";
 
 const STYLES = [{}, { skill: 0.3, sloppy: 0.3 }, { skill: 1, sloppy: 0 }];
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -56,7 +56,21 @@ export function checkBoardView(v: BoardView, seat: number) {
   }
   for (const r of v.reserves) for (const p of r.pieces) expect(p.count).toBeGreaterThanOrEqual(0);
   if (v.over) expect(v.over.winners.length).toBeGreaterThan(0);
+  // Offers (see offers.test.ts): only the seat an offer was made to answers it, and never its maker.
+  if (v.offers) {
+    expect(v.offers.answer).toBe(!!v.offers.open && v.offers.open.by !== seat);
+    if (v.over) expect([v.offers.can, v.offers.open]).toEqual([[], null]);
+  }
 }
+
+/** Every offer move a seat's view allows (resign, offer, accept, decline) is one the engine takes, and trying them changes nothing. */
+export function checkOfferMoves(game: BoardGame<any, any, any>, s: unknown, seats: number) {
+  const before = JSON.stringify(s);
+  for (let seat = 0; seat < seats; seat++) for (const m of offerMoves(game.view(s, seat))) game.apply(s, seat, m);
+  expect(JSON.stringify(s)).toBe(before);
+}
+
+const views0 = (game: BoardGame<any, any, any>, preset: unknown) => game.view(game.newGame(game.normalize(preset), game.seats.default, 1), 0);
 
 /** Bots play until it's over. Along the way every view is checked, and every move a view offers is one the engine takes. */
 export function playOut(game: BoardGame<any, any, any>, rules: unknown, seats: number, seed: number, limit = 5000) {
@@ -73,6 +87,7 @@ export function playOut(game: BoardGame<any, any, any>, rules: unknown, seats: n
       expect(offered.some((m) => same(m, move)), `${game.id}: the bot's move ${JSON.stringify(move)} isn't one the view offers`).toBe(true);
       const before = JSON.stringify(s);
       for (const m of offered) game.apply(s, seat, m);
+      checkOfferMoves(game, s, seats);
       const next = game.apply(s, seat, move);
       // Trying moves never changes the state it was given.
       expect(JSON.stringify(s)).toBe(before);
@@ -180,6 +195,7 @@ for (const game of BOARD_GAMES) {
               expect(v.over!.winners).toEqual(summary.winners);
               // Nothing left to do on a finished board.
               expect(movesOffered(v)).toEqual([]);
+              expect(offerMoves(v)).toEqual([]);
             }
           }
         }
@@ -196,6 +212,30 @@ for (const game of BOARD_GAMES) {
             const { seat, move } = options[Math.floor(rand() * options.length)]!;
             s = game.apply(s, seat, move);
           }
+        }
+      });
+
+      it(`takes every offer its views allow with ${seats} players`, () => {
+        // The same walk, with offers made and answered along the way: now and then a seat sends one
+        // of the offer moves its view allows (never resigning, and never agreeing a draw, so the game
+        // goes on), and at every step every one of them is tried.
+        for (const preset of game.presets) {
+          const rand = mulberry32(seats * 1000 + 17);
+          let s = game.newGame(game.normalize(preset), seats, 23);
+          const seen = new Set<string>();
+          for (let moves = 0; !game.summary(s).over && moves < 400; moves++) {
+            checkOfferMoves(game, s, seats);
+            const views = Array.from({ length: seats }, (_, seat) => game.view(s, seat));
+            for (const v of views) checkBoardView(v, v.me);
+            const asks = views.flatMap((v) => offerMoves(v).map((move) => ({ seat: v.me, move }))).filter(({ move }) => move.type !== "resign" && !(move.type === "accept" && views[0]!.offers!.open?.kind === "draw"));
+            const plays = views.flatMap((v) => movesOffered(v).map((move) => ({ seat: v.me, move })));
+            const pool = asks.length && rand() < 0.3 ? asks : plays;
+            const { seat, move } = pool[Math.floor(rand() * pool.length)]!;
+            seen.add(move.type === "offer" ? `offer ${(move as { offer: string }).offer}` : String(move.type));
+            s = game.apply(s, seat, move);
+          }
+          // The walk really did make and answer offers.
+          if (views0(game, preset).offers) expect([...seen]).toEqual(expect.arrayContaining(["offer draw", "decline"]));
         }
       });
     }

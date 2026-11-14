@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { frames, GOLF_HOLE, POOL_TABLE, simulate, type Shot, type World } from "../src/index.js";
+import { frames, GARDEN_HOLE, GOLF_HOLE, POOL_TABLE, simulate, type Shot, type World } from "../src/index.js";
 import { energy, seeded, wallDistance } from "./helpers.js";
 
 // Many seeded shots, each from wherever the last one left the table, checking the things that must
@@ -112,5 +112,40 @@ describe("many putts on the golf hole", () => {
     expect(made[0]).toBeGreaterThan(450);
     expect(made.at(-1)).toBeLessThan(900);
     expect(made).toEqual(made.map((_, i) => made[0]! + 10 * i));
+  });
+});
+
+describe("many putts on the garden hole", () => {
+  it("always end in time and inside the walls, reach the terrace only by the pipe, and never rest against the toadstool", () => {
+    const rnd = seeded(2);
+    let world = GARDEN_HOLE;
+    const seen = { pipe: 0, cup: 0, down: 0, bumped: 0 };
+    for (let n = 0; n < 300; n++) {
+      const shot: Shot = { body: "ball", angle: Math.floor(rnd() * 36000), power: 100 + Math.floor(rnd() * 901) };
+      const label = `putt ${n} (${shot.angle}/${shot.power})`;
+      const was = world.bodies[0]!;
+      const res = simulate(world, shot);
+      expect(res.capped, label).toBe(false);
+      checkResting(res.world, label);
+      const ball = res.world.bodies[0]!;
+      expect(ball.out, label).toBeUndefined();
+      expect(ball.x > 0 && ball.x < 12000 && ball.y > 0 && ball.y < 30000, label).toBe(true);
+      const piped = res.events.some((e) => e.type === "emerge");
+      // Every tunnel entered is left again, in order.
+      expect(res.events.filter((e) => e.type === "tunnel").length, label).toBe(res.events.filter((e) => e.type === "emerge").length);
+      // From below the ledge, the only way to end above it is through the pipe.
+      if (was.y > 15000 && ball.y < 15000) expect(piped, `${label}: up the ledge`).toBe(true);
+      if (was.y < 15000 && ball.y > 15000) seen.down++;
+      if (piped) seen.pipe++;
+      if (ball.pocketed) seen.cup++;
+      if (res.events.some((e) => e.type === "hit")) seen.bumped++;
+      // The toadstool kicks: nothing is left leaning on it.
+      const post = res.world.bodies[1]!;
+      if (!ball.pocketed) expect(Math.sqrt((ball.x - post.x) ** 2 + (ball.y - post.y) ** 2), label).toBeGreaterThan(ball.r + post.r + 5);
+      world = ball.pocketed ? GARDEN_HOLE : res.world;
+    }
+    expect(seen.pipe).toBeGreaterThan(0);
+    expect(seen.down).toBeGreaterThan(0);
+    expect(seen.bumped).toBeGreaterThan(0);
   });
 });

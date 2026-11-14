@@ -29,27 +29,43 @@ html, body { margin: 0; min-height: 100%; }
 body { background: var(--background); color: var(--foreground); }
 h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; line-height: 1.2; margin: 0; text-wrap: balance; }
 p { margin: 0; }
-a { color: inherit; }
 [hidden] { display: none !important; }
 segmented-control { max-width: 100%; }
 
-.page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.75rem; width: min(64rem, 100%); margin: 0 auto; padding: 1.25rem clamp(1rem, 3vw, 2rem) 5rem; }
+.page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.75rem; width: min(44rem, 100%); margin: 0 auto; padding: 1.25rem clamp(1rem, 3vw, 2rem) 5rem; }
 .quiet { color: var(--muted-foreground); font-size: 0.925rem; }
-.top { display: grid; gap: 0.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+.top { display: grid; gap: 0.25rem; }
 .home { font-size: 0.9rem; color: var(--muted-foreground); text-decoration: none; justify-self: start; }
+.home:visited { color: var(--muted-foreground); }
 .home:hover { text-decoration: underline; }
 h1 { font-size: clamp(1.6rem, 4vw, 2rem); }
-h2 { font-size: 1.2rem; margin-bottom: 0.3rem; }
-.note { margin-bottom: 0.9rem; }
+h2 { font-size: 1.1rem; margin-bottom: 0.6rem; }
+.note { margin-top: 0.5rem; font-size: 0.85rem; }
 .waiting { display: grid; place-items: center; min-height: 30vh; }
 
-.panel { padding: 1.25rem; border: 1px solid var(--border); border-radius: calc(var(--radius) * 1.4); background: var(--card); }
+/* Nothing going: a line or two, not a box. */
+.calm { padding: 1.5rem 0 0.25rem; }
+.calm .lead { font-family: Georgia, "Times New Roman", serif; font-size: 1.25rem; margin-bottom: 0.25rem; }
+
+/* What's playing: one row a table. */
+.rows { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: calc(var(--radius) * 1.4); background: var(--card); }
+.row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.85rem; padding: 0.8rem 1rem; }
+.row + .row { border-top: 1px solid var(--border); }
+.emoji { font-size: 1.5rem; line-height: 1; width: 1.9rem; text-align: center; }
+.what { display: grid; gap: 0.05rem; min-width: 0; }
+.what strong { font-size: 1rem; }
+.who, .where { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who { font-size: 0.925rem; }
+.where { font-size: 0.85rem; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+
+/* Dealing the computers a game: a button until it's asked for. */
+.deal-box { display: grid; justify-items: start; }
+.deal-box:has(form) { padding: 1.25rem; border: 1px solid var(--border); border-radius: calc(var(--radius) * 1.4); background: var(--card); justify-items: stretch; }
 .deal { display: grid; gap: 1rem; margin-top: 1rem; justify-items: start; }
 .deal select-field { width: min(22rem, 100%); }
 .group { display: grid; gap: 0.4rem; justify-items: start; max-width: 100%; }
 .label { font-size: 0.9rem; font-weight: 600; }
-
-section > auto-grid, section > empty-state { margin-top: 0.9rem; }
-.seats { list-style: none; margin: 0.8rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; }
-.seats li { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 600; font-size: 0.925rem; }
-.standing { margin-top: 0.75rem; font-variant-numeric: tabular-nums; }
+.more { display: grid; gap: 1rem; }
+.more summary { cursor: pointer; font-size: 0.9rem; color: var(--muted-foreground); }
+.more[open] summary { margin-bottom: 0.75rem; }
+.more .group + .group { margin-top: 0.9rem; }
