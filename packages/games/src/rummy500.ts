@@ -201,6 +201,16 @@ function apply(state: Rummy500State, seat: number, move: Move): Rummy500State {
       if (!cards.length || cards.some((c) => !c) || new Set(ids).size !== ids.length) throw new GameError("Pick cards from your hand to meld.");
       const where = placement(s, cards as KCard[]);
       if (!where) throw new GameError("Those don't make a set or a run, or fit on a meld on the table.");
+      // A card owed from the pile has to keep somewhere to go: a meld that takes its last partners waits.
+      const owed = owedBy(s, seat);
+      if (owed && !ids.includes(owed.id)) {
+        const after = { ...s, melds: s.melds.map((m) => ({ ...m, cards: [...m.cards] })) };
+        const placed = (cards as KCard[]).map((card) => ({ card, by: seat }));
+        if (where.onto >= 0) after.melds[where.onto]!.cards.push(...placed);
+        else after.melds.push({ kind: where.kind, owner: seat, cards: placed });
+        if (!homeFor(after, hand().filter((c) => !ids.includes(c.id)), owed))
+          throw new GameError(`Meld the ${name(owed)} first: you took it from the pile, and that meld would leave it nowhere to go.`);
+      }
       const placed = (cards as KCard[]).map((card) => ({ card, by: seat }));
       if (where.onto >= 0) s.melds[where.onto]!.cards.push(...placed);
       else s.melds.push({ kind: where.kind, owner: seat, cards: placed });
@@ -217,10 +227,9 @@ function apply(state: Rummy500State, seat: number, move: Move): Rummy500State {
       if (ids.length !== 1) throw new GameError("Pick one card to discard.");
       const card = hand().find((c) => c.id === ids[0]);
       if (!card) throw new GameError("You don't have that card.");
-      if (s.mustUse) {
-        const owed = hand().find((c) => c.id === s.mustUse);
-        throw new GameError(`You took the ${owed ? name(owed) : "card"} from the pile: meld it this turn, or put the cards back.`);
-      }
+      const owed = owedBy(s, seat);
+      if (owed) throw new GameError(`You took the ${name(owed)} from the pile: meld it this turn, or put the cards back.`);
+      s.mustUse = null;
       s.hands[seat] = hand().filter((c) => c.id !== card.id);
       s.pile.push(card);
       s.undo = null;
@@ -261,7 +270,7 @@ function winners(s: Rummy500State): number[] {
 function view(s: Rummy500State, seat: number): KitView {
   const over = s.phase === "finished";
   const mine = s.turn === seat && (s.phase === "draw" || s.phase === "meld");
-  const owed = s.mustUse ? s.hands[seat]!.find((c) => c.id === s.mustUse) : undefined;
+  const owed = owedBy(s, seat);
   const melds: Meld[] = s.melds.map((m) => ({ owner: m.owner, label: meldLabel(m), cards: m.cards.map((x) => x.card) }));
   const w = over ? winners(s) : [];
   return {
@@ -350,6 +359,46 @@ function meldsIn(cards: KCard[]): KCard[][] {
 }
 
 /** A way to use this card now: a new meld with hand cards, or a lay-off. */
+/**
+ * A way to meld this card from the hand now, or null if there's none: alone or with others onto a
+ * meld on the table, in a set with cards of its rank, or in a run with neighbours of its suit.
+ */
+export function homeFor(s: Rummy500State, hand: KCard[], card: KCard): KCard[] | null {
+  if (placement(s, [card])) return [card];
+  const others = hand.filter((c) => c.id !== card.id);
+  // A set: the card with some of the cards of its rank (two decks can hold several).
+  const same = others.filter((c) => rankOf(c) === rankOf(card)).slice(0, 7);
+  for (let mask = 1; mask < 1 << same.length; mask++) {
+    const pick = [card, ...same.filter((_, i) => mask & (1 << i))];
+    if (placement(s, pick)) return pick;
+  }
+  // A run: the card with an unbroken stretch of its suit, low or high (an ace is either end).
+  const bySuit = new Map<number, KCard>();
+  for (const c of others) if (suitOf(c) === suitOf(card) && rankOf(c) !== rankOf(card)) bySuit.set(rankOf(c), c);
+  if (bySuit.has(14)) bySuit.set(1, bySuit.get(14)!);
+  for (const at of rankOf(card) === 14 ? [1, 14] : [rankOf(card)]) {
+    for (let lo = at; lo >= 1 && (lo === at || bySuit.has(lo)); lo--) {
+      for (let hi = at; hi <= 14 && (hi === at || bySuit.has(hi)); hi++) {
+        if (lo === at && hi === at) continue;
+        const pick = [card];
+        for (let r = lo; r <= hi; r++) if (r !== at) pick.push(bySuit.get(r)!);
+        if (placement(s, pick)) return pick;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * The card this seat still owes from the pile, if the obligation can still be met. A table that got
+ * stuck before melds were checked (the card has nowhere to go, and putting back is gone) owes nothing.
+ */
+function owedBy(s: Rummy500State, seat: number): KCard | null {
+  const owed = s.mustUse ? s.hands[seat]!.find((c) => c.id === s.mustUse) : undefined;
+  if (!owed) return null;
+  return s.undo || homeFor(s, s.hands[seat]!, owed) ? owed : null;
+}
+
 function useFor(s: Rummy500State, hand: KCard[], card: KCard): KCard[] | null {
   for (const m of meldsIn(hand)) if (m.some((c) => c.id === card.id)) return m;
   if (placement(s, [card])) return [card];
@@ -375,9 +424,9 @@ function bot(s: Rummy500State, seat: number, style: PlayStyle): Move | null {
     return s.stock.length ? { type: "draw" } : { type: "take" };
   }
   // A card owed from the pile comes first.
-  if (s.mustUse) {
-    const owed = hand.find((c) => c.id === s.mustUse)!;
-    const use = useFor(s, hand, owed);
+  const owed = owedBy(s, seat);
+  if (owed) {
+    const use = useFor(s, hand, owed) ?? homeFor(s, hand, owed);
     if (use) return { type: "meld", cards: use.map((c) => c.id) };
     return { type: "putback" };
   }
