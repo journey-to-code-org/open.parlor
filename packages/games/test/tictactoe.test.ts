@@ -133,7 +133,7 @@ describe("bigger boards", () => {
 
   it("checks the rules fit the board", () => {
     expect(t.validate(t.normalize({ ...classicTicTacToe, size: 3, line: 4 }))[0]).toMatch(/doesn't fit/);
-    expect(t.normalize({ id: "x", name: "Mine", size: 99, line: 1, games: 4, first: "me" })).toEqual({ id: "x", name: "Mine", board: "single", size: 15, line: 3, first: "random", games: 1 });
+    expect(t.normalize({ id: "x", name: "Mine", size: 99, line: 1, games: 4, first: "me" })).toEqual({ id: "x", name: "Mine", board: "single", size: 15, line: 3, first: "random", games: 1, offers: "all" });
     // Ultimate is always small boards of 3×3.
     expect(t.normalize({ ...ultimateTicTacToe, size: 9, line: 5 })).toMatchObject({ board: "ultimate", size: 3, line: 3 });
     expect(t.validate(t.normalize({ ...ultimateTicTacToe, size: 3, line: 5 }))).toEqual([]);

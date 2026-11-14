@@ -148,6 +148,28 @@ export interface BoardSeat {
   badge?: string;
 }
 
+/** What a player can do besides move: give the game up, or ask the other player for something. */
+export type OfferKind = "resign" | "draw" | "takeback";
+
+/**
+ * Offers at a two-player board (see offers.ts): what is open, and what this seat may do about it.
+ * It is data, the same for every game, and the table says it in its own words. The moves are
+ * always the same four, and `offerMoves` lists the ones a view allows.
+ */
+export interface BoardOffers {
+  /** What this seat may send now: { type: "resign" }, or { type: "offer", offer: "draw" | "takeback" }. */
+  can: OfferKind[];
+  /** The offer waiting for an answer, and who made it. Everyone at the table sees this. */
+  open: { kind: "draw" | "takeback"; by: number } | null;
+  /** It is this seat's to answer, with { type: "accept" } or { type: "decline" }. */
+  answer: boolean;
+  /**
+   * The last thing that happened with an offer, until play has moved on past it. "lapsed" is an
+   * offer that was played through instead of answered.
+   */
+  last: { kind: OfferKind; by: number; outcome: "offered" | "accepted" | "declined" | "lapsed" } | null;
+}
+
 export interface BoardView {
   game: BoardGameId;
   seats: number;
@@ -171,6 +193,8 @@ export interface BoardView {
   result: RoundResult | null;
   /** `winners` is every seat when it's a draw. */
   over: GameOver | null;
+  /** Resigning, draw offers and taking moves back, in a game that has them. */
+  offers?: BoardOffers;
 }
 
 /** A board game: an engine whose seats see a `BoardView`. */
