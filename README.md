@@ -528,6 +528,9 @@ docker run -p 8787:8787 -v spades:/data cardroom
 | Variable | |
 | --- | --- |
 | `CARDROOM_DB` | The database file (the image uses `/data/spades.db`). Without one, tables live in memory. |
+| `CARDROOM_BACKUPS` | Where copies of the database go (see **Backups**). Default: `backups` beside the database. `off` for none. |
+| `CARDROOM_BACKUP_HOURS` | Hours between copies. Default 24. |
+| `CARDROOM_BACKUP_KEEP` | How many copies to keep. Default 7. |
 | `CARDROOM_VAPID_PUBLIC_KEY` | Push notifications: the public key (see below) |
 | `CARDROOM_VAPID_PRIVATE_KEY` | Push notifications: the private key; keep it secret |
 | `CARDROOM_VAPID_SUBJECT` | Optional: a `mailto:` or `https:` address push services can reach you at |
@@ -549,6 +552,24 @@ docker run -p 8787:8787 -v spades:/data cardroom
 
 The older `SPADES_*` names for these still work; `CARDROOM_*` wins if both are set. Keep the
 database file's name (`spades.db`) as it is: renaming it leaves saved tables and houses behind.
+
+### Backups
+
+With a database (`CARDROOM_DB`), the server copies it once a day into `backups/` beside it
+(`/data/backups` in the image) and keeps the newest seven. A copy is a whole SQLite database
+(`cardroom-2026-11-14T09-30-00.db`), taken while the card room stays open.
+
+Those copies are on the same disk as the database: they're for a bad deploy or a mistake, not for
+losing the disk. To keep one somewhere else, press **Download a copy now** on the admin app's
+front page, or:
+
+```sh
+curl -fOJ -H "Authorization: Bearer $CARDROOM_ADMIN_TOKEN" https://your-card-room/moderation/backup
+```
+
+To go back to a copy: stop the server, put the copy where `CARDROOM_DB` points (delete any
+`-wal` and `-shm` files beside the old one), and start it again. Everything since that copy is
+gone, tables in the middle of a game included.
 
 ### On Railway
 

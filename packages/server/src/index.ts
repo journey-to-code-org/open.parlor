@@ -9,6 +9,7 @@ import { createServer } from "node:http";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createCardRoom } from "./app.js";
+import { createBackups } from "./backup.js";
 import { warmSports } from "./kit.js";
 
 /** A setting: CARDROOM_<name>, or the older SPADES_<name>. */
@@ -31,6 +32,9 @@ const apps = [
 // A SQLite log keeps tables across restarts; without CARDROOM_DB, they live in memory.
 const db = setting("DB");
 const log = db ? await (await import("@zubra/sync/sqlite")).sqliteLog(db, { keep: "latest" }) : undefined;
+// Copies of that database, beside it unless CARDROOM_BACKUPS says where ("off" for none).
+const backupDir = setting("BACKUPS");
+const backups = db && db !== ":memory:" && backupDir !== "off" ? createBackups({ db, dir: backupDir || undefined, keep: Number(setting("BACKUP_KEEP")) || undefined, hours: Number(setting("BACKUP_HOURS")) || undefined }) : undefined;
 // Bots take humanlike time unless CARDROOM_BOT_DELAY fixes it (handy for testing).
 const botDelay = setting("BOT_DELAY");
 const cardRoom = createCardRoom({
@@ -38,6 +42,7 @@ const cardRoom = createCardRoom({
   botDelay: botDelay ? Number(botDelay) : undefined,
   // Moderation (the admin app) is on when the server has an admin token.
   adminToken: setting("ADMIN_TOKEN"),
+  backups,
   // Push notifications are on when the server has VAPID keys (`npx web-push generate-vapid-keys`).
   push: {
     publicKey: setting("VAPID_PUBLIC_KEY"),
@@ -53,6 +58,7 @@ const cardRoom = createCardRoom({
   ai: { secret: setting("SECRET"), shared: { key: setting("AI_KEY"), provider: setting("AI_PROVIDER"), model: setting("AI_MODEL"), daily: Number(setting("AI_DAILY")) || undefined } },
 });
 if (!setting("SECRET")) console.log("houses' AI keys are stored unsealed: set CARDROOM_SECRET to encrypt them");
+if (db && !backups) console.log("backups are off (CARDROOM_BACKUPS=off): nothing copies the database");
 if (!cardRoom.moderation.enabled) console.log("moderation is off: set CARDROOM_ADMIN_TOKEN to turn on the admin app at /admin/");
 if (!cardRoom.bugs.enabled) console.log("players can't report problems: set CARDROOM_GITHUB_TOKEN (a token that may open issues) to turn that on");
 if (!cardRoom.push.enabled) console.log("push notifications are off: set CARDROOM_VAPID_PUBLIC_KEY and CARDROOM_VAPID_PRIVATE_KEY to turn them on");
@@ -119,6 +125,7 @@ createServer(async (req, res) => {
   }
 }).listen(port, () => {
   console.log(`Card Room on http://localhost:${port}`);
+  backups?.start();
   // Once the door is open: the first putt of the day shouldn't be the one that waits for the physics to warm up.
   setImmediate(() => console.log(`table sports warmed up in ${warmSports()} ms`));
 });

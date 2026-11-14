@@ -69,6 +69,20 @@
             } @else {
               <p class="quiet">Nothing yet. Whatever you do here (closing a table, blocking a player, hiding a design) is written down under Activity.</p>
             }
+            <h2>Backups</h2>
+            @if (o.backups; as b) {
+              <p class="quiet" data-backups>
+                @if (b.latest; as latest) {
+                  The last copy of the card room's database was made {{ when(latest.at) }} ({{ size(latest.size) }}).
+                } @else {
+                  No copy of the card room's database has been made yet.
+                }
+                The server makes one every {{ b.hours }} hours and keeps the newest {{ b.keep }}, on the same disk as the database.
+              </p>
+              <action-button variant="outline" [loading]="savingBackup()" (click)="downloadBackup()">Download a copy now</action-button>
+            } @else {
+              <p class="quiet" data-backups>Nothing is being backed up: this card room keeps its tables in memory, or backups are switched off.</p>
+            }
           }
         </section>
 
