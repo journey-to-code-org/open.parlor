@@ -145,6 +145,7 @@ export class App implements OnDestroy {
   protected readonly confirm = signal<Confirm | null>(null);
   protected readonly confirmOpen = signal(false);
   protected readonly busy = signal(false);
+  protected readonly savingBackup = signal(false);
   protected reason = "";
 
   /** Two cards that show a design at a glance: its back is drawn beside them. */
@@ -484,6 +485,29 @@ export class App implements OnDestroy {
       this.toast(this.message(error), "danger");
     }
     await this.refresh(true);
+  }
+
+  /** Take a copy of the database away: the server makes one now and the browser saves it. */
+  protected async downloadBackup(): Promise<void> {
+    if (this.savingBackup()) return;
+    this.savingBackup.set(true);
+    try {
+      const { name, file } = await this.api.backup();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(file);
+      link.download = name;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      this.toast(`Saved ${name}. Keep it somewhere that isn't this server.`, "success");
+    } catch (error) {
+      this.toast(this.message(error), "danger");
+    }
+    this.savingBackup.set(false);
+    await this.refresh(true);
+  }
+
+  protected size(bytes: number): string {
+    return bytes < 1_048_576 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1_048_576).toFixed(1)} MB`;
   }
 
   // ---------- The question dialog ----------

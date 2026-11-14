@@ -13,6 +13,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { playerOf, type ChatMessage, type RoomDoc } from "@spades/rooms/server";
 import type { Catalogue } from "./catalogue.js";
+import type { Backups } from "./backup.js";
 import type { Designs } from "./designs.js";
 import type { HouseDoc } from "./houses.js";
 import { gameName, gameOfOptions } from "./games.js";
@@ -69,7 +70,7 @@ const finished = (summary: unknown) => {
 /** How many wrong tokens a minute before everyone waits. */
 const WRONG_TOKENS_PER_MINUTE = 20;
 
-export function createModeration(rooms: Rooms, designs: Designs, { token, houses, catalogue, mount = "/moderation", now = () => Date.now() }: { token?: string; houses?: Houses; catalogue?: Catalogue; mount?: string; now?: () => number } = {}) {
+export function createModeration(rooms: Rooms, designs: Designs, { token, houses, catalogue, backups, mount = "/moderation", now = () => Date.now() }: { token?: string; houses?: Houses; catalogue?: Catalogue; /** Copies of the database, when the card room keeps one on disk. */ backups?: Backups; mount?: string; now?: () => number } = {}) {
   const secret = token?.trim() ? digest(token.trim()) : null;
   const docs = rooms.sync.documents();
   let wrong: number[] = [];
@@ -177,7 +178,19 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
         blocked: (await bans()).size,
         houses: view.all("houses").length,
         designs: { total: made.length, shared: made.filter((d) => d.shared && !d.hidden).length, hidden: made.filter((d) => d.hidden).length },
+        // Null when the card room keeps nothing on disk (no CARDROOM_DB) or backups are off.
+        backups: backups ? { latest: backups.list()[0] ?? null, kept: backups.list().length, keep: backups.keep, hours: backups.hours } : null,
       });
+    }
+
+    // GET /moderation/backup → a copy of the database, made now, to keep somewhere else
+    if (area === "backup" && method === "GET") {
+      if (!backups) return json({ error: "There's nothing to back up: this card room keeps its tables in memory (set CARDROOM_DB)." }, 404);
+      const file = await backups.make();
+      const bytes = backups.read(file.name);
+      if (!bytes) return json({ error: "The backup couldn't be read back. Try again." }, 500);
+      await record("Downloaded a backup", file.name);
+      return new Response(new Uint8Array(bytes), { headers: { "content-type": "application/vnd.sqlite3", "content-disposition": `attachment; filename="${file.name}"`, "content-length": String(bytes.length), "cache-control": "no-store" } });
     }
 
     // GET /moderation/log → what's been done, newest first
