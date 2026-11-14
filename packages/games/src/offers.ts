@@ -356,7 +356,12 @@ export function withOffers<R extends BaseRules, S extends { rules: R; seats: num
     },
     // What the turn timer plays for a person who has run out of time: a move on the board. It never
     // answers an offer for them (playing on turns a draw down, which is the answer silence gives).
-    play: (state, seat, style: PlayStyle, ...rest: unknown[]) => (game.play ? game.play(state, seat, style) : own(state, seat, style, ...rest)),
+    play: (state, seat, style: PlayStyle, ...rest: unknown[]) => (game.play ? (game.play as typeof own)(state, seat, style, ...rest) : own(state, seat, style, ...rest)),
+    // Answering an offer takes no thought; the move on the board may (see TableGame.heavy).
+    heavy(state, seat) {
+      const open = offersOf(state).open;
+      return !(open && open.by !== seat && (seat === 0 || seat === 1)) && (game.heavy?.(state, seat) ?? false);
+    },
     thinkingTime(state, seat) {
       const open = offersOf(state).open;
       return open && open.by !== seat ? 500 : game.thinkingTime(state, seat);

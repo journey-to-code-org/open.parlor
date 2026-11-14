@@ -69,7 +69,7 @@ const finished = (summary: unknown) => {
 /** How many wrong tokens a minute before everyone waits. */
 const WRONG_TOKENS_PER_MINUTE = 20;
 
-export function createModeration(rooms: Rooms, designs: Designs, { token, houses, catalogue, mount = "/moderation", now = () => Date.now() }: { token?: string; houses?: Houses; catalogue?: Catalogue; mount?: string; now?: () => number } = {}) {
+export function createModeration(rooms: Rooms, designs: Designs, { token, houses, catalogue, bots, mount = "/moderation", now = () => Date.now() }: { token?: string; houses?: Houses; catalogue?: Catalogue; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
   const secret = token?.trim() ? digest(token.trim()) : null;
   const docs = rooms.sync.documents();
   let wrong: number[] = [];
@@ -177,6 +177,8 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
         blocked: (await bans()).size,
         houses: view.all("houses").length,
         designs: { total: made.length, shared: made.filter((d) => d.shared && !d.hidden).length, hidden: made.filter((d) => d.hidden).length },
+        // How the computer players' thinking is going: null when it all happens on the main thread.
+        bots: bots?.() ?? null,
       });
     }
 

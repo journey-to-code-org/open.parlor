@@ -3,7 +3,7 @@
 // A room's options say which game it is. Spades rooms keep the options they always had (the house
 // rules themselves), so tables and logs from before there were other games still work; any other
 // game's options carry `game`.
-import { KIT_GAMES, isBoardGame, isKitGame, isSportGame, kitGame, kitGreet, reactToKit, type KitGameId } from "@cardroom/games";
+import { KIT_GAMES, isBoardGame, isKitGame, isSportGame, kitGame, kitGreet, reactToKit, type KitGameId, type ThinkBudget } from "@cardroom/games";
 import { palaceGreet, palaceReplyTo, reactToPalace, type PalaceState } from "@cardroom/palace";
 import { sharedView, type RoomDefinition } from "@spades/rooms/server";
 import { cleanSettings, greet, reactToMove, replyTo, type GameState, type RulePreset, type Seat } from "@spades/rules";
@@ -40,6 +40,14 @@ const rooms: Record<GameId, RoomDefinition<any, any, any, any, any>> = {
 };
 const byState = (s: AnyState) => rooms[gameOfState(s)];
 
+/**
+ * How long a game that thinks by the clock gets for the move the turn timer makes for someone who
+ * ran out of time. That move is worked out on the main thread, the moment the time is up (it never
+ * waits its turn behind other tables' thinks), so it has to be a short one. The games here don't
+ * think by the clock, and play what they would have anyway.
+ */
+export const TIMEOUT_BUDGET: ThinkBudget = { ms: 150 };
+
 export const tableRoom: RoomDefinition<AnyState, unknown, unknown, TableOptions, unknown> = {
   seats: (o) => {
     const room = rooms[gameOfOptions(o)];
@@ -75,7 +83,7 @@ export const tableRoom: RoomDefinition<AnyState, unknown, unknown, TableOptions,
  */
 function turnTimer(s: AnyState, table: Parameters<NonNullable<typeof tableRoom.deadline>>[1]) {
   const kit = isKitGame(gameOfState(s)) ? (s as { game: KitGameId } & Record<string, unknown>) : null;
-  const due = turnDeadline(s, table, (seat, name) => (kit ? kitTimeoutMove(kit, seat, name, table.settings) : (byState(s).bot?.(s, seat, name, table.settings) ?? null)));
+  const due = turnDeadline(s, table, (seat, name) => (kit ? kitTimeoutMove(kit, seat, name, table.settings, TIMEOUT_BUDGET) : (byState(s).bot?.(s, seat, name, table.settings) ?? null)));
   const spent = kit ? kitSpent(kit) : 0;
   return due && spent > 0 && due.after !== undefined ? { ...due, after: Math.max(0, due.after - spent) } : due;
 }

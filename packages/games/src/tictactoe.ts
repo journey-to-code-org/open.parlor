@@ -540,6 +540,8 @@ const rules: BoardGame<TicTacToeRules, TicTacToeState, TicTacToeMove> = {
   apply,
   view,
   bot,
+  // The big boards are searched; three in a row is known by heart.
+  heavy: (s, seat) => s.phase === "playing" && s.turn === seat && !(s.rules.size === 3 && s.rules.line === 3 && !ultimate(s)),
   thinkingTime: (s) => thinkFor(Math.min(openCells(s).length, 6), s.last === null ? 0.7 : 1),
   summary(s) {
     const over = s.phase === "finished";

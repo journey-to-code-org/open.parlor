@@ -13,12 +13,13 @@ import { createAi, type AiOptions } from "./ai.js";
 import { personaFor } from "@spades/rules";
 import { createBugs, REPORT_LIMIT, type BugOptions } from "./bugs.js";
 import { createLobby, type LobbyOptions } from "./lobby.js";
+import { createBots, type BotOptions } from "./bots.js";
 import { createPush, type PushOptions } from "./push.js";
 import { playerOf } from "@spades/rooms/server";
 import { gameName, gameOfOptions, tableRoom, talk, type GameId, type Remark } from "./games.js";
 
 export function createCardRoom(
-  options: { log?: Log; botDelay?: number; talk?: boolean; push?: PushOptions; ai?: AiOptions; lobby?: LobbyOptions; /** Turns moderation on (see moderation.ts). */ adminToken?: string; bugs?: BugOptions; /** The clock, for tests. */ spectate?: { now?: () => number } } = {},
+  options: { log?: Log; botDelay?: number; talk?: boolean; push?: PushOptions; ai?: AiOptions; lobby?: LobbyOptions; /** Turns moderation on (see moderation.ts). */ adminToken?: string; bugs?: BugOptions; /** Worker threads for the computer players' thinking (see bots.ts). Without it they think on the main thread. */ bots?: BotOptions; /** The clock, for tests. */ spectate?: { now?: () => number } } = {},
 ) {
   const talking = options.talk ?? true;
   const timers = new Set<ReturnType<typeof setTimeout>>();
@@ -106,7 +107,10 @@ export function createCardRoom(
     speak(id, [{ seat: bot.seat, text: "", delay: 900 + Math.random() * 1300 }], true, said);
   }
 
-  const rooms = createRooms(tableRoom, {
+  // With `bots`, a computer player's heavy think (a search, a simulation) happens in a worker thread
+  // and the rooms wait for the answer; without, every think is a call to the game's bot, as ever.
+  const bots = options.bots ? createBots(options.bots) : null;
+  const rooms = createRooms(bots ? { ...tableRoom, think: bots.think } : tableRoom, {
     log: options.log,
     botDelay: options.botDelay,
     // A game the host has switched off takes no new tables.
@@ -138,7 +142,7 @@ export function createCardRoom(
   const lobby = createLobby(rooms, { push, gameOn: catalogue.isOn, ...options.lobby });
   const designs = createDesigns(rooms.sync, { tables: rooms });
   const spectate = createSpectate(rooms, catalogue, options.spectate);
-  const moderation = createModeration(rooms, designs, { token: options.adminToken, houses, catalogue });
+  const moderation = createModeration(rooms, designs, { token: options.adminToken, houses, catalogue, bots: bots ? () => bots.stats() : undefined });
   // "Report a problem": a player's report becomes an issue on GitHub.
   const bugs = createBugs(rooms, options.bugs);
 
@@ -186,6 +190,8 @@ export function createCardRoom(
     catalogue,
     bugs,
     push,
+    /** The computer players' thinking: its counters, and when its workers are up. Null when they think on the main thread. */
+    bots,
     /** Answers houses, designs, moderation, rooms and sync requests; null for anything else. */
     async fetch(request: Request): Promise<Response | null> {
       return (await ours(request)) ?? (await rooms.fetch(request));
@@ -226,6 +232,8 @@ export function createCardRoom(
       closed = true;
       for (const t of timers) clearTimeout(t);
       rooms.close();
+      // Resolves once the worker threads have stopped.
+      return bots?.close() ?? Promise.resolve();
     },
   };
 }

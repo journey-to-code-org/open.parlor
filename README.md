@@ -228,6 +228,48 @@ designer, Solid on the watch page and Angular in the admin app.
 The server decides every move. Each player's browser only ever receives its own view of a table
 (its own hand), never the whole game; moves the rules don't allow are refused on the server.
 
+## How computer players think
+
+A computer player's move is a pure function of the table: the game's state, the seat, the bot's
+name (its persona, and so its style) and the table's settings. The server holds every table on one
+thread, so a think that takes a while would hold up everyone. It doesn't have to:
+
+- **Quick thinks stay on the main thread.** A card game's bot answers in a few hundredths of a
+  millisecond; sending the state to another thread and the move back costs about a tenth of one.
+- **Heavy thinks go to a worker thread.** A game says which those are with `TableGame.heavy(state,
+  seat)` (a search in Checkers, Reversi, Drop Four and the big Tic-Tac-Toe boards; hundreds of
+  simulated putts in Mini Golf). The server keeps a small pool of `worker_threads`
+  (`packages/server/src/botpool.ts`), each running the same engine code, and the room waits for the
+  answer. In practice mode the browser does the same with a Web Worker.
+- **The pause hides the think.** A bot's thinking starts the moment its humanlike pause does, and
+  the move is played when both are done: a think shorter than the pause costs the table nothing.
+- **An answer is only played on the state it was worked out for.** If the table moved on meanwhile
+  (someone else moved, a turn timer fired) the answer is dropped and the bot is asked again; if the
+  bot was stopped (the game ended, the settings changed, the table was closed) it's just dropped.
+  The move itself goes through the room's `act` and into the move log like anyone's.
+- **A think has a budget and a ceiling.** `bot(state, seat, style, rand, budget)` is told how long
+  it may take (`budget.ms`, from `CARDROOM_BOT_BUDGET`, 2000 by default). Today's bots ignore it:
+  they ration themselves by work done, so they play the same move on any machine. A game that
+  searches by the clock (Chess and Go will) should stop inside it. A think still running at the
+  ceiling (`CARDROOM_BOT_CEILING`, three times the budget by default) is abandoned: its worker is
+  terminated and replaced, and the seat plays a quick move instead (the same bot asked with
+  `QUICK_STYLE` and `QUICK_BUDGET`: no skill, no time), so one runaway search can never hang a table.
+- **Fair shares.** Thinks wait in one queue, first come first served, and a table never has two
+  running at once. The move a turn timer makes for someone who ran out of time never queues: it's
+  worked out on the main thread, there and then, with a short budget (`TIMEOUT_BUDGET`).
+
+The pool has one worker for each processor the server may use but one, at least one and at most
+four; `CARDROOM_BOT_WORKERS` sets the number, and `0` turns the pool off (every think on the main
+thread, as before: also what happens by itself if worker threads can't start). A worker is another
+copy of the engines, about 35 MB of memory each. Each worker warms
+the table sports' physics as it starts, as the main thread does, while the server is already
+listening. `GET /healthz/bots` shows how it's going (workers, thinks waiting and running, usual and
+worst think time, how many were given up on), and so does the admin app's overview.
+
+`node packages/server/scripts/bench-bots.mjs` measures what a trip to a worker costs for each kind
+of game, and `node packages/web/scripts/practice-hitch.mjs <address>` how long the page freezes in
+practice mode.
+
 ## Development
 
 ```sh
@@ -314,6 +356,12 @@ start from a seed), `apply` (never changes the state it's given, and throws a `G
 move the rules don't allow), `view` (what one seat may see and do), `bot`, `thinkingTime` and
 `summary`. The only thing that differs between a card game, a board game and a table sport is
 what `view` returns.
+
+If the bot's think is more than a millisecond or two (it searches, or simulates), give the game a
+`heavy(state, seat)` that says when, so the think is done off the main thread, and if it thinks by
+the clock, keep inside the `budget` that `bot` is handed (see
+[How computer players think](#how-computer-players-think)). Without `heavy` a bot thinks on the
+main thread, which is right for anything quick.
 
 ### A card game
 
@@ -661,6 +709,9 @@ docker run -p 8787:8787 -v spades:/data cardroom
 | `CARDROOM_BLOCKED_NAMES` | Optional: more words that names and chat at open tables may not contain, comma-separated |
 | `CARDROOM_ADMIN_TOKEN` | Turns on the admin app at `/admin/`: the token its host signs in with. Make it long and keep it secret (`openssl rand -hex 24`) |
 | `CARDROOM_BOT_DELAY` | Fixed thinking time for computer players, in milliseconds (handy for testing) |
+| `CARDROOM_BOT_WORKERS` | Worker threads for the computer players' heavy thinking (see **How computer players think**). Default: one per processor but one, from 1 to 4. `0` for none: everything on the main thread. |
+| `CARDROOM_BOT_BUDGET` | How long, in milliseconds, a game that thinks by the clock is told it may take over a move. Default 2000. |
+| `CARDROOM_BOT_CEILING` | How long, in milliseconds, before a think still running is abandoned for a quick move. Default: three times the budget. |
 | `CARDROOM_WEB` | Where the built web app is, if not `packages/web/dist` |
 | `CARDROOM_DESIGNER` | Where the built card designer is, if not `packages/designer/dist` |
 | `CARDROOM_WATCH` | Where the built watch page is, if not `packages/watch/dist` |

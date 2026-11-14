@@ -604,6 +604,8 @@ const rules: BoardGame<ReversiRules, ReversiState, ReversiMove> = {
   apply,
   view,
   bot,
+  // A search: off the table's main thread (see TableGame.heavy).
+  heavy: (s, seat) => s.phase === "playing" && s.turn === seat,
   thinkingTime: (s) => thinkFor(Math.min(s.phase === "playing" ? legalMoves(s.cells, s.rules.size, s.turn).length : 0, 6), s.last === null ? 0.7 : 1),
   summary(s) {
     const over = s.phase === "finished";

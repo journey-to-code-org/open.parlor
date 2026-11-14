@@ -618,6 +618,8 @@ const rules: BoardGame<DropFourRules, DropFourState, DropFourMove> = {
   apply,
   view,
   bot,
+  // A search: off the table's main thread (see TableGame.heavy).
+  heavy: (s, seat) => s.phase === "playing" && s.turn === seat,
   // With a shot clock on, a computer player keeps up with it.
   thinkingTime: (s) => (s.rules.drinking ? 900 : thinkFor(Math.min(openColumns(s).length, 6), s.moves === 0 ? 0.7 : 1)),
   // The shot clock: a clock of the game's own, which the table keeps (see TableGame.deadline).

@@ -8,6 +8,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadTableSettings, saveTableSettings } from "../storage";
 import { TurnClock } from "../TurnClock";
 import { GameTable } from "./GameTable";
+import { botMove, type BotJob } from "./botMove";
+import { THINK_BUDGET, thinkElsewhere, warmThinker } from "./botThinker";
 
 export function LocalKit({ game: id, name, rules, seats, seed, onLeave }: { game: KitGameId; name: string; rules: unknown; seats: number; seed: number; onLeave: () => void }) {
   const game = kitGame(id)!;
@@ -59,16 +61,62 @@ export function LocalKit({ game: id, name, rules, seats, seed, onLeave }: { game
   // A computer player moves after a humanlike pause: the first one with something to do. A pause
   // already running isn't restarted when someone else moves (in Speed, a quick person mustn't keep
   // resetting the computer's clock); when it ends, the move is worked out from the table as it is then.
+  //
+  // A heavy think (a search, a simulation: see `TableGame.heavy`) is done in a Web Worker, so the
+  // page doesn't freeze while a computer player makes up its mind. It starts when the pause does and
+  // is played when both are done, on the state it was worked out for and no other: if the table has
+  // changed by then, the answer is dropped and asked for again. With no worker to ask (see
+  // botThinker.ts), and for every quick think, the move is worked out right here, as it always was.
   const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** The move in the making; cleared when the table is left, so an answer that comes late goes nowhere. */
+  const turn = useRef<object | null>(null);
   const [tick, setTick] = useState(0);
   useEffect(() => {
+    // The worker, and the engine in it, are ready before the first think is wanted.
+    if (game.heavy) warmThinker(id);
+  }, []);
+  useEffect(() => {
     if (game.summary(state).over || pending.current) return;
-    const seat = bots.map((_, i) => i + 1).find((s) => game.bot(state, s, styleFor(personaFor(bots[s - 1]!).style, settings.skill)) !== null);
+    const style = (s: number) => styleFor(personaFor(bots[s - 1]!).style, settings.skill);
+    // A heavy think isn't done here just to find out whether there is one: the game says so itself.
+    const seat = bots.map((_, i) => i + 1).find((s) => game.heavy?.(state, s) || game.bot(state, s, style(s)) !== null);
     if (seat === undefined) return;
-    pending.current = setTimeout(() => {
+    const job = (of: unknown): BotJob => ({ game: id, state: of, seat, name: bots[seat - 1]!, skill: settings.skill, budget: THINK_BUDGET });
+    const ask = (of: unknown) => (game.heavy?.(of, seat) ? thinkElsewhere(job(of)) : null);
+    const mine = {};
+    turn.current = mine;
+    let thought = { state: state as unknown, answer: ask(state) };
+    thought.answer?.catch(() => {}); // reported when the pause ends
+    const play = async () => {
+      for (;;) {
+        if (turn.current !== mine) return;
+        const now = latest.current as unknown;
+        if (thought.state !== now) thought = { state: now, answer: ask(now) };
+        if (!thought.answer) break; // a quick think, or no worker: on the page, below
+        const answered = thought;
+        let move: Record<string, unknown> | null;
+        try {
+          move = await answered.answer;
+        } catch (e) {
+          console.error(e);
+          if (turn.current === mine) pending.current = null;
+          return;
+        }
+        if (turn.current !== mine) return; // the table was left meanwhile
+        if (latest.current !== answered.state) continue; // the table changed while it thought: ask again
+        pending.current = null;
+        if (move) {
+          try {
+            const next = game.apply(answered.state, seat, move);
+            latest.current = next;
+            setState(next);
+          } catch {}
+        }
+        return setTick((t) => t + 1);
+      }
       pending.current = null;
       setState((prev: unknown) => {
-        const move = game.bot(prev, seat, styleFor(personaFor(bots[seat - 1]!).style, settings.skill));
+        const move = botMove(job(prev));
         if (!move) return prev;
         try {
           const next = game.apply(prev, seat, move);
@@ -79,7 +127,8 @@ export function LocalKit({ game: id, name, rules, seats, seed, onLeave }: { game
         }
       });
       setTick((t) => t + 1);
-    }, game.reactionTime?.(state, seat, styleFor(personaFor(bots[seat - 1]!).style, settings.skill)) ?? insideTheClock(seat, paceDelay(settings.pace, () => Math.round(game.thinkingTime(state, seat) * personaFor(bots[seat - 1]!).pace * (0.8 + Math.random() * 0.5)))));
+    };
+    pending.current = setTimeout(() => void play(), game.reactionTime?.(state, seat, style(seat)) ?? insideTheClock(seat, paceDelay(settings.pace, () => Math.round(game.thinkingTime(state, seat) * personaFor(bots[seat - 1]!).pace * (0.8 + Math.random() * 0.5)))));
   }, [state, bots, settings, tick]);
   useEffect(
     () => () => {
@@ -87,6 +136,7 @@ export function LocalKit({ game: id, name, rules, seats, seed, onLeave }: { game
       // no computer player would move again (React's StrictMode remounts every table once in dev).
       if (pending.current) clearTimeout(pending.current);
       pending.current = null;
+      turn.current = null;
     },
     [],
   );

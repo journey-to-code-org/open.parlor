@@ -108,6 +108,8 @@ export interface Overview {
   blocked: number;
   houses: number;
   designs: { total: number; shared: number; hidden: number };
+  /** The computer players' thinking in worker threads; null when the server thinks on its main thread. */
+  bots?: { workers: number; queued: number; running: number; thinks: number; averageMs: number; worstMs: number; abandoned: number } | null;
 }
 
 export interface LogEntry {

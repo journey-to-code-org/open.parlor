@@ -1,7 +1,7 @@
 // The games on the kit, card games, board games and table sports alike, in the card room: one room definition
 // serves them all. A room's options say which game, its house rules and how many seats. Nothing
 // here looks inside a view, so it doesn't matter what a game's table is made of.
-import { kitGame, SPORT_GAMES, type BoardView, type KitGameId, type KitSummary, type KitView, type SportView, type TableGame } from "@cardroom/games";
+import { kitGame, QUICK_STYLE, SPORT_GAMES, type BoardView, type KitGameId, type KitSummary, type KitView, type SportView, type TableGame, type ThinkBudget } from "@cardroom/games";
 import { paceDelay, personaFor, styleFor, type TableSettings } from "@spades/rules";
 import type { Deadline, RoomDefinition, TableInfo } from "@spades/rooms/server";
 
@@ -69,19 +69,36 @@ export const kitRoom: RoomDefinition<{ game: KitGameId } & Record<string, unknow
   botDelay: (state, seat, name, settings?: TableSettings) =>
     gameFor(state.game).reactionTime?.(state, seat, styleFor(personaFor(name).style, settings?.skill)) ??
     insideTheClock(state, seat, paceDelay(settings?.pace ?? "natural", () => Math.round(gameFor(state.game).thinkingTime(state, seat) * personaFor(name).pace * (0.8 + Math.random() * 0.5)))),
-  bot: (state, seat, name, settings?: TableSettings) => gameFor(state.game).bot(state, seat, styleFor(personaFor(name).style, settings?.skill)),
+  bot: (state, seat, name, settings?: TableSettings) => kitBot(state, seat, name, settings),
   // The game's own clock, if it has one running (a shot clock). The table's turn timer is added in games.ts.
   deadline: gameDeadline,
 };
 
+type KitState = { game: KitGameId } & Record<string, unknown>;
+
+/**
+ * A computer player's move: the game's own bot, playing in its persona's style or at the table's
+ * level. `budget` is how long it may think, for a game that uses the time (see `TableGame.bot`).
+ * `quick` asks for a move that takes no thought at all, whoever the bot is: what a seat plays when
+ * its real think had to be given up on.
+ */
+export function kitBot(state: KitState, seat: number, name: string, settings?: TableSettings | null, budget?: ThinkBudget, quick = false): Record<string, unknown> | null {
+  return gameFor(state.game).bot(state, seat, quick ? QUICK_STYLE : styleFor(personaFor(name).style, settings?.skill), undefined, budget);
+}
+
+/** Whether that move is worth working out off the main thread (see `TableGame.heavy`). */
+export const kitHeavy = (state: KitState, seat: number): boolean => gameFor(state.game).heavy?.(state, seat) ?? false;
+
 /**
  * The move the turn timer makes for a person who has run out of time: the computer player's move
  * on the board. Where a game's computer player would do something else first (answer an offer),
- * the game says what that move is (`TableGame.play`); nobody's offer is answered for them.
+ * the game says what that move is (`TableGame.play`); nobody's offer is answered for them. It is
+ * worked out on the main thread, there and then, so a game that thinks by the clock is given a short
+ * `budget` for it.
  */
-export function kitTimeoutMove(state: { game: KitGameId } & Record<string, unknown>, seat: number, name: string, settings?: TableSettings): Record<string, unknown> | null {
+export function kitTimeoutMove(state: { game: KitGameId } & Record<string, unknown>, seat: number, name: string, settings?: TableSettings, budget?: ThinkBudget): Record<string, unknown> | null {
   const game = gameFor(state.game);
-  return (game.play ?? game.bot).call(game, state, seat, styleFor(personaFor(name).style, settings?.skill));
+  return (game.play ?? game.bot).call(game, state, seat, styleFor(personaFor(name).style, settings?.skill), undefined, budget);
 }
 
 /** Ms of the wait for the next move that have gone by already, over an offer and its answer (`TableGame.spent`). */
