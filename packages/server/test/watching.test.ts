@@ -107,3 +107,70 @@ describe("watching a table with people at it", () => {
     expect(GAMES.length).toBe(KIT_GAMES.length + 2);
   });
 });
+
+// Combat: each seat has a grid of its own. Squares where two fleets happen to overlap look alike
+// from both seats, so the watch view has to leave those grids out rather than compare them.
+describe("watching Combat", () => {
+  it("shows nobody's fleet, even where the two fleets share a square", async () => {
+    const { kitGame } = await import("@cardroom/games");
+    const { watchView } = await import("../src/games.js");
+    const combat = kitGame("combat")! as unknown as { presets: unknown[]; newGame(rules: unknown, seats: number, seed: number): unknown; apply(s: unknown, seat: number, move: unknown): unknown; view(s: unknown, seat: number): { grids: { id: string; cells: unknown[] }[] } };
+    let overlapped = 0;
+    for (let seed = 1; seed <= 25; seed++) {
+      let s = combat.newGame(combat.presets[0], 2, seed);
+      for (const seat of [0, 1]) s = combat.apply(s, seat, { type: "auto" });
+      const seats = [0, 1].map((seat) => combat.view(s, seat));
+      const mine = seats.map((v) => v.grids.find((g) => g.id === "mine")!.cells);
+      if (mine[0]!.some((p, i) => p && mine[1]![i])) overlapped++;
+      const watch = watchView("combat", seats) as { grids: { cells: unknown[] }[]; reserves: unknown[] };
+      expect(watch.grids.flatMap((g) => (g?.cells ?? []).filter(Boolean)), `seed ${seed}`).toEqual([]);
+      expect(watch.reserves).toEqual([]);
+    }
+    // The test means something only if fleets did overlap.
+    expect(overlapped).toBeGreaterThan(0);
+  });
+
+  it("leaves a card game's grids alone: Golf's cards in front of each player are for everyone", async () => {
+    const { kitGame } = await import("@cardroom/games");
+    const { watchView } = await import("../src/games.js");
+    const golf = kitGame("golf")! as unknown as { presets: unknown[]; newGame(rules: unknown, seats: number, seed: number): unknown; view(s: unknown, seat: number): { grids?: unknown[] } };
+    const s = golf.newGame(golf.presets[0], 3, 7);
+    const seats = [0, 1, 2].map((seat) => golf.view(s, seat));
+    expect(seats[0]!.grids).toHaveLength(3);
+    expect((watchView("golf", seats) as { grids: unknown[] }).grids).toHaveLength(3);
+  });
+});
+
+// A table sport: every seat's world holds only that seat's ball, so the seats' tables never match.
+// The watch view has to be a table that can be drawn all the same.
+describe("watching a table sport", () => {
+  it("gives the watcher a whole table and the last shot, and nothing to strike", async () => {
+    const { SPORT_GAMES } = await import("@cardroom/games");
+    const { watchView } = await import("../src/games.js");
+    type Body = { id: string; x: number; y: number } | null;
+    type Sport = { shoot: { body: string; minPower: number } | null; choices: unknown; table: { world: { bodies: Body[] }; bodies: unknown[] }; last: { from: Body[]; rest: Body[] } | null };
+    for (const game of SPORT_GAMES as unknown as { id: GameId; presets: unknown[]; newGame(rules: unknown, seats: number, seed: number): unknown; apply(s: unknown, seat: number, move: unknown): unknown; view(s: unknown, seat: number): Sport }[]) {
+      let s = game.newGame(game.presets[0], 2, 7);
+      const check = () => {
+        const watch = watchView(game.id, [0, 1].map((seat) => game.view(s, seat))) as Sport;
+        expect(watch.shoot, game.id).toBeNull();
+        expect(watch.choices, game.id).toBeNull();
+        expect(watch.table.world.bodies.length, game.id).toBeGreaterThan(0);
+        for (const b of [...watch.table.world.bodies, ...watch.table.bodies, ...(watch.last?.from ?? []), ...(watch.last?.rest ?? [])]) expect(b, game.id).toBeTruthy();
+        return watch;
+      };
+      check();
+      // A few shots each, whoever may shoot.
+      let shots = 0;
+      for (let i = 0; i < 12; i++) {
+        const seat = [0, 1].find((n) => game.view(s, n).shoot);
+        if (seat === undefined) break;
+        const shoot = game.view(s, seat).shoot!;
+        s = game.apply(s, seat, { type: "shot", body: shoot.body, angle: (i * 4700) % 36000, power: shoot.minPower + 200 });
+        shots++;
+        check();
+      }
+      expect(shots, game.id).toBeGreaterThan(0);
+    }
+  });
+});
