@@ -3,7 +3,7 @@
 // A room's options say which game it is. Spades rooms keep the options they always had (the house
 // rules themselves), so tables and logs from before there were other games still work; any other
 // game's options carry `game`.
-import { KIT_GAMES, isKitGame, kitGame, kitGreet, reactToKit, type KitGameId } from "@cardroom/games";
+import { KIT_GAMES, isKitGame, isSportGame, kitGame, kitGreet, reactToKit, type KitGameId } from "@cardroom/games";
 import { palaceGreet, palaceReplyTo, reactToPalace, type PalaceState } from "@cardroom/palace";
 import { sharedView, type RoomDefinition } from "@spades/rooms/server";
 import { cleanSettings, greet, reactToMove, replyTo, type GameState, type RulePreset, type Seat } from "@spades/rules";
@@ -79,6 +79,16 @@ export function watchView(game: GameId, views: unknown[]): unknown {
   const seats = views as Any[];
   if (game === "spades") return sharedView(seats, { blank: { hand: [], legal: [], myPass: null }, from: { seat: 0, keys: ["seat", "team", "partner", "teamSeats"] } });
   if (game === "palace") return sharedView(seats, { blank: { hand: [], can: null }, from: { seat: 0, keys: ["you"] } });
+  // A table sport has nothing hidden: every ball is in plain sight of everyone. What can differ
+  // between seats is which table they are shown (played all at once, mini golf gives each seat
+  // the hole with its own ball on it and the others as ghosts, and the last shot it took itself).
+  // Compared part by part those would come out as a ball with no place, so a watcher is given the
+  // first seat's table and the shot that goes with it, whole, and nobody's aim or buttons.
+  if (isSportGame(game)) {
+    const view = sharedView(seats, { blank: { shoot: null, choices: null }, from: { seat: 0, keys: ["me", "table", "last"] } });
+    if (Array.isArray(view.info)) view.info = view.info.filter((line) => typeof line === "string");
+    return view;
+  }
   // A board that belongs to one seat (a fleet in Combat) is nobody else's, and neither is what that
   // seat holds off the board. Left in, two fleets that happened to overlap would show where: the
   // seats' views are compared part by part, and a watcher can be someone sitting at the table.
