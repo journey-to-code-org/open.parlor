@@ -547,8 +547,12 @@ function view(s: GoState, seat: number): BoardView {
 // has no move that isn't filling its own eye; and (so that two of them always finish) when the game
 // has gone on absurdly long. It doesn't give up a lost game: a person who wants out resigns.
 
-/** Playouts a millisecond for a full-strength player, by board size. */
-const PLAYOUTS_PER_MS: Record<number, number> = { 9: 8, 13: 3.2, 19: 1.2 };
+/**
+ * Playouts a millisecond for a full-strength player, by board size. A search manages about 11 to
+ * 14 on 9×9, 7 to 10 on 13×13 and 3.5 to 5.5 on 19×19 on the machine this was written on (two
+ * shared cores), from the opening to the endgame.
+ */
+const PLAYOUTS_PER_MS: Record<number, number> = { 9: 8, 13: 5, 19: 2.4 };
 /** The time a think is rationed for when nobody says how long it may take. */
 const UNTIMED_MS = 15;
 /** The share of a budget a think uses: the rest is for getting the move back to the table. */
