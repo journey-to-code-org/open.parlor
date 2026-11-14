@@ -65,7 +65,7 @@ export const RAIL_HEIGHT = 260;
 /** What every hole shares: how the green plays. A full-power putt on open ground rolls about four metres. */
 const GREEN = { tickRate: 120, maxTicks: 2400, friction: GREEN_FRICTION, restSpeed: 100, restitution: 0.9, wallRestitution: 0.7, maxShotSpeed: 22000 };
 
-/** Every hole is drawn in the same portrait picture, so the ball is the same size on all of them; a wide hole lies on its side. */
+/** Every hole is laid out in the same portrait picture, with room round it for the garden; a wide hole lies on its side. */
 const PORTRAIT = { x: 0, y: 0, w: 10400, h: 14000 };
 const LANDSCAPE = { x: 0, y: 0, w: 14000, h: 10400 };
 
@@ -102,20 +102,34 @@ interface Slope {
   shape: Shape;
   /** The pull on a ball here, in units/s²: which way is downhill, and how steep. */
   pull: Point;
+  /** How much higher its top is than its foot, to look at. Left out: worked out from the pull. */
+  rise?: number;
+}
+
+/** How high a slope climbs when a hole doesn't say: steeper pulls and longer runs climb further. */
+function riseOf(s: Slope): number {
+  const steep = Math.sqrt(s.pull[0] * s.pull[0] + s.pull[1] * s.pull[1]);
+  if (s.rise !== undefined || steep === 0) return s.rise ?? 0;
+  const points: Point[] = "points" in s.shape ? s.shape.points : [[s.shape.x - s.shape.r, s.shape.y - s.shape.r], [s.shape.x + s.shape.r, s.shape.y + s.shape.r]];
+  const along = points.map((p) => (p[0] * s.pull[0] + p[1] * s.pull[1]) / steep);
+  return Math.round(((Math.max(...along) - Math.min(...along)) * steep) / 30000);
 }
 
 /**
  * A round hill (or with a negative pull, a bowl): a ring of eight wedges from `inner` to `outer`
  * round a centre, each sloping straight away from it. Inside `inner` it is flat.
  */
-function mound(cx: number, cy: number, inner: number, outer: number, pull: number): Slope[] {
+function mound(cx: number, cy: number, inner: number, outer: number, pull: number, rise?: number): Slope[] {
   return COMPASS.map(([ux, uy], k) => {
     const [ax, ay] = BETWEEN[(k + 7) % 8]!;
     const [bx, by] = BETWEEN[k]!;
     const at = (r: number, x: number, y: number): Point => [Math.round(cx + r * x), Math.round(cy + r * y)];
-    return { shape: { points: [at(inner, ax, ay), at(outer, ax, ay), at(outer, bx, by), at(inner, bx, by)] }, pull: [Math.round(pull * ux), Math.round(pull * uy)] };
+    return { shape: { points: [at(inner, ax, ay), at(outer, ax, ay), at(outer, bx, by), at(inner, bx, by)] }, pull: [Math.round(pull * ux), Math.round(pull * uy)], ...(rise !== undefined ? { rise } : {}) };
   });
 }
+
+/** The flat top of a mound: the ground inside its ring of wedges. */
+const moundTop = (cx: number, cy: number, inner: number): Point[] => BETWEEN.map(([x, y]): Point => [Math.round(cx + inner * x), Math.round(cy + inner * y)]);
 
 interface HoleSpec {
   id: string;
@@ -136,7 +150,12 @@ interface HoleSpec {
   scenery?: SportGround[];
   /** The grass: one or more patches. */
   green: Point[][];
-  /** Patches that stand higher than the rest (terraces), or are something other than grass to look at (a plank bridge). They play like the green. */
+  /** How far the green stands above the garden round it. Left out: level with it. */
+  level?: number;
+  /**
+   * Patches that stand at a level of their own (terraces; a `level` is above the garden, like the
+   * green's), or are something other than grass to look at (a plank bridge). They play like the green.
+   */
   decks?: { points: Point[]; surface?: SportSurface; level?: number }[];
   /** The rails. Left out: one round each patch of green. */
   rails?: { points: Point[]; closed?: boolean; material?: SportMaterial }[];
@@ -232,13 +251,13 @@ export function hole(spec: HoleSpec): GolfHole {
       base: spec.base ?? "lawn",
       ground: [
         ...(spec.scenery ?? []),
-        ...spec.green.map((points): SportGround => ({ shape: { points }, surface: "green" })),
-        ...(spec.decks ?? []).map((d): SportGround => ({ shape: { points: d.points }, surface: d.surface ?? "green", ...(d.level ? { level: d.level } : {}) })),
+        ...spec.green.map((points): SportGround => ({ shape: { points }, surface: "green", ...(spec.level ? { level: spec.level } : {}) })),
+        ...(spec.decks ?? []).map((d): SportGround => ({ shape: { points: d.points }, surface: d.surface ?? "green", ...(d.level !== undefined ? { level: d.level } : {}) })),
         ...(spec.sand ?? []).map((shape): SportGround => ({ shape, surface: "sand" })),
         ...(spec.turf ?? []).map((points): SportGround => ({ shape: { points }, surface: "green" })),
         ...(spec.water ?? []).map((shape): SportGround => ({ shape, surface: "water" })),
       ],
-      regions: regions.flatMap((r): SportLook["regions"] => (r.out ? [{ id: r.id, surface: "water" }] : r.slope ? [{ id: r.id, surface: "slope" }] : r.id.startsWith("sand") ? [{ id: r.id, surface: "sand" }] : [])),
+      regions: regions.flatMap((r): SportLook["regions"] => (r.out ? [{ id: r.id, surface: "water" }] : r.slope ? [{ id: r.id, surface: "slope", rise: riseOf(spec.slopes![Number(r.id.slice(6)) - 1]!) }] : r.id.startsWith("sand") ? [{ id: r.id, surface: "sand" }] : [])),
       rails: rails.map((r, i) => ({ wall: `rail-${i + 1}`, material: r.material ?? material, side: railSide(r.points, r.closed === true, grounds), width: RAIL_WIDTH, height: RAIL_HEIGHT })),
       blocks: (spec.blocks ?? []).map((b, i) => ({ wall: `block-${i + 1}`, kind: b.kind, height: b.height ?? 500 })),
       ledges: (spec.ledges ?? []).map((l, i) => ({ wall: `ledge-${i + 1}`, drop: l.drop, material: l.material ?? "stone" })),
@@ -246,7 +265,7 @@ export function hole(spec: HoleSpec): GolfHole {
       pockets: "cup",
       decor: [{ kind: "tee", x: spec.tee[0], y: spec.tee[1], angle: spec.teeFacing ?? 27000 }, ...(spec.decor ?? [])],
     },
-    fixtures: bumpers.map((b) => ({ id: b.id, owner: null, kind: "toadstool", tone: "red", label: "a toadstool", height: 450 })),
+    fixtures: bumpers.map((b) => ({ id: b.id, owner: null, kind: "toadstool", tone: "red", label: "a toadstool", height: 640 })),
   };
 }
 
@@ -380,9 +399,9 @@ const drainpipe = hole({
   green: [cut(1200, 1000, 9200, 13000, 1200)],
   // Three rocks shoulder to shoulder from the left-hand rail; the gap is on the right.
   blocks: [
-    { points: [[1200, 6000], [2300, 5800], [3100, 6300], [3100, 7700], [2200, 8000], [1200, 7800]], kind: "rock", height: 800 },
-    { points: [[3100, 6300], [4100, 6300], [4100, 7700], [3100, 7700]], kind: "rock", height: 900 },
-    { points: [[4100, 6300], [5400, 5900], [6900, 6200], [7400, 6900], [6800, 7900], [5300, 8100], [4100, 7700]], kind: "rock", height: 1000 },
+    { points: [[1200, 6000], [2300, 5800], [3100, 6300], [3100, 7700], [2200, 8000], [1200, 7800]], kind: "rock", height: 520 },
+    { points: [[3100, 6300], [4100, 6300], [4100, 7700], [3100, 7700]], kind: "rock", height: 600 },
+    { points: [[4100, 6300], [5400, 5900], [6900, 6200], [7400, 6900], [6800, 7900], [5300, 8100], [4100, 7700]], kind: "rock", height: 680 },
   ],
   tunnels: [{ kind: "pipe", from: [3600, 7780], r: 400, to: [3600, 6040], angle: 27000, speed: 5200, ticks: 40, enter: 27000, out: [3600, 6220] }],
   sand: [{ points: [[7700, 6500], [9200, 6100], [9200, 8000], [7900, 7900]] }],
@@ -481,16 +500,17 @@ const terraces = hole({
   // The top-left corner is a slanted board: a firm putt up the ramp is turned along the top terrace.
   green: [[[3400, 1000], [8400, 1000], [9200, 1800], [9200, 12200], [8400, 13000], [2000, 13000], [1200, 12200], [1200, 3200]]],
   decks: [
-    { points: [[3400, 1000], [8400, 1000], [9200, 1800], [9200, 4400], [1200, 4400], [1200, 3200]], level: 600 },
-    { points: rect(3900, 4400, 9200, 8600), level: 300 },
+    { points: [[3400, 1000], [8400, 1000], [9200, 1800], [9200, 4400], [1200, 4400], [1200, 3200]], level: 900 },
+    // The middle terrace runs on under the fence.
+    { points: rect(3600, 4400, 9200, 8600), level: 450 },
   ],
   // The fence between the ramp and the middle terrace.
   blocks: [{ points: rect(3600, 4400, 3900, 8600), kind: "timber", height: 400 }],
   ledges: [
-    { points: [[3900, 4400], [9200, 4400]], drop: 300 },
-    { points: [[3900, 8600], [9200, 8600]], drop: 300 },
+    { points: [[3900, 4400], [9200, 4400]], drop: 450 },
+    { points: [[3900, 8600], [9200, 8600]], drop: 450 },
   ],
-  slopes: [{ shape: { points: rect(1200, 4400, 3600, 8600) }, pull: [0, 7500] }],
+  slopes: [{ shape: { points: rect(1200, 4400, 3600, 8600) }, pull: [0, 7500], rise: 900 }],
   decor: [
     { kind: "rock", x: 9800, y: 4400, r: 520 },
     { kind: "rock", x: 9750, y: 8600, r: 470 },
@@ -512,7 +532,8 @@ const moleRun = hole({
   tee: [6900, 11700],
   cup: [3300, 2700],
   green: [[[2400, 1000], [6200, 1000], [7200, 2000], [7200, 5200], [9200, 7200], [9200, 12000], [8200, 13000], [3800, 13000], [2800, 12000], [2800, 7600], [1400, 6200], [1400, 2000]]],
-  slopes: mound(3300, 2700, 600, 1500, 6500),
+  slopes: mound(3300, 2700, 600, 1500, 6500, 240),
+  decks: [{ points: moundTop(3300, 2700, 600), level: 240 }],
   tunnels: [
     // The decoy, right on the line to the cup: it brings the ball back towards the tee.
     { kind: "burrow", from: [5300, 7600], r: 420, maxSpeed: 14000, to: [4200, 11600], angle: 1500, speed: 2600, ticks: 50, enter: 9000 },
@@ -544,8 +565,9 @@ const wholeGarden = hole({
   cup: [7700, 10100],
   // A horseshoe: up the left leg, across the top, down the right.
   green: [[[2200, 1000], [8200, 1000], [9200, 2000], [9200, 10600], [8400, 11400], [7000, 11400], [6200, 10600], [6200, 4200], [4200, 4200], [4200, 12200], [3400, 13000], [2000, 13000], [1200, 12200], [1200, 2000]]],
-  // The last green is a step down from everything else.
-  decks: [{ points: [[6200, 8600], [9200, 8600], [9200, 10600], [8400, 11400], [7000, 11400], [6200, 10600]], level: -300 }],
+  // The whole green is a raised bed, and the last of it is a step back down to the lawn.
+  level: 300,
+  decks: [{ points: [[6200, 8600], [9200, 8600], [9200, 10600], [8400, 11400], [7000, 11400], [6200, 10600]], level: 0 }],
   ledges: [{ points: [[6200, 8600], [9200, 8600]], drop: 300, material: "timber" }],
   water: [{ x: 2100, y: 7300, r: 950 }],
   sand: [{ points: octagon(5200, 2600, 1050) }],

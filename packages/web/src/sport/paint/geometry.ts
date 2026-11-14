@@ -1,14 +1,15 @@
-// The few sums the drawing needs: paths, polygons pushed in or out, and which way a face looks.
+// The few sums that painting on the ground needs: paths, polygons pushed in or out, and which way
+// an edge looks. These work on the map of a table (see course.ts); what stands up is in solids.ts.
 import type { Point, Shape } from "@cardroom/physics";
 
 export type Ctx = CanvasRenderingContext2D;
 
-/** What every drawing routine is handed: the canvas, how big a CSS pixel is in world units, and where the light falls. */
+/** What every routine that paints on the ground is handed: the canvas, how big a CSS pixel is in world units, and where the light falls. */
 export interface Brush {
   ctx: Ctx;
   /** One CSS pixel, in world units. Line widths are given in these so they don't thin out on a small screen. */
   px: number;
-  /** The way shadows fall, as a unit vector in the world: the light is at the top left of the screen, however the table is turned. */
+  /** The way shadows fall along the ground, as a unit vector in the camera's frame: the light is at the upper left of the screen, however the table is turned. */
   light: Point;
 }
 

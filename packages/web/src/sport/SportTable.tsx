@@ -21,9 +21,11 @@ import { Bubble, TableChat, useBubbles, type ChatProps } from "../Chat";
 import { Confetti } from "../Confetti";
 import { loadFeedbackSettings, play, saveFeedbackSettings } from "../feedback/sounds";
 import { named, ResultTable } from "../kit/KitTable";
+import { viewSetting } from "../display";
 import { reducedMotion } from "../motion";
 import { TableSettingsButton } from "../TableSettings";
-import { drawScene, fitFrame, powerColour, toneColour, toWorldVector, type Aim, type Disc, type Effect, type Fit } from "./draw";
+import { drawScene, playFrame, powerColour, toneColour, type Aim, type Disc, type Effect } from "./draw";
+import { fitFrame, TILT, unprojectVector, type Projection } from "./projection";
 import { advanceRoll, beginRoll, finishRoll, landed, type Roll } from "./roll";
 
 export interface SportTableProps {
@@ -59,6 +61,8 @@ interface Pull {
 const CANCEL_ZONE = 16;
 const wrap = (angle: number) => ((Math.round(angle) % 36000) + 36000) % 36000;
 const GHOST_MS = 320;
+/** How long a ball is seen going into a tunnel. */
+const GONE_MS = 200;
 
 /** The body a view lets you strike, where it lies. */
 const strikable = (v: SportView) => (v.shoot ? (v.table.world.bodies.find((b) => b.id === v.shoot!.body) ?? null) : null);
@@ -136,7 +140,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
   const canvas = useRef<HTMLCanvasElement>(null);
   const box = useRef({ w: 0, h: 0, dpr: 1 });
   const sign = useRef<HTMLDivElement>(null);
-  const fit = useRef<Fit>({ scale: 1, ox: 0, oy: 0, turn: 0 });
+  const fit = useRef<Projection>({ scale: 1, ox: 0, oy: 0, turn: 0, tilt: 0 });
   const lastPaint = useRef(0);
   const frame = useRef(0);
   const lastFrame = useRef(0);
@@ -159,7 +163,8 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     // and the garden carries on underneath.
     const board = sign.current;
     const over = board && getComputedStyle(board).position === "absolute" ? board.offsetTop + board.offsetHeight + 4 : 0;
-    fit.current = fitFrame(table.look.frame, w, h, { top: over });
+    // Seen from an angle unless this device has asked for the plan view: the same drawing with no tilt.
+    fit.current = fitFrame(playFrame(table), w, h, { top: over, tilt: viewSetting() === "above" ? 0 : TILT });
     lastPaint.current = now;
     const looks = new Map<string, SportBody>(table.bodies.map((b) => [b.id, b]));
     // What lies still: the bodies and ghosts of the view on screen (of the shot's own table, if
@@ -182,9 +187,12 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     if (r) {
       for (const [id, at] of r.at) {
         const dropped = r.sunk.get(id);
-        if (!at.live && dropped === undefined) continue;
+        // A ball that has just gone into a tunnel is seen going in, for a moment.
+        const entered = r.entered.get(id);
+        const gone = entered && !at.live && r.clock - entered.at < GONE_MS ? (r.clock - entered.at) / GONE_MS : undefined;
+        if (!at.live && dropped === undefined && gone === undefined) continue;
         const hit = r.struck.get(id);
-        discs.push({ id, x: at.x, y: at.y, r: at.r, look: looks.get(id), sunk: dropped === undefined ? 0 : Math.min(1, (r.clock - dropped) / 260), struck: hit === undefined ? 0 : Math.max(0, 1 - (r.clock - hit) / 180) });
+        discs.push({ id, x: at.x, y: at.y, r: at.r, look: looks.get(id), sunk: dropped === undefined ? 0 : Math.min(1, (r.clock - dropped) / 260), struck: hit === undefined ? 0 : Math.max(0, 1 - (r.clock - hit) / 180), ...(gone !== undefined && dropped === undefined ? { gone, tunnel: entered!.tunnel } : {}) });
       }
       for (const e of r.effects) {
         const life = e.kind === "splash" ? 650 : e.kind === "drop" ? 420 : 380;
@@ -226,6 +234,15 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     frame.current = requestAnimationFrame(loop);
   }, [paint]);
   useEffect(() => () => cancelAnimationFrame(frame.current), []);
+  // This device's choice of view (from an angle, or from above) is kept on the page: draw again when it changes.
+  useEffect(() => {
+    const watch = new MutationObserver(() => {
+      paint(performance.now());
+      wake();
+    });
+    watch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-view"] });
+    return () => watch.disconnect();
+  }, [paint, wake]);
 
   // ---- Sounds, from what the simulation says happened -------------------------------------------
   const lastKnock = useRef(0);
@@ -410,9 +427,11 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     const far = Math.hypot(dx, dy);
     p.cancel = far < CANCEL_ZONE;
     if (p.cancel) return setAim(p.before);
-    // The ball goes the opposite way to the pull, as the table is drawn (which may be on its
-    // side). Any maths will do here: what is kept is rounded.
-    const [wx, wy] = toWorldVector(fit.current, dx, dy);
+    // The ball goes the opposite way to the pull along the ground: the drag across the screen is
+    // taken back through the same projection the table is drawn with (it may be on its side, and
+    // it is seen at an angle), so the aim line on the turf points exactly away from the thumb.
+    // Any maths will do here: what is kept is rounded.
+    const [wx, wy] = unprojectVector(fit.current, dx, dy);
     const angle = wrap((Math.atan2(-wy, -wx) * 18000) / Math.PI);
     const share = Math.min(1, (far - CANCEL_ZONE) / (fullPull() - CANCEL_ZONE));
     setAim({ angle, power: clampPower(shown.shoot.minPower + share * (shown.shoot.maxPower - shown.shoot.minPower)) });
@@ -540,7 +559,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
               📋
             </button>
           )}
-          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} />}
+          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} sport />}
           <button type="button" className="sound-toggle inline" onClick={toggleSound} aria-pressed={soundOn} aria-label={soundOn ? "Turn sounds off" : "Turn sounds on"}>
             {soundOn ? "🔊" : "🔇"}
           </button>
