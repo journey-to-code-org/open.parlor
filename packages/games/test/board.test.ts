@@ -54,6 +54,30 @@ export function checkBoardView(v: BoardView, seat: number) {
     // A private grid is only ever sent to the seat it belongs to.
     if (g.owner !== undefined) expect(g.owner).toBe(seat);
     for (const piece of g.cells) if (piece) expect(piece.glyph && piece.label && piece.kind).toBeTruthy();
+    // A stack is a whole number of pieces, and when it says which they are it names each of them, once on the whole board.
+    const stacked = g.cells.flatMap((piece) => piece?.ids ?? []);
+    expect(new Set(stacked).size).toBe(stacked.length);
+    for (const piece of g.cells) {
+      if (piece?.count !== undefined) expect(Number.isInteger(piece.count) && piece.count >= 1, `a stack of ${piece.count}`).toBe(true);
+      if (piece?.ids) expect(piece.ids).toHaveLength(piece.count ?? 1);
+    }
+    // A track is made of cells of this grid, each once: the places along it, then a bar and a home for every seat.
+    if (g.track) {
+      const { path, bar = [], home = [] } = g.track;
+      const places = [...path, ...bar, ...home];
+      expect(path.length).toBeGreaterThan(0);
+      for (const cell of places) expect(on(cell)).toBe(true);
+      expect(new Set(places).size).toBe(places.length);
+      for (const beside of [bar, home]) if (beside.length) expect(beside).toHaveLength(v.seats);
+    }
+  }
+  if (v.cube) {
+    // The cube shows a power of two, and is in the middle or on the side of someone at the table.
+    const { value, owner, offered } = v.cube;
+    expect(Number.isInteger(Math.log2(value)) && value >= 1, `a cube on ${value}`).toBe(true);
+    for (const who of [owner, offered]) if (who !== null) expect(Number.isInteger(who) && who >= 0 && who < v.seats).toBe(true);
+    // Only whoever could turn it can have offered it.
+    if (offered !== null && owner !== null) expect(offered).toBe(owner);
   }
   for (const r of v.reserves) for (const p of r.pieces) expect(p.count).toBeGreaterThanOrEqual(0);
   if (v.dice) {
@@ -157,6 +181,21 @@ describe("the board kit's helpers", () => {
     expect(() => checkBoardView({ ...rolled, dice: { ...rolled.dice!, owner: 1 } }, 0)).toThrow();
     expect(() => checkBoardView({ ...rolled, sheet: { ...rolled.sheet!, pick: { type: "score", cells: [{ column: 0, would: "1" }] } } }, 0)).toThrow();
     expect(() => checkBoardView({ ...rolled, sheet: { ...rolled.sheet!, pick: { type: "score", cells: [{ column: 1, would: "1" }] } } }, 0)).toThrow();
+    // A track of points with stacks on them, and a cube: the stacks, the track and the cube all have to add up.
+    const stack = { ...piece, kind: "checker", count: 3, ids: ["c0", "c1", "c2"] };
+    const points: BoardView = { ...base, cube: { value: 2, owner: 1, offered: null, dead: false }, grids: [{ ...grid, cells: [stack, null, null, { ...stack, owner: 1, count: 1, ids: ["c3"] }, null, null], track: { kind: "points", path: [0, 1, 3, 4], bar: [2, 5], home: [] }, flip: "rows", select: { type: "move", sources: [{ from: 0, to: [1] }], quick: true } }] };
+    checkBoardView(points, 0);
+    expect(movesOffered(points)).toEqual([{ type: "move", from: 0, to: 1 }]);
+    const pointsGrid = points.grids[0]!;
+    expect(() => checkBoardView({ ...points, grids: [{ ...pointsGrid, cells: [{ ...stack, count: 2 }, null, null, null, null, null] }] }, 0)).toThrow();
+    expect(() => checkBoardView({ ...points, grids: [{ ...pointsGrid, cells: [stack, stack, null, null, null, null] }] }, 0)).toThrow();
+    expect(() => checkBoardView({ ...points, grids: [{ ...pointsGrid, cells: [{ ...stack, count: 0, ids: [] }, null, null, null, null, null] }] }, 0)).toThrow();
+    expect(() => checkBoardView({ ...points, grids: [{ ...pointsGrid, track: { kind: "points", path: [0, 1, 1] } }] }, 0)).toThrow();
+    expect(() => checkBoardView({ ...points, grids: [{ ...pointsGrid, track: { kind: "points", path: [0, 9] } }] }, 0)).toThrow();
+    expect(() => checkBoardView({ ...points, grids: [{ ...pointsGrid, track: { kind: "points", path: [0, 1], bar: [2] } }] }, 0)).toThrow();
+    expect(() => checkBoardView({ ...points, cube: { value: 3, owner: null, offered: null, dead: false } }, 0)).toThrow();
+    expect(() => checkBoardView({ ...points, cube: { value: 2, owner: 5, offered: null, dead: false } }, 0)).toThrow();
+    expect(() => checkBoardView({ ...points, cube: { value: 2, owner: 1, offered: 0, dead: false } }, 0)).toThrow();
     // With two boards, a move says which one it's on.
     const two = { ...base, grids: [{ ...grid, id: "theirs", tap: { type: "shoot", cells: [3] } }, { ...grid, id: "mine", owner: 0 }] };
     checkBoardView(two, 0);

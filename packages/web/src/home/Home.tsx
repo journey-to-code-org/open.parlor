@@ -63,7 +63,7 @@ const FANS: Record<string, object[]> = {
 };
 
 /** A board game's tile shows a little board instead: a position that says what the game is about. */
-type MiniBoard = { cols: number; cells: ({ glyph: string; tone: string; shade?: "dark" } | null)[]; shade?: "green" };
+type MiniBoard = { cols: number; cells: ({ glyph: string; tone: string; shade?: "dark" | "point-down" | "point-up" } | null)[]; shade?: "green" | "points" };
 const X = { glyph: "✕", tone: "red" };
 const O = { glyph: "◯", tone: "blue" };
 const DARK = { glyph: "●", tone: "dark" };
@@ -78,6 +78,11 @@ const SQUARE = { glyph: "", tone: "none", shade: "dark" as const };
 const MAN_DARK = { ...SQUARE, glyph: "●", tone: "dark" };
 const MAN_LIGHT = { ...SQUARE, glyph: "●", tone: "light" };
 const KING_DARK = { ...SQUARE, glyph: "♛", tone: "dark" };
+// Backgammon: a few points from each side of the board, with checkers standing on them.
+const DOWN = { glyph: "", tone: "none", shade: "point-down" as const };
+const UP = { glyph: "", tone: "none", shade: "point-up" as const };
+const CHECKER_LIGHT = { glyph: "●", tone: "light" };
+const CHECKER_DARK = { glyph: "●", tone: "dark" };
 const BOARDS: Record<string, MiniBoard> = {
   tictactoe: { cols: 3, cells: [X, O, null, null, X, O, O, null, X] },
   // The bottom of a rack: red about to make four on the slant.
@@ -86,6 +91,7 @@ const BOARDS: Record<string, MiniBoard> = {
   // Light to move: c1 traps the dark disc beside it.
   reversi: { cols: 4, shade: "green", cells: [null, null, null, null, null, DARK, LIGHT, null, DARK, DARK, DARK, null, null, null, LIGHT, null] },
   checkers: { cols: 4, cells: [null, MAN_LIGHT, null, MAN_LIGHT, SQUARE, null, KING_DARK, null, null, MAN_LIGHT, null, SQUARE, MAN_DARK, null, MAN_DARK, null] },
+  backgammon: { cols: 4, shade: "points", cells: [{ ...DOWN, ...CHECKER_DARK }, DOWN, { ...DOWN, ...CHECKER_LIGHT }, DOWN, CHECKER_DARK, null, CHECKER_LIGHT, null, null, CHECKER_LIGHT, null, CHECKER_DARK, UP, { ...UP, ...CHECKER_LIGHT }, UP, { ...UP, ...CHECKER_DARK }] },
 };
 const EMPTY_BOARD: MiniBoard = { cols: 3, cells: Array(9).fill(null) };
 

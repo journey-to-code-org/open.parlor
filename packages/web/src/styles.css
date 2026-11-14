@@ -1267,6 +1267,162 @@ html[data-motion="off"] .board-grid .cell.mark-must::before { animation: none; }
 }
 .board-checkers .board-grid .piece.kind-king { box-shadow: 0 max(2px, 0.5cqw) 0 rgba(0, 0, 0, 0.5), 0 max(4px, 1cqw) 0 rgba(0, 0, 0, 0.3), inset 0 0 0 max(2px, 0.6cqw) #e8c46a; }
 .board-checkers .piece.small { border-radius: 50%; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4); font-size: 0.7em; }
+/* ---- A track of points (Backgammon) ---------------------------------------------------------------
+   Two rows of six points either side of the bar, a tray at the end, the dice on the board and the
+   cube beside the trays. Everything is sized from one unit, a point's width (`--u`); a checker is a
+   little less, and a stack of five just fits a point's length. On a phone held upright the board is
+   laid on its side (`.tall`): the rows become columns and a point is a strip as tall as a thumb. */
+.track-wrap {
+  --board-max: 880px; display: block; container-type: inline-size;
+  width: min(100%, var(--board-max), max(300px, calc((100dvh - 360px) * 14.64 / 11.64)));
+}
+.track {
+  --u: calc(100cqw / 14.64); --d: calc(var(--u) * 0.9); --len: calc(var(--u) * 4.75); --pad: calc(var(--u) * 0.06);
+  --step: min(var(--d), calc((var(--len) - var(--d) - 2 * var(--pad)) / 4));
+  --surface: #c9a36b; --wood: #5b3a22; --tray: #3d2717;
+  position: relative; display: grid; box-sizing: border-box; user-select: none; -webkit-user-select: none;
+  grid-template-columns: repeat(6, var(--u)) calc(var(--u) * 1.1) repeat(6, var(--u)) calc(var(--u) * 1.3);
+  grid-template-rows: var(--len) calc(var(--u) * 1.3) var(--len);
+  padding: calc(var(--u) * 0.42) calc(var(--u) * 0.12);
+  background: var(--wood); border-radius: 10px; box-shadow: var(--elev-2); color: var(--ink);
+}
+/* The strip between the rows: playing surface, with the bar and the rail running through it. */
+.track-mid { grid-row: 2; grid-column: 1 / 14; background: var(--surface); position: relative; display: grid; pointer-events: none; }
+.track::before { content: ""; grid-row: 2; grid-column: 7; background: var(--wood); z-index: 1; }
+.track .spot { position: relative; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 0; background: var(--surface); font: inherit; color: inherit; -webkit-tap-highlight-color: transparent; }
+.track:not(.tall) .spot { grid-column: calc(var(--along) + 1); }
+.track:not(.tall) .spot.far { grid-row: 1; }
+.track:not(.tall) .spot.near { grid-row: 3; }
+.track .spot.bar { background: var(--wood); }
+.track .spot.home { background: var(--tray); box-shadow: inset 0 0 0 max(1px, calc(var(--u) * 0.05)) var(--wood), inset 0 2px 6px rgba(0, 0, 0, 0.5); }
+/* A point: a long triangle from the edge towards the middle, in two colours turn about. */
+.track .spot.point::before { content: ""; position: absolute; inset: 0 5%; background: #7a2e23; clip-path: polygon(0 0, 100% 0, 50% 94%); }
+.track .spot.point.shade-b::before { background: #efe0bb; }
+.track:not(.tall) .spot.point.near::before { clip-path: polygon(0 100%, 100% 100%, 50% 6%); }
+.track .point-no { position: absolute; left: 0; right: 0; text-align: center; font-size: clamp(8px, calc(var(--u) * 0.26), 13px); line-height: 1; color: #e7d3ad; opacity: 0.85; pointer-events: none; }
+.track:not(.tall) .spot.far .point-no { top: calc(var(--u) * -0.34); }
+.track:not(.tall) .spot.near .point-no { bottom: calc(var(--u) * -0.34); }
+/* Checkers: stacked from the edge inwards, `--k` up the stack. */
+.track .checker {
+  position: absolute; z-index: 2; box-sizing: border-box; width: var(--d); height: var(--d); border-radius: 50%;
+  display: grid; place-items: center; font-size: calc(var(--d) * 0.44); font-weight: 800; line-height: 1; pointer-events: none;
+}
+.track .checker.tone-light { background: radial-gradient(circle at 50% 36%, #fffaf0, #e4d3b0 72%); color: #5b3a22; box-shadow: inset 0 0 0 calc(var(--d) * 0.08) rgba(128, 96, 52, 0.38), 0 1px 2px rgba(0, 0, 0, 0.55); }
+.track .checker.tone-dark { background: radial-gradient(circle at 50% 36%, #51463d, #1f1a16 70%); color: #f0d48a; box-shadow: inset 0 0 0 calc(var(--d) * 0.08) rgba(255, 255, 255, 0.13), 0 1px 2px rgba(0, 0, 0, 0.55); }
+.track:not(.tall) .spot .checker { left: calc(50% - var(--d) / 2); }
+.track:not(.tall) .spot.far .checker { top: calc(var(--pad) + var(--k) * var(--step)); }
+.track:not(.tall) .spot.near .checker { bottom: calc(var(--pad) + var(--k) * var(--step)); }
+/* On the bar they stand from the middle outwards. */
+.track:not(.tall) .spot.bar.far .checker { top: auto; bottom: calc(var(--pad) + var(--k) * var(--step)); }
+.track:not(.tall) .spot.bar.near .checker { bottom: auto; top: calc(var(--pad) + var(--k) * var(--step)); }
+/* Borne off: fifteen checkers on their edges in the tray. */
+.track .spot.home .checker { border-radius: 2px; font-size: 0; }
+.track:not(.tall) .spot.home .checker { width: 76%; left: 12%; height: calc(var(--len) / 18); }
+.track:not(.tall) .spot.home.far .checker { top: calc(var(--u) * 0.1 + var(--k) * var(--len) / 16.6); }
+.track:not(.tall) .spot.home.near .checker { bottom: calc(var(--u) * 0.1 + var(--k) * var(--len) / 16.6); }
+.track .home-count { position: absolute; z-index: 3; font-size: clamp(9px, calc(var(--u) * 0.3), 14px); font-weight: 700; color: #e7d3ad; pointer-events: none; }
+.track:not(.tall) .spot.home .home-count { left: 0; right: 0; text-align: center; }
+.track:not(.tall) .spot.home.far .home-count { top: calc(var(--u) * -0.36); }
+.track:not(.tall) .spot.home.near .home-count { bottom: calc(var(--u) * -0.36); }
+/* What can be done: a checker that can move has a gold edge, the one picked up a bright one, and the places it can go are lit. */
+.track .spot.can { cursor: pointer; }
+.track .spot.source { cursor: grab; touch-action: none; }
+.track .spot.source .checker.top { box-shadow: inset 0 0 0 calc(var(--d) * 0.08) rgba(128, 96, 52, 0.3), 0 0 0 max(2px, calc(var(--d) * 0.06)) rgba(255, 226, 122, 0.85), 0 1px 2px rgba(0, 0, 0, 0.55); }
+.track .spot.picked .checker.top { scale: 1.08; box-shadow: 0 0 0 max(3px, calc(var(--d) * 0.1)) #ffe27a, 0 5px 9px rgba(0, 0, 0, 0.55); }
+.track .spot.target::after { content: ""; position: absolute; inset: 2px; z-index: 1; border-radius: 6px; background: rgba(255, 226, 122, 0.34); box-shadow: inset 0 0 0 2px #ffe27a; }
+@media (hover: hover) { .track .spot.target:hover::after { background: rgba(255, 226, 122, 0.55); } }
+.track .spot.mark-last .checker.top { outline: max(2px, calc(var(--d) * 0.06)) solid rgba(255, 244, 214, 0.95); outline-offset: 1px; }
+.track .spot.point.mark-from { background-image: linear-gradient(rgba(255, 244, 214, 0.3), rgba(255, 244, 214, 0.3)); }
+.track .spot.mark-must .checker.top { outline: max(2px, calc(var(--d) * 0.08)) solid #ffe27a; outline-offset: 2px; }
+/* The bar itself glows while a checker has to come in. (Not the checker: a piece that slides has its animations finished for it, and one that never ends can't be.) */
+.track .spot.mark-must { box-shadow: inset 0 0 0 3px #ffe27a; }
+@media (prefers-reduced-motion: no-preference) { .track .spot.mark-must { animation: track-must 1.4s ease-in-out infinite; } }
+html[data-motion="off"] .track .spot.mark-must { animation: none; }
+@keyframes track-must { 50% { box-shadow: inset 0 0 0 3px rgba(255, 226, 122, 0.2); } }
+.track .spot:focus-visible { outline: 3px solid #8ab4ff; outline-offset: -3px; z-index: 4; }
+.track .spot.dragging { z-index: 6; cursor: grabbing; }
+.track .spot.dragging .checker.top { scale: 1.14; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.45)); }
+/* The dice lie in the strip between the rows: the other player's on the left half, yours on the right. */
+.track .dice { --die: calc(var(--u) * 0.98); padding: 0; gap: 0; display: grid; grid-template-columns: calc(var(--u) * 6) calc(var(--u) * 1.1) calc(var(--u) * 6); align-items: center; justify-content: start; }
+.track .dice-half { display: flex; justify-content: center; align-items: center; gap: calc(var(--die) * 0.16); }
+.track .dice-half:nth-child(2) { grid-column: 3; }
+/* The cube: beside the trays, in the middle until somebody owns it. */
+.track .cube {
+  grid-row: 2; grid-column: 14; place-self: center; z-index: 5; width: calc(var(--u) * 0.98); aspect-ratio: 1; box-sizing: border-box; border-radius: 16%;
+  display: grid; place-items: center; font-family: Georgia, "Times New Roman", serif; font-weight: 700; font-size: calc(var(--u) * 0.5); line-height: 1;
+  background: linear-gradient(145deg, #fffdf6, #eadfc8); color: #7a2e23; box-shadow: inset 0 0 0 max(1px, calc(var(--u) * 0.04)) rgba(122, 46, 35, 0.5), 0 2px 5px rgba(0, 0, 0, 0.5);
+  transition: translate 320ms var(--ease-back), opacity 200ms;
+}
+.track:not(.tall) .cube.side-near { translate: 0 calc(var(--u) * 0.8); }
+.track:not(.tall) .cube.side-far { translate: 0 calc(var(--u) * -0.8); }
+.track .cube.offered { box-shadow: 0 0 0 max(3px, calc(var(--u) * 0.08)) #ffe27a, 0 4px 9px rgba(0, 0, 0, 0.55); }
+@media (prefers-reduced-motion: no-preference) { .track .cube.offered { animation: cube-offer 900ms ease-in-out infinite; } }
+html[data-motion="off"] .track .cube { animation: none; transition: none; }
+@keyframes cube-offer { 50% { rotate: 8deg; scale: 1.08; } }
+.track .cube.dead { opacity: 0.4; }
+
+/* Laid on its side for a phone held upright: the far row is the left column and the near row the
+   right, your home board at the bottom right, the trays along the bottom. A unit is a row's height. */
+.track-wrap.tall { width: min(100%, 480px); }
+.track.tall {
+  --u: clamp(30px, calc((100dvh - 318px) / 14.3), 48px); --mid: calc(var(--u) * 1.12); --edge: 17px;
+  --len: calc((100cqw - var(--mid) - 2 * var(--edge)) / 2); --d: calc(var(--u) - 3px); --pad: 3px;
+  grid-template-columns: var(--len) var(--mid) var(--len);
+  grid-template-rows: repeat(6, var(--u)) calc(var(--u) * 1.1) repeat(6, var(--u)) calc(var(--u) * 1.2);
+  padding: 4px var(--edge);
+}
+.track.tall .track-mid { grid-column: 2; grid-row: 1 / 14; }
+.track.tall::before { grid-column: 2; grid-row: 7; }
+.track.tall::after { content: ""; grid-column: 2; grid-row: 14; background: var(--wood); }
+.track.tall .spot { grid-row: calc(var(--along) + 1); }
+.track.tall .spot.far { grid-column: 1; }
+.track.tall .spot.near { grid-column: 3; }
+.track.tall .spot.point::before { inset: 5% 0; clip-path: polygon(0 0, 0 100%, 94% 50%); }
+.track.tall .spot.point.near::before { clip-path: polygon(100% 0, 100% 100%, 6% 50%); }
+.track.tall .point-no { top: calc(50% - 0.5em); left: auto; right: auto; width: var(--edge); font-size: 10px; }
+.track.tall .spot.far .point-no { left: calc(-1 * var(--edge)); }
+.track.tall .spot.near .point-no { right: calc(-1 * var(--edge)); }
+.track.tall .spot .checker { top: calc(50% - var(--d) / 2); }
+.track.tall .spot.far .checker { left: calc(var(--pad) + var(--k) * var(--step)); }
+.track.tall .spot.near .checker { right: calc(var(--pad) + var(--k) * var(--step)); }
+.track.tall .spot.bar.far .checker { left: auto; right: calc(var(--pad) + var(--k) * var(--step)); }
+.track.tall .spot.bar.near .checker { right: auto; left: calc(var(--pad) + var(--k) * var(--step)); }
+.track.tall .spot.home .checker { height: 72%; top: 14%; width: calc(var(--len) / 18); }
+.track.tall .spot.home.far .checker { left: calc(4px + var(--k) * var(--len) / 16.6); }
+.track.tall .spot.home.near .checker { right: calc(4px + var(--k) * var(--len) / 16.6); }
+.track.tall .spot.home .home-count { top: calc(50% - 0.5em); width: var(--edge); text-align: center; font-size: 10px; }
+.track.tall .spot.home.far .home-count { left: calc(-1 * var(--edge)); }
+.track.tall .spot.home.near .home-count { right: calc(-1 * var(--edge)); }
+.track.tall .dice { --die: calc(var(--mid) - 9px); grid-template-columns: none; grid-template-rows: calc(var(--u) * 6) calc(var(--u) * 1.1) calc(var(--u) * 6); justify-content: center; justify-items: center; }
+.track.tall .dice-half { flex-direction: column; }
+.track.tall .dice-half:nth-child(2) { grid-column: auto; grid-row: 3; }
+.track.tall .cube { grid-column: 2; grid-row: 14; width: calc(var(--mid) - 8px); font-size: calc(var(--mid) * 0.46); }
+.track.tall .cube.side-near { translate: calc(var(--mid) * 0.9) 0; }
+.track.tall .cube.side-far { translate: calc(var(--mid) * -0.9) 0; }
+/* Backgammon's table: the seats keep to a line each, so the board has the height. */
+.board-backgammon .board-felt { gap: 8px; }
+.board-backgammon .center-info { gap: 4px; }
+/* On a phone the other player takes one line, and "your turn" sits beside the buttons, so the roll button is on the screen without scrolling. */
+@media (max-width: 640px) and (orientation: portrait) {
+  .board-backgammon .board-felt { padding-top: 6px; gap: 6px; }
+  .board-backgammon .board-others .kit-seat { flex-direction: row; align-items: baseline; gap: 8px; padding: 0.2em 0.9em; }
+  .board-backgammon .center-info { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 10px; }
+  .board-backgammon .center-info .kit-info, .board-backgammon .center-info .narration { width: 100%; }
+  .board-backgammon .center-info .status:empty { display: none; }
+  .board-backgammon .center-info .status { width: auto; }
+  .board-backgammon .kit-choices { flex: 0 1 auto; }
+}
+/* On a wide screen the board has the whole height, and the other player, what happened and the buttons stand beside it. */
+@media (min-width: 900px) and (min-aspect-ratio: 5/4) {
+  .board-backgammon .board-felt { display: grid; grid-template-columns: minmax(0, auto) minmax(220px, 300px); grid-template-rows: auto 1fr; grid-template-areas: "boards others" "boards info"; justify-content: center; align-items: start; column-gap: 28px; padding-top: 16px; }
+  .board-backgammon .boards { grid-area: boards; width: auto; }
+  .board-backgammon .board-others { grid-area: others; }
+  .board-backgammon .center-info { grid-area: info; align-self: center; gap: 10px; }
+  .board-backgammon .track-wrap { width: min(calc(100vw - 370px), var(--board-max), max(300px, calc((100dvh - 190px) * 14.64 / 11.64))); }
+}
+.board-backgammon .piece.kind-checker.small { border-radius: 50%; font-size: 0; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4); }
+.board-backgammon .piece.kind-checker.small.tone-light { background: radial-gradient(circle at 50% 36%, #fffaf0, #e4d3b0 72%); }
+.board-backgammon .piece.kind-checker.small.tone-dark { background: radial-gradient(circle at 50% 36%, #51463d, #1f1a16 70%); }
 /* ---- Dice, and a score sheet, on the board table (Yacht…) ------------------------------------------
    The dice sit in a row, as big as a phone's width allows. A held die sits up out of the row with a
    gold edge and a tag, so what's kept is plain without colour; dice left over from the last turn are dim. */

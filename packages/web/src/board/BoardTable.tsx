@@ -24,6 +24,7 @@ import { motionScale, useCardFlip } from "../motion";
 import { TableSettingsButton } from "../TableSettings";
 import { Dice } from "./Dice";
 import { Sheet } from "./Sheet";
+import { isPointsTrack, Track } from "./Track";
 
 export interface BoardTableProps {
   view: BoardView;
@@ -102,7 +103,7 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
   }, [error]);
 
   // Sounds: a piece landing, your turn, the end.
-  const boardKey = JSON.stringify(view.grids.map((g) => g.cells.map((p) => (p ? [p.owner, p.kind] : 0))));
+  const boardKey = JSON.stringify(view.grids.map((g) => g.cells.map((p) => (p ? [p.owner, p.kind, p.count ?? 1] : 0))));
   const pieces = view.grids.reduce((n, g) => n + g.cells.filter(Boolean).length, 0);
   const seen = useRef<string | null>(null);
   useEffect(() => {
@@ -155,6 +156,8 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
     const holding = held?.grid === grid.id ? sources.find((s) => s.from === held.from) : undefined;
     if (holding?.to.includes(cell)) return void send({ type: grid.select!.type, from: holding.from, to: cell, ...onGrid(grid) });
     const source = sourceAt(grid, cell);
+    // One tap moves (a table setting): a piece with one place to go is played by tapping it.
+    if (source && grid.select?.quick && source.to.length === 1 && !(picked?.grid === grid.id && picked.from === source.from)) return void send({ type: grid.select.type, from: source.from, to: source.to[0], ...onGrid(grid) });
     if (source) return setPicked(picked?.grid === grid.id && picked.from === source.from ? null : { grid: grid.id, from: source.from });
     if (grid.tap) {
       if (grid.tap.by === "col") {
@@ -214,12 +217,17 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
 
       {view.grids.length > 0 && (
         <div className={`boards${view.grids.length > 1 ? " many" : ""}`}>
-          {view.grids.map((grid, i) => (
+          {view.grids.map((grid, i) =>
+            isPointsTrack(grid) ? (
+              // A track of points has its dice and its cube on the board itself.
+              <Track key={grid.id} grid={grid} view={view} names={names} picked={held?.grid === grid.id ? held.from : null} onCell={(cell) => tapCell(grid, cell)} onPick={(cell) => setPicked({ grid: grid.id, from: cell })} onMove={(from, to) => void send({ type: grid.select!.type, from, to, ...onGrid(grid) })} dice={view.dice ?? null} cube={view.cube ?? null} still={motionScale(settings?.value.pace) === 0} onTumble={setTumbling} />
+            ) : (
             <Grid key={grid.id} grid={grid} view={view} names={names} side={i > 0} titled={view.grids.length > 1} picked={held?.grid === grid.id ? held.from : null} onCell={(cell) => tapCell(grid, cell)} onPick={(cell) => setPicked({ grid: grid.id, from: cell })} onMove={(from, to) => void send({ type: grid.select!.type, from, to, ...onGrid(grid) })} />
-          ))}
+            ),
+          )}
         </div>
       )}
-      {view.dice && <Dice dice={view.dice} still={motionScale(settings?.value.pace) === 0} onTumble={setTumbling} onTap={(die) => void send({ type: view.dice!.tap!.type, die })} />}
+      {view.dice && !view.grids.some(isPointsTrack) && <Dice dice={view.dice} still={motionScale(settings?.value.pace) === 0} onTumble={setTumbling} onTap={(die) => void send({ type: view.dice!.tap!.type, die })} />}
 
       <div className="center-info">
         {view.info.length > 0 && (
@@ -418,7 +426,8 @@ function Grid({ grid, view, names, side, titled, picked, onCell, onPick, onMove 
   // so the tab order, the arrow keys and the edges all follow what is on the screen.
   const flip = !!grid.flip;
   const size = grid.rows * grid.cols;
-  const shown = (cell: number) => (flip ? size - 1 - cell : cell);
+  // "rows" turns the board over (the last row at the top) without swapping left and right.
+  const shown = (cell: number) => (grid.flip === "rows" ? (grid.rows - 1 - rowOf(grid.cols, cell)) * grid.cols + colOf(grid.cols, cell) : flip ? size - 1 - cell : cell);
   // One cell is in the tab order; the arrow keys move from it.
   const [focus, setFocus] = useState(flip ? size - 1 : 0);
   const marks = useMemo(() => {

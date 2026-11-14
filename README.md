@@ -1,6 +1,6 @@
 # Card Room
 
-Family card and board games online: fifty-three games with house rules saved as presets, family
+Family card and board games online: fifty-four games with house rules saved as presets, family
 **houses** with their own tables, leaderboards and tournaments, computer players with personalities,
 challenge links, and a widget that puts a game on any site, including [open.blog](https://github.com/journey-to-code-org/open.blog) ones.
 
@@ -9,7 +9,7 @@ yourself (Docker or Railway), and practice games work anywhere, including the Gi
 
 ## The games
 
-Spades and Palace have tables of their own; the other fifty-one are built on a shared game kit
+Spades and Palace have tables of their own; the other fifty-two are built on a shared game kit
 (`packages/games`), so they all get the same setup screen, house rules editor, computer players,
 houses, challenges and tournaments. The kit has three tables: one that draws any card game, one
 that draws any board game (Tic-Tac-Toe is the first; Yacht's dice and scorecard are drawn by it
@@ -69,6 +69,7 @@ too), and one that draws any table sport on a canvas (Mini Golf is the first).
 | Reversi | 2 | A board game: trap their discs between yours and flip them, on 6×6, 8×8 or 10×10 |
 | Checkers | 2 | A board game: American, International on 10×10 with flying kings, Russian, or friendly with no forced jumps |
 | Yacht | 1 to 6 | A dice game: five dice, three rolls and a scorecard to fill. The classic sheet, Yatzy's or a quick seven boxes, in turn or everyone at once; with drinking mode on it's Shotzee 🍺 |
+| Backgammon | 2 | A board game: race your checkers home and hit theirs on the way. A friendly game, a money game with the doubling cube, a match to 3, 5 or 7 points, or Nackgammon |
 | Mini Golf | 1 to 6 | A table sport: nine holes round a garden (a drainpipe, a pond, toadstools that kick, a mole's tunnels), in turn with balls that knock into each other, or everyone at once |
 
 Poker and Blackjack are for chips only: everyone starts with the same stack, and the chips are
@@ -80,6 +81,45 @@ unless a table turns it on. Kids' games have none. Drop Four's drinking mode is 
 the other player's disc lands you have three seconds to drop yours, or you take a drink and lose
 your turn. Yacht's drinking mode is a table called Shotzee: roll five of a kind and everyone else
 takes a shot; put a zero on your scorecard and you drink.
+
+## Backgammon
+
+The board is the kit's first track of points: twenty-four long triangles, the bar and a tray each.
+On a phone held upright it is laid on its side, so every point is a strip a thumb can hit, with
+your home board still nearest you on the right. Tap a checker and the points it can reach light
+up; tap one (or drag the checker there). A turn is a roll and then a checker a die, and until it
+is over **Undo** takes your moves back. A roll that can't be played passes by itself. Two table
+rules change the pace: **Finish each turn with Done** keeps the turn yours until you say so, and
+**One tap moves** plays a checker that has only one place to go as soon as you touch it.
+
+- **The opening roll.** Each player throws one die; the higher goes first with those two dice,
+  and a tie is thrown again.
+- **The cube.** Before rolling, the player whose turn it is may offer to double if the cube is
+  in the middle or on their side. The other player takes (the stakes double and the cube is
+  theirs) or drops and loses the game at the stakes as they stood. The board shows the cube,
+  what it is on, and whose side it is on.
+- **Friendly** is one game with no cube. **Money game** is one game with the cube, scored in
+  points, with the **Jacoby rule** (gammons and backgammons only count once the cube has been
+  turned) and, as an option, **automatic doubles** (a tied opening roll doubles the stakes, once).
+- **Match to 3, 5 or 7** (9 and 11 are in the rules editor) carries the score across games, with
+  the **Crawford rule**: in the first game after a player comes within a point of the match,
+  nobody may double. A game scores the cube times one, two (a gammon: the loser has borne off
+  nothing) or three (a backgammon: and still has a checker on the bar or in the winner's home
+  board). On a leaderboard or in a tournament a win is a win, whatever it was won for.
+- **Nackgammon** starts with two more checkers back (two each on the 24 and 23 points).
+
+The computer players judge every whole turn their dice allow with a hand-written judgement, not a
+trained one: the race, how many of the other side's 36 rolls hit each blot and what that would
+cost, points and runs of points, anchors, the home board against a checker on the bar, and a pip
+count with the usual corrections once the two sides have passed each other. On Hard they also
+look at your best answer to each of the 21 rolls for their best few turns. The cube follows the
+8-9-12 rule in a race (double from 8% ahead, redouble from 9%, take up to 12% behind) and the
+judged chance of winning otherwise. They have no bear-off tables, no opening book and only a
+rough idea of match scores (they know the cube is dead once it already wins them the match, and
+that the player behind after the Crawford game has nothing to lose by doubling at once), so a
+good club player will beat them.
+
+There is no resigning yet, and no beavers.
 
 ## Holding your hand
 
@@ -110,7 +150,7 @@ before the end.
 - Computer players keep their own time, a race (Speed, a slap in Slapjack) has no clock, and
   neither does a game for one. In Mini Golf the timer's move is a putt: the computer player's aim.
   In Yacht it is one step of a turn (a roll, a die kept back, a box filled in), so a turn left to
-  the timer takes a few of them.
+  the timer takes a few of them; the same goes for a roll and each checker in Backgammon.
 - The server keeps the time, and it survives a restart (see [Clocks and deadlines](#clocks-and-deadlines)).
   "A day" is for games played a move at a time over a week.
 - Practice games on your own device have no timer: nobody is waiting on you.
@@ -185,7 +225,7 @@ an issue's comments count how many want it. Requests share the reports' limits.
 
 | Package | |
 | --- | --- |
-| [`packages/games`](packages/games) | The game kit and the fifty-one games built on it: `table.ts` (the `TableGame` engine contract every game shares), `kit.ts` (the card kit: `CardGame`, cards, decks, `KitView`), `board.ts` (the board kit: `BoardGame`, grids, pieces, dice, `BoardView`) and `sport.ts` (the table-sports kit: `SportGame`, shots, `SportView`) |
+| [`packages/games`](packages/games) | The game kit and the fifty-two games built on it: `table.ts` (the `TableGame` engine contract every game shares), `kit.ts` (the card kit: `CardGame`, cards, decks, `KitView`), `board.ts` (the board kit: `BoardGame`, grids, pieces, dice, `BoardView`) and `sport.ts` (the table-sports kit: `SportGame`, shots, `SportView`) |
 | [`packages/rules`](packages/rules) | Spades rules engine, bots, and the personas who play every game |
 | [`packages/palace`](packages/palace) | Palace rules engine: house-rule presets, seat views, bots and table talk |
 | [`packages/physics`](packages/physics) | A small deterministic 2D physics core for the table sports: the same shot gives the same table on the server and in every browser, which is how Mini Golf's server decides a putt and every browser animates it |
@@ -348,6 +388,33 @@ what `view` returns.
    the `must` mark rings a piece that has to move. A piece with `faded` set is drawn faintly: a
    piece jumped but not yet taken off.
 
+   `backgammon.ts` is the worked example for a board that isn't squares. Three more things in
+   the kit came with it:
+   - **A track** (`track` on a grid, a `BoardTrack`): the cells are places pieces travel along,
+     `path` lists them in the order the first seat travels them (the second goes the other way),
+     and `bar` and `home` name a cell per seat for pieces knocked off and pieces that have
+     finished. `kind` says what the places are ("points"); nothing says how they are drawn.
+     They are still cells, so `tap` and `select` work unchanged, and `rows` × `cols` still gives
+     a plain picture of the board for a table that doesn't know the kind. The table numbers the
+     points from the viewer's own end, lays the board on its side on a phone, and puts the dice
+     and the cube on it.
+   - **Stacks:** a piece with `count` is that many identical pieces on one cell, and `ids` names
+     each of them from the bottom up, so the table can slide the one that moved (a checker that
+     is hit keeps its id on the way to the bar).
+   - **`flip: "rows"`** turns the board over instead of round: the last row is drawn at the top
+     but left stays left, so both players run the same way and have their home on the same hand.
+   - **`cube`** on the view (`BoardCube`): the doubling cube's `value`, its `owner` (null in the
+     middle), who has `offered` a double that is waiting for an answer, and `dead` when it is
+     out of play. Offering, taking and dropping are ordinary buttons (`choices`).
+   - **`quick`** in `select`: a piece with one place to go is played by tapping it. It is a table
+     rule in Backgammon; the engine only passes it on.
+   - A turn of several steps that can be **taken back** keeps its steps in the state until the
+     turn is over (`undo` is a move like any other, offered as a button). It is safe there
+     because the dice are already on the table: never offer it where a step shows the player
+     something new. The legal steps come from a generator of whole turns, so a rule about the
+     whole turn ("play both dice if you can") holds at every step; and the computer player
+     picks a whole turn and plays its first step each time it is asked.
+
    A view can also have **dice** and a **score sheet**, beside its grids or instead of them
    (`grids: []` is a fine view). `yacht.ts` is the worked example of both, with no board at all:
    - **`dice`** (`BoardDice`): the dice on the table, each `{ id, value }` with `value` null
@@ -380,9 +447,11 @@ what `view` returns.
    its views offer, every move a view offers is accepted, the same seed always starts the same
    game, and refused moves change nothing. Dice and a sheet are checked too: dice have ids of
    their own and show faces they have, a die that can be tapped is on the table, a cell that
-   can be chosen is an empty one in the seat's own row.
+   can be chosen is an empty one in the seat's own row. So are stacks (a whole number of pieces,
+   each named once), a track (its places are cells of the grid, each once) and the cube.
 4. **Its tile on the front page:** a little board position in `BOARDS` in
-   `packages/web/src/home/Home.tsx`, or for a dice game a few dice in `DICE`.
+   `packages/web/src/home/Home.tsx`, or for a dice game a few dice in `DICE`. (Backgammon's is a
+   board with `shade: "points"`.)
 
 ### A table sport
 
