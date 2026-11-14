@@ -125,6 +125,21 @@ export interface GameDeadline<M = Record<string, unknown>> {
 }
 
 /**
+ * How long a computer player may think, when the table says. A game that searches (Chess, Go) can
+ * look until the time is nearly gone and play the best move it has; the table gives up on a think
+ * that runs far past it and plays a quick move instead (see `TableGame.bot`).
+ */
+export interface ThinkBudget {
+  /** Ms this think may take. A handful means "answer at once": the first sensible move will do. */
+  ms: number;
+}
+
+/** The style a computer player is asked in when its real think was given up on: no skill wanted, just a legal move, now. */
+export const QUICK_STYLE: PlayStyle = { skill: 0, sloppy: 0 };
+/** And the budget that goes with it. */
+export const QUICK_BUDGET: ThinkBudget = { ms: 10 };
+
+/**
  * A game, apart from what its table looks like: `View` is what one seat sees (a `KitView` for a
  * card game, a `BoardView` for a board game, a `SportView` for a table sport).
  */
@@ -150,8 +165,28 @@ export interface TableGame<R extends BaseRules = BaseRules, S = unknown, M = Rec
   /** Apply a seat's move; throws GameError when it isn't allowed. Never changes the given state. */
   apply(state: S, seat: number, move: M): S;
   view(state: S, seat: number): View;
-  /** The move a computer player makes now, or null when it has nothing to do. */
-  bot(state: S, seat: number, style: PlayStyle): M | null;
+  /**
+   * The move a computer player makes now, or null when it has nothing to do. Whether there is a move
+   * at all must not depend on the style.
+   *
+   * `rand` is where a bot that rolls dice gets them (default `Math.random`); tests pass a seeded one.
+   *
+   * `budget` is how long the think may take, when the table says. The bots here ignore it: they
+   * ration themselves by work done (so many positions, so many putts), which gives the same move on
+   * a fast machine and a slow one. A game that wants to use the time may, and must then keep to it:
+   * a think that runs far past its budget is abandoned by the table, and the seat is asked again
+   * with `QUICK_STYLE` and `QUICK_BUDGET`, on the table's own thread, so that answer has to come at
+   * once whatever the position.
+   */
+  bot(state: S, seat: number, style: PlayStyle, rand?: () => number, budget?: ThinkBudget): M | null;
+  /**
+   * Whether working out this seat's move here is slow enough (a few ms or more) that the table
+   * should do it off its main thread: a search, a simulation. It must answer at once, from the state
+   * alone, and say no when the seat has nothing to do or its move is obvious ("Next hand"). A game
+   * without it always thinks on the table's own thread, which is right for anything quick: handing a
+   * think to another thread costs a little too.
+   */
+  heavy?(state: S, seat: number): boolean;
   /** How long a person would think here, in ms (before the persona's own pace). */
   thinkingTime(state: S, seat: number): number;
   /**

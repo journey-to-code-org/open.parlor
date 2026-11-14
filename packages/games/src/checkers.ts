@@ -806,6 +806,8 @@ export const checkers: BoardGame<CheckersRules, CheckersState, CheckersMove> = {
   apply,
   view,
   bot,
+  // A search: off the table's main thread (see TableGame.heavy).
+  heavy: (s, seat) => s.phase === "playing" && s.turn === seat,
   // A hop in the middle of a capture comes quickly: the thinking was done before the first one.
   thinkingTime: (s) => (s.jump ? 450 : thinkFor(Math.min(new Set(checkersLines(s).map((l) => l.from)).size, 6), s.last === null ? 0.7 : 1)),
   summary(s) {
