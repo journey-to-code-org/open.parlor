@@ -63,6 +63,8 @@ export interface HouseLike {
   members: { id: string; player: string; name: string; role: string }[];
   tables: { id: string; game?: GameId; rules: string; created: number; tournament?: string }[];
   tournaments?: string[];
+  /** The cards the house's tables start with. */
+  deck?: unknown;
 }
 
 interface Rooms {
@@ -71,6 +73,7 @@ interface Rooms {
     documents(): Promise<{ get(collection: string, key: string): Record<string, unknown> | undefined }>;
   };
   create(options: TableOptions, settings?: unknown): Promise<string>;
+  setDeck(id: string, deck: unknown): Promise<void>;
   room(id: string): Promise<RoomDoc<unknown> | undefined>;
   seatPlayer(id: string, seat: number, player: string, name: string): Promise<void>;
   seatBot(id: string, seat: number, name: string): Promise<void>;
@@ -224,6 +227,7 @@ export function createTournaments(rooms: Rooms, { push, saveHouse }: { push?: Pu
         : (t.rules as RulePreset);
     // A match with nobody to watch it plays itself out quickly.
     const id = await rooms.create(options, people.length ? t.settings : { ...t.settings, pace: "fast" });
+    if (house.deck) await rooms.setDeck(id, house.deck);
     for (const [i, p] of seats.entries()) {
       if ("bot" in p) await rooms.seatBot(id, i, p.bot);
       else {

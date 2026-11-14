@@ -133,10 +133,10 @@ export function createCardRoom(
   const push = createPush(rooms.sync, options.push);
   const ai = createAi(options.ai);
   const catalogue = createCatalogue(rooms.sync);
-  const houses = createHouses(rooms, { push, ai, gameOn: catalogue.isOn });
+  const designs = createDesigns(rooms.sync, { tables: rooms });
+  const houses = createHouses(rooms, { push, ai, gameOn: catalogue.isOn, deckFor: designs.deckFor });
   const challenges = createChallenges(rooms, push, { gameOn: catalogue.isOn });
   const lobby = createLobby(rooms, { push, gameOn: catalogue.isOn, ...options.lobby });
-  const designs = createDesigns(rooms.sync, { tables: rooms });
   const spectate = createSpectate(rooms, catalogue);
   const moderation = createModeration(rooms, designs, { token: options.adminToken, houses, catalogue });
   // "Report a problem": a player's report becomes an issue on GitHub.

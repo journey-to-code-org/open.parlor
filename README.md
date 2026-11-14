@@ -231,6 +231,8 @@ and everyone watching then sees those cards. The table keeps its own copy of the
 maker changing or deleting it, or the host hiding it, never changes the cards in the middle of a
 game. A table can only wear a deck its chooser could show everyone: theirs, or a shared one.
 
+**A house's cards.** A house's owner or an admin picks, on the house's page, the deck its tables start with (`POST /houses/:slug/deck`), from the same choices. The house keeps its own copy, as a table does, every member sees which it is, and the players at a table can still pick another before the deal. Tournament matches start with it too.
+
 **Your own deck.** **Play with it** in the designer makes a deck the one that browser sees at
 practice tables and at tables that haven't chosen. **Always show me my own deck** keeps it even at
 tables that have, for anyone who reads their own cards best.
