@@ -34,11 +34,13 @@ export const GAME_CLOCK_GRACE_MS = 400;
 
 /**
  * A game's own clock (see `TableGame.deadline`) as a room deadline. A computer player's seat has
- * none: bots keep their own time, and `botDelay` below keeps them inside it.
+ * none: bots keep their own time, and `botDelay` below keeps them inside it. A `strict` clock is
+ * the exception (a chess clock): it is part of the game for whoever is in the seat, so it is
+ * armed on a computer player too, which loses on time if its move doesn't come.
  */
 function gameDeadline(state: { game: KitGameId } & Record<string, unknown>, table: TableInfo): Deadline<Record<string, unknown>> | null {
   const due = gameFor(state.game).deadline?.(state);
-  if (!due || !table.seats[due.seat] || table.seats[due.seat]!.bot) return null;
+  if (!due || !table.seats[due.seat] || (table.seats[due.seat]!.bot && !due.strict)) return null;
   return { after: due.after, grace: GAME_CLOCK_GRACE_MS, seat: due.seat, move: () => due.move };
 }
 

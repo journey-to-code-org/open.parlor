@@ -78,6 +78,9 @@ const SQUARE = { glyph: "", tone: "none", shade: "dark" as const };
 const MAN_DARK = { ...SQUARE, glyph: "●", tone: "dark" };
 const MAN_LIGHT = { ...SQUARE, glyph: "●", tone: "light" };
 const KING_DARK = { ...SQUARE, glyph: "♛", tone: "dark" };
+// Chess: the corner of a board with a king castled behind its pawns.
+const LIGHT_SQUARE = { glyph: "", tone: "none" };
+const on = (glyph: string, tone: string, dark: boolean) => (dark ? { ...SQUARE, glyph, tone } : { glyph, tone });
 const BOARDS: Record<string, MiniBoard> = {
   tictactoe: { cols: 3, cells: [X, O, null, null, X, O, O, null, X] },
   // The bottom of a rack: red about to make four on the slant.
@@ -86,6 +89,7 @@ const BOARDS: Record<string, MiniBoard> = {
   // Light to move: c1 traps the dark disc beside it.
   reversi: { cols: 4, shade: "green", cells: [null, null, null, null, null, DARK, LIGHT, null, DARK, DARK, DARK, null, null, null, LIGHT, null] },
   checkers: { cols: 4, cells: [null, MAN_LIGHT, null, MAN_LIGHT, SQUARE, null, KING_DARK, null, null, MAN_LIGHT, null, SQUARE, MAN_DARK, null, MAN_DARK, null] },
+  chess: { cols: 4, cells: [LIGHT_SQUARE, on("♞\uFE0E", "dark", true), LIGHT_SQUARE, SQUARE, SQUARE, LIGHT_SQUARE, on("♝\uFE0E", "dark", true), LIGHT_SQUARE, on("♟\uFE0E", "light", false), on("♟\uFE0E", "light", true), on("♟\uFE0E", "light", false), SQUARE, SQUARE, on("♜\uFE0E", "light", false), on("♚\uFE0E", "light", true), LIGHT_SQUARE] },
 };
 // Go: a corner of the board with a ko on it. Black has just taken a stone, and White may not take straight back.
 BOARDS.go = { cols: 5, shade: "wood", cells: [null, null, null, null, null, null, DARK, LIGHT, null, null, DARK, null, DARK, LIGHT, null, null, DARK, LIGHT, null, null, null, null, null, null, null] };

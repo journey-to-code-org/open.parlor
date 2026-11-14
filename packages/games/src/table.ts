@@ -11,7 +11,7 @@ import { mulberry32, type PlayStyle } from "@spades/rules";
 /** The games that are played with cards. */
 export type CardGameId = "hearts" | "ohhell" | "euchre" | "crazy8" | "gin" | "pinochle" | "canasta" | "gofish" | "oldmaid" | "war" | "whist" | "golf" | "rummy500" | "president" | "klondike" | "freecell" | "handfoot" | "cribbage" | "fivedraw" | "holdem" | "bluff" | "liarspoker" | "switch" | "thirtyone" | "kingscorner" | "blackjack" | "spite" | "pitch" | "fivehundred" | "durak" | "bridge" | "fruitsalad" | "slapjack" | "speed" | "memory" | "sevens" | "cuckoo" | "contractrummy" | "spider" | "pyramid" | "ridethebus" | "kingscup" | "horserace" | "drinkingpyramid";
 /** The games that are played on a board. */
-export type BoardGameId = "tictactoe" | "dropfour" | "combat" | "reversi" | "checkers" | "go";
+export type BoardGameId = "tictactoe" | "dropfour" | "combat" | "reversi" | "checkers" | "go" | "chess";
 /** The games that are played by striking a ball across a table. */
 export type SportGameId = "minigolf";
 /** Every game on the kit. (Rooms, houses and saved rules have always called these "kit" games.) */
@@ -124,6 +124,12 @@ export interface GameDeadline<M = Record<string, unknown>> {
   seat: number;
   /** The move made as that seat when time runs out. It goes through `apply` like any other. */
   move: M;
+  /**
+   * The clock holds whoever is in the seat, a computer player too (a chess clock: the time is
+   * part of the game, and a bot that thinks too long loses on it like anyone). Without it a
+   * computer player's seat has no clock, and the table only keeps it moving inside the time.
+   */
+  strict?: boolean;
 }
 
 /**
