@@ -358,10 +358,10 @@ h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; }
   background: rgba(0, 0, 0, 0.25);
   font-size: 1.1rem;
 }
-/* The button and the sheet can both be dragged (useDragPlace.ts): once moved they float where they
-   were left, above the table and below the open chat. */
-.chat-toggle { touch-action: none; cursor: grab; }
-.chat-toggle.moved { z-index: 14; background: rgba(0, 0, 0, 0.45); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
+/* The chat button and sheet, the sound switch and the settings button can all be dragged
+   (useDragPlace.ts): once moved they float where they were left, above the table and below the open chat. */
+.movable { touch-action: none; cursor: grab; }
+.movable.moved { z-index: 14; background: rgba(0, 0, 0, 0.45); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
 .me { position: relative; }
 .me .chat-toggle { top: 10px; left: 10px; }
 .lobby { position: relative; }

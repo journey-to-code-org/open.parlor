@@ -23,6 +23,7 @@ import { seatAround } from "../palace/PalaceTable";
 import { TableSettingsButton } from "../TableSettings";
 import { HandSortBar, useHandOrder } from "../HandSort";
 import { cardKey } from "../handOrder";
+import { SoundButton } from "../SoundButton";
 
 const NO_CARDS: KCard[] = [];
 
@@ -277,15 +278,7 @@ export function KitTable({
               solo={view.seats === 1}
             />
           )}
-          <button
-            type="button"
-            className="sound-toggle inline"
-            onClick={toggleSound}
-            aria-pressed={soundOn}
-            aria-label={soundOn ? "Turn sounds off" : "Turn sounds on"}
-          >
-            {soundOn ? "🔊" : "🔇"}
-          </button>
+          <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>
       </header>
       {banner}
