@@ -13,6 +13,7 @@ import { Bubble, TableChat, useBubbles, type ChatProps } from "./Chat";
 import { TRICK_HOLD_MS, type TableState } from "./useTable";
 import { TableSettingsButton } from "./TableSettings";
 import { HandSortBar, useHandOrder } from "./HandSort";
+import { SoundButton } from "./SoundButton";
 
 interface Props {
   table: TableState;
@@ -133,9 +134,7 @@ export function Table({ table: t, names, onLeave, banner, chat, settings }: Prop
       {banner}
 
       <div className="felt">
-        <button type="button" className="sound-toggle" onClick={toggleSound} aria-pressed={soundOn} aria-label={soundOn ? "Turn sounds off" : "Turn sounds on"}>
-          {soundOn ? "🔊" : "🔇"}
-        </button>
+        <SoundButton on={soundOn} toggle={toggleSound} />
         {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} />}
         {[left, partner, right].map((s) => (
           <div key={s} className={`seat-slot ${side(s)}`}>

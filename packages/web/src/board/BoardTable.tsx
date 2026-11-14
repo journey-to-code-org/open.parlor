@@ -19,6 +19,7 @@ import { loadFeedbackSettings, play, saveFeedbackSettings } from "../feedback/so
 import { named, ResultTable, sideName } from "../kit/KitTable";
 import { motionScale, useCardFlip } from "../motion";
 import { TableSettingsButton } from "../TableSettings";
+import { SoundButton } from "../SoundButton";
 
 export interface BoardTableProps {
   view: BoardView;
@@ -186,9 +187,7 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
         </div>
         <span className="bar-buttons">
           {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} />}
-          <button type="button" className="sound-toggle inline" onClick={toggleSound} aria-pressed={soundOn} aria-label={soundOn ? "Turn sounds off" : "Turn sounds on"}>
-            {soundOn ? "🔊" : "🔇"}
-          </button>
+          <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>
       </header>
       {banner}
