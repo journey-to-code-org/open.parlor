@@ -51,6 +51,7 @@ export * from "./dropfour.js";
 export * from "./combat.js";
 export * from "./reversi.js";
 export * from "./checkers.js";
+export * from "./chess.js";
 export * from "./horserace.js";
 export * from "./drinkingpyramid.js";
 export * from "./sport.js";

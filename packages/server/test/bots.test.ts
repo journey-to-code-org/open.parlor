@@ -15,11 +15,19 @@ import { kitHeavy } from "../src/kit.js";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Every game the card room plays, at every preset: the room options that deal it, and how many sit down. */
-function everyTable(): { name: string; options: TableOptions; seats: number; kit: boolean }[] {
-  const tables: { name: string; options: TableOptions; seats: number; kit: boolean }[] = [];
+function everyTable(): { name: string; options: TableOptions; seats: number; kit: boolean; budget?: { ms: number } }[] {
+  const tables: { name: string; options: TableOptions; seats: number; kit: boolean; budget?: { ms: number } }[] = [];
   for (const preset of [familyTable, classic, jokersAndDeuces, quick250]) tables.push({ name: `spades/${preset.name}`, options: preset, seats: 4, kit: false });
   for (const rules of PALACE_PRESETS) for (const seats of [2, 4]) tables.push({ name: `palace/${rules.id}/${seats}`, options: { game: "palace", rules, seats }, seats, kit: false });
-  for (const game of KIT_GAMES) for (const rules of game.presets) tables.push({ name: `${game.id}/${rules.id}`, options: { game: game.id, rules, seats: game.seats.default }, seats: game.teams ? 4 : game.seats.default, kit: true });
+  for (const game of KIT_GAMES) {
+    for (const rules of game.presets) {
+      // Chess on a chess clock thinks by the time it has, so its move is its machine's own: those
+      // presets aren't compared here. Without a clock its search is a fixed ration of work sized
+      // from the budget, the same on any thread; a small budget keeps 160 moves of it short.
+      if (game.id === "chess" && (rules as { minutes?: number }).minutes) continue;
+      tables.push({ name: `${game.id}/${rules.id}`, options: { game: game.id, rules, seats: game.seats.default }, seats: game.teams ? 4 : game.seats.default, kit: true, ...(game.id === "chess" ? { budget: { ms: 200 } } : {}) });
+    }
+  }
   return tables;
 }
 
@@ -62,7 +70,7 @@ describe("a think is the same move on any thread", () => {
         for (let n = 0; n < LIMIT && !tableRoom.finished!(state); n++) {
           let moved = false;
           for (let seat = 0; seat < table.seats; seat++) {
-            const job: ThinkJob = { state, seat, name: names[seat]!, settings, budget: { ms: 2000 }, seed: seed * 7919 + n * 31 + seat };
+            const job: ThinkJob = { state, seat, name: names[seat]!, settings, budget: table.budget ?? { ms: 2000 }, seed: seed * 7919 + n * 31 + seat };
             const move = think(job);
             // A game only calls a think heavy when there is a move to think about.
             if (table.kit && kitHeavy(state as never, seat)) {

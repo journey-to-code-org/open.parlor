@@ -1307,6 +1307,82 @@ html[data-motion="off"] .board-grid .cell.mark-must::before { animation: none; }
 }
 .board-checkers .board-grid .piece.kind-king { box-shadow: 0 max(2px, 0.5cqw) 0 rgba(0, 0, 0, 0.5), 0 max(4px, 1cqw) 0 rgba(0, 0, 0, 0.3), inset 0 0 0 max(2px, 0.6cqw) #e8c46a; }
 .board-checkers .piece.small { border-radius: 50%; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4); font-size: 0.7em; }
+/* Chess. The pieces are the card room's own set (board/pieces.tsx): solid shapes with an outline,
+   cream for White and near-black for Black, the same weight on every phone. */
+.piece.art { width: 100%; height: 100%; background: none; text-shadow: none; --fill: #fbf6ea; --edge: #2b2520; --detail: #2b2520; }
+.piece.art.tone-dark { --fill: #35302b; --edge: #15120f; --detail: #e9dfcb; }
+.piece-art { display: block; width: 100%; height: 100%; overflow: visible; }
+.piece-art .edge { fill: var(--edge); stroke: var(--edge); }
+.piece-art .fill { fill: var(--fill); }
+.piece-art .detail { stroke: var(--detail); }
+.piece-art .detail-dots { fill: var(--detail); }
+.board-grid .piece.art { filter: drop-shadow(0 max(1px, 0.35cqw) max(1px, 0.3cqw) rgba(0, 0, 0, 0.35)); }
+/* A dark piece on a dark square keeps a pale rim, so its shape still reads. */
+.board-grid .cell.shade-dark .piece.art.tone-dark .edge { stroke: #0d0b09; }
+.board-seat .piece.small.art, .board-reserve .piece.small.art { width: 1.5em; height: 1.5em; min-width: 0; padding: 0.1em; box-sizing: border-box; background: #cdb48c; }
+.board-reserve .reserve-piece:has(.piece.art) { padding: 2px 4px; gap: 1px; }
+.board-reserve .reserve-piece:has(.piece.art) .piece.small { background: none; width: 1.35em; height: 1.35em; padding: 0; }
+.board-reserve .reserve-piece:has(.piece.art) { background: #cdb48c; color: var(--ink); font-weight: 700; }
+/* The board: no lines between the squares, and room under it for the moves, the clocks and what has been taken. */
+.board-chess .board-grid { --line-w: 0px; border-radius: 6px; }
+.board-chess .board-wrap { width: min(100%, var(--board-max), max(220px, calc((100dvh - 350px) * var(--cols) / var(--rows)))); }
+.board-chess .board-grid .cell.shade-light { background: #ecdcb9; }
+.board-chess .board-grid .cell.shade-dark { background: #a57a50; }
+.board-chess .board-grid .cell.mark-from, .board-chess .board-grid .cell.mark-last { background-image: linear-gradient(rgba(240, 200, 70, 0.5), rgba(240, 200, 70, 0.5)); box-shadow: none; }
+.board-chess .board-grid .cell.mark-threat { box-shadow: none; background-image: radial-gradient(circle, rgba(215, 40, 30, 0.95) 20%, rgba(215, 40, 30, 0.55) 55%, rgba(215, 40, 30, 0) 78%); }
+.board-chess .board-grid .cell.picked { background: #e6c65a; }
+.board-chess .board-felt { gap: 8px; }
+.board-chess .board-others .opp, .board-chess .me { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 12px; }
+.board-chess .me { display: flex; }
+.board-chess .me-badge { margin-bottom: 0; }
+.board-chess .kit-seat { flex-direction: row; align-items: center; gap: 8px; }
+
+/* A clock of the game's own at a seat (board/SeatClock.tsx). */
+.seat-clock {
+  padding: 2px 9px; border-radius: 8px; background: rgba(0, 0, 0, 0.45); color: #d9e6dd; border: 1px solid rgba(251, 246, 236, 0.25);
+  font-size: var(--ui-l, 1rem); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.35; white-space: nowrap; min-width: 3.4em; text-align: center;
+}
+.seat-clock.running { background: var(--cream); color: var(--ink); border-color: var(--gold); }
+.seat-clock.low.running { background: #b3261e; color: #fff; border-color: #fff; }
+.seat-clock.low:not(.running) { color: #ffb4ab; }
+
+/* The moves so far (board/Record.tsx): steps, the list, and a copy of the lot. */
+.board-record { width: min(100%, 620px); display: flex; align-items: center; gap: 6px; font-size: var(--ui-s); }
+.board-record button { font: inherit; cursor: pointer; }
+.record-steps { display: flex; gap: 2px; flex: none; }
+.record-steps button { width: 2.1em; height: 2.1em; padding: 0; border-radius: 8px; border: 1px solid rgba(251, 246, 236, 0.3); background: rgba(0, 0, 0, 0.3); color: var(--cream); line-height: 1; }
+.record-steps button:disabled { opacity: 0.35; cursor: default; }
+.record-moves {
+  flex: 1 1 0; min-width: 0; margin: 0; padding: 3px 6px; list-style: none; display: flex; align-items: center; gap: 1px;
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; white-space: nowrap; position: relative;
+  background: rgba(0, 0, 0, 0.28); border-radius: 8px; min-height: 2.1em; box-sizing: border-box;
+}
+.record-moves li { display: inline-flex; align-items: center; flex: none; }
+.record-moves .record-turn { color: #a9c4b4; padding-left: 6px; font-variant-numeric: tabular-nums; }
+.record-moves .record-none { color: #a9c4b4; padding: 0 4px; }
+.record-moves button { border: 0; background: none; color: var(--cream); padding: 3px 5px; border-radius: 6px; font-weight: 600; }
+.record-moves button.current { background: var(--gold); color: var(--ink); }
+@media (hover: hover) { .record-moves button:hover:not(.current) { background: rgba(251, 246, 236, 0.18); } }
+.record-copy { flex: none; padding: 0 9px; height: 2.1em; border-radius: 8px; border: 1px solid rgba(251, 246, 236, 0.3); background: rgba(0, 0, 0, 0.3); color: var(--cream); white-space: nowrap; }
+.board-record button:focus-visible { outline: 3px solid #8ab4ff; outline-offset: 1px; }
+/* Looking back at an earlier position: the board says so, and takes no moves. */
+.looking-back .board-grid { outline: 3px dashed var(--gold); outline-offset: 2px; }
+.looking-back .board-grid .cell { cursor: default; }
+.board .status .link { padding: 0; font: inherit; cursor: pointer; }
+/* After the end, with the sheet put away to look over the game. */
+.board-over-bar { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 12px max(10px, env(safe-area-inset-bottom)); background: rgba(0, 0, 0, 0.35); color: var(--cream); font-weight: 700; }
+.board-over-bar .primary { padding: 6px 14px; }
+
+/* A move that asks which piece (a promotion): a column of choices on the board, from the square it lands on. */
+.chooser-shade { position: absolute; inset: 0; z-index: 7; background: rgba(20, 16, 12, 0.45); }
+.cell-chooser { position: absolute; z-index: 8; display: flex; flex-direction: column; background: #d8c19a; border-radius: max(6px, 1.4cqw); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55); overflow: hidden; }
+.cell-chooser.up { flex-direction: column-reverse; }
+.cell-chooser button { flex: 1 1 0; min-height: 0; display: grid; place-items: center; padding: 0; border: 0; background: none; cursor: pointer; }
+.cell-chooser button:first-child { background: rgba(232, 196, 106, 0.45); }
+.cell-chooser button:focus-visible { outline: 3px solid #0b57d0; outline-offset: -3px; }
+@media (hover: hover) { .cell-chooser button:hover { background: rgba(232, 196, 106, 0.75); } }
+.cell-chooser .piece.small { width: 86%; height: auto; aspect-ratio: 1; }
+
 /* ---- The table sports' shared table (Mini Golf…) -----------------------------------------------
    A canvas that takes all the room there is: the table screen fits the hole inside it, turned on
    its side if that shows it bigger. On a phone the scores are a row of chips over the canvas, the

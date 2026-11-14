@@ -329,8 +329,11 @@ export function withOffers<R extends BaseRules, S extends { rules: R; seats: num
     apply(state, seat, move, time) {
       if (move && OFFER_TYPES.has((move as { type?: string }).type as string)) return offerMove(state, seat, move as OfferMove, time);
       const before = inner(state);
-      const after = game.apply(before, seat, move as M, time);
-      return { ...after, offers: afterBoardMove(offersOf(state), before, after, seat) };
+      const o = offersOf(state);
+      // A game that keeps time (a chess clock) is told how long the move took since the last move
+      // on the board: the time an offer and its answer took is the mover's own.
+      const after = game.apply(before, seat, move as M, time && o.idle > 0 ? { ...time, elapsed: time.elapsed + o.idle } : time);
+      return { ...after, offers: afterBoardMove(o, before, after, seat) };
     },
     view(state, seat) {
       const v = game.view(state, seat);
@@ -338,7 +341,9 @@ export function withOffers<R extends BaseRules, S extends { rules: R; seats: num
       const o = offersOf(state);
       const can = (["resign", "draw", "takeback"] as OfferKind[]).filter((kind) => refusal(s, o, seat, kind) === null);
       const note = o.spoke ? noteOf(o.last) : null;
-      return { ...v, narration: note ?? v.narration, offers: { can, open: o.open, answer: !!o.open && o.open.by !== seat && (seat === 0 || seat === 1), last: o.last } };
+      // A clock shown at a seat (`BoardSeat.clock`) has been running while an offer was talked over.
+      const players = o.idle > 0 ? v.players.map((p) => (p.clock?.running ? { ...p, clock: { ...p.clock, ms: Math.max(0, p.clock.ms - o.idle) } } : p)) : v.players;
+      return { ...v, players, narration: note ?? v.narration, offers: { can, open: o.open, answer: !!o.open && o.open.by !== seat && (seat === 0 || seat === 1), last: o.last } };
     },
     // A computer player answers an offer before anything else, and at once. It never makes one.
     // (Anything more a caller hands a computer player, a test's own dice say, is passed along.)
