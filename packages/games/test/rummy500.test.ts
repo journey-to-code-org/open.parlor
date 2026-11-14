@@ -82,4 +82,45 @@ describe("Rummy 500", () => {
     expect(done.phase).toBe("scored");
     expect(done.lastHand!.out).toBeNull();
   });
+
+  it("never leaves you stuck with a pile card you can't meld (issue #120)", () => {
+    // Took from the J♠ up to get the 9♥, and melded the nines first. The J♠ fits nowhere.
+    const start = table();
+    let s = rummy500.apply(start, 0, { type: "take", card: start.pile[0]!.id });
+    expect(names(s.hands[0]!)).toContain("J♠");
+    s = rummy500.apply(s, 0, { type: "meld", cards: idsOf(s, 0, "9♦ 9♣ 9♥") });
+    expect(s.melds).toHaveLength(1);
+    expect(() => rummy500.apply(s, 0, { type: "discard", cards: idsOf(s, 0, "4♠") })).toThrow("J♠");
+    // The way out is still offered, and it takes the whole turn back: the nines too.
+    expect(rummy500.view(s, 0).choices?.options.map((o) => o.move.type)).toEqual(["putback"]);
+    const back = rummy500.apply(s, 0, { type: "putback" });
+    expect(back.phase).toBe("draw");
+    expect(back.melds).toHaveLength(0);
+    expect(names(back.pile)).toEqual(["J♠", "9♥", "Q♦", "5♥"]);
+    expect(names(back.hands[0]!).sort()).toEqual(["4♠", "9♣", "9♦", "K♥"]);
+    // Drawing from the stock instead, the turn can be finished.
+    const drawn = rummy500.apply(back, 0, { type: "draw" });
+    expect(rummy500.apply(drawn, 0, { type: "discard", cards: idsOf(drawn, 0, "4♠") }).turn).toBe(1);
+  });
+
+  it("once the pile card is melded there's nothing left to put back", () => {
+    const start = table();
+    let s = rummy500.apply(start, 0, { type: "take", card: start.pile[1]!.id });
+    s = rummy500.apply(s, 0, { type: "meld", cards: idsOf(s, 0, "9♦ 9♣ 9♥") });
+    expect(s.mustUse).toBeNull();
+    expect(rummy500.view(s, 0).choices).toBeNull();
+    expect(() => rummy500.apply(s, 0, { type: "putback" })).toThrow("nothing to put back");
+  });
+
+  it("a table saved in the old dead end can discard and play on", () => {
+    // How the bug left it: the J♠ owed, the nines melded, and no way back.
+    const start = table();
+    let s = rummy500.apply(start, 0, { type: "take", card: start.pile[0]!.id });
+    s = rummy500.apply(s, 0, { type: "meld", cards: idsOf(s, 0, "9♦ 9♣ 9♥") });
+    const stuck = { ...s, undo: null };
+    expect(rummy500.view(stuck, 0).pick?.prompt).toBe("Pick cards to meld, or one to discard.");
+    const on = rummy500.apply(stuck, 0, { type: "discard", cards: idsOf(stuck, 0, "J♠") });
+    expect(on.turn).toBe(1);
+    expect(on.mustUse).toBeNull();
+  });
 });
