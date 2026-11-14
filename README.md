@@ -68,7 +68,7 @@ canvas (Mini Golf is the first).
 | Combat | 2 | A board game: hide your fleet, then take turns calling shots. Classic, Admirals (ten ships that can't touch), Salvo, or a quick 7×7 |
 | Reversi | 2 | A board game: trap their discs between yours and flip them, on 6×6, 8×8 or 10×10 |
 | Checkers | 2 | A board game: American, International on 10×10 with flying kings, Russian, or friendly with no forced jumps |
-| Mini Golf | 1 to 6 | A table sport: nine holes of putting, in turn or everyone at once |
+| Mini Golf | 1 to 6 | A table sport: nine holes round a garden (a drainpipe, a pond, toadstools that kick, a mole's tunnels), in turn with balls that knock into each other, or everyone at once |
 
 Poker and Blackjack are for chips only: everyone starts with the same stack, and the chips are
 just for keeping score.
@@ -364,9 +364,10 @@ bit.
 
 1. **The engine:** `packages/games/src/<game>.ts`, a `SportGame<Rules, State, Move>` (see
    `packages/games/src/sport.ts`), whose `view` returns a `SportView`: the physics world at rest
-   (walls, pockets, regions, any number of bodies of any size), a `look` that says what each part
-   is drawn as, `ghosts` (things drawn that this world's physics doesn't know, like the other
-   players' balls in mini golf), `shoot` (the body this seat may strike and the range of power,
+   (walls, pockets, regions, tunnels, any number of bodies of any size), a `look` that says what
+   each part is (see **Renderers** below), `ghosts` (things drawn that this world's physics
+   doesn't know: the other players' balls when mini golf is played all at once, or a ball lifted
+   off the tee), `shoot` (the body this seat may strike and the range of power,
    or null), `last` (the shot just taken, the bodies it started from and where the physics came
    to rest, so the table can replay it), a score `card`, buttons and scores. `minigolf.ts` is the
    worked example, with a computer player that tries a few hundred putts in its head and then
@@ -381,19 +382,47 @@ bit.
 4. **Its tile on the front page:** a little table seen from above in `TABLES` in
    `packages/web/src/home/Home.tsx`.
 
-The table screen (`packages/web/src/sport/`) needs nothing: it fits any `SportView` to the screen,
-aims (pull back and let go, or the arrow keys, or the buttons), and plays each shot with its
-sounds. Keep the state safe to replay: the room rebuilds a table after a restart by running its
+The table screen (`packages/web/src/sport/`) needs nothing: it fits any `SportView` to the screen
+(turned on its side if that shows the table bigger), aims (pull back and let go, or the arrow
+keys, or the buttons), and plays each shot with its sounds. Keep the state safe to replay: the room rebuilds a table after a restart by running its
 logged shots through `apply` again, which gives the same table under the same `PHYSICS_VERSION`
 and the same table data (the header of `minigolf.ts` says what that does and doesn't promise).
 
+**Renderers.** A view describes what is on the table and never how it looks: everything is in the
+world's own units and named by kind. `SportLook` says a wall is a timber rail so wide and so high
+standing to one side of its line, a closed wall is a rock or a flowerpot of some height, a
+one-way wall is a step with a drop, a patch of ground is grass, sand, water or paving and how far
+above the rest it stands, a tunnel is a pipe, a hose or a burrow, and the scenery is a gnome here
+and a wheelbarrow there, facing this way. There are no colours, pixels or drawing decisions in an
+engine, in course data or in `SportView` (the shared sport test checks), heights are kept even
+though the physics is flat, every body, wall and tunnel keeps a stable id, and the physics'
+events say what happened to which of them and on which step. All drawing is behind one function,
+`drawScene(ctx, width, height, dpr, fit, scene)` in `packages/web/src/sport/draw.ts`: the table
+screen builds a `Scene` (the view's table, where each ball is this instant, the aim, what has just
+splashed) and calls it. Today that draws a model seen from straight above on a 2D canvas, with
+textures painted in code (`paint/`), the still part of a hole painted once and kept. A renderer in
+three dimensions would take the same `Scene` and replace that one function; nothing in the
+engines, the views, the server or the table screen's aiming and playback would change.
+
 **Adding a mini golf hole** is adding data: a `hole({ … })` in
-`packages/games/src/minigolfcourse.ts` with a name, a par, a tip, the tee, the cup, the outline
-of the green as one closed wall, and any blocks, slopes, sand and water, appended to a course's
+`packages/games/src/minigolfcourse.ts` with a name, a par, a tip, the tee, the cup, the patches of
+green, and any rails (left out: one round each patch), blocks (each a kind: rock, pot, castle…),
+ledges, bumpers, tunnels, slopes, sand, water, scenery and decorations, appended to a course's
 `holes` (or a new course added to `COURSES`). Use whole numbers, make water at least 1000 units
 thick so a hard shot can't jump it, and run the tests: `test/minigolfcourse.test.ts` checks every
-hole of every course without being told about it (the world validates, the tee and cup are on
-the green and clear of walls, sand and water, and a search over shots holes out within par + 2).
+hole of every course without being told about it (the world validates, everything described is
+there, the tee and cup are on the green and clear of walls, sand and water, a ball can never get
+anywhere that isn't grass, sand or water, tunnels let a ball out somewhere safe, and a search
+over shots holes out within par + 2).
+
+**Balls that collide.** Played in turn, every ball that is out on a mini golf hole is in the
+world for every shot, and every seat (and anyone watching) is sent the same table. A ball that is
+knocked stays where it stops; knocked into the cup it is holed for its owner with no extra stroke
+(a house rule, on by default); knocked into the water or off the course it goes back where it
+lay at no cost. A ball still lying on the tee is lifted while the next player tees off. Played
+all at once there is no one table (each player is on their own shot of the hole), so each shot
+has only the striker's ball in it and the other balls are drawn faintly as ghosts. The header of
+`minigolf.ts` has the reasoning.
 
 Nothing else needs touching: `KIT_GAMES` is all three lists together, and the room on the server,
 the setup screen, the rules editor, houses, challenges, leaderboards, tournaments and practice all

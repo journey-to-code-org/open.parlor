@@ -20,10 +20,10 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { Bubble, TableChat, useBubbles, type ChatProps } from "../Chat";
 import { Confetti } from "../Confetti";
 import { loadFeedbackSettings, play, saveFeedbackSettings } from "../feedback/sounds";
-import { named, ResultTable, sideName } from "../kit/KitTable";
+import { named, ResultTable } from "../kit/KitTable";
 import { reducedMotion } from "../motion";
 import { TableSettingsButton } from "../TableSettings";
-import { drawScene, fitFrame, powerColour, toneColour, type Aim, type Disc, type Fit, type Scene } from "./draw";
+import { drawScene, fitFrame, powerColour, toneColour, toWorldVector, type Aim, type Disc, type Effect, type Fit } from "./draw";
 import { advanceRoll, beginRoll, finishRoll, landed, type Roll } from "./roll";
 
 export interface SportTableProps {
@@ -135,7 +135,9 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
   const stage = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const box = useRef({ w: 0, h: 0, dpr: 1 });
-  const fit = useRef<Fit>({ scale: 1, ox: 0, oy: 0 });
+  const sign = useRef<HTMLDivElement>(null);
+  const fit = useRef<Fit>({ scale: 1, ox: 0, oy: 0, turn: 0 });
+  const lastPaint = useRef(0);
   const frame = useRef(0);
   const lastFrame = useRef(0);
   const sendingRef = useRef(false);
@@ -153,7 +155,12 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     const r = roll.current;
     const v = shownRef.current;
     const table = r ? r.target.table : v.table;
-    fit.current = fitFrame(table.look.frame, w, h);
+    // On a phone the hole's sign stands over the top of the table: the hole is fitted below it,
+    // and the garden carries on underneath.
+    const board = sign.current;
+    const over = board && getComputedStyle(board).position === "absolute" ? board.offsetTop + board.offsetHeight + 4 : 0;
+    fit.current = fitFrame(table.look.frame, w, h, { top: over });
+    lastPaint.current = now;
     const looks = new Map<string, SportBody>(table.bodies.map((b) => [b.id, b]));
     // What lies still: the bodies and ghosts of the view on screen (of the shot's own table, if
     // the shot is on a different one), except whatever the roll is moving.
@@ -171,14 +178,18 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
       const ease = 1 - (1 - t) * (1 - t);
       discs.push({ id: g.id, x: slide ? slide.x + (g.x - slide.x) * ease : g.x, y: slide ? slide.y + (g.y - slide.y) * ease : g.y, r: g.r, look: g, ghost: true });
     }
-    const splashes: Scene["splashes"] = [];
+    const effects: Effect[] = [];
     if (r) {
       for (const [id, at] of r.at) {
         const dropped = r.sunk.get(id);
         if (!at.live && dropped === undefined) continue;
-        discs.push({ id, x: at.x, y: at.y, r: at.r, look: looks.get(id), sunk: dropped === undefined ? 0 : Math.min(1, (r.clock - dropped) / 220) });
+        const hit = r.struck.get(id);
+        discs.push({ id, x: at.x, y: at.y, r: at.r, look: looks.get(id), sunk: dropped === undefined ? 0 : Math.min(1, (r.clock - dropped) / 260), struck: hit === undefined ? 0 : Math.max(0, 1 - (r.clock - hit) / 180) });
       }
-      for (const s of r.splashes) if (r.clock - s.at < 600) splashes.push({ x: s.x, y: s.y, t: (r.clock - s.at) / 600 });
+      for (const e of r.effects) {
+        const life = e.kind === "splash" ? 650 : e.kind === "drop" ? 420 : 380;
+        if (r.clock - e.at < life) effects.push({ kind: e.kind, x: e.x, y: e.y, t: (r.clock - e.at) / life });
+      }
     }
     let aiming: Aim | null = null;
     const ball = strikable(v);
@@ -186,7 +197,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
       const a = aimRef.current;
       aiming = { x: ball.x, y: ball.y, r: ball.r, angle: (a.angle * Math.PI) / 18000, power: a.power / 1000, pulling: !!pull.current, cancel: !!pull.current?.cancel };
     }
-    drawScene(ctx, w, h, dpr, fit.current, { table, discs, aim: aiming, trace: r?.jump && r.rested !== null ? r.trace : null, splashes });
+    drawScene(ctx, w, h, dpr, fit.current, { table, discs, aim: aiming, trace: r?.jump && r.rested !== null ? r.trace : null, trails: r ? [...r.trails.values()] : [], effects, time: now, still: reducedMotion() });
   }, []);
 
   /** Draw now, and keep drawing while anything is moving. */
@@ -206,8 +217,11 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
         hear(advanceRoll(r, ms, speed));
         if (r.over) settle();
       }
-      paint(now);
-      if (roll.current || slides.current.size) frame.current = requestAnimationFrame(loop);
+      // A shot, a slide or a pull is drawn every frame. With nothing going on there is still the
+      // water and the marker on the ball to play, which are happy at half that.
+      const busy = !!roll.current || slides.current.size > 0 || !!pull.current;
+      if (busy || now - lastPaint.current >= 30) paint(now);
+      if (busy || !reducedMotion()) frame.current = requestAnimationFrame(loop);
     };
     frame.current = requestAnimationFrame(loop);
   }, [paint]);
@@ -219,7 +233,8 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     for (const e of events) {
       if (e.type === "pocket") play("cup");
       else if (e.type === "out") play(shownRef.current.table.look.regions.some((g) => g.id === e.region && g.surface === "water") ? "splash" : "nope");
-      else if (e.type === "skip") play("knock");
+      else if (e.type === "skip" || e.type === "tunnel") play("knock");
+      else if (e.type === "emerge") play("putt");
       else if ((e.type === "wall" || e.type === "hit") && e.speed > 500) {
         // A ball rattling in a corner is one knock, not a drum roll.
         const now = performance.now();
@@ -331,10 +346,11 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     watch.observe(el);
     return () => watch.disconnect();
   }, [paint]);
-  // Anything React knows changed is drawn straight away; motion is drawn by the loop.
+  // Anything React knows changed is drawn straight away; motion is drawn by the loop, which
+  // runs all the while the table is up unless the person has asked for stillness.
   useEffect(() => {
     paint(performance.now());
-    if (slides.current.size) wake();
+    if (slides.current.size || !reducedMotion()) wake();
   });
 
   // ---- Aiming -----------------------------------------------------------------------------------
@@ -391,8 +407,10 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     const far = Math.hypot(dx, dy);
     p.cancel = far < CANCEL_ZONE;
     if (p.cancel) return setAim(p.before);
-    // The ball goes the opposite way to the pull. Any maths will do here: what is kept is rounded.
-    const angle = wrap((Math.atan2(-dy, -dx) * 18000) / Math.PI);
+    // The ball goes the opposite way to the pull, as the table is drawn (which may be on its
+    // side). Any maths will do here: what is kept is rounded.
+    const [wx, wy] = toWorldVector(fit.current, dx, dy);
+    const angle = wrap((Math.atan2(-wy, -wx) * 18000) / Math.PI);
     const share = Math.min(1, (far - CANCEL_ZONE) / (fullPull() - CANCEL_ZONE));
     setAim({ angle, power: clampPower(shown.shoot.minPower + share * (shown.shoot.maxPower - shown.shoot.minPower)) });
   }
@@ -446,7 +464,6 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
   }, [words.long]);
 
   // ---- The rest of the table --------------------------------------------------------------------
-  const others = Array.from({ length: shown.seats - 1 }, (_, i) => (me + 1 + i) % shown.seats);
   const tie = !!shown.over && shown.over.winners.length === shown.seats && shown.seats > 1;
   const won = !!shown.over && !tie && shown.seats > 1 && shown.over.winners.includes(me);
 
@@ -502,7 +519,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     "Waiting for everyone…"
   );
 
-  const mine = strikable(shown) ?? shown.table.world.bodies[0];
+  const mine = strikable(shown) ?? shown.table.world.bodies.find((b) => shown.table.bodies.some((look) => look.id === b.id && look.owner === me));
   const pocket = mine && mine.pocketed === undefined ? nearestPocket(shown, mine) : null;
   const picture = `${shown.table.name}. ${shown.info.join(". ")}.${pocket ? ` Your ball is ${metres(pocket.far)} from ${shown.table.look.pockets === "cup" ? "the cup" : "the nearest pocket"}.` : ""}`;
   const percent = Math.round(aim.power / 10);
@@ -513,14 +530,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
         <button type="button" className="leave" aria-label="Leave game" onClick={() => (shown.over || confirm("Leave this game?")) && onLeave()}>
           ←
         </button>
-        <div className="kit-scores" aria-label="Scores">
-          {shown.scores.map((s, i) => (
-            <span key={i} className={`kit-score${s.seats.includes(me) ? " us" : ""}`}>
-              <small>{sideName(s.seats, names)}</small>
-              <strong>{s.value}</strong>
-            </span>
-          ))}
-        </div>
+        <span className="sport-course">{shown.card?.title ?? game.name}</span>
         <span className="bar-buttons">
           {shown.card && (
             <button type="button" className="sound-toggle inline" onClick={() => setCardOpen(true)} aria-label="Scorecard" aria-haspopup="dialog">
@@ -536,49 +546,34 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
       {banner}
 
       <div className="felt sport-felt">
-        <div className="sport-top">
-          <h2 className="sport-name">{shown.table.name}</h2>
-          {shown.info.length > 0 && (
-            <ul className="kit-info">
-              {shown.info.slice(1).map((line, i) => (
-                <li key={i}>{named(line, names)}</li>
-              ))}
-            </ul>
-          )}
-          {others.length > 0 && (
-            <div className="sport-others">
-              {others.map((seat) => (
-                <div key={seat} className="opp top" data-seat={seat}>
-                  <SportSeat view={shown} seat={seat} name={names[seat] ?? `Seat ${seat + 1}`} active={shooter === seat || (shooter === null && shown.turn === seat)} />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <ScorePanel view={shown} names={names} active={shooter ?? shown.turn} />
 
-        <div
-          ref={stage}
-          className={`sport-stage${canShoot ? " can" : ""}${pulling ? " pulling" : ""}`}
-          tabIndex={0}
-          role="group"
-          aria-label={`${picture}${canShoot ? " Arrow keys aim, up and down set the power, Enter putts." : ""}`}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={cancelPull}
-          onKeyDown={onKeyDown}
-        >
-          <canvas ref={canvas} aria-hidden />
-          {pulling && (
-            <div className="sport-meter" aria-hidden>
-              <span style={{ height: `${percent}%`, background: powerColour(aim.power / 1000) }} />
-            </div>
-          )}
-          {rolling && (
-            <button type="button" className="sport-skip" onClick={skip} onPointerDown={(e) => e.stopPropagation()}>
-              Skip ⏭
-            </button>
-          )}
+        <div className="sport-view">
+          <HoleSign view={shown} names={names} board={sign} />
+          <div
+            ref={stage}
+            className={`sport-stage${canShoot ? " can" : ""}${pulling ? " pulling" : ""}`}
+            tabIndex={0}
+            role="group"
+            aria-label={`${picture}${canShoot ? " Arrow keys aim, up and down set the power, Enter putts." : ""}`}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={cancelPull}
+            onKeyDown={onKeyDown}
+          >
+            <canvas ref={canvas} aria-hidden />
+            {pulling && (
+              <div className="sport-meter" aria-hidden>
+                <span style={{ height: `${percent}%`, background: powerColour(aim.power / 1000) }} />
+              </div>
+            )}
+            {rolling && (
+              <button type="button" className="sport-skip" onClick={skip} onPointerDown={(e) => e.stopPropagation()}>
+                Skip ⏭
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="center-info">
@@ -636,12 +631,11 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
         </div>
       </div>
 
-      <section className="me" data-seat={me}>
-        {chat && <TableChat {...chat} />}
-        <div className="me-badge">
-          <SportSeat view={shown} seat={me} name={names[me] ?? "You"} active={shooter === me || (shooter === null && shown.turn === me)} row />
-        </div>
-      </section>
+      {chat && (
+        <section className="me sport-me" data-seat={me}>
+          <TableChat {...chat} />
+        </section>
+      )}
 
       <div className="bubble-layer" aria-live="polite">
         {[...bubbles.entries()].map(([s, m]) => (
@@ -690,20 +684,77 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
   );
 }
 
-/** A player at the table: their ball's colour, name, how they stand on this hole, and whether it's their shot. */
-function SportSeat({ view, seat, name, active, row }: { view: SportView; seat: number; name: string; active: boolean; row?: boolean }) {
-  const p = view.players[seat]!;
-  const on = active && !view.over;
+/**
+ * The sign at the hole: its number, its name and its par, on a painted board. A table's name is
+ * "Hole 3: The Elbow" and its first facts are "Hole 3 of 9" and "Par 3"; the board takes the
+ * number from the name, and shows whatever other facts there are small.
+ */
+function HoleSign({ view, names, board }: { view: SportView; names: string[]; board: React.RefObject<HTMLDivElement | null> }) {
+  const [label, title] = view.table.name.includes(": ") ? [view.table.name.slice(0, view.table.name.indexOf(": ")), view.table.name.slice(view.table.name.indexOf(": ") + 2)] : ["", view.table.name];
+  const number = /\d+/.exec(label)?.[0];
+  const [, par, ...rest] = view.info;
   return (
-    <div className={`kit-seat sport-seat${on ? " active" : ""}${p.done ? " done" : ""}${row ? " row" : ""}`} aria-current={on ? "true" : undefined}>
-      <strong>
-        {p.body && <span className="sport-dot" style={{ background: toneColour(p.body.tone) }} aria-hidden />}
-        {name}
-        {p.body && <span className="sr-only"> plays the {p.body.tone} ball</span>}
-      </strong>
-      {p.line && <span>{named(p.line, [])}</span>}
-      {p.badge && <em>{p.badge}</em>}
+    <div ref={board} className="sport-sign">
+      <h2 className="sr-only">{view.table.name}</h2>
+      <div className="sport-sign-board" aria-hidden>
+        {number && <span className="sport-sign-number">{number}</span>}
+        <span className="sport-sign-words">
+          <strong>{title}</strong>
+          {par && <em>{named(par, names)}</em>}
+        </span>
+      </div>
+      <ul className="sport-sign-facts">
+        <li className="sr-only">{view.info[0]}</li>
+        {par && <li className="sr-only">{named(par, names)}</li>}
+        {rest.map((line, i) => (
+          <li key={i}>{named(line, names)}</li>
+        ))}
+      </ul>
     </div>
+  );
+}
+
+/**
+ * Everyone at the table in a few lines: the colour of their ball, their name, what they have
+ * taken on this hole (or frame, or rack) and their total. On a phone it is a row of chips over
+ * the table; on a wide screen, a list down the side.
+ */
+function ScorePanel({ view, names, active }: { view: SportView; names: string[]; active: number | null }) {
+  const now = view.card?.current ?? null;
+  return (
+    <ol className="sport-panel" aria-label="Scores">
+      {view.players.map((p, seat) => {
+        const row = view.card?.rows.find((r) => r.seat === seat);
+        const here = row && now !== null ? row.cells[now] || "0" : null;
+        const total = row?.total ?? String(view.scores.find((s) => s.seats.includes(seat))?.value ?? "");
+        const on = active === seat && !view.over;
+        return (
+          <li key={seat} className={`sport-player${on ? " is-up" : ""}${p.done ? " is-in" : ""}${seat === view.me ? " is-me" : ""}`} data-seat={seat} aria-current={on ? "true" : undefined} title={[p.line, p.badge].filter(Boolean).join(" · ")}>
+            {p.body && <span className="sport-dot" style={{ background: toneColour(p.body.tone) }} aria-hidden />}
+            <span className="sport-player-name">
+              {names[seat] ?? `Seat ${seat + 1}`}
+              {p.body && <span className="sr-only"> plays the {p.body.tone} ball. </span>}
+              <span className="sr-only">{[p.line, p.badge].filter(Boolean).join(". ")}.</span>
+            </span>
+            {p.done && (
+              <span className="sport-player-in" aria-hidden>
+                ✓
+              </span>
+            )}
+            {here !== null && (
+              <span className="sport-player-here">
+                <span className="sr-only">This hole: </span>
+                {here}
+              </span>
+            )}
+            <strong className="sport-player-total">
+              <span className="sr-only">Total: </span>
+              {total}
+            </strong>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

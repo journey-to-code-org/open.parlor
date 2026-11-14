@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { frames, GOLF_HOLE, POOL_TABLE, result, simulate, start, step, type Frame, type SimEvent, type World } from "../src/index.js";
+import { frames, GARDEN_HOLE, GOLF_HOLE, POOL_TABLE, result, simulate, start, step, type Frame, type SimEvent, type World } from "../src/index.js";
 import { bench, energy, momentum } from "./helpers.js";
 
 const run = (world: World, shot?: Parameters<typeof simulate>[1]): Frame[] => [...frames(world, shot)];
@@ -319,5 +319,159 @@ describe("stepping", () => {
     while (!r.done) step(r);
     expect(() => step(r)).toThrow();
     expect(result(r)).toEqual(simulate(GOLF_HOLE, shot));
+  });
+});
+
+describe("tunnels", () => {
+  const pipe = { id: "pipe", x: 2000, y: 0, r: 300, to: [0, 5000] as [number, number], angle: 9000, speed: 6000, ticks: 12 };
+  const table = (over: Partial<typeof pipe> = {}, vx = 6000): World => bench({ bodies: [{ id: "a", x: 0, y: 0, r: 100, vx }], tunnels: [{ ...pipe, ...over }] });
+
+  it("take a ball at the mouth and roll it out of the other end at the tunnel's own speed and heading", () => {
+    const all = run(table());
+    const events = all.flatMap((f) => f.events);
+    expect(types(events)).toEqual(["tunnel", "emerge", "capped"]);
+    const [went, came] = events as Extract<SimEvent, { type: "tunnel" | "emerge" }>[];
+    expect([went!.body, went!.tunnel, came!.tunnel]).toEqual(["a", "pipe", "pipe"]);
+    // The rim is 1700 away at 50 a step: the ball is on it as step 34 ends and in at the start of
+    // 35; twelve steps inside, and out on the next.
+    expect([went!.tick, came!.tick]).toEqual([35, 48]);
+    // While it is inside it is off the table, at the mouth, and says which tunnel it is in.
+    const inside = all[40]!.bodies[0]!;
+    expect(inside).toEqual({ id: "a", x: 2000, y: 0, vx: 0, vy: 0, live: false, in: "pipe" });
+    // It comes out where the tunnel says, heading straight down the screen at 6000.
+    const out = all[47]!.bodies[0]!;
+    expect(out.live).toBe(true);
+    expect(out.in).toBeUndefined();
+    expect([out.x, out.vx, out.vy]).toEqual([0, 0, 6000]);
+    expect(out.y).toBe(5050);
+  });
+
+  it("with no steps inside, the ball is out on the very next step", () => {
+    const events = run(table({ ticks: 0 })).flatMap((f) => f.events);
+    expect(events.slice(0, 2).map((e) => e.tick)).toEqual([35, 36]);
+    const { ticks: _ticks, ...bare } = pipe;
+    expect(types(simulate(bench({ bodies: [{ id: "a", x: 0, y: 0, r: 100, vx: 6000 }], tunnels: [bare] })).events).slice(0, 2)).toEqual(["tunnel", "emerge"]);
+  });
+
+  it("let a ball that is going too fast carry on over the mouth", () => {
+    const fast = simulate(table({ maxSpeed: 3000 }));
+    expect(types(fast.events)).toEqual(["capped"]);
+    expect(fast.world.bodies[0]!.x).toBeGreaterThan(2300);
+    // At the limit or under it, in it goes.
+    expect(types(simulate(table({ maxSpeed: 6000 })).events)).toContain("tunnel");
+    // A fast ball that is turned back and slows down while still over the mouth goes in then.
+    const wall = { id: "back", points: [[2150, -1000], [2150, 1000]] as [number, number][], restitution: 0.4 };
+    const back = simulate({ ...table({ maxSpeed: 3000 }), walls: [wall] });
+    expect(types(back.events).slice(0, 3)).toEqual(["wall", "tunnel", "emerge"]);
+  });
+
+  it("can't be jumped: the mouth is found on the way, however fast the ball", () => {
+    // 60000 units/s is 500 a step: the mouth, 200 across, lies between two steps.
+    const res = simulate(bench({ maxTicks: 60, bodies: [{ id: "a", x: 30, y: 0, r: 100, vx: 60000 }], tunnels: [{ ...pipe, r: 100 }] }));
+    expect(types(res.events).slice(0, 2)).toEqual(["tunnel", "emerge"]);
+  });
+
+  it("keep the shot going until the ball is out, and set it down at the far end if the steps run out first", () => {
+    const friction = { friction: 5000, restSpeed: 100 };
+    const slow = simulate({ ...table({ ticks: 200, speed: 0 }), ...friction, maxTicks: 1000 });
+    // Nothing on the table was moving for two hundred steps, and the shot waited.
+    expect(slow.capped).toBe(false);
+    expect(slow.ticks).toBeGreaterThan(234);
+    expect(slow.world.bodies[0]).toEqual({ id: "a", x: 0, y: 5000, r: 100 });
+    const cut = simulate({ ...table({ ticks: 200 }), maxTicks: 100 });
+    expect(cut.capped).toBe(true);
+    expect(types(cut.events)).toEqual(["tunnel", "capped", "emerge"]);
+    expect(cut.world.bodies[0]).toEqual({ id: "a", x: 0, y: 5000, r: 100 });
+  });
+
+  it("knock into whatever is standing at the far end", () => {
+    const world = table();
+    world.bodies.push({ id: "b", x: 0, y: 5400, r: 100 });
+    const res = simulate(world);
+    expect(types(res.events).slice(0, 3)).toEqual(["tunnel", "emerge", "hit"]);
+    expect(res.firstContact).toBeNull();
+  });
+});
+
+describe("ledges", () => {
+  // Listed left to right: the top of the screen (smaller y) is on the wall's left, its open side.
+  const ledge = { id: "ledge", oneWay: true, points: [[-2000, 0], [0, 0], [2000, 0]] as [number, number][] };
+  const from = (y: number, vy: number, x = 500): World => bench({ walls: [ledge], bodies: [{ id: "a", x, y, r: 100, vy }] });
+
+  it("let a ball roll off from the open side and stop one coming back the other way", () => {
+    const down = simulate(from(-1000, 6000));
+    expect(types(down.events)).toEqual(["capped"]);
+    expect(down.world.bodies[0]!.y).toBeGreaterThan(1000);
+    const up = run(from(1000, -6000));
+    expect(types(up.flatMap((f) => f.events))).toEqual(["wall", "capped"]);
+    expect(up.every((f) => f.bodies[0]!.y >= 100 - 1e-6)).toBe(true);
+    expect(up.at(-2)!.bodies[0]!.vy).toBe(6000);
+  });
+
+  it("are no more solid at a point along them than anywhere else", () => {
+    // Straight over the joint in the middle, and over an end.
+    for (const x of [0, 30, -2000, 2000]) expect(types(simulate(from(-1000, 6000, x)).events), `x ${x}`).toEqual(["capped"]);
+    // From the shut side, the joint and the ends stop a ball like the rest.
+    for (const x of [0, 30]) expect(types(simulate(from(1000, -6000, x)).events)).toEqual(["wall", "capped"]);
+  });
+
+  it("stop a ball that has dropped off from being pulled back up", () => {
+    // A slope pushes back towards the ledge the ball has just come down.
+    const world: World = { ...from(-1000, 4000), friction: 0, maxTicks: 600, regions: [{ id: "tilt", shape: { points: [[-5000, 0], [5000, 0], [5000, 9000], [-5000, 9000]] }, slope: [0, -8000] }] };
+    const all = run(world);
+    expect(types(all.flatMap((f) => f.events))).toContain("wall");
+    // Once its centre was over the edge it never got back.
+    const over = all.findIndex((f) => f.bodies[0]!.y > 0);
+    expect(all.slice(over).every((f) => f.bodies[0]!.y > 0)).toBe(true);
+  });
+});
+
+describe("bumpers", () => {
+  const table = (vx: number, kick = 6000): World => bench({ bodies: [{ id: "a", x: 0, y: 0, r: 100, vx }, { id: "post", x: 1000, y: 0, r: 200, fixed: true, kick }] });
+
+  it("send a gentle touch away at their own speed", () => {
+    const all = run(table(600));
+    expect(types(all.flatMap((f) => f.events))).toEqual(["hit", "capped"]);
+    expect(all.at(-2)!.bodies[0]!.vx).toBeCloseTo(-6000, 6);
+    expect(all.at(-2)!.bodies[1]).toMatchObject({ x: 1000, y: 0, vx: 0, vy: 0 });
+  });
+
+  it("leave alone a ball that is already leaving faster than that", () => {
+    expect(run(table(9000)).at(-2)!.bodies[0]!.vx).toBeCloseTo(-9000, 6);
+    // A fixed body with no kick is the plain post it always was.
+    expect(run(table(600, 0)).at(-2)!.bodies[0]!.vx).toBeCloseTo(-600, 6);
+  });
+
+  it("kick along the line between the centres, so a glancing ball keeps its sideways speed", () => {
+    const world = bench({ bodies: [{ id: "a", x: 0, y: 290, r: 100, vx: 1200 }, { id: "post", x: 1000, y: 0, r: 200, fixed: true, kick: 6000 }] });
+    const after = run(world).at(-2)!.bodies[0]!;
+    // Away from the post, at more than the kick once what it kept along the tangent is added.
+    expect(after.vy).toBeGreaterThan(5000);
+    expect(Math.sqrt(after.vx * after.vx + after.vy * after.vy)).toBeGreaterThan(6000);
+  });
+});
+
+describe("the garden hole", () => {
+  it("is reached through the pipe, and not by a putt straight up at the ledge", () => {
+    const piped = simulate(GARDEN_HOLE, { body: "ball", angle: 24026, power: 600 });
+    expect(types(piped.events)).toEqual(["tunnel", "emerge"]);
+    // Out on the terrace, having rolled up and to the right from where the pipe let it go.
+    const at = piped.world.bodies[0]!;
+    expect(at.x > 3000 && at.y < 12000 && at.y > 5000).toBe(true);
+    const straight = simulate(GARDEN_HOLE, { body: "ball", angle: 27000, power: 1000 });
+    expect(straight.events.some((e) => e.type === "wall" && e.wall === "ledge")).toBe(true);
+    expect(straight.events.every((e) => e.type === "wall")).toBe(true);
+    expect(straight.world.bodies[0]!.y).toBeGreaterThan(15000);
+  });
+
+  it("lets a ball down off the terrace, and the toadstool knocks one away", () => {
+    const onTerrace = (x: number, y: number): World => ({ ...GARDEN_HOLE, bodies: [{ ...GARDEN_HOLE.bodies[0]!, x, y }, GARDEN_HOLE.bodies[1]!] });
+    const down = simulate(onTerrace(3000, 12000), { body: "ball", angle: 9000, power: 500 });
+    expect(down.events.some((e) => e.type === "wall" && e.wall === "ledge")).toBe(false);
+    expect(down.world.bodies[0]!.y).toBeGreaterThan(15000);
+    const bumped = [...frames(onTerrace(8200, 9000), { body: "ball", angle: 27000, power: 150 })];
+    const hit = bumped.findIndex((f) => f.events.some((e) => e.type === "hit"));
+    expect(hit).toBeGreaterThan(0);
+    expect(bumped[hit]!.bodies[0]!.vy).toBeCloseTo(9000, 6);
   });
 });
