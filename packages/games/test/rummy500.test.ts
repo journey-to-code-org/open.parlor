@@ -80,8 +80,38 @@ describe("Rummy 500", () => {
   });
 
   it("strict rules: the top card has to be melded too", () => {
-    const t = { ...table(), rules: strictRummy500 };
+    const t = { ...table({ pile: cards("J♠ 5♥ 9♥") }), rules: strictRummy500 };
     expect(rummy500.apply(t, 0, { type: "take" }).mustUse).not.toBeNull();
+    // ...so a top card you can't use can't be taken either.
+    expect(() => rummy500.apply({ ...table(), rules: strictRummy500 }, 0, { type: "take" })).toThrow("can't meld the 5♥");
+  });
+
+  it("won't let you take a card from deep in the pile that you can't meld (#136)", () => {
+    const t = table();
+    // The Q♦ goes with nothing in the hand, the cards above it, or the table.
+    expect(() => rummy500.apply(t, 0, { type: "take", card: t.pile[2]!.id })).toThrow("can't meld the Q♦");
+    // A card that would lay off on a meld on the table is fine.
+    const meld = { kind: "run" as const, owner: 1, cards: cards("9♦ 10♦ J♦").map((c) => ({ card: c, by: 1 })) };
+    const u = table({ melds: [meld] });
+    expect(rummy500.apply(u, 0, { type: "take", card: u.pile[2]!.id }).mustUse).toBe(u.pile[2]!.id);
+  });
+
+  it("melding other cards first doesn't take away putting the pile back (#136)", () => {
+    const t = table({ hands: [cards("4♠ 5♠ 6♠ 9♦ 9♣"), cards("2♣ 3♣ 8♥")] });
+    let s = rummy500.apply(t, 0, { type: "take", card: t.pile[1]!.id });
+    s = rummy500.apply(s, 0, { type: "meld", cards: idsOf(s, 0, "4♠ 5♠ 6♠") });
+    expect(s.mustUse).not.toBeNull();
+    expect(rummy500.view(s, 0).choices?.options.map((o) => o.label)).toEqual(["Put them back"]);
+    const back = rummy500.apply(s, 0, { type: "putback" });
+    expect(back.melds).toEqual([]);
+    expect(names(back.hands[0]!).sort()).toEqual(["4♠", "5♠", "6♠", "9♣", "9♦"].sort());
+    expect(names(back.pile)).toEqual(["J♠", "9♥", "Q♦", "5♥"]);
+  });
+
+  it("a table already stuck owing a card with no way back can discard (#136)", () => {
+    const s = table({ phase: "meld", hands: [cards("4♠ Q♦ K♥"), cards("2♣")] });
+    const stuck = { ...s, mustUse: s.hands[0]![1]!.id, undo: null };
+    expect(rummy500.apply(stuck, 0, { type: "discard", cards: [stuck.hands[0]![0]!.id] }).turn).toBe(1);
   });
 
   it("lay off on anyone's meld, and the cards score for whoever laid them", () => {
