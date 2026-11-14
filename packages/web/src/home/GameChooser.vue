@@ -255,6 +255,14 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 /* A green board (Reversi): discs fill their squares. */
 .mini-board.shade-green { background: #17402c; }
 .mini-board.shade-green .mini-cell { background: #2f8a5b; font-size: calc(var(--tile-card) * 1.5 / var(--cols) * 0.95); }
+/* A board of points (Backgammon): long triangles from both edges, and no lines between the cells. */
+.mini-board.shade-points { background: #c9a36b; gap: 0; border: 2px solid #5b3a22; box-sizing: border-box; }
+.mini-board.shade-points .mini-cell { background: none; font-size: calc(var(--tile-card) * 1.5 / var(--cols) * 0.98); }
+.mini-board.shade-points .mini-cell.shade-point-down, .mini-board.shade-points .mini-cell.shade-point-up { position: relative; isolation: isolate; }
+.mini-board.shade-points .mini-cell.shade-point-down::before, .mini-board.shade-points .mini-cell.shade-point-up::before { content: ""; position: absolute; inset: 0; z-index: -1; background: #7a2e23; clip-path: polygon(8% 0, 92% 0, 50% 100%); }
+.mini-board.shade-points .mini-cell.shade-point-up::before { clip-path: polygon(8% 100%, 92% 100%, 50% 0); }
+.mini-board.shade-points .mini-cell:nth-child(even).shade-point-down::before, .mini-board.shade-points .mini-cell:nth-child(odd).shade-point-up::before { background: #efe0bb; }
+.mini-board.shade-points .mini-cell.tone-light { color: #fffaf0; text-shadow: 0 0 1px #3d2717, 0 1px 1px rgba(0, 0, 0, 0.6); }
 .tile:hover .mini-board, .tile:focus-visible .mini-board { rotate: 0deg; scale: 1.06; }
 /* A dice game's tile: a few dice thrown where the fan would be; they square up when you point at the tile. */
 .mini-dice { position: absolute; right: calc(var(--tile-card) * 0.3); top: 50%; translate: 0 -50%; width: calc(var(--tile-card) * 1.5); aspect-ratio: 1; }

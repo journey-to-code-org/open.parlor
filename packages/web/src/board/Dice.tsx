@@ -46,9 +46,14 @@ export interface DiceProps {
   still?: boolean;
   /** Told when the dice start tumbling and when they have landed, so nothing gives the roll away early. */
   onTumble?: (tumbling: boolean) => void;
+  /**
+   * Two players' dice on one table (backgammon): the row is in two halves, this seat's dice in the
+   * second and everyone else's in the first, so each player's dice lie on their own side.
+   */
+  split?: number;
 }
 
-export function Dice({ dice, onTap, still, onTumble }: DiceProps) {
+export function Dice({ dice, onTap, still, onTumble, split }: DiceProps) {
   const sides = dice.sides ?? 6;
   const row = useRef<HTMLDivElement>(null);
   // While dice tumble they show faces of their own choosing; `faces` is what each shows this instant.
@@ -56,12 +61,14 @@ export function Dice({ dice, onTap, still, onTumble }: DiceProps) {
   const [said, setSaid] = useState("");
   const seen = useRef(dice.roll);
   useEffect(() => {
-    const thrown = dice.roll > seen.current;
+    const isThrow = dice.roll > seen.current;
     seen.current = dice.roll;
     // A count that went down is another table's dice, not a throw.
-    if (!thrown) return;
+    if (!isThrow) return;
     play("dice");
-    const rolled = dice.dice.filter((d) => !d.held && !d.used && d.value !== null);
+    // A roll that couldn't be played is spent as soon as it lands: it is still thrown.
+    const thrown = dice.dice.filter((d) => !d.held && d.value !== null);
+    const rolled = thrown.some((d) => !d.used) ? thrown.filter((d) => !d.used) : thrown;
     setSaid(`Rolled: ${dice.dice.filter((d) => d.value !== null).map((d) => WORDS[d.value!] ?? d.value).join(", ")}`);
     if (still || reducedMotion() || !rolled.length) return;
     const any = () => new Map(rolled.map((d) => [d.id, 1 + Math.floor(Math.random() * sides)]));
@@ -91,33 +98,42 @@ export function Dice({ dice, onTap, still, onTumble }: DiceProps) {
     buttons[Math.min(buttons.length - 1, Math.max(0, at + step))]?.focus();
   }
 
-  return (
-    <div className={`dice${tappable.size ? " can" : ""}`} role="group" aria-label={tappable.size ? "Dice. Tap one to keep it, or to let it go." : "Dice"} ref={row} onKeyDown={onKey}>
-      {dice.dice.map((die, i) => {
-        const tumbling = faces?.has(die.id);
-        const cls = ["die", die.held ? "held" : "", die.used ? "used" : "", tumbling ? "tumbling" : "", die.value === null ? "unrolled" : "", typeof die.owner === "number" ? `owner-${die.owner % 2}` : ""].filter(Boolean).join(" ");
-        const style = { "--i": i } as React.CSSProperties;
-        const body = (
-          <>
-            <Face value={tumbling ? faces!.get(die.id)! : die.value} />
-            {/* Set aside: a held die sits up out of the row with a tag under it. */}
-            {die.held && (
-              <span className="die-tag" aria-hidden>
-                Kept
-              </span>
-            )}
-          </>
-        );
-        return tappable.has(die.id) ? (
-          <button key={die.id} type="button" className={cls} style={style} data-die={die.id} aria-pressed={!!die.held} aria-label={dieLabel(die, i + 1)} onClick={() => onTap(die.id)}>
-            {body}
-          </button>
-        ) : (
-          <span key={die.id} className={cls} style={style} data-die={die.id} role="img" aria-label={dieLabel(die, i + 1)}>
-            {body}
+  const one = (die: BoardDie, i: number) => {
+    const tumbling = faces?.has(die.id);
+    const cls = ["die", die.held ? "held" : "", die.used ? "used" : "", tumbling ? "tumbling" : "", die.value === null ? "unrolled" : "", typeof die.owner === "number" ? `owner-${die.owner % 2}` : ""].filter(Boolean).join(" ");
+    const style = { "--i": i } as React.CSSProperties;
+    const body = (
+      <>
+        <Face value={tumbling ? faces!.get(die.id)! : die.value} />
+        {/* Set aside: a held die sits up out of the row with a tag under it. */}
+        {die.held && (
+          <span className="die-tag" aria-hidden>
+            Kept
           </span>
-        );
-      })}
+        )}
+      </>
+    );
+    return tappable.has(die.id) ? (
+      <button key={die.id} type="button" className={cls} style={style} data-die={die.id} aria-pressed={!!die.held} aria-label={dieLabel(die, i + 1)} onClick={() => onTap(die.id)}>
+        {body}
+      </button>
+    ) : (
+      <span key={die.id} className={cls} style={style} data-die={die.id} role="img" aria-label={dieLabel(die, i + 1)}>
+        {body}
+      </span>
+    );
+  };
+  const halves = split === undefined ? null : [dice.dice.filter((d) => d.owner !== split), dice.dice.filter((d) => d.owner === split)];
+
+  return (
+    <div className={`dice${tappable.size ? " can" : ""}${halves ? " split" : ""}`} role="group" aria-label={tappable.size ? "Dice. Tap one to keep it, or to let it go." : "Dice"} ref={row} onKeyDown={onKey}>
+      {halves
+        ? halves.map((half, h) => (
+            <div key={h} className="dice-half">
+              {half.map((die) => one(die, dice.dice.indexOf(die)))}
+            </div>
+          ))
+        : dice.dice.map(one)}
       <span className="sr-only" aria-live="polite">
         {said}
       </span>
