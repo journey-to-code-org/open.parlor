@@ -39,6 +39,10 @@ describe("a think is the same move on any thread", () => {
   const SKILLS: Skill[] = ["mixed", "hard", "medium", "easy"];
   const LIMIT = 160;
   const tables = everyTable();
+  // A game that thinks by the clock can only be repeated when it isn't given one: its think is then
+  // a fixed ration of work (Go: so many playouts), and the same dice give the same move anywhere.
+  // Told how long it has, it may be stopped by the time, and two threads never keep the same time.
+  const BY_THE_CLOCK = new Set(["go"]);
 
   it("covers every registered game", () => {
     expect(new Set(tables.filter((t) => t.kit).map((t) => (t.options as { game: string }).game))).toEqual(new Set(KIT_GAMES.map((g) => g.id)));
@@ -62,7 +66,8 @@ describe("a think is the same move on any thread", () => {
         for (let n = 0; n < LIMIT && !tableRoom.finished!(state); n++) {
           let moved = false;
           for (let seat = 0; seat < table.seats; seat++) {
-            const job: ThinkJob = { state, seat, name: names[seat]!, settings, budget: { ms: 2000 }, seed: seed * 7919 + n * 31 + seat };
+            const timed = table.kit && BY_THE_CLOCK.has((table.options as { game: string }).game);
+            const job: ThinkJob = { state, seat, name: names[seat]!, settings, ...(timed ? {} : { budget: { ms: 2000 } }), seed: seed * 7919 + n * 31 + seat };
             const move = think(job);
             // A game only calls a think heavy when there is a move to think about.
             if (table.kit && kitHeavy(state as never, seat)) {

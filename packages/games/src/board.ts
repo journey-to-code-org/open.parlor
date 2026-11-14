@@ -63,7 +63,11 @@ export type CellMark =
   /** A place you could move to, in a game that points them out. Only ever sent to the seat that can. */
   | "hint"
   /** Has to move: a piece that must capture in checkers. */
-  | "must";
+  | "must"
+  /** Can't be played on just now, though it is empty: the ko point in Go. */
+  | "barred"
+  /** Counted as a side's own at the end: territory in Go. The mark says whose (`owner`). */
+  | "claimed";
 
 export interface BoardGrid {
   /** Names this grid in a move when a view has more than one: "board", "mine", "theirs". */
@@ -104,7 +108,8 @@ export interface BoardGrid {
       closed?: boolean;
     }[];
   };
-  marks?: { cell: number; mark: CellMark }[];
+  /** `owner` is the seat a "claimed" cell belongs to. */
+  marks?: { cell: number; mark: CellMark; owner?: number }[];
   /**
    * Draw the board turned half way round, so the last row is at the top and this seat's own pieces
    * are nearest them (the second player in checkers or chess). Only the drawing turns: cells keep

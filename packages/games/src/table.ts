@@ -11,7 +11,7 @@ import { mulberry32, type PlayStyle } from "@spades/rules";
 /** The games that are played with cards. */
 export type CardGameId = "hearts" | "ohhell" | "euchre" | "crazy8" | "gin" | "pinochle" | "canasta" | "gofish" | "oldmaid" | "war" | "whist" | "golf" | "rummy500" | "president" | "klondike" | "freecell" | "handfoot" | "cribbage" | "fivedraw" | "holdem" | "bluff" | "liarspoker" | "switch" | "thirtyone" | "kingscorner" | "blackjack" | "spite" | "pitch" | "fivehundred" | "durak" | "bridge" | "fruitsalad" | "slapjack" | "speed" | "memory" | "sevens" | "cuckoo" | "contractrummy" | "spider" | "pyramid" | "ridethebus" | "kingscup" | "horserace" | "drinkingpyramid";
 /** The games that are played on a board. */
-export type BoardGameId = "tictactoe" | "dropfour" | "combat" | "reversi" | "checkers";
+export type BoardGameId = "tictactoe" | "dropfour" | "combat" | "reversi" | "checkers" | "go";
 /** The games that are played by striking a ball across a table. */
 export type SportGameId = "minigolf";
 /** Every game on the kit. (Rooms, houses and saved rules have always called these "kit" games.) */
@@ -47,6 +47,8 @@ export interface Choice {
   /** The main choice: drawn as the big gold button. */
   primary?: boolean;
   hint?: string;
+  /** A question to put before it is sent ("Pass your turn?"): for a button that is easy to press and hard to undo. */
+  confirm?: string;
 }
 
 /** Buttons a seat can press now: a bid, a trump call, "Next hand". */

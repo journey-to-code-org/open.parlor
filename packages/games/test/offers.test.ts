@@ -14,6 +14,7 @@ import {
   dropFour,
   friendlyCheckers,
   GameError,
+  go,
   hearts,
   matchRules,
   movesOffered,
@@ -25,6 +26,7 @@ import {
   reversi,
   settleMatch,
   SHOT_CLOCK_MS,
+  smallGo,
   ticTacToe,
   who,
   withOffers,
@@ -683,6 +685,7 @@ describe("taking back in the real games", () => {
     [reversi, classicReversi],
     [checkers, americanCheckers],
     [checkers, checkers.presets[1]],
+    [go, smallGo],
   ];
 
   it("puts the game back exactly as it stood, after one move or after the reply", () => {
