@@ -19,9 +19,16 @@ export function LocalKit({ game: id, name, rules, seats, seed, onLeave }: { game
   const latest = useRef(state);
   latest.current = state;
 
+  // When the table last changed, so your own moves can say how long they took: a game's clock keeps
+  // running while an offer is made and answered (offers.ts), and that is how the game knows.
+  const changed = useRef(Date.now());
+  useEffect(() => {
+    changed.current = Date.now();
+  }, [state]);
+
   const act = useCallback(async (move: Record<string, unknown>) => {
     try {
-      const next = game.apply(latest.current, 0, move);
+      const next = game.apply(latest.current, 0, move, { elapsed: Math.max(0, Date.now() - changed.current) });
       latest.current = next;
       setState(next);
       return null;

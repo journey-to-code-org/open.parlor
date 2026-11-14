@@ -1035,6 +1035,46 @@ button.cross-pile.can::after {
 /* The felt is as tall as what's on it, so a table too tall for the screen scrolls instead of sliding under your seat. */
 .board-felt { flex: 1 0 auto; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 10px 8px 12px; }
 .board .status { position: static; }
+/* Offers at a board (board/Offers.tsx): the ⚑ in the bar and its menu, and the banner by the board. */
+/* (The menu hangs from the bar, not from its button, so on a phone it has the screen's width to open into.) */
+.offers-menu { display: inline-flex; }
+.offers-toggle { font-size: 1.05rem; }
+.offers-toggle[aria-expanded="true"] { background: rgba(0, 0, 0, 0.45); }
+.offers-pop {
+  position: absolute; top: calc(100% + 6px); right: max(8px, env(safe-area-inset-right)); z-index: 30; display: flex; flex-direction: column; gap: 2px;
+  width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box; padding: 6px; border-radius: 12px;
+  background: var(--cream); color: var(--ink); box-shadow: var(--elev-2); text-align: left;
+}
+.offers-pop [role="menuitem"] {
+  display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 8px;
+  background: none; color: var(--ink); font: inherit; font-size: 1rem; text-align: left; cursor: pointer;
+}
+.offers-pop [role="menuitem"] span { width: 1.4em; text-align: center; }
+.offers-pop [role="menuitem"]:hover, .offers-pop [role="menuitem"]:focus-visible { background: rgba(31, 77, 58, 0.12); }
+.offers-pop [role="menuitem"].danger { color: var(--red); border-top: 1px solid rgba(0, 0, 0, 0.12); border-radius: 0 0 8px 8px; margin-top: 2px; }
+.offers-pop button:focus-visible, .offer-banner button:focus-visible { outline: 3px solid #ffd76a; outline-offset: 1px; }
+.offers-pop.confirm { gap: 6px; padding: 14px; width: 19em; }
+.offers-pop.confirm strong { font-family: inherit; font-size: 1.05rem; text-align: left; }
+/* Over the chat bubbles while it is open: it is the thing being read. */
+.table.kit .kit-bar:has(.offers-pop) { z-index: 20; }
+.offers-pop.confirm span { color: var(--muted); font-size: 0.9rem; }
+.offers-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.offers-pop.confirm .offers-row { margin-top: 6px; justify-content: flex-end; flex-wrap: nowrap; }
+.offers-pop.confirm button { min-height: 44px; padding: 8px 14px; white-space: nowrap; border-radius: 999px; font: inherit; font-weight: 700; cursor: pointer; }
+.offers-pop.confirm .secondary { background: none; border: 1.5px solid var(--felt); color: var(--felt); }
+.offers-pop.confirm .danger { background: var(--red); border: 1.5px solid var(--red); color: #fff; }
+.offer-banner {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 26em; padding: 8px 14px; border-radius: 12px;
+  background: rgba(0, 0, 0, 0.28); color: var(--cream); text-align: center; text-wrap: balance;
+}
+.offer-banner.asks { padding: 12px 16px; background: var(--cream); color: var(--ink); box-shadow: var(--elev-2); }
+.offer-banner p { margin: 0; font-size: 0.95rem; }
+.offer-banner.asks p { font-size: 1.05rem; font-weight: 700; }
+.offer-banner button { min-height: 44px; min-width: 6.5em; }
+.offer-banner .secondary { color: var(--felt); }
+/* Where the board leaves little room under it (a laptop), the question and its answers share a line. */
+@media (min-width: 1024px) { .offer-banner.asks { flex-direction: row; gap: 14px; max-width: none; padding: 8px 10px 8px 16px; } }
+.offer-note { margin: 0; color: var(--cream); opacity: 0.8; font-size: 0.85rem; text-align: center; }
 .board-others { display: flex; justify-content: center; flex-wrap: wrap; gap: clamp(10px, 4vw, 48px); }
 .board-others .opp { gap: 4px; }
 .boards { width: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 14px; }

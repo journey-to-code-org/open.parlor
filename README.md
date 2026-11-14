@@ -114,6 +114,33 @@ before the end.
   (Drop Four's shot clock in drinking mode). When both are running, whichever runs out first counts.
   A game's own clock runs in practice too.
 
+## Resigning, draws and taking a move back
+
+At a board game for two (Tic-Tac-Toe, Drop Four, Reversi, Checkers, Combat) the ⚑ in the bar has
+the things a player rarely does:
+
+- **Resign.** Any time a game is on, your turn or not, and it asks again before it's sent. The
+  other player wins that game. In a match of several games it gives up the game on the board, not
+  the match.
+- **Offer a draw.** The other player gets a banner with Accept and Decline. The offer stays open
+  while you move, and playing on is a "no": it lapses when they make their move. You can't offer
+  again until six moves have been made, so it can't be used to nag. An agreed draw counts on the
+  leaderboard and in a tournament exactly as a draw on the board does.
+- **Ask to take a move back.** If they say yes, your last turn is undone (a whole run of jumps in
+  Checkers), and their reply to it if they have already moved. It lapses when anybody moves.
+  There is no taking back in Combat (a shot tells you something that can't be un-known), against
+  Drop Four's shot clock, or in a tournament match.
+
+Computer players answer at once: they always let you take a move back, take a draw when they're
+behind (or level, once the game is well along), and never offer or resign themselves. A house
+rule, **Offers**, says what a table allows: draws and take-backs, draws only, or neither
+(resigning is always allowed). Someone watching sees the offer and how it came out, with nothing
+to press. Offers don't stop a clock: the turn timer and a game's own clock run on through them,
+and a turn timer that runs out plays a move for you, never an answer.
+
+There is no notification for an offer when you're away from the table, because there is none for
+"your move" either; the turn timer is what keeps a game from waiting on you.
+
 ## Finding people to play with
 
 A family table is private: only people with its link can sit down. Two things make a table public.
@@ -343,14 +370,45 @@ what `view` returns.
    move, the seat keeps the turn, and the capture in progress lives in the engine's state); and
    the `must` mark rings a piece that has to move. A piece with `faded` set is drawn faintly: a
    piece jumped but not yet taken off.
-2. **Register it:** add its id to `BoardGameId` in `table.ts`, add it to `BOARD_GAMES` in
+2. **Offers, for a game with two sides:** resigning, draw offers and taking a move back are built
+   once (`packages/games/src/offers.ts`) and a game opts in by wrapping itself. Its own `apply`,
+   `view` and computer player don't change:
+
+   ```ts
+   const rules: BoardGame<ChessRules, ChessState, ChessMove> = { /* the game */ };
+
+   export const chess = withOffers<ChessRules, ChessState, ChessMove>(rules, {
+     // End the game on the board: `winner` takes it, or nobody (a draw). `s` is a copy to change.
+     // `settleMatch` does it for a state shaped like the other board games' (wins, draws, round…).
+     settle: settleMatch,
+     // Moves can be taken back. Leave it out (the default) if any seat can't see everything, or a
+     // move decides anything by chance; a function can rule out some tables: (s) => !s.rules.blitz.
+     takeBack: true,
+     // For a computer player answering a draw offer: above zero is better than level for `seat`.
+     standing: (s, seat) => material(s, seat) - material(s, 1 - seat),
+   });
+   ```
+
+   The wrapper adds the moves (`{ type: "resign" }`, `{ type: "offer", offer: "draw" | "takeback" }`,
+   `{ type: "accept" }`, `{ type: "decline" }`), a house rule (`offers`: all, no take-backs,
+   none), and `offers` in the view (what is open, who made it, what this seat may do), which the
+   board table draws. What it needs to remember lives in the state under `offers`, so it is in
+   the move log's replay like everything else; that includes the last four positions for taking
+   back (`history`), which never reach a view. Nothing is kept across a move that changed the
+   state's `rng`, after a game ends, or in a game that didn't say `takeBack`. A game whose state
+   isn't shaped like the others writes its own `settle` (and `live`, if "a game is being played"
+   isn't `phase === "playing"`: Combat's placing and shooting are both). Other options:
+   `drawGap`, `backGap`, `levelAfter`.
+3. **Register it:** add its id to `BoardGameId` in `table.ts`, add it to `BOARD_GAMES` in
    `registry.ts`, and export it from `index.ts`.
-3. **Tests:** `packages/games/test/<game>.test.ts` for its rules. The shared board tests
+4. **Tests:** `packages/games/test/<game>.test.ts` for its rules. The shared board tests
    (`test/board.test.ts`) play every registered board game automatically: computer players finish
    whole games with every preset at every table size, a game can be played from nothing but what
-   its views offer, every move a view offers is accepted, the same seed always starts the same
-   game, and refused moves change nothing.
-4. **Its tile on the front page:** a little board position in `BOARDS` in
+   its views offer, every move a view offers is accepted (offers included: made, answered and
+   taken back along the way), the same seed always starts the same game, and refused moves change
+   nothing. `test/offers.test.ts` checks every game with offers can be resigned and drawn, in one
+   game and in a match; add a take-back case there for a game with a move made in several taps.
+5. **Its tile on the front page:** a little board position in `BOARDS` in
    `packages/web/src/home/Home.tsx`.
 
 ### A table sport
@@ -430,6 +488,13 @@ which is what makes a chess clock replay: `after: state.bank[state.turn]`, and `
 Every game in the card room already has one deadline, the [turn timer](#the-turn-timer)
 (`packages/server/src/timer.ts`). A game on the kit gets it for nothing: it needs `view().turn` to
 say whose move it is and `bot()` to give a move for any seat that owes one.
+
+A room counts `after` from the last move of any kind, and an offer and its answer are moves. So
+that asking for a draw never buys time, a kit game's `apply` is handed the move's `{ elapsed }`,
+the offers wrapper adds up what has gone by since the last move on the board, and that is taken
+off both clocks: the game's own (`deadline`) and the turn timer (`TableGame.spent`). When the turn
+timer runs out it plays `TableGame.play`, the computer player's move on the board, which is never
+an answer to an offer.
 
 ### A game's own clock
 
