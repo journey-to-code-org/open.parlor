@@ -7,12 +7,16 @@
 // the cards on the table and the score, as every player sees them, and nobody's hand (see
 // `watchView` in games.ts). The host can switch watching people's tables off altogether (the
 // catalogue).
+//
+// Only what's really going is listed: a game this card room has (a table whose game it doesn't know
+// is left out, not shown as something else), that the host hasn't switched off, at a table where
+// someone has moved lately. A table its players walked away from isn't "playing now".
 import { kitGame, isKitGame } from "@cardroom/games";
 import { familyPalace } from "@cardroom/palace";
 import { cleanSettings, familyTable, pickPersonas } from "@spades/rules";
 import type { RoomDoc } from "@spades/rooms/server";
 import type { Catalogue } from "./catalogue.js";
-import { gameEmoji, gameName, gameOfOptions, isGameId, type GameId, type TableOptions } from "./games.js";
+import { gameEmoji, gameName, isGameId, type GameId, type TableOptions } from "./games.js";
 import { kitOptions } from "./kit.js";
 import { palaceOptions } from "./palace.js";
 
@@ -30,6 +34,9 @@ interface Rooms {
   start(id: string): Promise<string | null>;
   nudge(id: string): void;
 }
+
+/** A table with people at it where nobody has moved for this long isn't listed: they've gone. */
+export const IDLE_MS = 15 * 60_000;
 
 /** How many computer tables may be going at once, and how soon after one another can be started. */
 export const COMPUTER_TABLES = 6;
@@ -62,17 +69,53 @@ export function standing(summary: unknown, names: (string | null)[]): string {
 export function createSpectate(rooms: Rooms, catalogue: Catalogue, { mount = "/spectate", now = () => Date.now() }: { mount?: string; now?: () => number } = {}) {
   const docs = rooms.sync.documents();
   let lastStarted = 0;
+  /** When a dealt table with no moves yet was first listed: its clock until someone moves. */
+  const firstSeen = new Map<string, number>();
 
-  /** Every table with a game going that a watcher may see, computer tables first. */
+  /** A room's game, or null when it's one this card room doesn't have. Spades rooms predate `game`. */
+  function gameOfRoom(r: RoomDoc<unknown>): GameId | null {
+    const named = ((r.info ?? r.summary) as { game?: unknown } | null)?.game;
+    if (named === undefined) return "spades";
+    return isGameId(named) ? named : null;
+  }
+
+  /** When someone last moved at a table (ms), from its move log; for a table just dealt, when it was first seen. */
+  function lastMove(view: Awaited<typeof docs>, id: string): number {
+    let last = 0;
+    for (const entry of Object.values(view.get("moves", id) ?? {})) {
+      const at = (entry as { at?: unknown } | null)?.at;
+      if (typeof at === "number" && at > last) last = at;
+    }
+    if (last) return firstSeen.delete(id), last;
+    if (!firstSeen.has(id)) firstSeen.set(id, now());
+    return firstSeen.get(id)!;
+  }
+
+  /**
+   * Every table a watcher may see now: people's tables first, the liveliest first, then the
+   * computers'. Left out: games this card room doesn't have or has switched off, tables people have
+   * walked away from, and people's tables altogether when the host keeps them private.
+   */
   async function live() {
     const view = await docs;
     const people = await catalogue.watching();
-    return view
+    const at = now();
+    const going = view
       .all("rooms")
       .map((doc) => doc as unknown as RoomDoc<unknown> & { key: string })
-      .filter((r) => r.started && !r.closed && !isOver(r.summary) && (r.watchable || people))
-      .map((r) => {
-        const game = gameOfOptions(r.info ?? r.summary);
+      .filter((r) => r.started && !r.closed && !isOver(r.summary) && (r.watchable || people));
+    const listed = [];
+    for (const r of going) {
+      const game = gameOfRoom(r);
+      if (!game || !(await catalogue.isOn(game))) continue;
+      const moved = lastMove(view, r.key);
+      // The computers play on by themselves; a table of people that has gone quiet is over for watching.
+      if (!r.watchable && at - moved > IDLE_MS) continue;
+      listed.push({ r, game, moved });
+    }
+    return listed
+      .sort((a, b) => Number(!!a.r.watchable) - Number(!!b.r.watchable) || b.moved - a.moved)
+      .map(({ r, game, moved }) => {
         return {
           id: r.key,
           game,
@@ -85,9 +128,10 @@ export function createSpectate(rooms: Rooms, catalogue: Catalogue, { mount = "/s
           seats: r.seats.map((s) => ({ name: s.name, bot: s.bot })),
           /** Where the game stands, from its public summary. */
           standing: standing(r.summary, r.seats.map((s) => s.name)),
+          /** When someone last moved (ms). */
+          moved,
         };
-      })
-      .sort((a, b) => Number(b.computers) - Number(a.computers));
+      });
   }
 
   /** A game's own first rules, for a table nobody chose rules for. */
