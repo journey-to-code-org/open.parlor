@@ -1,13 +1,13 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { frames, GOLF_HOLE, POOL_TABLE, simulate, type Shot, type SimResult, type World } from "../src/index.js";
+import { frames, GARDEN_HOLE, GOLF_HOLE, POOL_TABLE, simulate, type Shot, type SimResult, type World } from "../src/index.js";
 import { seeded } from "./helpers.js";
 
 // Recorded shots and exactly where everything came to rest. If one of these changes, the physics
 // changed: every replayed game would come out differently, so bump PHYSICS_VERSION and record
 // them again on purpose (UPDATE_FIXTURES=1 npm test -w @cardroom/physics), never to quiet a test.
 const FIXTURES = new URL("./fixtures.json", import.meta.url);
-const TABLES: Record<string, World> = { pool: POOL_TABLE, golf: GOLF_HOLE };
+const TABLES: Record<string, World> = { pool: POOL_TABLE, golf: GOLF_HOLE, garden: GARDEN_HOLE };
 
 interface Recorded {
   table: string;
@@ -49,6 +49,10 @@ function scripts(): { table: string; shots: Shot[] }[] {
   ];
   for (let k = 0; k < 6; k++) out.push({ table: "pool", shots: [shot("cue"), shot("cue"), shot("cue"), shot("cue")] });
   for (let k = 0; k < 6; k++) out.push({ table: "golf", shots: [shot("ball"), shot("ball"), shot("ball")] });
+  // The tunnel, the ledge and the bumper: into the pipe, off the toadstool, down off the terrace.
+  out.push({ table: "garden", shots: [{ body: "ball", angle: 24026, power: 600 }, { body: "ball", angle: 31000, power: 500 }, { body: "ball", angle: 9000, power: 700 }] });
+  out.push({ table: "garden", shots: [{ body: "ball", angle: 27000, power: 1000 }, { body: "ball", angle: 24026, power: 400 }, { body: "ball", angle: 2500, power: 620 }] });
+  for (let k = 0; k < 6; k++) out.push({ table: "garden", shots: [shot("ball"), shot("ball"), shot("ball"), shot("ball")] });
   return out;
 }
 
@@ -72,6 +76,7 @@ describe("the same shot", () => {
     [POOL_TABLE, { body: "cue", angle: 0, power: 1000 }],
     [POOL_TABLE, { body: "cue", angle: 277, power: 912 }],
     [GOLF_HOLE, { body: "ball", angle: 24013, power: 1000 }],
+    [GARDEN_HOLE, { body: "ball", angle: 24026, power: 600 }],
   ];
 
   it("played twice gives the same result, down to every event's speed", () => {
@@ -115,6 +120,7 @@ describe("the forbidden functions", () => {
     const perf = vi.spyOn(performance, "now");
     simulate(POOL_TABLE, { body: "cue", angle: 123, power: 1000 });
     simulate(GOLF_HOLE, { body: "ball", angle: 24013, power: 1000 });
+    simulate(GARDEN_HOLE, { body: "ball", angle: 24026, power: 600 });
     for (const _ of frames(GOLF_HOLE, { body: "ball", angle: 20000, power: 800 })) void _;
     const called = spies.filter((s) => s.mock.calls.length > 0).map((s) => s.getMockName());
     expect(called).toEqual([]);

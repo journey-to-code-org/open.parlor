@@ -150,8 +150,8 @@ export function TableSettingsFields({
   );
 }
 
-/** This device's own look: animations and suit colours. Saved at once. */
-export function DisplayFields() {
+/** This device's own look: animations, suit colours and how a table sport is looked at. Saved at once. */
+export function DisplayFields({ sport = false }: { sport?: boolean }) {
   const [display, setDisplay] = useState(loadDisplay);
   const change = (patch: Partial<DisplaySettings>) => {
     const next = { ...display, ...patch };
@@ -178,6 +178,17 @@ export function DisplayFields() {
         ]}
         onChange={(v) => change({ suits: v === "4" ? 4 : 2 })}
       />
+      {sport && (
+        <Choice
+          label="The table is seen"
+          value={display.view}
+          options={[
+            ["angled", "From an angle"],
+            ["above", "From straight above"],
+          ]}
+          onChange={(v) => change({ view: v === "above" ? "above" : "angled" })}
+        />
+      )}
     </>
   );
 }
@@ -187,10 +198,13 @@ export function TableSettingsButton({
   settings,
   onChange,
   solo = false,
+  sport = false,
 }: {
   settings: TableSettings;
   onChange: (next: TableSettings) => Promise<void> | void;
   solo?: boolean;
+  /** At a table sport: this device may also choose how the table is looked at. */
+  sport?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -234,7 +248,7 @@ export function TableSettingsButton({
               {problem && <p className="error">{problem}</p>}
               <PlayersFields />
               {!solo && <h3>On this device</h3>}
-              <DisplayFields />
+              <DisplayFields sport={sport} />
               <ReportLink before={() => setOpen(false)} />
               <button
                 type="button"
