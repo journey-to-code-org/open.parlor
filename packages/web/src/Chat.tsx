@@ -1,7 +1,7 @@
 import type { ChatMessage } from "@spades/rooms/client";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { play } from "./feedback/sounds";
-import { useDragPlace } from "./useDragPlace";
+import { putEverythingBack, useAnythingMoved, useDragPlace } from "./useDragPlace";
 
 export const QUICK_EMOJI = ["👍", "😂", "🔥", "😬", "😭", "🙄", "🎉", "♠️", "❤️", "🤞"];
 /** How long a bubble stays up: time to read it, more for a longer line, and never in the way for long. */
@@ -73,8 +73,9 @@ function spotFor(el: HTMLElement, seat: number): { left: number; top: number; co
   const vh = window.innerHeight;
   const speaker = table.querySelector(`[data-seat="${seat}"]`);
   const anchor = speaker?.getBoundingClientRect();
-  const inTheWay = new Set<Element>(table.querySelectorAll(IN_THE_WAY));
-  const words = document.createTreeWalker(table, NodeFilter.SHOW_TEXT);
+  // Looked for across the whole page: buttons a player has dragged somewhere live outside the table.
+  const inTheWay = new Set<Element>(document.body.querySelectorAll(IN_THE_WAY));
+  const words = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   while (words.nextNode()) if (words.currentNode.nodeValue?.trim() && words.currentNode.parentElement) inTheWay.add(words.currentNode.parentElement);
   // The speaker's own nameplate is the cheapest thing to cover: the bubble says who they are.
   const things: { box: Box; weight: number }[] = [];
@@ -166,6 +167,7 @@ export function Bubble({ message, seat }: { message: ChatMessage; seat: number }
 /**
  * The chat button and its sheet. Others' messages make a soft pop and count as unread.
  * Both can be dragged to wherever suits the player (the sheet by its heading), and stay there.
+ * Put back returns them, and anything else the player has moved (the sound and settings buttons).
  */
 export function TableChat({ messages, mySeat, send }: ChatProps) {
   const [open, setOpen] = useState(false);
@@ -176,6 +178,7 @@ export function TableChat({ messages, mySeat, send }: ChatProps) {
   const seen = useRef(messages.length);
   const button = useDragPlace<HTMLButtonElement>("chatButton");
   const sheet = useDragPlace<HTMLDivElement>("chat");
+  const anythingMoved = useAnythingMoved();
 
   // A pop for each new message from someone else.
   useEffect(() => {
@@ -205,10 +208,11 @@ export function TableChat({ messages, mySeat, send }: ChatProps) {
 
   return (
     <>
+      {button.lift(
       <button
         type="button"
         ref={button.target}
-        className={`chat-toggle ${button.moved ? "moved" : ""}`}
+        className={`chat-toggle movable ${button.moved ? "moved" : ""}`}
         style={button.style}
         {...button.handle}
         onClick={() => !button.wasDrag() && setOpen((v) => !v)}
@@ -217,21 +221,15 @@ export function TableChat({ messages, mySeat, send }: ChatProps) {
         title="Chat (drag to move)"
       >
         💬{unread > 0 && <span className="badge">{unread > 9 ? "9+" : unread}</span>}
-      </button>
-      {open && (
+      </button>,
+      )}
+      {open && sheet.lift(
         <div ref={sheet.target} className={`chat-sheet ${sheet.moved ? "moved" : ""}`} style={sheet.style} role="dialog" aria-label="Table chat">
           <div className="chat-head" {...sheet.handle} title="Drag to move">
             <strong>Table talk</strong>
             <span className="chat-head-buttons">
-              {(sheet.moved || button.moved) && (
-                <button
-                  type="button"
-                  className="link"
-                  onClick={() => {
-                    sheet.reset();
-                    button.reset();
-                  }}
-                >
+              {anythingMoved && (
+                <button type="button" className="link" onClick={putEverythingBack}>
                   Put back
                 </button>
               )}
@@ -278,7 +276,7 @@ export function TableChat({ messages, mySeat, send }: ChatProps) {
             <p className="fine">Take a seat to chat.</p>
           )}
           {problem && <p className="error">{problem}</p>}
-        </div>
+        </div>,
       )}
     </>
   );

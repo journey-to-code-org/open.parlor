@@ -25,6 +25,7 @@ import { reducedMotion } from "../motion";
 import { TableSettingsButton } from "../TableSettings";
 import { drawScene, fitFrame, powerColour, toneColour, type Aim, type Disc, type Fit, type Scene } from "./draw";
 import { advanceRoll, beginRoll, finishRoll, landed, type Roll } from "./roll";
+import { SoundButton } from "../SoundButton";
 
 export interface SportTableProps {
   view: SportView;
@@ -528,9 +529,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
             </button>
           )}
           {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} />}
-          <button type="button" className="sound-toggle inline" onClick={toggleSound} aria-pressed={soundOn} aria-label={soundOn ? "Turn sounds off" : "Turn sounds on"}>
-            {soundOn ? "🔊" : "🔇"}
-          </button>
+          <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>
       </header>
       {banner}
