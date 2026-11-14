@@ -1,6 +1,7 @@
 import type { ChatMessage } from "@spades/rooms/client";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { play } from "./feedback/sounds";
+import { useDragPlace } from "./useDragPlace";
 
 export const QUICK_EMOJI = ["👍", "😂", "🔥", "😬", "😭", "🙄", "🎉", "♠️", "❤️", "🤞"];
 /** How long a bubble stays up: time to read it, more for a longer line, and never in the way for long. */
@@ -162,7 +163,10 @@ export function Bubble({ message, seat }: { message: ChatMessage; seat: number }
   );
 }
 
-/** The chat button and its sheet. Others' messages make a soft pop and count as unread. */
+/**
+ * The chat button and its sheet. Others' messages make a soft pop and count as unread.
+ * Both can be dragged to wherever suits the player (the sheet by its heading), and stay there.
+ */
 export function TableChat({ messages, mySeat, send }: ChatProps) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
@@ -170,6 +174,8 @@ export function TableChat({ messages, mySeat, send }: ChatProps) {
   const [readUpTo, setReadUpTo] = useState(messages.length);
   const list = useRef<HTMLOListElement>(null);
   const seen = useRef(messages.length);
+  const button = useDragPlace<HTMLButtonElement>("chatButton");
+  const sheet = useDragPlace<HTMLDivElement>("chat");
 
   // A pop for each new message from someone else.
   useEffect(() => {
@@ -199,16 +205,40 @@ export function TableChat({ messages, mySeat, send }: ChatProps) {
 
   return (
     <>
-      <button type="button" className="chat-toggle" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={unread ? `Chat, ${unread} new` : "Chat"}>
+      <button
+        type="button"
+        ref={button.target}
+        className={`chat-toggle ${button.moved ? "moved" : ""}`}
+        style={button.style}
+        {...button.handle}
+        onClick={() => !button.wasDrag() && setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label={unread ? `Chat, ${unread} new` : "Chat"}
+        title="Chat (drag to move)"
+      >
         💬{unread > 0 && <span className="badge">{unread > 9 ? "9+" : unread}</span>}
       </button>
       {open && (
-        <div className="chat-sheet" role="dialog" aria-label="Table chat">
-          <div className="chat-head">
+        <div ref={sheet.target} className={`chat-sheet ${sheet.moved ? "moved" : ""}`} style={sheet.style} role="dialog" aria-label="Table chat">
+          <div className="chat-head" {...sheet.handle} title="Drag to move">
             <strong>Table talk</strong>
-            <button type="button" className="link" onClick={() => setOpen(false)}>
-              Close
-            </button>
+            <span className="chat-head-buttons">
+              {(sheet.moved || button.moved) && (
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() => {
+                    sheet.reset();
+                    button.reset();
+                  }}
+                >
+                  Put back
+                </button>
+              )}
+              <button type="button" className="link" onClick={() => setOpen(false)}>
+                Close
+              </button>
+            </span>
           </div>
           <ol className="chat-list" ref={list}>
             {messages.length === 0 && <li className="empty">Say hi to the table.</li>}
