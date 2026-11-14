@@ -26,7 +26,14 @@ export function checkBoardView(v: BoardView, seat: number) {
       expect([g.rows % g.blocks.rows, g.cols % g.blocks.cols]).toEqual([0, 0]);
       expect(g.blocks.states).toHaveLength(g.blocks.rows * g.blocks.cols);
     }
-    for (const m of g.marks ?? []) expect(on(m.cell)).toBe(true);
+    for (const m of g.marks ?? []) {
+      expect(on(m.cell)).toBe(true);
+      // A cell counted as somebody's says whose, and nothing else carries an owner.
+      if (m.mark === "claimed") expect(Number.isInteger(m.owner) && m.owner! >= 0 && m.owner! < v.seats).toBe(true);
+      else expect(m.owner).toBeUndefined();
+    }
+    // Where pieces sit on the crossings, a crossing that is barred for now is an empty one, and can't be tapped.
+    for (const m of g.marks ?? []) if (m.mark === "barred") expect([g.cells[m.cell], g.tap?.cells.includes(m.cell) ?? false]).toEqual([null, false]);
     for (const cell of g.tap?.cells ?? []) expect(on(cell)).toBe(true);
     expect(new Set(g.tap?.cells).size).toBe(g.tap?.cells.length ?? 0);
     const reserve = new Set(v.reserves.filter((r) => r.owner === seat).flatMap((r) => r.pieces.map((p) => p.piece.kind)));
@@ -207,9 +214,16 @@ for (const game of BOARD_GAMES) {
           let s = game.newGame(game.normalize(preset), seats, 11);
           for (let moves = 0; !game.summary(s).over; moves++) {
             if (moves > 5000) throw new Error(`${game.id} went on too long`);
-            const options = Array.from({ length: seats }, (_, seat) => movesOffered(game.view(s, seat)).map((move) => ({ seat, move }))).flat();
+            const views = Array.from({ length: seats }, (_, seat) => game.view(s, seat));
+            const options = views.flatMap((v) => movesOffered(v).map((move) => ({ seat: v.me, move })));
             expect(options.length, `${game.id}: nobody is offered a move`).toBeGreaterThan(0);
-            const { seat, move } = options[Math.floor(rand() * options.length)]!;
+            // Some games only end when the players say so (Go: both pass, and then both agree the
+            // count), and two players choosing at random never will. A walk that has gone on this
+            // long presses a button whenever one is offered, the main one if there is one.
+            const buttons = moves < 1000 ? [] : views.flatMap((v) => (v.choices?.options ?? []).map((o) => ({ seat: v.me, move: o.move, main: !!o.primary })));
+            const main = buttons.filter((b) => b.main);
+            const pool = main.length ? main : buttons.length ? buttons : options;
+            const { seat, move } = pool[Math.floor(rand() * pool.length)]!;
             s = game.apply(s, seat, move);
           }
         }
