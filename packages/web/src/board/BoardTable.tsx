@@ -25,6 +25,7 @@ import { TableSettingsButton } from "../TableSettings";
 import { Dice } from "./Dice";
 import { Sheet } from "./Sheet";
 import { isPointsTrack, Track } from "./Track";
+import { SoundButton } from "../SoundButton";
 
 export interface BoardTableProps {
   view: BoardView;
@@ -274,9 +275,7 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
         </div>
         <span className="bar-buttons">
           {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} />}
-          <button type="button" className="sound-toggle inline" onClick={toggleSound} aria-pressed={soundOn} aria-label={soundOn ? "Turn sounds off" : "Turn sounds on"}>
-            {soundOn ? "🔊" : "🔇"}
-          </button>
+          <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>
       </header>
       {banner}
