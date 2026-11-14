@@ -52,6 +52,33 @@ describe("Rummy 500", () => {
     expect(rummy500.apply(s, 0, { type: "discard", cards: idsOf(s, 0, "4♠") }).turn).toBe(1);
   });
 
+  it("never leaves a player stuck owing a card from the pile (issue #120)", () => {
+    // 7♥ is deep in the pile. With 7♣ 7♦ in hand it makes a set of sevens; but 7♣ also runs 5♣ 6♣ 7♣.
+    const start = table({ hands: [cards("5♣ 6♣ 7♣ 7♦ K♠ 2♥"), cards("2♣ 3♣ 8♥")], pile: cards("J♠ 7♥ Q♦") });
+    const s = rummy500.apply(start, 0, { type: "take", card: start.pile[1]!.id });
+    const owed = s.mustUse!;
+    expect(owed).toMatch(/^7♥/);
+    // Melding the clubs run first would use the 7♣ and leave the 7♥ nowhere to go: refused, with a reason.
+    expect(() => rummy500.apply(structuredClone(s), 0, { type: "meld", cards: idsOf(s, 0, "5♣ 6♣ 7♣") })).toThrow(/7♥/);
+    // Melding the 7♥ first, or something that leaves it a home, is fine.
+    const sevens = rummy500.apply(structuredClone(s), 0, { type: "meld", cards: idsOf(s, 0, "7♣ 7♦ 7♥") });
+    expect(sevens.mustUse).toBeNull();
+    expect(rummy500.apply(sevens, 0, { type: "discard", cards: idsOf(sevens, 0, "K♠") }).phase).toBe("draw");
+
+    // A table already stuck this way (from before this fix) can discard and go on.
+    const already = structuredClone(s);
+    already.melds.push({ kind: "run", owner: 0, cards: [already.hands[0]!.find((c) => c.id.startsWith("5♣"))!, already.hands[0]!.find((c) => c.id.startsWith("6♣"))!, already.hands[0]!.find((c) => c.id.startsWith("7♣"))!].map((card) => ({ card, by: 0 })) });
+    already.hands[0] = already.hands[0]!.filter((c) => !/^[567]♣/.test(c.id));
+    already.undo = null;
+    const view = rummy500.view(already, 0);
+    expect(view.pick?.prompt).not.toMatch(/Meld the/);
+    const on = rummy500.apply(already, 0, { type: "discard", cards: idsOf(already, 0, "K♠") });
+    expect(on).toMatchObject({ phase: "draw", turn: 1, mustUse: null });
+    // And the computer gets itself out of it the same way, rather than asking to put back what it can't.
+    const bot = rummy500.bot!(structuredClone({ ...already }), 0, "Bea", { skill: 1 } as never);
+    expect(bot?.type).not.toBe("putback");
+  });
+
   it("strict rules: the top card has to be melded too", () => {
     const t = { ...table(), rules: strictRummy500 };
     expect(rummy500.apply(t, 0, { type: "take" }).mustUse).not.toBeNull();
@@ -83,44 +110,48 @@ describe("Rummy 500", () => {
     expect(done.lastHand!.out).toBeNull();
   });
 
-  it("never leaves you stuck with a pile card you can't meld (issue #120)", () => {
-    // Took from the J♠ up to get the 9♥, and melded the nines first. The J♠ fits nowhere.
-    const start = table();
-    let s = rummy500.apply(start, 0, { type: "take", card: start.pile[0]!.id });
-    expect(names(s.hands[0]!)).toContain("J♠");
-    s = rummy500.apply(s, 0, { type: "meld", cards: idsOf(s, 0, "9♦ 9♣ 9♥") });
-    expect(s.melds).toHaveLength(1);
-    expect(() => rummy500.apply(s, 0, { type: "discard", cards: idsOf(s, 0, "4♠") })).toThrow("J♠");
-    // The way out is still offered, and it takes the whole turn back: the nines too.
-    expect(rummy500.view(s, 0).choices?.options.map((o) => o.move.type)).toEqual(["putback"]);
-    const back = rummy500.apply(s, 0, { type: "putback" });
-    expect(back.phase).toBe("draw");
-    expect(back.melds).toHaveLength(0);
-    expect(names(back.pile)).toEqual(["J♠", "9♥", "Q♦", "5♥"]);
-    expect(names(back.hands[0]!).sort()).toEqual(["4♠", "9♣", "9♦", "K♥"]);
-    // Drawing from the stock instead, the turn can be finished.
-    const drawn = rummy500.apply(back, 0, { type: "draw" });
-    expect(rummy500.apply(drawn, 0, { type: "discard", cards: idsOf(drawn, 0, "4♠") }).turn).toBe(1);
-  });
-
-  it("once the pile card is melded there's nothing left to put back", () => {
-    const start = table();
-    let s = rummy500.apply(start, 0, { type: "take", card: start.pile[1]!.id });
-    s = rummy500.apply(s, 0, { type: "meld", cards: idsOf(s, 0, "9♦ 9♣ 9♥") });
-    expect(s.mustUse).toBeNull();
-    expect(rummy500.view(s, 0).choices).toBeNull();
-    expect(() => rummy500.apply(s, 0, { type: "putback" })).toThrow("nothing to put back");
-  });
-
-  it("a table saved in the old dead end can discard and play on", () => {
-    // How the bug left it: the J♠ owed, the nines melded, and no way back.
-    const start = table();
-    let s = rummy500.apply(start, 0, { type: "take", card: start.pile[0]!.id });
-    s = rummy500.apply(s, 0, { type: "meld", cards: idsOf(s, 0, "9♦ 9♣ 9♥") });
-    const stuck = { ...s, undo: null };
-    expect(rummy500.view(stuck, 0).pick?.prompt).toBe("Pick cards to meld, or one to discard.");
-    const on = rummy500.apply(stuck, 0, { type: "discard", cards: idsOf(stuck, 0, "J♠") });
-    expect(on.turn).toBe(1);
-    expect(on.mustUse).toBeNull();
+  it("a player taking deep and melding in any order is never left without a move", () => {
+    // A careless player: takes from deep in the pile often, melds whatever it can in any order.
+    let seed = 7;
+    const rand = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 2 ** 32);
+    const tryMove = (st: Rummy500State, move: Parameters<typeof rummy500.apply>[2]) => {
+      try {
+        return rummy500.apply(structuredClone(st), 0, move);
+      } catch {
+        return null;
+      }
+    };
+    let checked = 0;
+    for (let game = 0; game < 120; game++) {
+      let st = newRummy500(classicRummy500, 3, game + 1);
+      for (let step = 0; step < 400 && st.phase !== "finished" && st.phase !== "scored"; step++) {
+        if (st.turn !== 0) {
+          st = rummy500.apply(st, st.turn, rummy500.bot!(st, st.turn, "Bot", { skill: 1 } as never)!);
+          continue;
+        }
+        const hand = st.hands[0]!;
+        if (st.phase === "draw") {
+          const at = st.pile.length > 1 && rand() < 0.6 ? Math.floor(rand() * st.pile.length) : -1;
+          st = (at >= 0 && tryMove(st, { type: "take", card: st.pile[at]!.id })) || rummy500.apply(st, 0, st.stock.length ? { type: "draw" } : { type: "take" });
+          continue;
+        }
+        // Every move open to the player now: put back, any discard, any meld of up to four cards.
+        const options: Parameters<typeof rummy500.apply>[2][] = [{ type: "putback" }, ...hand.map((c) => ({ type: "discard" as const, cards: [c.id] }))];
+        for (let a = 0; a < hand.length; a++)
+          for (let b = a; b < hand.length; b++)
+            for (let c = b; c < hand.length; c++) {
+              const pick = [...new Set([hand[a]!.id, hand[b]!.id, hand[c]!.id])];
+              if (placement(st, pick.map((id) => hand.find((x) => x.id === id)!))) options.push({ type: "meld", cards: pick });
+            }
+        const open = options.map((m) => [m, tryMove(st, m)] as const).filter(([, after]) => after);
+        checked++;
+        expect(open.length, `stuck: ${JSON.stringify({ hand: hand.map((c) => c.id), mustUse: st.mustUse, undo: !!st.undo })}`).toBeGreaterThan(0);
+        // Prefer melding (in any order, owed card or not), then anything.
+        const melds = open.filter(([m]) => m.type === "meld");
+        const [, next] = (melds.length && rand() < 0.7 ? melds : open)[Math.floor(rand() * (melds.length && rand() < 0.7 ? melds.length : open.length))] ?? open[0]!;
+        st = next!;
+      }
+    }
+    expect(checked).toBeGreaterThan(500);
   });
 });
