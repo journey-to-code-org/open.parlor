@@ -3,6 +3,7 @@
 // only where WebGL works. Anywhere else (no WebGL, a table with something the 3-D scene doesn't
 // have yet) SportTable keeps drawing the table as it always has, flat on a 2D canvas, and that
 // drawing is still what the aim, the streaks and the splashes are drawn with, on top of this one.
+import { inShape, within } from "./paint/terrain";
 import type { SportView } from "@journey-to-code/games";
 import type { Disc } from "./draw";
 import type { Projection } from "./projection";
@@ -32,12 +33,18 @@ export interface Sport3d {
 }
 
 /**
- * What the scene can't draw yet: a step down, a pipe or a burrow, a slope with a rise. A table with
- * any of them stays flat, so nothing on it is ever missing or in the wrong place.
+ * What the scene can't draw: a patch of ground set lower than the ground it lies in (a lawn at the
+ * foot of a raised bed). The scene builds raised ground as solid blocks, and can't cut a dip into
+ * one, so a table with such a patch stays flat, and nothing on it is ever in the wrong place.
+ * Terraces, steps, slopes that rise and tunnels are all drawn.
  */
 export function drawsIn3d(table: Table): boolean {
-  const look = table.look;
-  return look.ledges.length === 0 && look.tunnels.length === 0 && look.regions.every((r) => !r.rise);
+  const ground = table.look.ground;
+  return ground.every((g, i) => {
+    if (g.level === undefined) return true;
+    const [x, y] = within(g.shape);
+    return ground.slice(0, i).every((u) => !inShape(u.shape, x, y) || (u.level ?? 0) <= g.level!);
+  });
 }
 
 let loading: Promise<typeof import("./scene3d-gl") | null> | null = null;

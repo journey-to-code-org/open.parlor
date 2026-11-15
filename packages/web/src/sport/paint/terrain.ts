@@ -72,7 +72,7 @@ export function outlineOf(s: Shape, sides = 28): Point[] {
 }
 
 /** Some point that is inside a shape, wherever its corners go. */
-function within(s: Shape): Point {
+export function within(s: Shape): Point {
   if (!("points" in s)) return [s.x, s.y];
   const p = s.points;
   const mid: Point = [p.reduce((a, q) => a + q[0], 0) / p.length, p.reduce((a, q) => a + q[1], 0) / p.length];
