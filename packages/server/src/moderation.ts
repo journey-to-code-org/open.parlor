@@ -14,6 +14,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { playerOf, type ChatMessage, type RoomDoc } from "@journey-to-code/rooms/server";
 import type { Catalogue } from "./catalogue.js";
 import type { Backups } from "./backup.js";
+import type { Courses } from "./courses.js";
 import type { Designs } from "./designs.js";
 import type { HouseDoc } from "./houses.js";
 import { gameName, gameOfOptions } from "./games.js";
@@ -70,7 +71,7 @@ const finished = (summary: unknown) => {
 /** How many wrong tokens a minute before everyone waits. */
 const WRONG_TOKENS_PER_MINUTE = 20;
 
-export function createModeration(rooms: Rooms, designs: Designs, { token, houses, catalogue, backups, bots, mount = "/moderation", now = () => Date.now() }: { token?: string; houses?: Houses; catalogue?: Catalogue; /** Copies of the database, when the parlor keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
+export function createModeration(rooms: Rooms, designs: Designs, { token, houses, catalogue, backups, bots, courses, mount = "/moderation", now = () => Date.now() }: { token?: string; houses?: Houses; catalogue?: Catalogue; /** Mini Golf courses people make, to take out of the gallery. */ courses?: Courses; /** Copies of the database, when the parlor keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
   const secret = token?.trim() ? digest(token.trim()) : null;
   const docs = rooms.sync.documents();
   let wrong: number[] = [];
@@ -359,6 +360,33 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
       if (action === "restore") {
         await designs.restore(id);
         await record("Restored a card design", name);
+        return json({ ok: true });
+      }
+    }
+    if (area === "courses" && courses) {
+      const made = await courses.all();
+      const blocked = await bans();
+      // GET /moderation/courses → every shared course (hidden ones too), newest first
+      if (!id && method === "GET") {
+        return json({
+          courses: made
+            .filter((c) => c.shared || c.hidden)
+            .map((c) => ({ id: c.id, author: c.author, course: c.versions[String(c.version)], updated: c.updated, shared: c.shared, hidden: c.hidden ?? "", player: playerRef(c.owner), blocked: blocked.has(playerRef(c.owner)) })),
+        });
+      }
+      const course = made.find((c) => c.id === id);
+      if (!course || method !== "POST") return json({ error: "There's no such course." }, 404);
+      const name = `“${course.versions[String(course.version)]?.name ?? "A course"}” by ${course.author}`;
+      // POST /moderation/courses/:id/hide { reason } → out of the gallery and no new tables; its maker sees why
+      if (action === "hide") {
+        const reason = clean(input.reason, 200) || "The parlor's host took this out of the gallery.";
+        await courses.hide(id, reason);
+        await record("Hid a Mini Golf course", name, reason);
+        return json({ ok: true });
+      }
+      if (action === "restore") {
+        await courses.restore(id);
+        await record("Restored a Mini Golf course", name);
         return json({ ok: true });
       }
     }

@@ -375,8 +375,9 @@ The game engine and the rooms live in their own repositories and come in from np
 | [`packages/server`](packages/server) | The server: every game's rooms, houses, challenges, tournaments, the lobby, the sync log and the web app |
 | [`packages/web`](packages/web) | The app (React, with the game chooser in Vue): the card table, the board table and the canvas table for table sports, setup screens, houses, practice |
 | [`packages/designer`](packages/designer) | The card designer (Svelte): draw a deck, keep it or share it, play with it |
+| [`packages/courses`](packages/courses) | Mini Golf courses people make: a hole painted on a grid, checked, and turned into a hole the game plays |
 | [`packages/watch`](packages/watch) | The watch page (Solid): the tables playing now, and tables of computer players to learn from |
-| [`packages/admin`](packages/admin) | The admin app (Angular): the host moderates tables, players and shared designs |
+| [`packages/admin`](packages/admin) | The admin app (Angular): the host moderates tables, players, shared designs and shared golf courses |
 | [`packages/conformance`](packages/conformance) | One fixture of the components in every framework, and one set of browser tests run against them all |
 | [`packages/ui`](packages/ui) | Components in Zubra: our own (cards, seats), the ones copied from zubra-ui, and the `<card-room>` embed |
 
@@ -474,6 +475,37 @@ A design is data, never CSS or markup from a page: colours and choices from fixe
 again on the server ([`packages/decks`](https://github.com/journey-to-code-org/open.games/tree/main/packages/decks)). The designer won't save a deck you couldn't play with
 (inks too faint for the paper, two suits in the same ink).
 
+## Making a Mini Golf course
+
+Mini Golf's setup screen has a **Course** list (the Back Garden, everyone's shared courses and your
+own) and **Make your own course**, which opens the course editor (`/?golf=new`).
+
+A hole is painted on a grid, up to 13 squares across and 17 down, one piece a square: green, a
+brick wall, sand, water, a slope (it runs downhill the way its arrow points), a toadstool bumper,
+the tee and the cup. Tap or drag; a drag fills every square it crosses. Beside the grid the hole is
+drawn exactly as the table will draw it. A course has up to nine holes, each with a name, a par (it
+follows a suggestion worked out from the route to the cup until you set your own) and a tip shown
+at the tee. **Play it against the computer** plays the course as it is, saved or not.
+
+A hole saves only if it can be played: one tee, one cup, and a way between them a ball can roll
+without crossing water, a wall or a bumper. So the computer players can get round every course
+too. Garden shut in by the course becomes a wall rather than a hole in the green.
+
+**Saved, or shared.** A saved course is yours alone; share it and it's in everyone's course list.
+Courses are kept on the server like card designs. "Yours alone" means unlisted: a table isn't asked
+who opened it, so someone given a private course's id could play it. Crude words in course and
+hole names and tips are covered, as in chat.
+
+**Changing a course.** Each save that changes the holes is a new version. A table plays the version
+it started on to the end, even across a restart; new tables get the latest. Deleting a course, or
+the host hiding it, stops new tables on it, and tables already playing it finish.
+
+How it fits together: the game finds a course by its id in `COURSES` (in open.games), and builds a
+hole from a description with `hole()`. [`packages/courses`](packages/courses) turns a painted grid into such a
+description and puts the course in `COURSES` wherever the game runs: the server, its bot worker
+threads (a think on a custom course carries the course with it), and the browser for practice games
+(and the practice table's Web Worker, the same way).
+
 ## Watching a game
 
 The watch page lives at `/watch/` (there's a link on the parlor's front page).
@@ -505,6 +537,7 @@ server has an admin token (see **Settings**); sign in with that token.
 | **Houses** | Every house and its members. Rename a house (its invite link stays the same), remove a member, hand it to a new owner, or delete it. |
 | **Games** | Which games the parlor offers and in what order: the front page follows. Switching a game off stops new tables of it everywhere (tables already going carry on). Also the switch for whether tables with players can be watched (the table, never a hand). |
 | **Card designs** | Every shared deck. Hiding one takes it out of the gallery; its maker keeps it and sees your reason. |
+| **Golf courses** | Every shared Mini Golf course, with a plan of its first hole. Hiding one takes it out of Mini Golf's course list and stops new tables on it (tables already playing it finish); its maker keeps it and sees your reason. |
 | **Activity** | Everything done from the admin app, newest first. |
 
 Players are browsers, not accounts: a player is a cookie, and a name is whatever they typed when

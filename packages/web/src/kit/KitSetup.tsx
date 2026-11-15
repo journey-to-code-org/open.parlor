@@ -23,6 +23,7 @@ import {
 } from "../storage";
 import { OpponentSettings } from "../TableSettings";
 import { KitRulesFields, KitRulesSheet } from "./KitRules";
+import { CoursePicker, onCourse } from "../golf/CoursePicker";
 
 type Rules = { id: string; name: string } & Record<string, unknown>;
 
@@ -35,6 +36,8 @@ interface Props {
   /** Sit at an open table that's waiting for this game, or open one with these rules and wait. */
   onFindPlayers: (name: string, rules: Rules, seats: number) => Promise<void>;
   onOpenHouse: (slug: string) => void;
+  /** Mini Golf: open the course editor, at a course or "new". */
+  onEditCourse?: (id: string) => void;
 }
 
 export function KitSetup({
@@ -44,6 +47,7 @@ export function KitSetup({
   onFamilyTable,
   onFindPlayers,
   onOpenHouse,
+  onEditCourse,
 }: Props) {
   const game = kitGame(id)!;
   // A solitaire: no name to give, nobody to find, no computer players to tune. Rules, then Deal.
@@ -137,9 +141,11 @@ export function KitSetup({
             options={options.map((p) => ({ value: p.id, label: p.name }))}
             onValueChange={(e: CustomEvent<string>) => {
               const next = all.find((p) => p.id === e.detail);
-              if (next) setRules(next);
+              // Mini Golf's course is picked on its own: other rules don't change it.
+              if (next) setRules(id === "minigolf" ? onCourse(next, String(rules.course ?? next.course)) : next);
             }}
           />
+          {id === "minigolf" && onEditCourse && <CoursePicker rules={rules} onChange={setRules} onEdit={onEditCourse} />}
           {game.teams ? (
             <p className="fine">
               Four players: you and your partner across the table against the

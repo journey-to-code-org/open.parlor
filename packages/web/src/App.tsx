@@ -18,9 +18,12 @@ import { Setup } from "./Setup";
 const Home = lazy(() => import("./home/Home").then((m) => ({ default: m.Home })));
 import { isKitGame, type KitGameId } from "@journey-to-code/games";
 import { KitSetup } from "./kit/KitSetup";
+import { CourseEditor } from "./golf/CourseEditor";
+import { onCourse } from "./golf/CoursePicker";
+import { nineHoles } from "@journey-to-code/games";
 import { LocalKit } from "./kit/LocalKit";
 import { TournamentPage } from "./TournamentPage";
-import { loadGame, loadLastGame, loadSameRules, loadTableSettings, rememberHouse, saveGame, type GameId } from "./storage";
+import { loadGame, loadLastGame, loadName, loadSameRules, loadTableSettings, rememberHouse, saveGame, type GameId } from "./storage";
 
 type Screen =
   | { kind: "home" }
@@ -28,7 +31,8 @@ type Screen =
   | { kind: "lobby" }
   | { kind: "local"; name: string; preset: RulePreset; seed: number }
   | { kind: "local-palace"; name: string; rules: PalaceRules; seats: number; seed: number }
-  | { kind: "local-kit"; game: KitGameId; name: string; rules: unknown; seats: number; seed: number }
+  | { kind: "local-kit"; game: KitGameId; name: string; rules: unknown; seats: number; seed: number; /** Leaving goes back to the course editor, at this course. */ back?: string }
+  | { kind: "golf"; id: string }
   | { kind: "room"; id: string; house: string | null }
   | { kind: "house"; slug: string; code: string | null }
   | { kind: "tournament"; slug: string; id: string }
@@ -46,6 +50,8 @@ function fromUrl(): Screen {
   const challenge = q.get("challenge");
   if (challenge) return { kind: "challenge", code: challenge };
   if (q.get("lobby")) return { kind: "lobby" };
+  const golf = q.get("golf");
+  if (golf) return { kind: "golf", id: golf };
   // A game named in the address (or the blog embed) goes to its setup; otherwise the front page.
   return q.get("game") || q.get("embed") === "1" ? { kind: "setup" } : { kind: "home" };
 }
@@ -96,6 +102,12 @@ export function App() {
   }, []);
 
   /** The front page; inside the blog embed, the game's own practice screen. */
+  /** The Mini Golf course editor: a course of yours, someone else's to copy, or "new". */
+  const editCourse = (id: string) => {
+    go({ golf: id });
+    setScreen({ kind: "golf", id });
+    scrollTo(0, 0);
+  };
   const home = () => {
     if (embedded) {
       go({ embed: "1", game });
@@ -156,7 +168,24 @@ export function App() {
   if (screen.kind === "lobby") return <LobbyPage onOpenTable={(id) => openTable(id, null)} onLeave={home} />;
   if (screen.kind === "local") return <LocalTable key={screen.seed} {...screen} onLeave={home} />;
   if (screen.kind === "local-palace") return <LocalPalace key={screen.seed} {...screen} onLeave={home} />;
-  if (screen.kind === "local-kit") return <LocalKit key={screen.seed} {...screen} onLeave={home} />;
+  if (screen.kind === "local-kit") return <LocalKit key={screen.seed} {...screen} onLeave={screen.back ? () => editCourse(screen.back!) : home} />;
+  if (screen.kind === "golf")
+    return (
+      <CourseEditor
+        key={screen.id}
+        id={screen.id}
+        onLeave={() => pickGame("minigolf")}
+        onSaved={(id) => {
+          // The address says which course this is now, without a new step for the back button.
+          const url = new URL(location.href);
+          url.searchParams.set("golf", id);
+          history.replaceState(null, "", url);
+        }}
+        onPlay={(course, holes) =>
+          setScreen({ kind: "local-kit", game: "minigolf", name: loadName() || "You", rules: { ...onCourse({ ...nineHoles }, course), holes }, seats: 2, seed: Math.floor(Math.random() * 2 ** 31), back: new URLSearchParams(location.search).get("golf") ?? "new" })
+        }
+      />
+    );
   if (screen.kind === "room") {
     return <RoomTable key={screen.id} id={screen.id} onLeave={screen.house ? () => openHouse(screen.house!) : home} />;
   }
@@ -177,6 +206,7 @@ export function App() {
         onFamilyTable={async (rules, seats) => openTable(await createRoom({ game, rules, seats }, { settings: loadTableSettings() }), null)}
         onFindPlayers={(name, rules, seats) => findPlayers(game, name, rules, seats)}
         onOpenHouse={openHouse}
+        onEditCourse={editCourse}
       />
     );
   }

@@ -18,6 +18,7 @@
     "@journey-to-code/physics": "^0.1.0",
     "@journey-to-code/rooms": "^0.1.0",
     "@journey-to-code/rules": "^0.1.0",
+    "@open-parlor/courses": "*",
     "@zubra/sync": "^5.15.0",
     "web-push": "^4.0.0"
   },

@@ -8,6 +8,7 @@
 // milliseconds or more, and is worth the trip.
 import { availableParallelism } from "node:os";
 import { isKitGame, type KitGameId, type ThinkBudget } from "@journey-to-code/games";
+import { isCustomCourse, type CustomCourse } from "@open-parlor/courses";
 import type { Thinking } from "@journey-to-code/rooms/server";
 import { builtFile, createBotPool, type BotPoolStats } from "./botpool.js";
 import { quick, think, type ThinkJob } from "./brain.js";
@@ -25,6 +26,8 @@ export interface BotOptions {
   warm?: boolean;
   /** The brain module the workers import, if not the parlor's own (for tests: it must give the same answers as brain.ts). */
   brain?: URL | string;
+  /** The holes of a Mini Golf course people made, by its game id: handed to a worker with a think on it. */
+  courseFor?: (id: string) => CustomCourse | undefined;
 }
 
 export interface BotStats extends BotPoolStats {
@@ -70,6 +73,12 @@ export function createBots(options: BotOptions = {}) {
         const move = think(job);
         if (move !== null) light += 1;
         return move;
+      }
+      // A course people made: the worker's copy of the game doesn't know it, so it goes with the job.
+      const course = (state as { rules?: { course?: unknown } }).rules?.course;
+      if (isCustomCourse(course)) {
+        const holes = options.courseFor?.(course);
+        if (holes) job.courses = [{ id: course, course: holes }];
       }
       return pool.think(job, thinking);
     },

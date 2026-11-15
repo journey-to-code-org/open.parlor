@@ -69,6 +69,19 @@ export interface SharedDesign {
   blocked: boolean;
 }
 
+/** A Mini Golf course someone made and shared (see the parlor's course editor). */
+export interface SharedCourse {
+  id: string;
+  author: string;
+  course: { name: string; holes: { name: string; par: number; cols: number; rows: number; cells: string }[] };
+  updated: number;
+  shared: boolean;
+  /** Why it was hidden, or "". */
+  hidden: string;
+  player: string;
+  blocked: boolean;
+}
+
 export interface HouseMember {
   id: string;
   name: string;
@@ -173,6 +186,7 @@ export class Api {
   table = (id: string) => this.send<{ table: Table; chat: ChatLine[] }>(`/tables/${id}`);
   players = () => this.send<{ players: Player[] }>("/players").then((r) => r.players);
   designs = () => this.send<{ designs: SharedDesign[] }>("/designs").then((r) => r.designs);
+  courses = () => this.send<{ courses: SharedCourse[] }>("/courses").then((r) => r.courses);
   log = () => this.send<{ log: LogEntry[] }>("/log").then((r) => r.log);
 
   houses = () => this.send<{ houses: House[] }>("/houses").then((r) => r.houses);
@@ -190,4 +204,6 @@ export class Api {
   unblock = (ref: string) => this.send(`/players/${ref}/unblock`, {});
   hideDesign = (id: string, reason: string) => this.send(`/designs/${id}/hide`, { reason });
   restoreDesign = (id: string) => this.send(`/designs/${id}/restore`, {});
+  hideCourse = (id: string, reason: string) => this.send(`/courses/${id}/hide`, { reason });
+  restoreCourse = (id: string) => this.send(`/courses/${id}/restore`, {});
 }
