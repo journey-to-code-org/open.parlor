@@ -2123,7 +2123,27 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .arcade-controls { margin: 0; padding-left: 1.1rem; display: grid; gap: 5px; font-size: 0.88rem; color: #aab6d6; line-height: 1.35; }
 .arcade-how { margin: 14px 0 6px; font-size: 1rem; color: var(--gold); }
 .arcade-best-line { margin: 0; color: #d6e6dc; font-size: 0.95rem; }
+/* A game that builds: the shop under the field, or what is known about the tower picked out. */
+.arcade-shop { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: #0e1530; border-top: 1px solid var(--arc-line); min-height: 62px; }
+.arcade-btn:disabled { opacity: 0.4; cursor: default; }
+.arcade-btn:disabled:hover { border-color: var(--arc-line); }
+.arcade-btn.item { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 7px 4px; border-bottom-width: 3px; }
+.arcade-btn.item b { font-size: 0.86rem; }
+.arcade-btn.item small { color: var(--gold); font-variant-numeric: tabular-nums; }
+.arcade-btn.item[data-tone="green"] { border-bottom-color: #5ee6a0; }
+.arcade-btn.item[data-tone="orange"] { border-bottom-color: #ff9f43; }
+.arcade-btn.item[data-tone="teal"] { border-bottom-color: #3fe0d0; }
+.arcade-btn.item[data-tone="purple"] { border-bottom-color: #b08cff; }
+.arcade-btn.item[data-tone="gold"] { border-bottom-color: #ffd166; }
+.arcade-btn.item[aria-pressed="true"] { background: rgba(76, 201, 255, 0.18); border-color: var(--arc-cyan); }
+.arcade-btn.buy { border-color: #5ee6a0; color: #5ee6a0; }
+.arcade-btn.send { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; border-color: var(--gold); text-align: left; }
+.arcade-btn.send b { color: var(--gold); white-space: nowrap; }
+.arcade-btn.send small { color: var(--arc-dim); font-weight: 400; font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.arcade-hearts { color: var(--arc-hot); }
 @media (max-width: 480px) {
+  .arcade-shop { gap: 5px; padding: 6px 8px; }
+  .arcade-btn.item b { font-size: 0.74rem; }
   .arcade-rail { gap: 10px; padding-left: 10px; padding-right: 10px; }
   .arcade-rail.low { flex-wrap: nowrap; }
   .arcade-cell small { font-size: 0.58rem; letter-spacing: 0.04em; }

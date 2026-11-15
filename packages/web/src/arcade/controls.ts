@@ -1,7 +1,7 @@
 // Keys and fingers turned into a pilot's controls for a tick. Each arcade game has its own idea
 // of an input, so each has its own controls here; the arcade table asks for the ones that go with
 // its game.
-import { SKYFIRE_SPEED, type ArcadeGameId, type SkyfireInput } from "@journey-to-code/games";
+import { SKYFIRE_SPEED, type ArcadeGameId, type BulwarkInput, type SkyfireInput, type TowerKind } from "@journey-to-code/games";
 
 export interface ArcadeControls<I> {
   /** What the controls are doing now. Called once a tick: it uses up what a finger has moved since the last. */
@@ -15,8 +15,13 @@ export interface ArcadeControls<I> {
   special(): void;
   /** Let go of everything: the window lost focus, or a new game began. */
   clear(): void;
-  /** The name of the special move, for its button. */
+  /** The name of the special move, for its button; empty when the game has none. */
   specialLabel: string;
+  /**
+   * For a game that is played by giving orders (building on a grid): queue one. The table turns
+   * taps on the field and on the shop into these, going by the view's `build`.
+   */
+  order?(cmd: string, col?: number, row?: number, key?: string): void;
 }
 
 /** A careful pace, with Shift held. */
@@ -93,9 +98,39 @@ export function skyfireControls(options: { autofire: () => boolean }): ArcadeCon
   };
 }
 
+/**
+ * Bulwark: nothing is steered. Orders wait in a line and go out one a tick, each with the next
+ * number, which is how the game knows an order from the same order still being held.
+ */
+export function bulwarkControls(): ArcadeControls<BulwarkInput> {
+  const waiting: Omit<BulwarkInput, "n">[] = [];
+  let last: BulwarkInput = { n: 0, cmd: "none", col: 0, row: 0, kind: "dart" };
+  return {
+    specialLabel: "",
+    read() {
+      const next = waiting.shift();
+      if (next) last = { ...next, n: last.n + 1 };
+      return last;
+    },
+    order(cmd, col = 0, row = 0, key = "dart") {
+      if (waiting.length < 8) waiting.push({ cmd: cmd as BulwarkInput["cmd"], col, row, kind: key as TowerKind });
+    },
+    key() {},
+    pointerDown() {},
+    pointerMove() {},
+    pointerUp() {},
+    special() {},
+    clear() {
+      waiting.length = 0;
+    },
+  };
+}
+
 export function controlsFor(game: ArcadeGameId, options: { autofire: () => boolean }): ArcadeControls<unknown> {
   switch (game) {
     case "skyfire":
       return skyfireControls(options);
+    case "bulwark":
+      return bulwarkControls();
   }
 }

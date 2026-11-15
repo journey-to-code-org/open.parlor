@@ -1,4 +1,4 @@
-// The setup screen for an arcade game: the rules, whether computer wingmen fly with you, how the
+// The setup screen for an arcade game: the rules, whether computer players join you, how the
 // controls work, your best score, then Play. An arcade game is played against the game itself, so
 // there is no table to open and nobody to name.
 import { arcadeGame, points, type ArcadeGameId, type TableGame } from "@journey-to-code/games";
@@ -29,7 +29,7 @@ export function ArcadeSetup({ game: id, onHome, onPlay }: Props) {
   const asTable = game as unknown as TableGame<any, any, any, any>;
 
   const crews: [string, string][] = [];
-  for (let n = game.seats.min; n <= game.seats.max; n++) crews.push([String(n), n === 1 ? "Fly alone" : n === 2 ? "With a computer wingman" : `With ${n - 1} computer wingmen`]);
+  for (let n = game.seats.min; n <= game.seats.max; n++) crews.push([String(n), n === 1 ? "On your own" : n === 2 ? "With a computer player" : `With ${n - 1} computer players`]);
 
   return (
     <SetupLayout
@@ -79,7 +79,13 @@ export function ArcadeSetup({ game: id, onHome, onPlay }: Props) {
           {errors.length > 0 && <p className="error">{errors.join(" ")}</p>}
         </>
       }
-      table={<Toggle label="Guns fire by themselves" description="Off: hold Z or Space to fire. On a touch screen they always fire while your finger is down." checked={autofire} onChange={setAutofire} />}
+      table={
+        id === "skyfire" ? (
+          <Toggle label="Guns fire by themselves" description="Off: hold Z or Space to fire. On a touch screen they always fire while your finger is down." checked={autofire} onChange={setAutofire} />
+        ) : (
+          <p className="fine">Sounds follow the switch at the bottom of the game's screen.</p>
+        )
+      }
       about={
         <>
           <KitRulesSheet game={asTable} rules={rules} />

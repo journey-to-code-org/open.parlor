@@ -24,7 +24,7 @@ export interface ChooserGame {
   /** A board game shows a little board instead of cards. */
   board?: { cols: number; cells: ({ glyph: string; tone: string; shade?: string } | null)[]; shade?: string };
   /** An arcade game shows a little screen: a ship, what it is up against, and what is coming at it (in a 100 × 100 box). */
-  screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][] };
+  screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][] };
   /** A dice game shows a few dice: the face each one shows. */
   dice?: number[];
   /** A table sport shows a little table from above: its surface, a hole, a ball or two (in a 100 × 100 box). */
@@ -109,7 +109,7 @@ function surprise() {
 }
 /** Where each face's pips sit in a die's three-by-three (0 is the top left). */
 const PIPS: Record<number, number[]> = { 1: [4], 2: [2, 6], 3: [2, 4, 6], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
-const seatsLabel = (g: ChooserGame) => (g.screen ? (g.seats[1] === 1 ? "1 player" : `1–${g.seats[1]} pilots`) : g.teams ? "4 players · partners" : g.seats[0] === g.seats[1] ? `${g.seats[0]} players` : `${g.seats[0]}–${g.seats[1]} players`);
+const seatsLabel = (g: ChooserGame) => (g.screen ? (g.seats[1] === 1 ? "1 player" : `1–${g.seats[1]} players`) : g.teams ? "4 players · partners" : g.seats[0] === g.seats[1] ? `${g.seats[0]} players` : `${g.seats[0]}–${g.seats[1]} players`);
 const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spades, Palace, Hearts and more, with the family."));
 </script>
 
@@ -170,7 +170,16 @@ const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spa
         <li v-for="g in shelf.games" :key="g.id">
           <button type="button" class="tile" :class="{ last: g.id === last }" :aria-label="`${g.name}: ${g.blurb}, ${seatsLabel(g)}`" @click="emit('pick', g.id)">
             <span v-if="g.screen" class="mini-screen" aria-hidden="true">
-              <svg viewBox="0 0 100 100">
+              <svg v-if="g.screen.road" viewBox="0 0 100 100">
+                <rect class="lawn" x="3" y="3" width="94" height="94" rx="14" />
+                <path class="road" :d="g.screen.road" />
+                <circle v-for="(b, i) in g.screen.bullets" :key="`c${i}`" class="creep" :cx="b[0]" :cy="b[1]" r="4.2" />
+                <g v-for="(t, i) in g.screen.towers" :key="`t${i}`">
+                  <rect class="plinth" :x="t[0] - 7" :y="t[1] - 7" width="14" height="14" rx="3" />
+                  <circle class="turret" :class="`n${i}`" :cx="t[0]" :cy="t[1]" r="4" />
+                </g>
+              </svg>
+              <svg v-else viewBox="0 0 100 100">
                 <rect class="glass" x="3" y="3" width="94" height="94" rx="14" />
                 <path v-for="(f, i) in g.screen.foes" :key="`f${i}`" class="foe" :d="`M${f[0]} ${f[1] + 8} l8 -9 l-4 -6 h-8 l-4 6 z`" />
                 <circle v-for="(b, i) in g.screen.bullets" :key="`b${i}`" class="shell" :cx="b[0]" :cy="b[1]" r="3.4" />
@@ -381,6 +390,13 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .mini-screen .shell { fill: #fff; stroke: #ff6ad5; stroke-width: 2.4; }
 .mini-screen .beam { stroke: #9fe3ff; stroke-width: 2; stroke-linecap: round; }
 .mini-screen .craft { fill: rgba(76, 201, 255, 0.35); stroke: #4cc9ff; stroke-width: 1.8; stroke-linejoin: round; }
+.mini-screen .lawn { fill: #214330; stroke: #5b4a33; stroke-width: 2; }
+.mini-screen .road { fill: none; stroke: #cdb48a; stroke-width: 10; stroke-linejoin: round; }
+.mini-screen .creep { fill: #ff5a6e; stroke: #5b1420; stroke-width: 1.4; }
+.mini-screen .plinth { fill: #2a3140; stroke: #0e131c; stroke-width: 1.4; }
+.mini-screen .turret { fill: #5ee6a0; }
+.mini-screen .turret.n1 { fill: #3fe0d0; }
+.mini-screen .turret.n2 { fill: #ffd166; }
 .tile:hover .mini-screen, .tile:focus-visible .mini-screen { rotate: 0deg; scale: 1.06; }
 @media (max-width: 560px) {
   .tile { padding-right: clamp(14px, 1.8vw, 22px); padding-top: calc(var(--tile-card) * 1.2); }

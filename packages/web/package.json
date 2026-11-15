@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@journey-to-code/decks": "^0.1.0",
-    "@journey-to-code/games": "^0.1.6",
+    "@journey-to-code/games": "^0.1.7",
     "@journey-to-code/palace": "^0.1.0",
     "@journey-to-code/physics": "^0.1.1",
     "@journey-to-code/relay": "^0.1.0",
