@@ -13,15 +13,30 @@
 // another piece picks that one up instead, tapping it again or anywhere else (or Escape) puts it
 // down. It can be dragged there too. From the keyboard it is the same two presses of Enter, and
 // each cell says whether its piece "can move" and, once one is picked up, where it "can go".
-import { cellName, colOf, kitGame, rowOf, type BoardGrid, type BoardPiece, type BoardReserve, type BoardView } from "@cardroom/games";
+//
+// A game with a set of its own (Chess) has its pieces drawn from it (pieces.tsx) instead of as
+// text. A move that needs one more thing said (what a pawn becomes) asks on the square itself. A
+// game that keeps a record has its moves listed under the board, and they can be stepped through:
+// the board then shows that earlier position, and nothing can be moved on it.
+// A grid of crossings (the view's `points`: Go) is drawn as lines with the pieces where they cross.
+// The cells are the same buttons, each centred on its crossing. On the full board on a phone the
+// crossings are closer together than a finger is wide, so there a stone takes two taps: the first
+// shows it (and it can be nudged with the arrows under the board), the second, or "Play", puts it
+// down. When that happens is this device's choice (⚙︎: see `Placing` in display.ts).
+import { cellName, cellsAfter, colOf, kitGame, rowOf, type BoardGrid, type BoardPiece, type BoardReserve, type BoardView, type Choice } from "@cardroom/games";
 import { type TableSettings } from "@spades/rules";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Bubble, TableChat, useBubbles, type ChatProps } from "../Chat";
 import { Confetti } from "../Confetti";
+import { placingSetting } from "../display";
 import { loadFeedbackSettings, play, saveFeedbackSettings } from "../feedback/sounds";
 import { named, ResultTable, sideName } from "../kit/KitTable";
 import { motionScale, useCardFlip } from "../motion";
 import { TableSettingsButton } from "../TableSettings";
+import { OfferBanner, OffersMenu } from "./Offers";
+import { PieceSet, usePieceArt } from "./pieces";
+import { RecordStrip } from "./Record";
+import { SeatClock } from "./SeatClock";
 import { Dice } from "./Dice";
 import { Sheet } from "./Sheet";
 import { isPointsTrack, Track } from "./Track";
@@ -34,6 +49,8 @@ export interface BoardTableProps {
   act: (move: Record<string, unknown>) => Promise<string | null>;
   onLeave: () => void;
   banner?: React.ReactNode;
+  /** Looking on without a seat: nothing to press, offers included. */
+  watching?: boolean;
   chat?: ChatProps;
   settings?: {
     value: TableSettings;
@@ -62,18 +79,41 @@ const SEAT_TONES = ["red", "blue", "green", "gold", "dark", "light"];
 const toneOf = (piece: BoardPiece) => piece.tone ?? (piece.owner === null ? "dark" : SEAT_TONES[piece.owner % SEAT_TONES.length]!);
 
 function Piece({ piece, small }: { piece: BoardPiece; small?: boolean }) {
+  // Drawn from the game's own set when it has one; otherwise the engine's glyph, as text.
+  const art = usePieceArt(piece);
   return (
-    <span className={`piece tone-${toneOf(piece)} kind-${piece.kind}${piece.faded ? " faded" : ""}${small ? " small" : ""}${!small && piece.id ? " slides" : ""}`} data-flip={small ? undefined : piece.id} aria-hidden>
-      {piece.glyph}
+    <span className={`piece tone-${toneOf(piece)} kind-${piece.kind}${art ? " art" : ""}${piece.faded ? " faded" : ""}${small ? " small" : ""}${!small && piece.id ? " slides" : ""}`} data-flip={small ? undefined : piece.id} aria-hidden>
+      {art ?? piece.glyph}
     </span>
   );
 }
 
-export function BoardTable({ view, names, act, onLeave, banner, chat, settings }: BoardTableProps) {
+/** A move waiting for one more thing to be said: which piece the pawn becomes. */
+interface Asking {
+  grid: string;
+  from: number | string;
+  to: number;
+  key: string;
+  options: BoardPiece[];
+}
+
+export function BoardTable({ view, names, act, onLeave, banner, watching, chat, settings }: BoardTableProps) {
   const game = kitGame(view.game)!;
   const me = view.me;
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<Picked | null>(null);
+  /** A button that asks before it is sent (the view's `confirm`), waiting for its answer. */
+  const [confirming, setConfirming] = useState<Choice | null>(null);
+  const [asking, setAsking] = useState<Asking | null>(null);
+  // Looking back through the record: how many of its moves the board shows. Null is the game as it stands.
+  const [back, setBack] = useState<number | null>(null);
+  const [lookingOver, setLookingOver] = useState(false);
+  const moves = view.record?.moves ?? [];
+  const looking = back !== null && back < moves.length;
+  // A new game has a new record: whatever was being looked at is gone.
+  useEffect(() => {
+    if (back !== null && back >= moves.length) setBack(null);
+  }, [back, moves.length]);
   const [soundOn, setSoundOn] = useState(() => loadFeedbackSettings().sound);
   // While thrown dice are in the air the sheet doesn't say what they'll score.
   const [tumbling, setTumbling] = useState(false);
@@ -93,6 +133,7 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
   useEffect(() => {
     const inHand = view.grids.find((g) => g.select?.held !== undefined);
     setPicked((p) => (inHand ? { grid: inHand.id, from: inHand.select!.held! } : p && offered(p) ? p : null));
+    setAsking(null);
   }, [selectKey]);
   // With nothing picked up, you hold what the view suggests (the next ship to place), if anything.
   const suggesting = view.grids.find((g) => g.select?.suggest !== undefined);
@@ -106,12 +147,20 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
   // Sounds: a piece landing, your turn, the end.
   const boardKey = JSON.stringify(view.grids.map((g) => g.cells.map((p) => (p ? [p.owner, p.kind, p.count ?? 1] : 0))));
   const pieces = view.grids.reduce((n, g) => n + g.cells.filter(Boolean).length, 0);
+  // Stones on crossings click like stones, and stones taken off rattle into the lid.
+  const stones = view.grids.some((g) => g.points);
+  const taken = view.reserves.reduce((n, r) => n + r.pieces.reduce((m, p) => m + p.count, 0), 0);
   const seen = useRef<string | null>(null);
+  const takenSeen = useRef(taken);
   useEffect(() => {
     // A board swept clean for the next game makes no sound.
-    if (seen.current !== null && seen.current !== boardKey && pieces > 0) play("piece");
+    if (seen.current !== null && seen.current !== boardKey && pieces > 0) play(!stones ? "piece" : taken > takenSeen.current ? "capture" : "stone");
     seen.current = boardKey;
+    takenSeen.current = taken;
   }, [boardKey]);
+  // A question about a button goes away when the table moves on.
+  const choiceKey = JSON.stringify(view.choices?.options.map((o) => o.move) ?? null);
+  useEffect(() => setConfirming(null), [choiceKey]);
   const turnSeen = useRef(false);
   useEffect(() => {
     if (view.turn === me && !turnSeen.current) play("yourTurn");
@@ -152,11 +201,20 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
   /** A view with two boards says which one a move is on. */
   const onGrid = (grid: BoardGrid) => (view.grids.length > 1 ? { grid: grid.id } : {});
 
+  /** Put a picked-up piece down where it can go: at once, or after asking what the move leaves open. */
+  function putDown(grid: BoardGrid, from: number | string, to: number) {
+    const ask = grid.select?.choose?.find((c) => c.from === from && c.to === to);
+    if (ask) return setAsking({ grid: grid.id, ...ask });
+    void send({ type: grid.select!.type, from, to, ...onGrid(grid) });
+  }
+
   function tapCell(grid: BoardGrid, cell: number) {
     const sources = grid.select?.sources ?? [];
     const holding = held?.grid === grid.id ? sources.find((s) => s.from === held.from) : undefined;
-    if (holding?.to.includes(cell)) return void send({ type: grid.select!.type, from: holding.from, to: cell, ...onGrid(grid) });
+    if (holding?.to.includes(cell)) return putDown(grid, holding.from, cell);
     const source = sourceAt(grid, cell);
+    // A table that doesn't show where a piece can go lets it be put anywhere, and the game says no.
+    if (holding && grid.select?.quiet && !source && cell !== holding.from) return void send({ type: grid.select.type, from: holding.from, to: cell, ...onGrid(grid) });
     // One tap moves (a table setting): a piece with one place to go is played by tapping it.
     if (source && grid.select?.quick && source.to.length === 1 && !(picked?.grid === grid.id && picked.from === source.from)) return void send({ type: grid.select.type, from: source.from, to: source.to[0], ...onGrid(grid) });
     if (source) return setPicked(picked?.grid === grid.id && picked.from === source.from ? null : { grid: grid.id, from: source.from });
@@ -184,10 +242,20 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
   const canMove = view.grids.some((g) => g.tap?.cells.length || g.select?.sources.length) || !!view.dice?.tap?.dice.length || !!view.sheet?.pick?.cells.length || (!!view.dice && !!view.choices?.options.length);
   const status = error ? (
     <span className="error">{error}</span>
-  ) : view.over || view.result ? null : held ? (
+  ) : looking ? (
+    <span>
+      Looking back: {back === 0 ? "the start" : `move ${moves[back! - 1]!.turn}`}
+      {!view.over && !watching && view.turn === me ? ", and it's your turn. " : ". "}
+      <button type="button" className="link" onClick={() => setBack(null)}>
+        {view.over ? "To the end" : "Back to the game"}
+      </button>
+    </span>
+  ) : view.over || view.result ? null : asking ? (
+    <span className="mine">Choose what it becomes</span>
+  ) : held ? (
     // A piece whose only place to go is where it already is (a disc popped out of a rack) is tapped twice.
     <span className="mine">{view.grids.some((g) => g.id === held.grid && g.select?.sources.some((s) => s.from === held.from && s.to.length === 1 && s.to[0] === s.from)) ? "Tap it again to take it out" : "Now pick where it goes"}</span>
-  ) : view.turn === me || (view.turn === null && canMove) ? (
+  ) : !watching && (view.turn === me || (view.turn === null && canMove)) ? (
     <span className="mine">Your turn</span>
   ) : view.turn !== null ? (
     `${names[view.turn] ?? "Someone"} is thinking…`
@@ -199,7 +267,26 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
   // A piece in your reserve can be picked up when some grid lists its kind as a source.
   const reserveGrid = (kind: string) => view.grids.find((g) => g.select?.sources.some((s) => s.from === kind));
 
-  // The others, the boards, the dice, and what's going on. With a score sheet on the table this is
+  // The board as it stood earlier in the record: the same pieces put back where they were, the
+  // move that led there marked, and nothing to pick up or tap.
+  const firstGrid = view.grids[0];
+  const earlier: BoardGrid | null =
+    looking && firstGrid && view.record
+      ? {
+          ...firstGrid,
+          cells: cellsAfter(firstGrid.cells, view.record, back!),
+          marks: back! > 0 ? [...(moves[back! - 1]!.changes.filter((c) => c.from !== null && c.to !== null).slice(-1).flatMap((c) => [{ cell: c.from!, mark: "from" as const }, { cell: c.to!, mark: "last" as const }])), ...(moves[back! - 1]!.threat !== undefined ? [{ cell: moves[back! - 1]!.threat!, mark: "threat" as const }] : [])] : [],
+          select: null,
+          tap: null,
+        }
+      : null;
+  const step = (count: number | null) => {
+    setPicked(null);
+    setAsking(null);
+    setBack(count);
+  };
+
+  // The others, the boards, the dice, the record and what's going on. With a score sheet on the table this is
   // one half of it and the sheet the other (side by side where there's room).
   const middle = (
     <>
@@ -218,17 +305,47 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
 
       {view.grids.length > 0 && (
         <div className={`boards${view.grids.length > 1 ? " many" : ""}`}>
-          {view.grids.map((grid, i) =>
-            isPointsTrack(grid) ? (
+          {view.grids.map((given, i) => {
+            const grid = i === 0 && earlier ? earlier : given;
+            return isPointsTrack(grid) ? (
               // A track of points has its dice and its cube on the board itself.
-              <Track key={grid.id} grid={grid} view={view} names={names} picked={held?.grid === grid.id ? held.from : null} onCell={(cell) => tapCell(grid, cell)} onPick={(cell) => setPicked({ grid: grid.id, from: cell })} onMove={(from, to) => void send({ type: grid.select!.type, from, to, ...onGrid(grid) })} dice={view.dice ?? null} cube={view.cube ?? null} still={motionScale(settings?.value.pace) === 0} onTumble={setTumbling} />
+              <Track
+                key={grid.id}
+                grid={grid}
+                view={view}
+                names={names}
+                picked={looking ? null : held?.grid === grid.id ? held.from : null}
+                onCell={(cell) => tapCell(grid, cell)}
+                onPick={(cell) => setPicked({ grid: grid.id, from: cell })}
+                onMove={(from, to) => putDown(grid, from, to)}
+                dice={view.dice ?? null}
+                cube={view.cube ?? null}
+                still={motionScale(settings?.value.pace) === 0}
+                onTumble={setTumbling}
+              />
             ) : (
-            <Grid key={grid.id} grid={grid} view={view} names={names} side={i > 0} titled={view.grids.length > 1} picked={held?.grid === grid.id ? held.from : null} onCell={(cell) => tapCell(grid, cell)} onPick={(cell) => setPicked({ grid: grid.id, from: cell })} onMove={(from, to) => void send({ type: grid.select!.type, from, to, ...onGrid(grid) })} />
-            ),
-          )}
+              <Grid
+                key={grid.id}
+                grid={grid}
+                view={view}
+                names={names}
+                mine={watching ? undefined : view.players[me]?.piece}
+                side={i > 0}
+                titled={view.grids.length > 1}
+                picked={looking ? null : held?.grid === grid.id ? held.from : null}
+                asking={!looking && asking?.grid === grid.id ? asking : null}
+                onChoose={(kind) => asking && void send({ type: grid.select!.type, from: asking.from, to: asking.to, [asking.key]: kind, ...onGrid(grid) })}
+                onCancel={() => setAsking(null)}
+                onCell={(cell) => tapCell(grid, cell)}
+                onPick={(cell) => setPicked({ grid: grid.id, from: cell })}
+                onMove={(from, to) => putDown(grid, from, to)}
+              />
+            );
+          })}
         </div>
       )}
       {view.dice && !view.grids.some(isPointsTrack) && <Dice dice={view.dice} still={motionScale(settings?.value.pace) === 0} onTumble={setTumbling} onTap={(die) => void send({ type: view.dice!.tap!.type, die })} />}
+      {view.record && <RecordStrip record={view.record} names={names} shown={looking ? back! : moves.length} onShow={step} />}
 
       <div className="center-info">
         {view.info.length > 0 && (
@@ -241,14 +358,35 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
         <p className="narration" aria-live="polite">
           {view.narration ? named(view.narration, names) : null}
         </p>
+        {view.offers && <OfferBanner offers={view.offers} names={names} me={me} watching={!!watching} onSend={(move) => void send(move, true)} />}
         <div className="status" role="status">
           {status}
         </div>
-        {view.choices && !view.result && (
+        {view.choices && !view.result && confirming && (
+          // A button that is easy to press and hard to undo (the first pass of a game) asks first.
+          <div className="felt-actions kit-choices asking" role="group" aria-label={named(confirming.label, names)}>
+            <p>{named(confirming.confirm!, names)}</p>
+            <button
+              type="button"
+              className="primary"
+              autoFocus
+              onClick={() => {
+                setConfirming(null);
+                void send(confirming.move, true);
+              }}
+            >
+              {named(confirming.label, names)}
+            </button>
+            <button type="button" className="secondary" onClick={() => setConfirming(null)}>
+              Not yet
+            </button>
+          </div>
+        )}
+        {view.choices && !view.result && !confirming && (
           <div className={`felt-actions kit-choices ${view.choices.layout ?? ""}`}>
             {view.choices.prompt && <p>{named(view.choices.prompt, names)}</p>}
             {view.choices.options.map((o, i) => (
-              <button key={i} type="button" className={o.primary ? "primary" : "secondary"} title={o.hint} onClick={() => void send(o.move, true)}>
+              <button key={i} type="button" className={o.primary ? "primary" : "secondary"} title={o.hint} onClick={() => (o.confirm ? setConfirming(o) : void send(o.move, true))}>
                 {named(o.label, names)}
               </button>
             ))}
@@ -260,7 +398,16 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
   const main = view.sheet ? <div className="board-main">{middle}</div> : middle;
 
   return (
-    <main className={`table kit board board-${view.game}`} ref={root} onKeyDown={(e) => e.key === "Escape" && setPicked(null)}>
+    <PieceSet.Provider value={view.game}>
+    <main
+      className={`table kit board board-${view.game}${looking ? " looking-back" : ""}`}
+      ref={root}
+      onKeyDown={(e) => {
+        if (e.key !== "Escape") return;
+        setPicked(null);
+        setAsking(null);
+      }}
+    >
       <header className="palace-bar kit-bar">
         <button type="button" className="leave" aria-label="Leave game" onClick={() => (view.over || confirm("Leave this game?")) && onLeave()}>
           ←
@@ -274,7 +421,9 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
           ))}
         </div>
         <span className="bar-buttons">
-          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} />}
+          {/* Resign, offer a draw, ask to take a move back: whatever the view says this seat may do. */}
+          {view.offers && !watching && <OffersMenu can={view.offers.can} onSend={(move) => void send(move, true)} />}
+          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} stones={stones} />}
           <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>
       </header>
@@ -326,7 +475,7 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
         </div>
       )}
       {won && <Confetti />}
-      {view.over && (
+      {view.over && !lookingOver && (
         <div className="sheet won-sheet board-over">
           {/* Alone at the table there was nobody to beat: the score is the news. */}
           <h2>{won && view.seats > 1 ? "You won! 🏆" : named(view.over.title, names)}</h2>
@@ -336,10 +485,25 @@ export function BoardTable({ view, names, act, onLeave, banner, chat, settings }
           <button type="button" className="primary" onClick={onLeave}>
             Play again
           </button>
+          {/* A game with a record can be gone back over once it's done: the sheet gets out of the way. */}
+          {view.record && moves.length > 0 && (
+            <button type="button" className="secondary" onClick={() => setLookingOver(true)}>
+              Look over the game
+            </button>
+          )}
+        </div>
+      )}
+      {view.over && lookingOver && (
+        <div className="board-over-bar">
+          <span>{named(view.over.title, names)}</span>
+          <button type="button" className="primary" onClick={onLeave}>
+            Play again
+          </button>
         </div>
       )}
       <p className="sr-only">{game.name}</p>
     </main>
+    </PieceSet.Provider>
   );
 }
 
@@ -357,6 +521,7 @@ function BoardSeat({ view, seat, name, row }: { view: BoardView; seat: number; n
       </strong>
       {p.line && <span>{named(p.line, [])}</span>}
       {p.badge && <em>{p.badge}</em>}
+      {p.clock && <SeatClock clock={p.clock} mine={seat === view.me} />}
     </div>
   );
 }
@@ -390,15 +555,21 @@ function Reserve({ reserve, names, picked, canPick, onPick }: { reserve: BoardRe
   );
 }
 
-const MARK_WORDS: Record<string, string> = { last: "last move", from: "moved from here", win: "winning line", threat: "under threat", flipped: "just flipped", hint: "you can move here", must: "has to move" };
+const MARK_WORDS: Record<string, string> = { last: "last move", from: "moved from here", win: "winning line", threat: "under threat", flipped: "just flipped", hint: "you can move here", must: "has to move", barred: "can't be played this turn" };
 
 interface GridProps {
   grid: BoardGrid;
   view: BoardView;
   names: string[];
+  /** What this seat plays as, for the stone shown before it is put down. Nothing for someone watching. */
+  mine?: BoardPiece;
   side: boolean;
   titled: boolean;
   picked: number | string | null;
+  /** A move waiting to be told which piece it makes (a promotion): the chooser is drawn on its cell. */
+  asking: Asking | null;
+  onChoose: (kind: string) => void;
+  onCancel: () => void;
   /** A tap (or Enter) on a cell. */
   onCell: (cell: number) => void;
   /** A piece pressed to drag it: pick it up, so the places it can go show. */
@@ -418,7 +589,7 @@ interface Drag {
   pickedUp: boolean;
 }
 
-function Grid({ grid, view, names, side, titled, picked, onCell, onPick, onMove }: GridProps) {
+function Grid({ grid, view, names, mine, side, titled, picked, asking, onChoose, onCancel, onCell, onPick, onMove }: GridProps) {
   const me = view.me;
   const el = useRef<HTMLDivElement>(null);
   // Turned half round for a seat that plays from the far side: the cells are drawn last to first,
@@ -434,8 +605,13 @@ function Grid({ grid, view, names, side, titled, picked, onCell, onPick, onMove 
     for (const m of grid.marks ?? []) at.set(m.cell, [...(at.get(m.cell) ?? []), m.mark]);
     return at;
   }, [grid.marks]);
+  /** Cells counted as a side's own (territory), and whose. */
+  const claims = useMemo(() => new Map((grid.marks ?? []).flatMap((m) => (m.mark === "claimed" && m.owner !== undefined ? [[m.cell, m.owner] as const] : []))), [grid.marks]);
+  const seatTone = (seat: number) => toneOf(view.players[seat]?.piece ?? { owner: seat, kind: "", glyph: "", label: "" });
   const sources = grid.select?.sources ?? [];
-  const targets = new Set(picked === null ? [] : (sources.find((s) => s.from === picked)?.to ?? []));
+  // Where the piece in hand can go; not pointed out at a table that has asked for that.
+  const quiet = !!grid.select?.quiet;
+  const targets = new Set(picked === null || quiet ? [] : (sources.find((s) => s.from === picked)?.to ?? []));
   const tapCols = grid.tap?.by === "col" ? new Set(grid.tap.cells.map((c) => colOf(grid.cols, c))) : null;
   // A picked-up piece that covers several cells is lit along its whole length.
   const pickedSpan = typeof picked === "number" ? grid.cells[picked]?.span : undefined;
@@ -449,7 +625,41 @@ function Grid({ grid, view, names, side, titled, picked, onCell, onPick, onMove 
     const same = (rr: number, cc: number) => rr >= 0 && rr < grid.rows && cc >= 0 && cc < grid.cols && grid.cells[rr * grid.cols + cc]?.span === span;
     return ["spanned", same(r - 1, c) ? "join-n" : "", same(r, c + 1) ? "join-e" : "", same(r + 1, c) ? "join-s" : "", same(r, c - 1) ? "join-w" : ""];
   };
-  const canTap = (cell: number) => targets.has(cell) || !!sourceAt(grid, cell) || (tapCols ? tapCols.has(colOf(grid.cols, cell)) : !!grid.tap?.cells.includes(cell));
+  const canTap = (cell: number) => targets.has(cell) || (quiet && picked !== null) || !!sourceAt(grid, cell) || (tapCols ? tapCols.has(colOf(grid.cols, cell)) : !!grid.tap?.cells.includes(cell));
+
+  // A stone shown where it would go, before it is put down (see the top of this file). It is
+  // forgotten when the board moves on.
+  const [ghost, setGhost] = useState<number | null>(null);
+  const stonesDown = grid.cells.reduce((n, p) => n + (p ? 1 : 0), 0);
+  useEffect(() => setGhost(null), [view.phase, view.turn, stonesDown, grid.tap?.type]);
+  /** What the last press on the board was made with: a finger needs more care than a mouse. */
+  const pointer = useRef("mouse");
+  function careful(): boolean {
+    const mode = placingSetting();
+    if (mode !== "auto") return mode === "confirm";
+    const pitch = el.current ? el.current.clientWidth / grid.cols : Infinity;
+    return pointer.current !== "mouse" && pitch < 30;
+  }
+  /** A tap or Enter on a cell. Putting something on an empty crossing may take two. */
+  function press(cell: number) {
+    if (!grid.points || !grid.tap || grid.tap.by === "col" || grid.cells[cell] || !mine || !careful()) return onCell(cell);
+    if (ghost === cell || !canTap(cell)) {
+      // The second tap plays it. (Somewhere a stone can't go is sent as well: the table says why not.)
+      setGhost(null);
+      return onCell(cell);
+    }
+    setGhost(cell);
+  }
+  /** Move the stone one crossing over, as the board is drawn. */
+  function nudge(dr: number, dc: number) {
+    if (ghost === null) return;
+    const at = shown(ghost);
+    const r = rowOf(grid.cols, at) + dr;
+    const c = colOf(grid.cols, at) + dc;
+    if (r < 0 || r >= grid.rows || c < 0 || c >= grid.cols) return;
+    setGhost(shown(r * grid.cols + c));
+  }
+  const ghostAt = ghost === null ? null : shown(ghost);
   // A drop game: the column under the pointer is lit, and the cell its piece would land in is marked.
   const [overCol, setOverCol] = useState<number | null>(null);
   const blocks = grid.blocks;
@@ -529,7 +739,7 @@ function Grid({ grid, view, names, side, titled, picked, onCell, onPick, onMove 
     if (!d.moved) return;
     const over = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>("[data-cell]");
     const to = over && el.current?.contains(over) ? Number(over.dataset.cell) : null;
-    if (to === null || !d.piece || !sources.find((s) => s.from === d.cell)?.to.includes(to)) return back();
+    if (to === null || !d.piece || to === d.cell || !(quiet || sources.find((s) => s.from === d.cell)?.to.includes(to))) return back();
     // Leave it where it was dropped, squared up on the cell, until the board answers: the piece
     // that arrives there is a new element, so this one is taken out of the slide animation.
     const a = cellEl.getBoundingClientRect();
@@ -551,8 +761,11 @@ function Grid({ grid, view, names, side, titled, picked, onCell, onPick, onMove 
     const piece = grid.cells[cell];
     const whose = !piece || piece.owner === null ? "" : piece.owner === me ? ", yours" : `, ${names[piece.owner] ?? `Seat ${piece.owner + 1}`}'s`;
     const block = blocks?.states[blockOf(cell)]?.label;
+    const claimed = claims.get(cell);
     const notes = [
-      ...(marks.get(cell) ?? []).map((m) => MARK_WORDS[m] ?? m),
+      ...(marks.get(cell) ?? []).flatMap((m) => (m === "claimed" ? [] : [MARK_WORDS[m] ?? m])),
+      ...(claimed === undefined ? [] : [claimed === me ? "your territory" : `${names[claimed] ?? `Seat ${claimed + 1}`}'s territory`]),
+      ...(ghost === cell ? ["your stone is ready here: press again to play it"] : []),
       ...(block ? [`board ${block}`] : []),
       ...(isPicked(cell) ? ["picked up"] : sourceAt(grid, cell) ? ["can move"] : []),
       ...(targets.has(cell) ? ["can go here"] : []),
@@ -578,7 +791,28 @@ function Grid({ grid, view, names, side, titled, picked, onCell, onPick, onMove 
           ))}
         </div>
       )}
-      <div ref={el} className={`board-grid${grid.points ? " points" : ""}${grid.gravity ? " gravity" : ""}${blocks ? " blocked" : ""}${grid.cols > 9 ? " fine-lines" : ""}`} role="group" aria-label={`${named(grid.label, names)}, ${grid.rows} by ${grid.cols}. Arrow keys move around it.`} onKeyDown={onKey} onPointerLeave={() => setOverCol(null)}>
+      <div
+        ref={el}
+        className={`board-grid${grid.points ? " points" : ""}${grid.gravity ? " gravity" : ""}${blocks ? " blocked" : ""}${grid.cols > 9 ? " fine-lines" : ""}${grid.points && mine && grid.tap ? ` plays-${toneOf(mine)}` : ""}`}
+        role="group"
+        aria-label={`${named(grid.label, names)}, ${grid.rows} by ${grid.cols}. Arrow keys move around it.`}
+        onKeyDown={onKey}
+        onPointerDownCapture={(e) => (pointer.current = e.pointerType || "mouse")}
+        onPointerLeave={() => setOverCol(null)}
+      >
+        {grid.points && (
+          // The lines, drawn once for the whole board so every one of them lands on whole pixels,
+          // and the marked crossings (a Go board's star points). Everything is in cell widths.
+          <svg className="board-lines" viewBox={`0 0 ${grid.cols} ${grid.rows}`} preserveAspectRatio="none" aria-hidden>
+            {Array.from({ length: grid.rows }, (_, r) => (
+              <line key={`r${r}`} x1={0.5} x2={grid.cols - 0.5} y1={r + 0.5} y2={r + 0.5} />
+            ))}
+            {Array.from({ length: grid.cols }, (_, c) => (
+              <line key={`c${c}`} x1={c + 0.5} x2={c + 0.5} y1={0.5} y2={grid.rows - 0.5} />
+            ))}
+            {grid.cells.map((_, at) => (shadeOf(shown(at)) === "spot" ? <circle key={at} cx={colOf(grid.cols, at) + 0.5} cy={rowOf(grid.cols, at) + 0.5} r={grid.cols > 13 ? 0.14 : 0.1} /> : null))}
+          </svg>
+        )}
         {grid.cells.map((_, at) => {
           // `at` is the place on the screen, `cell` the cell drawn there.
           const cell = shown(at);
@@ -592,6 +826,10 @@ function Grid({ grid, view, names, side, titled, picked, onCell, onPick, onMove 
             "cell",
             `shade-${shadeOf(cell)}`,
             ...(marks.get(cell) ?? []).map((m) => `mark-${m}`),
+            claims.has(cell) ? `claim-${seatTone(claims.get(cell)!)}` : "",
+            ghost === cell ? "ghosted" : "",
+            ghostAt !== null && rowOf(grid.cols, ghostAt) === r ? "aim-row" : "",
+            ghostAt !== null && colOf(grid.cols, ghostAt) === c ? "aim-col" : "",
             tappable ? "can" : "",
             source ? "source" : "",
             isPicked(cell) ? "picked" : "",
@@ -629,7 +867,7 @@ function Grid({ grid, view, names, side, titled, picked, onCell, onPick, onMove 
                 const skip = skipClick.current;
                 skipClick.current = null;
                 if (skip?.cell === cell && performance.now() < skip.until) return;
-                onCell(cell);
+                press(cell);
               }}
               onPointerEnter={tapCols ? (e) => e.pointerType === "mouse" && setOverCol(c) : undefined}
               // How far a piece falls to get here, for a board that stands on its edge.
@@ -637,9 +875,15 @@ function Grid({ grid, view, names, side, titled, picked, onCell, onPick, onMove 
             >
               {/* Keyed by whose it is: a piece that changes sides is drawn afresh, so its animation plays again. */}
               {piece && <Piece key={`${piece.owner}/${piece.tone ?? ""}`} piece={piece} />}
+              {ghost === cell && mine && !piece && (
+                <span className={`piece ghost tone-${toneOf(mine)} kind-${mine.kind}`} aria-hidden>
+                  {mine.glyph}
+                </span>
+              )}
             </button>
           );
         })}
+        {asking && <Chooser asking={asking} at={shown(asking.to)} grid={grid} onChoose={onChoose} onCancel={onCancel} />}
         {blocks && (
           <div className="board-blocks" aria-hidden style={{ "--block-cols": blocks.cols, "--block-rows": blocks.rows } as React.CSSProperties}>
             {(flip ? [...blocks.states].reverse() : blocks.states).map((b, i) => (
@@ -650,6 +894,69 @@ function Grid({ grid, view, names, side, titled, picked, onCell, onPick, onMove 
           </div>
         )}
       </div>
+      {ghost !== null && (
+        // The stone is showing: nudge it a crossing at a time, then play it (or tap it again).
+        <div className="board-aim" role="group" aria-label="Your stone">
+          <span className="aim-arrows">
+            <button type="button" aria-label="Move it left" onClick={() => nudge(0, -1)}>
+              ←
+            </button>
+            <button type="button" aria-label="Move it up" onClick={() => nudge(-1, 0)}>
+              ↑
+            </button>
+            <button type="button" aria-label="Move it down" onClick={() => nudge(1, 0)}>
+              ↓
+            </button>
+            <button type="button" aria-label="Move it right" onClick={() => nudge(0, 1)}>
+              →
+            </button>
+          </span>
+          <button
+            type="button"
+            className="primary"
+            disabled={!canTap(ghost)}
+            onClick={() => {
+              setGhost(null);
+              onCell(ghost);
+            }}
+          >
+            {canTap(ghost) ? `Play ${cellName(grid, ghost)}` : `Not ${cellName(grid, ghost)}`}
+          </button>
+          <button type="button" className="secondary" aria-label="Take the stone back" onClick={() => setGhost(null)}>
+            ✕
+          </button>
+          <span className="sr-only" role="status">
+            {canTap(ghost) ? `Your stone is ready at ${cellName(grid, ghost)}.` : `You can't play at ${cellName(grid, ghost)}.`}
+          </span>
+        </div>
+      )}
     </div>
+  );
+}
+
+/**
+ * The chooser for a move that asks a question (which piece a pawn becomes): a short column of
+ * pieces on the board, starting on the square the move lands on, the usual choice first and
+ * already in focus, so Enter takes it and Escape (or a tap anywhere else) calls the move off.
+ */
+function Chooser({ asking, at, grid, onChoose, onCancel }: { asking: Asking; at: number; grid: BoardGrid; onChoose: (kind: string) => void; onCancel: () => void }) {
+  const r = rowOf(grid.cols, at);
+  const c = colOf(grid.cols, at);
+  const n = asking.options.length;
+  // Down the board from a square in its top half, up from one in its bottom half.
+  const down = r + n <= grid.rows;
+  const first = useRef<HTMLButtonElement>(null);
+  useEffect(() => first.current?.focus(), []);
+  return (
+    <>
+      <div className="chooser-shade" onClick={onCancel} />
+      <div className={`cell-chooser${down ? "" : " up"}`} role="dialog" aria-label={`${cellName(grid, asking.to)}: choose what it becomes`} style={{ left: `${(c / grid.cols) * 100}%`, top: `${((down ? r : r - n + 1) / grid.rows) * 100}%`, width: `${100 / grid.cols}%`, height: `${(n / grid.rows) * 100}%` }}>
+        {asking.options.map((option, i) => (
+          <button key={option.kind} ref={i === 0 ? first : undefined} type="button" aria-label={option.label} onClick={() => onChoose(option.kind)}>
+            <Piece piece={option} small />
+          </button>
+        ))}
+      </div>
+    </>
   );
 }

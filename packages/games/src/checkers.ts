@@ -15,6 +15,7 @@
 // The board is kept one way up whoever is looking: the side that moves first starts on the bottom
 // rows and moves up. Each seat's view asks the table to draw the board from its own side.
 import type { PlayStyle } from "@spades/rules";
+import { settleMatch, withOffers } from "./offers.js";
 import { cellName, chessCoords, type BoardGame, type BoardGrid, type BoardPiece, type BoardView } from "./board.js";
 import { careless, clone, GameError, markReady, nextHandChoices, nextRandom, pickRandom, thinkFor, who, type BaseRules } from "./table.js";
 
@@ -760,7 +761,7 @@ function normalize(rules: unknown): CheckersRules {
   };
 }
 
-export const checkers: BoardGame<CheckersRules, CheckersState, CheckersMove> = {
+const rules: BoardGame<CheckersRules, CheckersState, CheckersMove> = {
   id: "checkers",
   name: "Checkers",
   emoji: "👑",
@@ -806,6 +807,8 @@ export const checkers: BoardGame<CheckersRules, CheckersState, CheckersMove> = {
   apply,
   view,
   bot,
+  // A search: off the table's main thread (see TableGame.heavy).
+  heavy: (s, seat) => s.phase === "playing" && s.turn === seat,
   // A hop in the middle of a capture comes quickly: the thinking was done before the first one.
   thinkingTime: (s) => (s.jump ? 450 : thinkFor(Math.min(new Set(checkersLines(s).map((l) => l.from)).size, 6), s.last === null ? 0.7 : 1)),
   summary(s) {
@@ -824,3 +827,18 @@ export const checkers: BoardGame<CheckersRules, CheckersState, CheckersMove> = {
     };
   },
 };
+
+/** Checkers, with resigning, draw offers and taking a move back (see offers.ts). */
+export const checkers = withOffers<CheckersRules, CheckersState, CheckersMove>(rules, {
+  // A move is a whole turn: taking back in the middle of a run of jumps undoes the run so far.
+  takeBack: true,
+  settle(s, result) {
+    s.jump = null;
+    settleMatch(s, result);
+  },
+  // Material: a king is worth two men.
+  standing(s, seat) {
+    const worth = (o: number) => s.cells.reduce((n, p) => n + (p?.o === o ? (p.k ? 2 : 1) : 0), 0);
+    return worth(seat) - worth(other(seat));
+  },
+});

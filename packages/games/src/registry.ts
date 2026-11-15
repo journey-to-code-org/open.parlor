@@ -49,6 +49,8 @@ import { dropFour } from "./dropfour.js";
 import { combat } from "./combat.js";
 import { reversi } from "./reversi.js";
 import { checkers } from "./checkers.js";
+import { go } from "./go.js";
+import { chess } from "./chess.js";
 import { yacht } from "./yacht.js";
 import { backgammon } from "./backgammon.js";
 import { miniGolf } from "./minigolf.js";
@@ -59,7 +61,7 @@ import type { BoardGameId, CardGameId, KitGameId, SportGameId, TableGame } from 
 
 export const CARD_GAMES: CardGame<any, any, any>[] = [hearts, ohHell, euchre, crazy8, gin, pinochle, canasta, goFish, oldMaid, war, whist, golf, rummy500, president, klondike, freeCell, handFoot, cribbage, fiveDraw, holdem, bluff, liarsPoker, switchGame, thirtyOne, kingsCorner, blackjack, spite, pitch, fiveHundred, durak, bridge, fruitSalad, slapjack, speed, memory, sevens, cuckoo, contractRummy, spider, pyramid, rideTheBus, kingsCup, horseRace, drinkingPyramid];
 
-export const BOARD_GAMES: BoardGame<any, any, any>[] = [ticTacToe, dropFour, combat, reversi, checkers, yacht, backgammon];
+export const BOARD_GAMES: BoardGame<any, any, any>[] = [ticTacToe, dropFour, combat, reversi, checkers, go, chess, yacht, backgammon];
 
 export const SPORT_GAMES: SportGame<any, any, any>[] = [miniGolf];
 

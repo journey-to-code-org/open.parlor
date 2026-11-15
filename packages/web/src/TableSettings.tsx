@@ -7,6 +7,7 @@ import { loadTableSettings, saveTableSettings } from "./storage";
 import {
   loadDisplay,
   MOTIONS,
+  PLACINGS,
   saveDisplay,
   type DisplaySettings,
 } from "./display";
@@ -152,7 +153,7 @@ export function TableSettingsFields({
 }
 
 /** This device's own look: animations, suit colours and how a table sport is looked at. Saved at once. */
-export function DisplayFields({ sport = false }: { sport?: boolean }) {
+export function DisplayFields({ sport = false, stones = false }: { sport?: boolean; stones?: boolean }) {
   const [display, setDisplay] = useState(loadDisplay);
   const change = (patch: Partial<DisplaySettings>) => {
     const next = { ...display, ...patch };
@@ -190,6 +191,26 @@ export function DisplayFields({ sport = false }: { sport?: boolean }) {
           onChange={(v) => change({ view: v === "above" ? "above" : "angled" })}
         />
       )}
+      {stones && (
+        <>
+          <Choice
+            label="Putting a stone down"
+            value={display.placing}
+            options={PLACINGS.map((p) => [p.id, p.label])}
+            onChange={(v) => change({ placing: v as DisplaySettings["placing"] })}
+          />
+          <p className="fine">{PLACINGS.find((p) => p.id === display.placing)?.hint}</p>
+          <Choice
+            label="Coordinates round the board"
+            value={display.coords ? "on" : "off"}
+            options={[
+              ["on", "Shown"],
+              ["off", "Hidden"],
+            ]}
+            onChange={(v) => change({ coords: v === "on" })}
+          />
+        </>
+      )}
     </>
   );
 }
@@ -200,12 +221,15 @@ export function TableSettingsButton({
   onChange,
   solo = false,
   sport = false,
+  stones = false,
 }: {
   settings: TableSettings;
   onChange: (next: TableSettings) => Promise<void> | void;
   solo?: boolean;
   /** At a table sport: this device may also choose how the table is looked at. */
   sport?: boolean;
+  /** At a board of crossings (Go): how a stone is put down, and whether the coordinates show. */
+  stones?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -257,7 +281,7 @@ export function TableSettingsButton({
               {problem && <p className="error">{problem}</p>}
               <PlayersFields />
               {!solo && <h3>On this device</h3>}
-              <DisplayFields sport={sport} />
+              <DisplayFields sport={sport} stones={stones} />
               {anythingMoved && (
                 <button type="button" className="link" onClick={putEverythingBack}>
                   Put the buttons I've moved back
