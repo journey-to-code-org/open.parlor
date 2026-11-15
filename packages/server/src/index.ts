@@ -10,6 +10,7 @@ import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createCardRoom } from "./app.js";
 import { createBackups } from "./backup.js";
+import { workersFrom } from "./bots.js";
 import { warmSports } from "./kit.js";
 
 /** A setting: CARDROOM_<name>, or the older SPADES_<name>. */
@@ -55,6 +56,9 @@ const cardRoom = createCardRoom({
   lobby: { blockedNames: (setting("BLOCKED_NAMES") ?? "").split(",").map((w) => w.trim()).filter(Boolean) },
   // Houses can connect their own AI key for their bots' table talk; this seals those keys at rest.
   // CARDROOM_AI_KEY is the card room's own key: with it, every table's bots talk through a model.
+  // Computer players think in worker threads: as many as CARDROOM_BOT_WORKERS says (0 for none), or
+  // what suits the machine. The workers start, and warm up, while the server is already listening.
+  bots: { workers: workersFrom(setting("BOT_WORKERS")), budgetMs: Number(setting("BOT_BUDGET")) || undefined, ceilingMs: Number(setting("BOT_CEILING")) || undefined },
   ai: { secret: setting("SECRET"), shared: { key: setting("AI_KEY"), provider: setting("AI_PROVIDER"), model: setting("AI_MODEL"), daily: Number(setting("AI_DAILY")) || undefined } },
 });
 if (!setting("SECRET")) console.log("houses' AI keys are stored unsealed: set CARDROOM_SECRET to encrypt them");
@@ -86,10 +90,12 @@ const TYPES: Record<string, string> = {
   ".woff2": "font/woff2",
 };
 
-createServer(async (req, res) => {
+const server = createServer(async (req, res) => {
   try {
     // Railway (and any other host) checks this before sending traffic to a new deploy.
     if (req.url === "/healthz") return void res.writeHead(200, { "content-type": "text/plain" }).end("ok");
+    // How the computer players' thinking is going: workers, thinks waiting and running, how long they take.
+    if (req.url === "/healthz/bots") return void res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(cardRoom.bots?.stats() ?? null));
     if (await cardRoom.handle(req, res)) return;
     const path = decodeURIComponent(new URL(req.url ?? "/", "http://x").pathname);
     // /designer and /admin are their apps' front doors: with the slash, so their files resolve.
@@ -123,9 +129,29 @@ createServer(async (req, res) => {
     if (!res.headersSent) res.writeHead(500);
     res.end();
   }
-}).listen(port, () => {
+});
+server.listen(port, () => {
   console.log(`Card Room on http://localhost:${port}`);
   backups?.start();
+  const bots = cardRoom.bots?.stats();
+  console.log(bots?.workers ? `computer players think in ${bots.workers} worker thread${bots.workers === 1 ? "" : "s"} (CARDROOM_BOT_WORKERS=0 for none)` : "computer players think on the main thread");
   // Once the door is open: the first putt of the day shouldn't be the one that waits for the physics to warm up.
+  // The main thread still makes some moves itself (a turn timer's, a quick move for an abandoned think),
+  // and each worker thread warms its own copy of the engines as it starts.
   setImmediate(() => console.log(`table sports warmed up in ${warmSports()} ms`));
 });
+
+// Asked to stop (a deploy, Ctrl-C): no more requests, no more bot timers, and the worker threads go.
+let stopping = false;
+for (const signal of ["SIGTERM", "SIGINT"] as const) {
+  process.on(signal, () => {
+    if (stopping) return process.exit(1); // asked twice: now
+    stopping = true;
+    server.close();
+    server.closeIdleConnections();
+    // Pages hold a connection open to the sync log; don't wait for them to hang up.
+    const hurry = setTimeout(() => process.exit(0), 3000);
+    hurry.unref();
+    void cardRoom.close().finally(() => process.exit(0));
+  });
+}

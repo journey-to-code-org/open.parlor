@@ -3,13 +3,13 @@
 // A room's options say which game it is. Spades rooms keep the options they always had (the house
 // rules themselves), so tables and logs from before there were other games still work; any other
 // game's options carry `game`.
-import { KIT_GAMES, isBoardGame, isKitGame, isSportGame, kitGame, kitGreet, reactToKit, type KitGameId } from "@cardroom/games";
+import { KIT_GAMES, isBoardGame, isKitGame, isSportGame, kitGame, kitGreet, reactToKit, type KitGameId, type ThinkBudget } from "@cardroom/games";
 import { palaceGreet, palaceReplyTo, reactToPalace, type PalaceState } from "@cardroom/palace";
 import { sharedView, type RoomDefinition } from "@spades/rooms/server";
 import { cleanSettings, greet, reactToMove, replyTo, type GameState, type RulePreset, type Seat } from "@spades/rules";
 import { palaceOptions, palaceRoom, type PalaceOptions } from "./palace.js";
 import { spadesRoom } from "./spades.js";
-import { kitOptions, kitRoom, type KitOptions } from "./kit.js";
+import { kitOptions, kitRoom, kitSpent, kitTimeoutMove, type KitOptions } from "./kit.js";
 import { sooner, turnDeadline } from "./timer.js";
 
 export type GameId = "spades" | "palace" | KitGameId;
@@ -40,6 +40,14 @@ const rooms: Record<GameId, RoomDefinition<any, any, any, any, any>> = {
 };
 const byState = (s: AnyState) => rooms[gameOfState(s)];
 
+/**
+ * How long a game that thinks by the clock gets for the move the turn timer makes for someone who
+ * ran out of time. That move is worked out on the main thread, the moment the time is up (it never
+ * waits its turn behind other tables' thinks), so it has to be a short one. The games here don't
+ * think by the clock, and play what they would have anyway.
+ */
+export const TIMEOUT_BUDGET: ThinkBudget = { ms: 150 };
+
 export const tableRoom: RoomDefinition<AnyState, unknown, unknown, TableOptions, unknown> = {
   seats: (o) => {
     const room = rooms[gameOfOptions(o)];
@@ -65,8 +73,20 @@ export const tableRoom: RoomDefinition<AnyState, unknown, unknown, TableOptions,
   // Two clocks can be running: the game's own (a shot clock, which makes the game's timeout move) and
   // the turn timer (a table setting: the game's computer player moves for a person who runs out of
   // time). Whichever runs out first is the room's deadline.
-  deadline: (s, table) => sooner(byState(s).deadline?.(s, table) ?? null, turnDeadline(s, table, (seat, name) => byState(s).bot?.(s, seat, name, table.settings) ?? null)),
+  deadline: (s, table) => sooner(byState(s).deadline?.(s, table) ?? null, turnTimer(s, table)),
 };
+
+/**
+ * The turn timer for a table. At a kit game it plays the computer player's move on the board, never
+ * its answer to an offer, and it isn't put off by one: the room counts a deadline from the last move
+ * of any kind, so the time an offer and its answer took is taken off what is left.
+ */
+function turnTimer(s: AnyState, table: Parameters<NonNullable<typeof tableRoom.deadline>>[1]) {
+  const kit = isKitGame(gameOfState(s)) ? (s as { game: KitGameId } & Record<string, unknown>) : null;
+  const due = turnDeadline(s, table, (seat, name) => (kit ? kitTimeoutMove(kit, seat, name, table.settings, TIMEOUT_BUDGET) : (byState(s).bot?.(s, seat, name, table.settings) ?? null)));
+  const spent = kit ? kitSpent(kit) : 0;
+  return due && spent > 0 && due.after !== undefined ? { ...due, after: Math.max(0, due.after - spent) } : due;
+}
 
 /**
  * What someone watching a table sees: the table as every seat sees it, with nobody's hand and
@@ -119,6 +139,12 @@ export function watchView(game: GameId, views: unknown[]): unknown {
   const view = sharedView(plain, { blank: { hand: [], tap: null, pick: null, choices: null, gridTap: null }, from: { seat: 0, keys: ["me"] } });
   // A line of table talk only one seat was shown ("You were passed…") is nobody else's.
   if (Array.isArray(view.info)) view.info = view.info.filter((line) => typeof line === "string");
+  // An offer at a board (a draw, a move taken back) is the table's to see and the players' to act
+  // on: a watcher is shown what is open and how it came out, and nothing to press.
+  if (view.offers && typeof view.offers === "object") view.offers = { ...(view.offers as Any), can: [], answer: false };
+  // What may be tapped or picked up on a board is the players' and never a watcher's, even where
+  // every seat is offered the same (either player marking dead stones when a game of Go is counted).
+  if (isBoardGame(game) && Array.isArray(view.grids)) view.grids = (view.grids as Any[]).map((g) => (g && typeof g === "object" ? { ...g, tap: null, select: null } : g));
   return view;
 }
 

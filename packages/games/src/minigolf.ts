@@ -753,6 +753,8 @@ export const miniGolf: SportGame<MiniGolfRules, MiniGolfState, MiniGolfMove> = {
   apply,
   view,
   bot,
+  // Hundreds of putts are simulated to choose one: off the table's main thread (see TableGame.heavy).
+  heavy: (s, seat) => s.phase === "playing" && !!s.balls[seat] && !s.balls[seat]!.done && (s.turn === null || s.turn === seat),
   thinkingTime(s, seat) {
     if (s.phase !== "playing") return 500;
     // In turn, a player watches the last putt stop before stepping up; all at once, only their own.

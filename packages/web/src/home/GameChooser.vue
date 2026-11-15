@@ -255,6 +255,13 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 /* A green board (Reversi): discs fill their squares. */
 .mini-board.shade-green { background: #17402c; }
 .mini-board.shade-green .mini-cell { background: #2f8a5b; font-size: calc(var(--tile-card) * 1.5 / var(--cols) * 0.95); }
+/* A wooden board (Go): no squares, only lines, and the stones sit where they cross. */
+.mini-board.shade-wood { gap: 0; background: #dcb264; }
+.mini-board.shade-wood .mini-cell {
+  background: linear-gradient(#4a3716, #4a3716) center / 100% 1px no-repeat, linear-gradient(#4a3716, #4a3716) center / 1px 100% no-repeat;
+  font-size: calc(var(--tile-card) * 1.5 / var(--cols) * 1.15);
+}
+.mini-board.shade-wood .mini-cell.tone-light { text-shadow: 0 0 1px #1d1a16, 0 1px 1px rgba(0, 0, 0, 0.5); }
 /* A board of points (Backgammon): long triangles from both edges, and no lines between the cells. */
 .mini-board.shade-points { background: #c9a36b; gap: 0; border: 2px solid #5b3a22; box-sizing: border-box; }
 .mini-board.shade-points .mini-cell { background: none; font-size: calc(var(--tile-card) * 1.5 / var(--cols) * 0.98); }

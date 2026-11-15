@@ -110,6 +110,8 @@ export interface Overview {
   designs: { total: number; shared: number; hidden: number };
   /** Copies of the database: the newest, how many there are, and the server's settings. Null when it keeps nothing on disk or backups are off. */
   backups: { latest: { name: string; size: number; at: number } | null; kept: number; keep: number; hours: number } | null;
+  /** The computer players' thinking in worker threads; null when the server thinks on its main thread. */
+  bots?: { workers: number; queued: number; running: number; thinks: number; averageMs: number; worstMs: number; abandoned: number } | null;
 }
 
 export interface LogEntry {

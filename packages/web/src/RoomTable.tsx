@@ -16,6 +16,7 @@ import { isBoardGame, isKitGame, isSportGame, kitGame, type BoardView, type KitV
 import { GAME_LIST } from "./GamePicker";
 import { GameTable } from "./kit/GameTable";
 import { OnlineTable, TablePlayers, TableSettingsFields, TurnTimerField, type TablePlayersValue } from "./TableSettings";
+import { TableTime } from "./board/SeatClock";
 import { TurnClock } from "./TurnClock";
 
 type Summary = { game?: string; rules: string; scores?: { points: number }[]; hand?: number; finished?: number[] };
@@ -38,6 +39,7 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
   const [doc, setDoc] = useState<RoomDoc<Summary> | null>(null);
   const [mySeat, setMySeat] = useState<Seat | null>(null);
   const [view, setView] = useState<unknown>(null);
+  const [viewVersion, setViewVersion] = useState<number | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -92,7 +94,10 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
   useEffect(() => {
     if (source === null) return;
     setView(null);
-    return room.onView(source, (doc) => setView(doc.view));
+    return room.onView(source, (doc) => {
+      setView(doc.view);
+      setViewVersion(doc.version ?? null);
+    });
   }, [room, source]);
 
   // Your seat can be taken away before the deal (the host removed you, or you went quiet at an open
@@ -194,10 +199,14 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
     mute: hosting ? (seat, muted) => lobby.mute(id, seat, muted) : undefined,
     remove: hosting ? (seat) => lobby.remove(id, seat) : undefined,
   };
+  // A game's own clocks (a chess clock at each seat) count from when the last move was made, by the
+  // server's clock. The room says when that was and the view says what the clocks read then; they
+  // arrive separately, so the time is only passed on once the two are about the same move.
+  const time = { since: doc.moved != null && (viewVersion === null || viewVersion === doc.version) ? doc.moved : null, now: room.serverNow };
   const online = (table: React.ReactNode) => (
     <OnlineTable.Provider value={true}>
       <TablePlayers.Provider value={players}>
-        {table}
+        <TableTime.Provider value={time}>{table}</TableTime.Provider>
         <TurnClock deadline={doc.deadline} mySeat={mySeat} now={room.serverNow} />
       </TablePlayers.Provider>
     </OnlineTable.Provider>

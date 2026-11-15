@@ -70,7 +70,7 @@ const finished = (summary: unknown) => {
 /** How many wrong tokens a minute before everyone waits. */
 const WRONG_TOKENS_PER_MINUTE = 20;
 
-export function createModeration(rooms: Rooms, designs: Designs, { token, houses, catalogue, backups, mount = "/moderation", now = () => Date.now() }: { token?: string; houses?: Houses; catalogue?: Catalogue; /** Copies of the database, when the card room keeps one on disk. */ backups?: Backups; mount?: string; now?: () => number } = {}) {
+export function createModeration(rooms: Rooms, designs: Designs, { token, houses, catalogue, backups, bots, mount = "/moderation", now = () => Date.now() }: { token?: string; houses?: Houses; catalogue?: Catalogue; /** Copies of the database, when the card room keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
   const secret = token?.trim() ? digest(token.trim()) : null;
   const docs = rooms.sync.documents();
   let wrong: number[] = [];
@@ -180,6 +180,8 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
         designs: { total: made.length, shared: made.filter((d) => d.shared && !d.hidden).length, hidden: made.filter((d) => d.hidden).length },
         // Null when the card room keeps nothing on disk (no CARDROOM_DB) or backups are off.
         backups: backups ? { latest: backups.list()[0] ?? null, kept: backups.list().length, keep: backups.keep, hours: backups.hours } : null,
+        // How the computer players' thinking is going: null when it all happens on the main thread.
+        bots: bots?.() ?? null,
       });
     }
 

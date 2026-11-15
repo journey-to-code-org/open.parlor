@@ -105,7 +105,11 @@ export type CellMark =
   /** A place you could move to, in a game that points them out. Only ever sent to the seat that can. */
   | "hint"
   /** Has to move: a piece that must capture in checkers. */
-  | "must";
+  | "must"
+  /** Can't be played on just now, though it is empty: the ko point in Go. */
+  | "barred"
+  /** Counted as a side's own at the end: territory in Go. The mark says whose (`owner`). */
+  | "claimed";
 
 export interface BoardGrid {
   /** Names this grid in a move when a view has more than one: "board", "mine", "theirs". */
@@ -148,7 +152,8 @@ export interface BoardGrid {
       closed?: boolean;
     }[];
   };
-  marks?: { cell: number; mark: CellMark }[];
+  /** `owner` is the seat a "claimed" cell belongs to. */
+  marks?: { cell: number; mark: CellMark; owner?: number }[];
   /**
    * Draw the board turned half way round, so the last row is at the top and this seat's own pieces
    * are nearest them (the second player in checkers or chess). Only the drawing turns: cells keep
@@ -172,7 +177,22 @@ export interface BoardGrid {
    * With `quick`, a source that has only one place to go is played by tapping it (a table setting
    * in backgammon); the table still shows where it went.
    */
-  select?: { type: string; sources: { from: number | string; to: number[] }[]; held?: number | string; suggest?: number | string; quick?: boolean } | null;
+  select?: {
+    type: string;
+    sources: { from: number | string; to: number[] }[];
+    held?: number | string;
+    suggest?: number | string;
+    /**
+     * Moves that need one more thing said (what a pawn becomes on the far row): putting `from` down
+     * on `to` asks which of `options`, in a small chooser on that cell, the first being the usual
+     * one, and sends { type, from, to, [key]: the chosen piece's kind }.
+     */
+    choose?: { from: number | string; to: number; key: string; options: BoardPiece[] }[];
+    /** Don't point out where a picked-up piece can go: the table lets it be put down anywhere and the engine says no. */
+    quiet?: boolean;
+    /** One tap moves (a table setting): a piece with one place to go is played by tapping it. */
+    quick?: boolean;
+  } | null;
 }
 
 /** Pieces off the board, per side: captured pieces, stones or discs left, ships still to place. */
@@ -241,6 +261,67 @@ export interface BoardSeat {
   out?: boolean;
   /** A small badge: "Check", "Goes first". */
   badge?: string;
+  /**
+   * This seat's clock, in a game that has one of its own (a chess clock): the time it had left
+   * when the last move was made, and whether it is the one running down now. The table counts
+   * the running one down from the time of that move.
+   */
+  clock?: { ms: number; running: boolean };
+}
+
+/** One piece going from a cell to another in a recorded move. Null for off the board: taken (`to`), or put on (`from`). */
+export interface BoardChange {
+  /** The piece's `id`. */
+  id: string;
+  from: number | null;
+  to: number | null;
+  /** The piece as it was before the move, when it left the board or changed (a pawn that was promoted). */
+  was?: BoardPiece;
+}
+
+/** A move in the game's record, in the game's own notation, with enough to put the board back as it was before it. */
+export interface BoardRecordMove {
+  /** "Nf3", "exd5", "O-O". */
+  label: string;
+  by: number;
+  /** The number it is written under: "1." for both White's first move and Black's. */
+  turn: number;
+  /** What moved, in the order it happened; the piece that made the move is last. */
+  changes: BoardChange[];
+  /** A cell left in danger by it: the king it checks. */
+  threat?: number;
+}
+
+/**
+ * The game so far, move by move, for a game that keeps a record (Chess): the table lists it, and
+ * steps back and forward through it on the first grid by undoing `changes`.
+ */
+export interface BoardRecord {
+  moves: BoardRecordMove[];
+  /** The whole record as text to copy: a PGN. Seats are named {0}, {1} as everywhere. */
+  export?: { label: string; text: string };
+}
+
+/** What a player can do besides move: give the game up, or ask the other player for something. */
+export type OfferKind = "resign" | "draw" | "takeback";
+
+/**
+ * Offers at a two-player board (see offers.ts): what is open, and what this seat may do about it.
+ * It is data, the same for every game, and the table says it in its own words. The moves are
+ * always the same four, and `offerMoves` lists the ones a view allows.
+ */
+export interface BoardOffers {
+  /** What this seat may send now: { type: "resign" }, or { type: "offer", offer: "draw" | "takeback" }. */
+  can: OfferKind[];
+  /** The offer waiting for an answer, and who made it. Everyone at the table sees this. */
+  open: { kind: "draw" | "takeback"; by: number } | null;
+  /** It is this seat's to answer, with { type: "accept" } or { type: "decline" }. */
+  answer: boolean;
+  /**
+   * The last thing that happened with an offer, until play has moved on past it. "lapsed" is an
+   * offer that was played through instead of answered.
+   */
+  last: { kind: OfferKind; by: number; outcome: "offered" | "accepted" | "declined" | "lapsed" } | null;
 }
 
 export interface BoardView {
@@ -272,6 +353,10 @@ export interface BoardView {
   result: RoundResult | null;
   /** `winners` is every seat when it's a draw. */
   over: GameOver | null;
+  /** Resigning, draw offers and taking moves back, in a game that has them. */
+  offers?: BoardOffers;
+  /** The moves so far in notation, in a game that keeps a record. */
+  record?: BoardRecord;
 }
 
 /** A board game: an engine whose seats see a `BoardView`. */
@@ -323,6 +408,30 @@ export function lineThrough(rows: number, cols: number, cell: number, need: numb
 }
 
 /**
+ * A grid's cells as they stood after the first `count` moves of the record, worked back from how
+ * they stand now by undoing the moves since. Pieces keep their ids, so a table can slide them back.
+ */
+export function cellsAfter(cells: readonly (BoardPiece | null)[], record: BoardRecord, count: number): (BoardPiece | null)[] {
+  const out = cells.slice();
+  for (let i = record.moves.length - 1; i >= Math.max(0, count); i--) {
+    const changes = record.moves[i]!.changes;
+    // Everything that moved is lifted before anything is put back: in a castling move one piece
+    // may have landed where the other stood.
+    const lifted = new Map<string, BoardPiece>();
+    for (const c of changes) {
+      if (c.to === null || out[c.to]?.id !== c.id) continue;
+      lifted.set(c.id, out[c.to]!);
+      out[c.to] = null;
+    }
+    for (const c of changes) {
+      const piece = c.was ?? lifted.get(c.id);
+      if (c.from !== null && piece) out[c.from] = piece;
+    }
+  }
+  return out;
+}
+
+/**
  * Everything a seat can send from a view, as moves: every tappable cell, every piece and each
  * place it can go, every cell of the sheet it can choose, every die it can tap, every button. The table sends exactly these, and the shared tests check an
  * engine accepts each one it offers.
@@ -336,7 +445,14 @@ export function movesOffered(view: BoardView): Record<string, unknown>[] {
       if (g.tap.by === "col") for (const col of new Set(g.tap.cells.map((c) => colOf(g.cols, c)))) out.push({ type: g.tap.type, col, ...grid });
       else for (const cell of g.tap.cells) out.push({ type: g.tap.type, cell, ...grid });
     }
-    for (const s of g.select?.sources ?? []) for (const to of s.to) out.push({ type: g.select!.type, from: s.from, to, ...grid });
+    for (const s of g.select?.sources ?? []) {
+      for (const to of s.to) {
+        // A move that asks a question first is one move for each answer.
+        const ask = g.select!.choose?.find((c) => c.from === s.from && c.to === to);
+        if (ask) for (const option of ask.options) out.push({ type: g.select!.type, from: s.from, to, [ask.key]: option.kind, ...grid });
+        else out.push({ type: g.select!.type, from: s.from, to, ...grid });
+      }
+    }
   }
   for (const c of view.sheet?.pick?.cells ?? []) out.push({ type: view.sheet!.pick!.type, cell: view.sheet!.columns[c.column]?.id });
   for (const die of view.dice?.tap?.dice ?? []) out.push({ type: view.dice!.tap!.type, die });

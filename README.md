@@ -1,6 +1,6 @@
 # Card Room
 
-Family card and board games online: fifty-four games with house rules saved as presets, family
+Family card and board games online: fifty-six games with house rules saved as presets, family
 **houses** with their own tables, leaderboards and tournaments, computer players with personalities,
 challenge links, and a widget that puts a game on any site, including [open.blog](https://github.com/journey-to-code-org/open.blog) ones.
 
@@ -9,7 +9,7 @@ yourself (Docker or Railway), and practice games work anywhere, including the Gi
 
 ## The games
 
-Spades and Palace have tables of their own; the other fifty-two are built on a shared game kit
+Spades and Palace have tables of their own; the other fifty-four are built on a shared game kit
 (`packages/games`), so they all get the same setup screen, house rules editor, computer players,
 houses, challenges and tournaments. The kit has three tables: one that draws any card game, one
 that draws any board game (Tic-Tac-Toe is the first; Yacht's dice and scorecard are drawn by it
@@ -68,6 +68,8 @@ too), and one that draws any table sport on a canvas (Mini Golf is the first).
 | Combat | 2 | A board game: hide your fleet, then take turns calling shots. Classic, Admirals (ten ships that can't touch), Salvo, or a quick 7×7 |
 | Reversi | 2 | A board game: trap their discs between yours and flip them, on 6×6, 8×8 or 10×10 |
 | Checkers | 2 | A board game: American, International on 10×10 with flying kings, Russian, or friendly with no forced jumps |
+| Go (Weiqi, Baduk) | 2 | A board game: surround more of the board than they do, on 9×9, 13×13 or 19×19, with Chinese or Japanese counting and handicaps |
+| Chess | 2 | A board game: the whole of it, with a chess clock (bullet, blitz, rapid, a day a move), Chess960, and the moves written down as you play |
 | Yacht | 1 to 6 | A dice game: five dice, three rolls and a scorecard to fill. The classic sheet, Yatzy's or a quick seven boxes, in turn or everyone at once; with drinking mode on it's Shotzee 🍺 |
 | Backgammon | 2 | A board game: race your checkers home and hit theirs on the way. A friendly game, a money game with the doubling cube, a match to 3, 5 or 7 points, or Nackgammon |
 | Mini Golf | 1 to 6 | A table sport: nine holes round a garden (a drainpipe, a pond, toadstools that kick, a mole's tunnels), in turn with balls that knock into each other, or everyone at once |
@@ -121,6 +123,56 @@ good club player will beat them.
 
 There is no resigning yet, and no beavers.
 
+## Go
+
+Go is called Weiqi in China and Baduk in Korea; it is the same game. Stones go on the crossings of
+the lines, a group with no empty crossing beside it is captured, and a table picks its board (9×9
+to learn on and for a phone, 13×13, or the full 19×19) and its rules:
+
+- **Counting.** *Chinese (area)*, the default: your stones on the board plus the empty points only
+  you surround, and White gets 7.5 (komi) for moving second. *Japanese (territory)*: the empty
+  points only you surround plus the stones you captured, and White gets 6.5. The komi is a house
+  rule; a whole number allows a drawn game.
+- **Ko.** By default the board may never be put back the way it has been before in the game
+  (positional superko). The house rule "simple ko" only stops a stone being taken straight back.
+  Suicide is not allowed unless a table switches it on.
+- **Handicap.** Two to nine stones for Black on the star points, with White moving first and
+  getting half a point; "just no komi" is the smallest handicap. Who plays Black is the luck of the
+  draw unless a table says (by custom, the less experienced player).
+- **The count.** When both players pass, play stops. The game proposes which stones are dead (it
+  plays the position out a hundred or so times and sees which groups don't survive), shows them
+  faded with each side's territory tinted and the score running in the bar, and either player may
+  tap a group to change it. The count stands when both press **Agree**; a changed marking has to
+  be agreed afresh. **Play on** goes back to the board instead, with the other player to move:
+  capturing the stones is the one answer nobody can argue with. A computer player agrees to the
+  game's own marking, or to any that costs it nothing; against one that does, it plays on, once,
+  and after that lets the marking stand (it can be wrong, and you are not held at the board).
+- **Where this is simpler than the real Japanese rules.** Nothing is ruled dead or alive by the
+  book: seki, bent four in the corner and the like are whatever the two players agree in the
+  count. Points inside a seki are counted like any others, there are no pass stones, and a
+  handicap adds no compensation under Chinese counting.
+
+Resigning is under ⚑, and is how most games of Go end. The same menu offers a draw and a move
+taken back; a table that wants neither sets the house rule Offers to "Neither".
+
+**On a phone**, the full board's crossings are about 18 pixels apart, closer than a finger is
+wide. There a stone takes two taps: the first shows it, see-through, with gold lines along its row
+and column, and it can be nudged with the arrows under the board; tapping it again, or **Play**,
+puts it down. ⚙︎ has "Putting a stone down" (two taps only when the crossings are small and the
+screen is touched, always two, or always one) and whether the coordinates are drawn. With a
+keyboard the arrow keys walk the crossings and Enter plays; each is read out ("Q16: white stone,
+last move").
+
+**The computer player** is our own: Monte Carlo tree search over quick playouts, on an engine
+that keeps each group's liberties as stones come and go (`packages/games/src/goboard.ts`). On 9×9
+it is a sensible opponent: Hard should give a beginner a real game, and Easy plays half its moves
+without reading and can be beaten by someone who has learnt to capture and to surround. On 13×13
+and 19×19 it is weak. It knows the basics (take stones in atari, save its own, don't fill its own
+eyes, play near what is on the board and on the third and fourth lines early, pass when the game
+is over) but an experienced player will beat it easily. Its think is rationed in playouts for each
+millisecond the table grants, so the same dice give the same move on any machine quick enough,
+and it stops at three quarters of its budget whatever it has done. It never resigns.
+
 ## Holding your hand
 
 Above your cards is a small sort bar. **Suits** groups them by suit and **Ranks** lines them up
@@ -157,6 +209,83 @@ before the end.
 - A game can have a clock of its own as well, which is part of its rules and not a table setting
   (Drop Four's shot clock in drinking mode). When both are running, whichever runs out first counts.
   A game's own clock runs in practice too.
+
+## Resigning, draws and taking a move back
+
+At a board game for two (Tic-Tac-Toe, Drop Four, Reversi, Checkers, Chess, Go, Combat) the ⚑ in the bar has
+the things a player rarely does:
+
+- **Resign.** Any time a game is on, your turn or not, and it asks again before it's sent. The
+  other player wins that game. In a match of several games it gives up the game on the board, not
+  the match.
+- **Offer a draw.** The other player gets a banner with Accept and Decline. The offer stays open
+  while you move, and playing on is a "no": it lapses when they make their move. You can't offer
+  again until six moves have been made, so it can't be used to nag. An agreed draw counts on the
+  leaderboard and in a tournament exactly as a draw on the board does.
+- **Ask to take a move back.** If they say yes, your last turn is undone (a whole run of jumps in
+  Checkers), and their reply to it if they have already moved. It lapses when anybody moves.
+  There is no taking back in Combat (a shot tells you something that can't be un-known), against
+  Drop Four's shot clock, or in a tournament match.
+
+Computer players answer at once: they always let you take a move back, take a draw when they're
+behind (or level, once the game is well along), and never offer or resign themselves. A house
+rule, **Offers**, says what a table allows: draws and take-backs, draws only, or neither
+(resigning is always allowed). Someone watching sees the offer and how it came out, with nothing
+to press. Offers don't stop a clock: the turn timer and a game's own clock run on through them,
+and a turn timer that runs out plays a move for you, never an answer.
+
+There is no notification for an offer when you're away from the table, because there is none for
+"your move" either; the turn timer is what keeps a game from waiting on you.
+
+## Chess
+
+Chess is on the board kit like the other board games, and is the first to use three things in it:
+a clock that is part of the game, a record of the moves, and a set of pieces drawn by the table.
+
+- **The rules, all of them.** Check, mate and stalemate; castling either side; en passant;
+  promotion to whatever you choose (a small chooser opens on the square, queen first). A draw can
+  be claimed with a button when the same position has come up three times or after fifty moves
+  each without a capture or a pawn move, and is automatic at five times or seventy-five moves, or
+  when neither side has enough left to mate. Draws by agreement and resigning are the ⚑ menu's.
+  The move generator is checked against the published perft counts (the start to depth 5,
+  "Kiwipete" and four more, and two Chess960 positions).
+- **Clocks.** Presets for Bullet 1+0, Blitz 3+2 and 5+0, Rapid 10+0 and 15+10, and any minutes
+  and increment you like as house rules; no clock unless a table picks one. Each side's time runs
+  down on its own turn from White's first move, the increment is added after each move, and
+  running out loses (or draws, if the other side has nothing it could mate with). It is the
+  server's clock: a game's `deadline` is the bank of the side to move, each move is logged with
+  its time, and a restart replays the banks exactly. Both clocks are shown at the seats and count
+  down by the server's time. An offer doesn't stop the clock, and a move can't be taken back on
+  one. Computer players are on the clock too: they think for a share of what they have left, and
+  lose on time like anyone if their move doesn't come.
+- **Correspondence** is its own preset: a day (or two, three, a week) for each move, and running
+  out loses. That is a rule of the game, so it is the game's own deadline; the table's turn
+  timer set to "a day" is the friendlier version, where the computer makes the move for you.
+- **Notation.** The moves are written in standard algebraic notation under the board as they are
+  played. ◀ and ▶ (or the arrow keys) step back and forward through the game, while it is on and
+  after it ends; the board shows that position and takes no moves until you come back. **Copy
+  PGN** puts the whole game on the clipboard. The engine reads and writes FEN (`chessFromFen`,
+  `chessFen` in `packages/games/src/chess.ts`).
+- **Chess960.** A preset: one of the 960 starting rows, drawn by lot, the same for both sides and
+  kept for a pair of games in a match so each player has it with each colour. Castling ends where
+  it does in classic chess; you castle by putting your king on your rook.
+- **The pieces** are our own, drawn as SVG in `packages/web/src/board/pieces.tsx` and keyed by
+  the `kind` the engine gives ("knight"), so they are the same on every phone. "Show where a piece
+  can go" is a house rule, on unless a table turns it off.
+- **The computer player** is our own engine (`packages/games/src/chesscore.ts`): iterative
+  deepening alpha-beta with a transposition table, quiescence search, null-move pruning and the
+  usual move ordering, over an evaluation of material, piece placement, pawn structure, king
+  shelter and mobility. No opening book: it varies its openings with a little luck among moves
+  it thinks are about as good. Easy looks two moves ahead and often plays the move that looks
+  best without looking at all (so it leaves pieces hanging); medium looks four and rarely slips,
+  and never into mate on the move; hard looks as far as it can (five or six moves in a
+  middlegame at a table without a clock, about eight on a blitz clock, on the machine it was
+  measured on). It is a club player at best, not a master: it has no endgame tables, knows
+  nothing of fortresses, and a patient person will outplay it in a quiet position.
+
+  Without a chess clock its thinking is rationed by work (positions looked at, fifty for
+  each ms of the table's budget), so the same position always gets the same move on any machine;
+  on a chess clock it thinks by the time, and always stops inside the budget it was given.
 
 ## Finding people to play with
 
@@ -225,7 +354,7 @@ an issue's comments count how many want it. Requests share the reports' limits.
 
 | Package | |
 | --- | --- |
-| [`packages/games`](packages/games) | The game kit and the fifty-two games built on it: `table.ts` (the `TableGame` engine contract every game shares), `kit.ts` (the card kit: `CardGame`, cards, decks, `KitView`), `board.ts` (the board kit: `BoardGame`, grids, pieces, dice, `BoardView`) and `sport.ts` (the table-sports kit: `SportGame`, shots, `SportView`) |
+| [`packages/games`](packages/games) | The game kit and the fifty-four games built on it: `table.ts` (the `TableGame` engine contract every game shares), `kit.ts` (the card kit: `CardGame`, cards, decks, `KitView`), `board.ts` (the board kit: `BoardGame`, grids, pieces, dice, `BoardView`) and `sport.ts` (the table-sports kit: `SportGame`, shots, `SportView`) |
 | [`packages/rules`](packages/rules) | Spades rules engine, bots, and the personas who play every game |
 | [`packages/palace`](packages/palace) | Palace rules engine: house-rule presets, seat views, bots and table talk |
 | [`packages/physics`](packages/physics) | A small deterministic 2D physics core for the table sports: the same shot gives the same table on the server and in every browser, which is how Mini Golf's server decides a putt and every browser animates it |
@@ -244,6 +373,49 @@ designer, Solid on the watch page and Angular in the admin app.
 
 The server decides every move. Each player's browser only ever receives its own view of a table
 (its own hand), never the whole game; moves the rules don't allow are refused on the server.
+
+## How computer players think
+
+A computer player's move is a pure function of the table: the game's state, the seat, the bot's
+name (its persona, and so its style) and the table's settings. The server holds every table on one
+thread, so a think that takes a while would hold up everyone. It doesn't have to:
+
+- **Quick thinks stay on the main thread.** A card game's bot answers in a few hundredths of a
+  millisecond; sending the state to another thread and the move back costs about a tenth of one.
+- **Heavy thinks go to a worker thread.** A game says which those are with `TableGame.heavy(state,
+  seat)` (a search in Checkers, Reversi, Go, Drop Four and the big Tic-Tac-Toe boards; hundreds of
+  simulated putts in Mini Golf). The server keeps a small pool of `worker_threads`
+  (`packages/server/src/botpool.ts`), each running the same engine code, and the room waits for the
+  answer. In practice mode the browser does the same with a Web Worker.
+- **The pause hides the think.** A bot's thinking starts the moment its humanlike pause does, and
+  the move is played when both are done: a think shorter than the pause costs the table nothing.
+- **An answer is only played on the state it was worked out for.** If the table moved on meanwhile
+  (someone else moved, a turn timer fired) the answer is dropped and the bot is asked again; if the
+  bot was stopped (the game ended, the settings changed, the table was closed) it's just dropped.
+  The move itself goes through the room's `act` and into the move log like anyone's.
+- **A think has a budget and a ceiling.** `bot(state, seat, style, rand, budget)` is told how long
+  it may take (`budget.ms`, from `CARDROOM_BOT_BUDGET`, 2000 by default). Most bots ignore it:
+  they ration themselves by work done, so they play the same move on any machine. Go uses it (its
+  ration grows with the budget, and the clock is the hard stop: see [Go](#go)). Chess sizes its
+  ration of work from the budget, and on a chess clock searches by the time and stops inside it. A think still running at the
+  ceiling (`CARDROOM_BOT_CEILING`, three times the budget by default) is abandoned: its worker is
+  terminated and replaced, and the seat plays a quick move instead (the same bot asked with
+  `QUICK_STYLE` and `QUICK_BUDGET`: no skill, no time), so one runaway search can never hang a table.
+- **Fair shares.** Thinks wait in one queue, first come first served, and a table never has two
+  running at once. The move a turn timer makes for someone who ran out of time never queues: it's
+  worked out on the main thread, there and then, with a short budget (`TIMEOUT_BUDGET`).
+
+The pool has one worker for each processor the server may use but one, at least one and at most
+four; `CARDROOM_BOT_WORKERS` sets the number, and `0` turns the pool off (every think on the main
+thread, as before: also what happens by itself if worker threads can't start). A worker is another
+copy of the engines, about 35 MB of memory each. Each worker warms
+the table sports' physics as it starts, as the main thread does, while the server is already
+listening. `GET /healthz/bots` shows how it's going (workers, thinks waiting and running, usual and
+worst think time, how many were given up on), and so does the admin app's overview.
+
+`node packages/server/scripts/bench-bots.mjs` measures what a trip to a worker costs for each kind
+of game, and `node packages/web/scripts/practice-hitch.mjs <address>` how long the page freezes in
+practice mode.
 
 ## Development
 
@@ -334,6 +506,12 @@ move the rules don't allow), `view` (what one seat may see and do), `bot`, `thin
 `summary`. The only thing that differs between a card game, a board game and a table sport is
 what `view` returns.
 
+If the bot's think is more than a millisecond or two (it searches, or simulates), give the game a
+`heavy(state, seat)` that says when, so the think is done off the main thread, and if it thinks by
+the clock, keep inside the `budget` that `bot` is handed (see
+[How computer players think](#how-computer-players-think)). Without `heavy` a bot thinks on the
+main thread, which is right for anything quick.
+
 ### A card game
 
 1. **The engine:** `packages/games/src/<game>.ts`, a `CardGame<Rules, State, Move>` (see
@@ -390,6 +568,19 @@ what `view` returns.
    the `must` mark rings a piece that has to move. A piece with `faded` set is drawn faintly: a
    piece jumped but not yet taken off.
 
+   `go.ts` is the worked example for a board of crossings: `points` on a grid puts the pieces
+   where the lines cross (the table draws the lines and any `"spot"` cells as star points, and
+   on a touch screen with small crossings asks for two taps to put a piece down), the `barred`
+   mark is an empty cell that can't be played this turn, and `claimed` marks (with an `owner`)
+   are cells counted as a side's own. A button with `confirm` asks its question before it is
+   sent. It is also the example of a computer player that uses its `budget`, and of a phase in
+   which both players act at once on the same board (agreeing the count: `turn` is null).
+   `chess.ts` added three more. `select.choose` lists moves that need one more thing said (what a
+   pawn becomes): the table asks on the square and sends the answer with the move. `record` in
+   the view is the game so far in its own notation, with what each move changed, so the table can
+   list the moves and step back through them (`cellsAfter`). And `clock` on a seat is a clock of
+   the game's own (see [Clocks and deadlines](#clocks-and-deadlines)). A game whose pieces should
+   be drawn rather than typed adds a set to `packages/web/src/board/pieces.tsx`, keyed by `kind`.
    `backgammon.ts` is the worked example for a board that isn't squares. Three more things in
    the kit came with it:
    - **A track** (`track` on a grid, a `BoardTrack`): the cells are places pieces travel along,
@@ -441,17 +632,49 @@ what `view` returns.
      Checkers. The computer player has to give the same answer each time it's asked between two
      steps: Yacht's decides whether it is having a careless moment from the dice, not from
      `Math.random()`.
-2. **Register it:** add its id to `BoardGameId` in `table.ts`, add it to `BOARD_GAMES` in
+2. **Offers, for a game with two sides:** resigning, draw offers and taking a move back are built
+   once (`packages/games/src/offers.ts`) and a game opts in by wrapping itself. Its own `apply`,
+   `view` and computer player don't change:
+
+   ```ts
+   const rules: BoardGame<ChessRules, ChessState, ChessMove> = { /* the game */ };
+
+   export const chess = withOffers<ChessRules, ChessState, ChessMove>(rules, {
+     // End the game on the board: `winner` takes it, or nobody (a draw). `s` is a copy to change.
+     // `settleMatch` does it for a state shaped like the other board games' (wins, draws, round…).
+     settle: settleMatch,
+     // Moves can be taken back. Leave it out (the default) if any seat can't see everything, or a
+     // move decides anything by chance; a function can rule out some tables: (s) => !s.rules.blitz.
+     takeBack: true,
+     // For a computer player answering a draw offer: above zero is better than level for `seat`.
+     standing: (s, seat) => material(s, seat) - material(s, 1 - seat),
+   });
+   ```
+
+   The wrapper adds the moves (`{ type: "resign" }`, `{ type: "offer", offer: "draw" | "takeback" }`,
+   `{ type: "accept" }`, `{ type: "decline" }`), a house rule (`offers`: all, no take-backs,
+   none), and `offers` in the view (what is open, who made it, what this seat may do), which the
+   board table draws. What it needs to remember lives in the state under `offers`, so it is in
+   the move log's replay like everything else; that includes the last four positions for taking
+   back (`history`), which never reach a view. Nothing is kept across a move that changed the
+   state's `rng`, after a game ends, or in a game that didn't say `takeBack`. A game whose state
+   isn't shaped like the others writes its own `settle` (and `live`, if "a game is being played"
+   isn't `phase === "playing"`: Combat's placing and shooting are both). Other options:
+   `drawGap`, `backGap`, `levelAfter`.
+3. **Register it:** add its id to `BoardGameId` in `table.ts`, add it to `BOARD_GAMES` in
    `registry.ts`, and export it from `index.ts`.
-3. **Tests:** `packages/games/test/<game>.test.ts` for its rules. The shared board tests
+4. **Tests:** `packages/games/test/<game>.test.ts` for its rules. The shared board tests
    (`test/board.test.ts`) play every registered board game automatically: computer players finish
    whole games with every preset at every table size, a game can be played from nothing but what
-   its views offer, every move a view offers is accepted, the same seed always starts the same
-   game, and refused moves change nothing. Dice and a sheet are checked too: dice have ids of
-   their own and show faces they have, a die that can be tapped is on the table, a cell that
-   can be chosen is an empty one in the seat's own row. So are stacks (a whole number of pieces,
-   each named once), a track (its places are cells of the grid, each once) and the cube.
-4. **Its tile on the front page:** a little board position in `BOARDS` in
+   its views offer, every move a view offers is accepted (offers included: made, answered and
+   taken back along the way), the same seed always starts the same game, and refused moves change
+   nothing. `test/offers.test.ts` checks every game with offers can be resigned and drawn, in one
+   game and in a match; add a take-back case there for a game with a move made in several taps.
+   Dice and a sheet are checked too: dice have ids of their own and show faces they have, a die
+   that can be tapped is on the table, a cell that can be chosen is an empty one in the seat's own
+   row. So are stacks (a whole number of pieces, each named once), a track (its places are cells of
+   the grid, each once) and the cube.
+5. **Its tile on the front page:** a little board position in `BOARDS` in
    `packages/web/src/home/Home.tsx`, or for a dice game a few dice in `DICE`. (Backgammon's is a
    board with `shade: "points"`.)
 
@@ -588,6 +811,13 @@ Every game in the card room already has one deadline, the [turn timer](#the-turn
 (`packages/server/src/timer.ts`). A game on the kit gets it for nothing: it needs `view().turn` to
 say whose move it is and `bot()` to give a move for any seat that owes one.
 
+A room counts `after` from the last move of any kind, and an offer and its answer are moves. So
+that asking for a draw never buys time, a kit game's `apply` is handed the move's `{ elapsed }`,
+the offers wrapper adds up what has gone by since the last move on the board, and that is taken
+off both clocks: the game's own (`deadline`) and the turn timer (`TableGame.spent`). When the turn
+timer runs out it plays `TableGame.play`, the computer player's move on the board, which is never
+an answer to an offer.
+
 ### A game's own clock
 
 A game on the kit can also have a clock that is part of its rules: a shot clock, a chess clock, a
@@ -625,9 +855,13 @@ log. `deadline` must be worked out from the state alone, never from the time of 
   Changing the table's settings mid-clock never puts off a clock that's already running.
 - **Practice.** `LocalKit` runs the same `deadline` in the browser, on your own seat, with no grace
   (there's no trip to make), and shows the same countdown.
-- **Not yet:** a clock that banks time (chess) needs to know how long each move took. Rooms hand
-  that to `act` as `{ at, elapsed }`; `TableGame.apply` doesn't take it yet, and passing it through
-  `kitRoom.act` is the one line to add when the first such game arrives.
+- **A clock that banks time** (Chess) keeps each side's time in its state: `apply` is handed how
+  long the move took (`{ elapsed }`, with any time spent on offers added) and takes it off the
+  mover's bank, and `deadline` is the bank of the side to move. Such a deadline says `strict`:
+  it is armed on a computer player's seat as well, since the time is part of the game. A seat's
+  view carries `clock` (what it had at the last move, and whether it is running) and the room
+  publishes when that move was made (`moved`), so pages count the running clock down by the
+  server's time.
 
 ## Putting a game on a site
 
@@ -701,6 +935,9 @@ docker run -p 8787:8787 -v spades:/data cardroom
 | `CARDROOM_BLOCKED_NAMES` | Optional: more words that names and chat at open tables may not contain, comma-separated |
 | `CARDROOM_ADMIN_TOKEN` | Turns on the admin app at `/admin/`: the token its host signs in with. Make it long and keep it secret (`openssl rand -hex 24`) |
 | `CARDROOM_BOT_DELAY` | Fixed thinking time for computer players, in milliseconds (handy for testing) |
+| `CARDROOM_BOT_WORKERS` | Worker threads for the computer players' heavy thinking (see **How computer players think**). Default: one per processor but one, from 1 to 4. `0` for none: everything on the main thread. |
+| `CARDROOM_BOT_BUDGET` | How long, in milliseconds, a game that thinks by the clock is told it may take over a move. Default 2000. |
+| `CARDROOM_BOT_CEILING` | How long, in milliseconds, before a think still running is abandoned for a quick move. Default: three times the budget. |
 | `CARDROOM_WEB` | Where the built web app is, if not `packages/web/dist` |
 | `CARDROOM_DESIGNER` | Where the built card designer is, if not `packages/designer/dist` |
 | `CARDROOM_WATCH` | Where the built watch page is, if not `packages/watch/dist` |
