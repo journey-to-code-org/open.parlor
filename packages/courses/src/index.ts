@@ -15,6 +15,7 @@ import { rectangles } from "./grid.js";
 import { hasLane, laneProblems, normalizeLane, registerLane, unregisterLane, type CustomLane } from "./lanes.js";
 
 export * from "./lanes.js";
+export * from "./playtest.js";
 
 /** What a square of the grid is. */
 export const PIECES = {

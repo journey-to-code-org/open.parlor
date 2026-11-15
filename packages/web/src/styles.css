@@ -2049,3 +2049,16 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .golf-share input { width: 20px; height: 20px; accent-color: var(--gold); }
 .golf-course-pick { display: flex; flex-direction: column; gap: 4px; }
 .golf-course-pick .rule-actions { flex-wrap: wrap; gap: 4px 16px; }
+
+/* A playtest's verdict, under the preview in the course and lane editors. */
+.golf-verdict { display: grid; gap: 0.5rem; padding: 0.75rem 0.9rem; border-radius: 12px; background: rgba(255, 255, 255, 0.07); border-left: 4px solid rgba(255, 255, 255, 0.3); }
+.golf-verdict p { margin: 0; }
+.golf-verdict button { justify-self: start; }
+.golf-verdict.rated-easy, .golf-verdict.rated-fair { border-left-color: #7fc46b; }
+.golf-verdict.rated-hard { border-left-color: #e9c46a; }
+.golf-verdict.rated-very-hard { border-left-color: #f08a4b; }
+.golf-verdict.rated-unplayable { border-left-color: #e05a4f; }
+.golf-rated { position: absolute; top: -6px; right: -6px; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 0.65rem; color: #fff; background: #4f8f3f; }
+.golf-rated.rated-hard { background: #c79a2e; }
+.golf-rated.rated-very-hard { background: #d06a2c; }
+.golf-rated.rated-unplayable { background: #c0392b; }
