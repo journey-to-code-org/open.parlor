@@ -13,6 +13,29 @@ declare const __BUILT__: string;
 
 /** The server's relay is mounted at /bugs. */
 export const relay = createRelayClient({ base: "/bugs", built: typeof __BUILT__ === "string" ? __BUILT__ : "" });
+
+/**
+ * The screenshot walks the page with `firstChild`, but every Zubra component (the cards, the seats)
+ * answers `firstChild` with only the content a page slotted into it, which is none, so each one
+ * is drawn empty. While the picture is taken, give those elements back the real `firstChild`.
+ * Nothing else is touched, and the components get their own back as soon as it's done.
+ */
+const takePicture = relay.takeScreenshot;
+relay.takeScreenshot = async () => {
+  const covered: Array<[Element, PropertyDescriptor]> = [];
+  for (const el of document.body.querySelectorAll("*")) {
+    const own = Object.getOwnPropertyDescriptor(el, "firstChild");
+    if (own?.configurable) {
+      covered.push([el, own]);
+      delete (el as { firstChild?: unknown }).firstChild;
+    }
+  }
+  try {
+    return await takePicture();
+  } finally {
+    for (const [el, own] of covered) Object.defineProperty(el, "firstChild", own);
+  }
+};
 /** The report sheet's state: closed, writing, looking it over, sent. */
 export const reportFlow = createReportFlow(relay);
 
