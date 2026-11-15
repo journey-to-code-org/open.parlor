@@ -2,7 +2,7 @@
 // serves it with the web app, the card designer and the admin app.
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Log } from "@zubra/sync/server";
-import { createRooms, type RoomDoc } from "@spades/rooms/server";
+import { createRooms, type RoomDoc } from "@journey-to-code/rooms/server";
 import { createCatalogue } from "./catalogue.js";
 import { createChallenges } from "./challenges.js";
 import { createSpectate } from "./spectate.js";
@@ -11,12 +11,12 @@ import { createDesigns } from "./designs.js";
 import { BLOCKED_MESSAGE, createModeration } from "./moderation.js";
 import { createHouses } from "./houses.js";
 import { createAi, type AiOptions } from "./ai.js";
-import { personaFor } from "@spades/rules";
+import { personaFor } from "@journey-to-code/rules";
 import { createBugs, REPORT_LIMIT, type BugOptions } from "./bugs.js";
 import { createLobby, type LobbyOptions } from "./lobby.js";
 import { createBots, type BotOptions } from "./bots.js";
 import { createPush, type PushOptions } from "./push.js";
-import { playerOf } from "@spades/rooms/server";
+import { playerOf } from "@journey-to-code/rooms/server";
 import { gameName, gameOfOptions, tableRoom, talk, type GameId, type Remark } from "./games.js";
 
 export function createCardRoom(

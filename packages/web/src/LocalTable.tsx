@@ -1,5 +1,5 @@
-import type { ChatMessage } from "@spades/rooms/client";
-import { greet, mulberry32, pickPersonas, reactToMove, replyTo, type GameState, type Remark, type RulePreset, type Seat, type TableCast } from "@spades/rules";
+import type { ChatMessage } from "@journey-to-code/rooms/client";
+import { greet, mulberry32, pickPersonas, reactToMove, replyTo, type GameState, type Remark, type RulePreset, type Seat, type TableCast } from "@journey-to-code/rules";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Table } from "./Table";
 import { useLocalGame } from "./useLocalGame";

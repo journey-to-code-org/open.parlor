@@ -7,8 +7,8 @@
 // several times what a card game's whole think takes. A search or a simulation takes tens of
 // milliseconds or more, and is worth the trip.
 import { availableParallelism } from "node:os";
-import { isKitGame, type KitGameId, type ThinkBudget } from "@cardroom/games";
-import type { Thinking } from "@spades/rooms/server";
+import { isKitGame, type KitGameId, type ThinkBudget } from "@journey-to-code/games";
+import type { Thinking } from "@journey-to-code/rooms/server";
 import { builtFile, createBotPool, type BotPoolStats } from "./botpool.js";
 import { quick, think, type ThinkJob } from "./brain.js";
 import { gameOfState } from "./games.js";

@@ -21,9 +21,6 @@
       "node"
     ],
     "paths": {
-      "@cardroom/decks": [
-        "../decks/src/index.ts"
-      ],
       "@spades/ui/*": [
         "./.zubra/types/__/ui/src/*",
         "../ui/src/*"

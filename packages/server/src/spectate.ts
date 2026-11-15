@@ -11,10 +11,10 @@
 // Only what's really going is listed: a game this card room has (a table whose game it doesn't know
 // is left out, not shown as something else), that the host hasn't switched off, at a table where
 // someone has moved lately. A table its players walked away from isn't "playing now".
-import { kitGame, isKitGame } from "@cardroom/games";
-import { familyPalace } from "@cardroom/palace";
-import { cleanSettings, familyTable, pickPersonas } from "@spades/rules";
-import type { RoomDoc } from "@spades/rooms/server";
+import { kitGame, isKitGame } from "@journey-to-code/games";
+import { familyPalace } from "@journey-to-code/palace";
+import { cleanSettings, familyTable, pickPersonas } from "@journey-to-code/rules";
+import type { RoomDoc } from "@journey-to-code/rooms/server";
 import type { Catalogue } from "./catalogue.js";
 import { gameEmoji, gameName, isGameId, type GameId, type TableOptions } from "./games.js";
 import { kitOptions } from "./kit.js";

@@ -1,7 +1,7 @@
 // How high the ground is, as the table screen works it out from a view's heights, and which of
 // two things is nearer the camera. Checked on the real course: a step is a step, a ramp meets the
 // ground at both ends, and nothing a ball can rest on is far below the rails round it.
-import { backGarden, miniGolf, newMiniGolf, nineHoles } from "@cardroom/games";
+import { backGarden, miniGolf, newMiniGolf, nineHoles } from "@journey-to-code/games";
 import { describe, expect, it } from "vitest";
 import { nearnessAt } from "../src/sport/paint/order";
 import { landOf } from "../src/sport/paint/terrain";

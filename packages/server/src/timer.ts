@@ -1,12 +1,12 @@
 // The turn timer, for every game: a table setting (off unless someone turns it on) that gives each
 // person so long for a move. When it runs out the game's own computer player makes the move for
 // them, so a phone left on the sofa doesn't stop the game for everyone else. It's a room deadline
-// (see @spades/rooms): the server keeps the time, and the timeout move goes into the move log like
+// (see @journey-to-code/rooms): the server keeps the time, and the timeout move goes into the move log like
 // any other.
-import { kitGame, type KitGameId } from "@cardroom/games";
-import type { PalaceState } from "@cardroom/palace";
-import type { Deadline, TableInfo } from "@spades/rooms/server";
-import { turnTimerMs, type GameState, type TableSettings } from "@spades/rules";
+import { kitGame, type KitGameId } from "@journey-to-code/games";
+import type { PalaceState } from "@journey-to-code/palace";
+import type { Deadline, TableInfo } from "@journey-to-code/rooms/server";
+import { turnTimerMs, type GameState, type TableSettings } from "@journey-to-code/rules";
 
 type KitState = { game: KitGameId } & Record<string, unknown>;
 type AnyState = GameState | PalaceState | KitState;

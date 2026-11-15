@@ -6,8 +6,8 @@
 // What stands up is a `Prop`: something with a footprint on the ground, which is what decides
 // whether it is in front of a ball or behind it. What lies flat (a mat, a lily pad, a fish under
 // the water) is painted straight onto the ground instead.
-import type { SportBlock, SportDecor, SportTone, SportTunnel } from "@cardroom/games";
-import type { Point, Tunnel } from "@cardroom/physics";
+import type { SportBlock, SportDecor, SportTone, SportTunnel } from "@journey-to-code/games";
+import type { Point, Tunnel } from "@journey-to-code/physics";
 import { centreOf, dome, facing, offset, path, placed, rightOf, shadeOf as tint, shadow, trace, turning, type Brush } from "./geometry";
 import { ball, bloom, castShadow, clockwise, cone, disc, drum, foliage, hull, mound, pipe, prism, ring, rod, SHADOW, upright, type Paint, type Stage } from "./solids";
 import { scatter, textured } from "./textures";

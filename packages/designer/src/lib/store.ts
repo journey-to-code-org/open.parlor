@@ -1,7 +1,7 @@
 // Where designs are kept. With a card room server behind the page, they're saved there (yours
 // under your player cookie; shared ones in the gallery for everyone). Without one (the GitHub Pages
 // copy of the card room), they stay in this browser and there's no gallery to share to.
-import { normalizeDesign, validateDesign, type CardDesign } from "@cardroom/decks";
+import { normalizeDesign, validateDesign, type CardDesign } from "@journey-to-code/decks";
 
 export interface SavedDesign {
   id: string;

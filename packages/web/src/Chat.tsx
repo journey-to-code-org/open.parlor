@@ -1,4 +1,4 @@
-import type { ChatMessage } from "@spades/rooms/client";
+import type { ChatMessage } from "@journey-to-code/rooms/client";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { play } from "./feedback/sounds";
 import { putEverythingBack, useAnythingMoved, useDragPlace } from "./useDragPlace";

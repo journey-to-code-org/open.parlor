@@ -6,7 +6,7 @@
 //
 // A die you can tap is a button that says what it is ("die 3: a five, held"), and the arrow keys
 // walk along the row. Dice you can't tap are still read out.
-import type { BoardDice, BoardDie } from "@cardroom/games";
+import type { BoardDice, BoardDie } from "@journey-to-code/games";
 import { useEffect, useRef, useState } from "react";
 import { play } from "../feedback/sounds";
 import { reducedMotion } from "../motion";

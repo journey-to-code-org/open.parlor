@@ -2,8 +2,8 @@
 // job: the bot pool's worker threads import this file and run `think`, and the main thread runs the
 // very same functions when it has to answer itself (see botpool.ts and bots.ts). Nothing here keeps
 // anything between calls that changes an answer, so it doesn't matter which thread is asked.
-import { QUICK_BUDGET, isKitGame, type KitGameId, type ThinkBudget } from "@cardroom/games";
-import { mulberry32, type TableSettings } from "@spades/rules";
+import { QUICK_BUDGET, isKitGame, type KitGameId, type ThinkBudget } from "@journey-to-code/games";
+import { mulberry32, type TableSettings } from "@journey-to-code/rules";
 import { gameOfState, tableRoom } from "./games.js";
 import { kitBot, warmSports } from "./kit.js";
 

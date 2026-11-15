@@ -1,5 +1,5 @@
 // The Card Room's start page: the Vue game chooser, mounted inside the React app.
-import { isBoardGame, isSportGame, KIT_GAMES } from "@cardroom/games";
+import { isBoardGame, isSportGame, KIT_GAMES } from "@journey-to-code/games";
 import { createApp, h, reactive } from "vue";
 import { useEffect, useRef, useState } from "react";
 import { bugs, openGameRequest } from "../bugReport";

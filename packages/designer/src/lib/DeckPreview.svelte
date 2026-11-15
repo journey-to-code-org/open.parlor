@@ -4,7 +4,7 @@
   through the CSS variables set on the strip.
 -->
 <script lang="ts">
-  import { deckStyle, type CardDesign } from "@cardroom/decks";
+  import { deckStyle, type CardDesign } from "@journey-to-code/decks";
   import type { SampleCard } from "./cards";
 
   let { design }: { design: CardDesign } = $props();

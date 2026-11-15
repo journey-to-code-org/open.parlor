@@ -1,6 +1,6 @@
 import { SetupLayout } from "./SetupLayout";
 import { OpponentSettings } from "./TableSettings";
-import { validatePreset, type RulePreset } from "@spades/rules";
+import { validatePreset, type RulePreset } from "@journey-to-code/rules";
 import SelectField from "@spades/ui/zubra-ui/select-field.zb";
 import { explain, RulesFields, SameRulesToggle, Toggle } from "./RulesEditor";
 import TextField from "@spades/ui/zubra-ui/text-field.zb";

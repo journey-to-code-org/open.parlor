@@ -3,10 +3,10 @@
 // A room's options say which game it is. Spades rooms keep the options they always had (the house
 // rules themselves), so tables and logs from before there were other games still work; any other
 // game's options carry `game`.
-import { KIT_GAMES, isBoardGame, isKitGame, isSportGame, kitGame, kitGreet, reactToKit, type KitGameId, type ThinkBudget } from "@cardroom/games";
-import { palaceGreet, palaceReplyTo, reactToPalace, type PalaceState } from "@cardroom/palace";
-import { sharedView, type RoomDefinition } from "@spades/rooms/server";
-import { cleanSettings, greet, reactToMove, replyTo, type GameState, type RulePreset, type Seat } from "@spades/rules";
+import { KIT_GAMES, isBoardGame, isKitGame, isSportGame, kitGame, kitGreet, reactToKit, type KitGameId, type ThinkBudget } from "@journey-to-code/games";
+import { palaceGreet, palaceReplyTo, reactToPalace, type PalaceState } from "@journey-to-code/palace";
+import { sharedView, type RoomDefinition } from "@journey-to-code/rooms/server";
+import { cleanSettings, greet, reactToMove, replyTo, type GameState, type RulePreset, type Seat } from "@journey-to-code/rules";
 import { palaceOptions, palaceRoom, type PalaceOptions } from "./palace.js";
 import { spadesRoom } from "./spades.js";
 import { kitOptions, kitRoom, kitSpent, kitTimeoutMove, type KitOptions } from "./kit.js";

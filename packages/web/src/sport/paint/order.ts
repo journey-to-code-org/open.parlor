@@ -3,7 +3,7 @@
 // The camera looks straight up the screen, so one thing can only hide another that is directly
 // behind it: at the same place across the screen and further away. Comparing how far away two
 // footprints are along a line they both cross settles it, however long and slanted they are.
-import type { Point } from "@cardroom/physics";
+import type { Point } from "@journey-to-code/physics";
 import type { Prop } from "./things";
 
 /** How far towards the camera the middle of a footprint is, along the line across the screen at `x`. */

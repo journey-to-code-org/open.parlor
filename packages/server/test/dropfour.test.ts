@@ -2,7 +2,7 @@
 // (`TableGame.deadline`), kept by the room like the turn timer is. On a fake clock: an idle seat
 // loses its turn and takes a drink, a table without drinking mode has no such clock, computer
 // players aren't held to it, and it gets along with the table's turn timer and a restart.
-import { SHOT_CLOCK_MS, type BoardView } from "@cardroom/games";
+import { SHOT_CLOCK_MS, type BoardView } from "@journey-to-code/games";
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createCardRoom } from "../src/app.js";

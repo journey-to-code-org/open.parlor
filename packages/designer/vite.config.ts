@@ -17,7 +17,6 @@ export default defineConfig({
   resolve: {
     alias: {
       // From source, like the card room's app: the Pages build doesn't build the other packages first.
-      "@cardroom/decks": local("../decks/src/index.ts"),
       "@spades/ui": local("../ui/src"),
     },
   },

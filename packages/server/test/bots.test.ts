@@ -1,8 +1,8 @@
 // Computer players thinking in worker threads (bots.ts): the move is the same whichever thread
 // works it out, for every game in the card room, and a real table's bot gets its moves from a worker.
-import { KIT_GAMES, kitGame } from "@cardroom/games";
-import { PALACE_PRESETS } from "@cardroom/palace";
-import { classic, familyTable, jokersAndDeuces, pickPersonas, quick250, mulberry32, type Skill } from "@spades/rules";
+import { KIT_GAMES, kitGame } from "@journey-to-code/games";
+import { PALACE_PRESETS } from "@journey-to-code/palace";
+import { classic, familyTable, jokersAndDeuces, pickPersonas, quick250, mulberry32, type Skill } from "@journey-to-code/rules";
 import { memoryLog } from "@zubra/sync/server";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { createCardRoom } from "../src/app.js";

@@ -14,8 +14,8 @@
 // its events as they happen. While it rolls, the scores, the story and the sheets stay as they
 // were: nobody is told the putt dropped before they have watched it drop. When it stops the
 // screen shows the server's table, and a check confirms that is where the roll ended.
-import { angleTo, kitGame, UNITS_PER_METRE, type SportBody, type SportCard, type SportView } from "@cardroom/games";
-import { type TableSettings } from "@spades/rules";
+import { angleTo, kitGame, UNITS_PER_METRE, type SportBody, type SportCard, type SportView } from "@journey-to-code/games";
+import { type TableSettings } from "@journey-to-code/rules";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Bubble, TableChat, useBubbles, type ChatProps } from "../Chat";
 import { Confetti } from "../Confetti";

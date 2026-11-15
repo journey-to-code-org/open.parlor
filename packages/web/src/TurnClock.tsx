@@ -4,7 +4,7 @@
 // It's drawn over the table rather than inside it: Spades, Palace and the kit's games each draw their
 // seats their own way, but all of them mark a seat with data-seat, so one clock finds the seat and
 // sits on its corner, and no table has to know about timers.
-import type { DeadlineDoc } from "@spades/rooms/client";
+import type { DeadlineDoc } from "@journey-to-code/rooms/client";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { play } from "./feedback/sounds";

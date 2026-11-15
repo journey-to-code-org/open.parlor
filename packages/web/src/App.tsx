@@ -1,6 +1,6 @@
-import { createRoom } from "@spades/rooms/client";
-import type { PalaceRules } from "@cardroom/palace";
-import type { RulePreset } from "@spades/rules";
+import { createRoom } from "@journey-to-code/rooms/client";
+import type { PalaceRules } from "@journey-to-code/palace";
+import type { RulePreset } from "@journey-to-code/rules";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { ChallengePage } from "./ChallengePage";
 import { EmbedHome } from "./EmbedHome";
@@ -16,7 +16,7 @@ import { PalaceSetup } from "./palace/PalaceSetup";
 import { Setup } from "./Setup";
 // The front page is a Vue island: loaded only when it's shown, so table links don't fetch Vue.
 const Home = lazy(() => import("./home/Home").then((m) => ({ default: m.Home })));
-import { isKitGame, type KitGameId } from "@cardroom/games";
+import { isKitGame, type KitGameId } from "@journey-to-code/games";
 import { KitSetup } from "./kit/KitSetup";
 import { LocalKit } from "./kit/LocalKit";
 import { TournamentPage } from "./TournamentPage";

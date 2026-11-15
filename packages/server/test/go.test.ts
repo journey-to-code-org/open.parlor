@@ -1,6 +1,6 @@
 // Go in the card room: a house table played to the end by a person against a computer player, the
 // count agreed between them, a half-point result on the leaderboard, and what someone watching sees.
-import { goPoint, movesOffered, type BoardView } from "@cardroom/games";
+import { goPoint, movesOffered, type BoardView } from "@journey-to-code/games";
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCardRoom } from "../src/app.js";

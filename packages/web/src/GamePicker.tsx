@@ -1,4 +1,4 @@
-import { KIT_GAMES } from "@cardroom/games";
+import { KIT_GAMES } from "@journey-to-code/games";
 import { arranged } from "./catalogue";
 import type { GameId } from "./storage";
 

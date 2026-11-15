@@ -14,7 +14,7 @@
 // place to go moves when it is tapped. Every point is a button with a spoken name ("point 6: five
 // of your checkers, can move"), and the arrow keys walk from one to the next the way they lie on
 // the screen.
-import type { BoardCube, BoardDice, BoardGrid, BoardView } from "@cardroom/games";
+import type { BoardCube, BoardDice, BoardGrid, BoardView } from "@journey-to-code/games";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Dice } from "./Dice";
 

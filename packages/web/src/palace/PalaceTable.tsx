@@ -1,5 +1,5 @@
-import type { PalaceMove, PalaceView } from "@cardroom/palace";
-import { cardId, type Card, type TableSettings } from "@spades/rules";
+import type { PalaceMove, PalaceView } from "@journey-to-code/palace";
+import { cardId, type Card, type TableSettings } from "@journey-to-code/rules";
 import { TableSettingsButton } from "../TableSettings";
 import PalaceSeat from "@spades/ui/palace-seat.zb";
 import PlayingCard from "@spades/ui/playing-card.zb";

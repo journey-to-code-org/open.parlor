@@ -34,16 +34,7 @@ export default defineConfig({
   server: { proxy: Object.fromEntries(["/rooms", "/_zb", "/houses", "/challenges", "/lobby", "/push", "/bugs", "/designs", "/moderation", "/catalogue", "/spectate"].map((p) => [p, "http://localhost:8787"])) },
   resolve: {
     alias: {
-      "@spades/rules": local("../rules/src/index.ts"),
-      // From source, like the rules: the Pages build doesn't build the other packages first.
-      "@cardroom/palace": local("../palace/src/index.ts"),
-      "@cardroom/games": local("../games/src/index.ts"),
-      "@cardroom/decks": local("../decks/src/index.ts"),
-      // The same simulation the server runs: the table sports step it in the browser to draw a shot.
-      "@cardroom/physics": local("../physics/src/index.ts"),
       "@spades/ui": local("../ui/src"),
-      "@spades/rooms/client": local("../rooms/src/client.ts"),
-      "@spades/rooms/server": local("../rooms/src/server.ts"),
     },
   },
 });

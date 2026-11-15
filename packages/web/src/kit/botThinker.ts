@@ -5,7 +5,7 @@
 // abandoned (the worker is terminated and a new one started) and the seat gets a quick move, and if
 // there can be no worker (an old browser, a page whose security policy forbids them, a worker file
 // that won't load) every think simply happens on the page, as it always did.
-import type { KitGameId, ThinkBudget } from "@cardroom/games";
+import type { KitGameId, ThinkBudget } from "@journey-to-code/games";
 import { botMove, quickMove, type BotJob } from "./botMove";
 
 /** What a game that thinks by the clock is told it may take, and how long before the table gives up on it. */

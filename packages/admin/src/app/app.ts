@@ -6,7 +6,7 @@
 // <playing-card> for previewing designs.
 import { CUSTOM_ELEMENTS_SCHEMA, ChangeDetectionStrategy, Component, computed, effect, signal, type OnDestroy } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { deckStyle, type CardDesign } from "@cardroom/decks";
+import { deckStyle, type CardDesign } from "@journey-to-code/decks";
 import { ZubraModel } from "@zubra/runtime/angular";
 import { Api, ApiError, type Catalogue, type CatalogueGame, type ChatLine, type House, type HouseMember, type LogEntry, type Overview, type Player, type SharedDesign, type Table, type TableStatus } from "./api";
 import "./zubra";

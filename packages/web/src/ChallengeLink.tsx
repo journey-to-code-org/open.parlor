@@ -1,5 +1,5 @@
-import type { PalaceRules } from "@cardroom/palace";
-import type { RulePreset } from "@spades/rules";
+import type { PalaceRules } from "@journey-to-code/palace";
+import type { RulePreset } from "@journey-to-code/rules";
 import { GAME_LIST } from "./GamePicker";
 import { useEffect, useState } from "react";
 import { challenges, challengeUrl, type MyLink } from "./challengesApi";

@@ -15,9 +15,9 @@ import {
   type PalaceRules,
   type PalaceState,
   type PalaceView,
-} from "@cardroom/palace";
-import { paceDelay, personaFor, styleFor, type TableSettings } from "@spades/rules";
-import type { RoomDefinition } from "@spades/rooms/server";
+} from "@journey-to-code/palace";
+import { paceDelay, personaFor, styleFor, type TableSettings } from "@journey-to-code/rules";
+import type { RoomDefinition } from "@journey-to-code/rooms/server";
 
 /** A Palace room's options: which game, the house rules, and how many seats. */
 export interface PalaceOptions {

@@ -5,13 +5,13 @@
 //
 //   challenges/<code>      server only: the link's owner, their name, rules, on or off
 //   challengeOf/<player>   server only: a player's code
-import { type PalaceRules, familyPalace, normalizePalaceRules, validatePalaceRules } from "@cardroom/palace";
-import { familyTable, mulberry32, pickPersonas, validatePreset, type RulePreset, renamedPreset } from "@spades/rules";
-import { isKitGame, kitGame, type KitGameId } from "@cardroom/games";
+import { type PalaceRules, familyPalace, normalizePalaceRules, validatePalaceRules } from "@journey-to-code/palace";
+import { familyTable, mulberry32, pickPersonas, validatePreset, type RulePreset, renamedPreset } from "@journey-to-code/rules";
+import { isKitGame, kitGame, type KitGameId } from "@journey-to-code/games";
 import { GAMES, gameName, type GameId, type TableOptions } from "./games.js";
 import { kitOptions } from "./kit.js";
 import { palaceOptions, palaceRulesFrom } from "./palace.js";
-import { newPlayerId, playerCookie, playerOf } from "@spades/rooms/server";
+import { newPlayerId, playerCookie, playerOf } from "@journey-to-code/rooms/server";
 import type { Push } from "./push.js";
 
 interface ChallengeDoc {

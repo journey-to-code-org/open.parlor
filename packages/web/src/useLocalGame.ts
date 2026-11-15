@@ -1,4 +1,4 @@
-import { applyAction, botAction, newGame, paceDelay, personaFor, RuleError, smartAction, styleFor, thinkingTime, viewFor, type GameState, type RulePreset, type Seat, type TableSettings } from "@spades/rules";
+import { applyAction, botAction, newGame, paceDelay, personaFor, RuleError, smartAction, styleFor, thinkingTime, viewFor, type GameState, type RulePreset, type Seat, type TableSettings } from "@journey-to-code/rules";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Move, TableSource } from "./useTable";
 

@@ -22,9 +22,9 @@
 // whole card room is its host's job, in the admin app (moderation.ts).
 //
 //   lobby/alerts   server only: one field per player who asked (the games they want to hear about)
-import { kitGame, isKitGame } from "@cardroom/games";
-import { familyTable, pickPersonas, validatePreset, type RulePreset } from "@spades/rules";
-import { newPlayerId, playerCookie, playerOf, type RoomDoc } from "@spades/rooms/server";
+import { kitGame, isKitGame } from "@journey-to-code/games";
+import { familyTable, pickPersonas, validatePreset, type RulePreset } from "@journey-to-code/rules";
+import { newPlayerId, playerCookie, playerOf, type RoomDoc } from "@journey-to-code/rooms/server";
 import { GAMES, gameEmoji, gameName, gameOfOptions, isGameId, type GameId, type TableOptions } from "./games.js";
 import { kitOptions } from "./kit.js";
 import { maskText, nameOk } from "./names.js";

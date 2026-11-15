@@ -6,10 +6,10 @@
 //
 //   tournaments/<id>       server only: the whole tournament
 //   tournamentOf/<table>   server only: which tournament a table belongs to
-import type { PalaceRules } from "@cardroom/palace";
-import { cleanSettings, mulberry32, pickPersonas, type RulePreset, type TableSettings } from "@spades/rules";
-import type { RoomDoc } from "@spades/rooms/server";
-import { isKitGame, kitGame, matchRules, type KitSummary } from "@cardroom/games";
+import type { PalaceRules } from "@journey-to-code/palace";
+import { cleanSettings, mulberry32, pickPersonas, type RulePreset, type TableSettings } from "@journey-to-code/rules";
+import type { RoomDoc } from "@journey-to-code/rooms/server";
+import { isKitGame, kitGame, matchRules, type KitSummary } from "@journey-to-code/games";
 import { gameEmoji, gameName, isGameId, type GameId, type TableOptions } from "./games.js";
 import { kitOptions } from "./kit.js";
 import { palaceOptions } from "./palace.js";

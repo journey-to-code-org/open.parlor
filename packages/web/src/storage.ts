@@ -1,6 +1,6 @@
-import { familyTable, renamedPreset, builtInPresets, cleanSettings, DEFAULT_SETTINGS, type RulePreset, type TableSettings } from "@spades/rules";
-import { familyPalace, normalizePalaceRules, type PalaceRules } from "@cardroom/palace";
-import { isKitGame, kitGame, type KitGameId } from "@cardroom/games";
+import { familyTable, renamedPreset, builtInPresets, cleanSettings, DEFAULT_SETTINGS, type RulePreset, type TableSettings } from "@journey-to-code/rules";
+import { familyPalace, normalizePalaceRules, type PalaceRules } from "@journey-to-code/palace";
+import { isKitGame, kitGame, type KitGameId } from "@journey-to-code/games";
 
 const NAME_KEY = "spades:name";
 const PRESETS_KEY = "spades:presets";

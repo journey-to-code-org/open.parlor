@@ -5,12 +5,12 @@ import { createTournaments } from "./tournaments.js";
 // Everything is one server-only document per house (`houses/<slug>` in the sync log); pages read
 // it through these endpoints, which show members only what members may see. A member is the same
 // player cookie that holds a seat at a table.
-import type { TableDeck } from "@cardroom/decks";
-import { familyPalace, normalizePalaceRules, validatePalaceRules, type PalaceRules } from "@cardroom/palace";
-import { familyTable, renamedPreset, validatePreset, type RulePreset } from "@spades/rules";
-import { newPlayerId, playerCookie, playerOf, type RoomDoc } from "@spades/rooms/server";
+import type { TableDeck } from "@journey-to-code/decks";
+import { familyPalace, normalizePalaceRules, validatePalaceRules, type PalaceRules } from "@journey-to-code/palace";
+import { familyTable, renamedPreset, validatePreset, type RulePreset } from "@journey-to-code/rules";
+import { newPlayerId, playerCookie, playerOf, type RoomDoc } from "@journey-to-code/rooms/server";
 import { leaderboard, palaceLeaderboard, placesLeaderboard, type FinishedGame, type FinishedPalace } from "./leaderboard.js";
-import { KIT_GAMES, isKitGame, kitGame, type KitGameId, type KitSummary } from "@cardroom/games";
+import { KIT_GAMES, isKitGame, kitGame, type KitGameId, type KitSummary } from "@journey-to-code/games";
 import { kitOptions } from "./kit.js";
 import type { Push } from "./push.js";
 import { GAMES, gameName, isGameId, type GameId, type TableOptions } from "./games.js";

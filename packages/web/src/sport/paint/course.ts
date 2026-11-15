@@ -15,8 +15,8 @@
 // by copying it, and only the balls, the aim and the glints on the water are drawn afresh. The
 // things that stand up are kept too, as instructions: whichever of them is in front of a ball is
 // drawn again over it.
-import type { SportMaterial, SportSurface, SportView } from "@cardroom/games";
-import type { Point } from "@cardroom/physics";
+import type { SportMaterial, SportSurface, SportView } from "@journey-to-code/games";
+import type { Point } from "@journey-to-code/physics";
 import { depthOf, riseOf, type Projection } from "../projection";
 import { boxOf, facing, offset, path } from "./geometry";
 import { castShadow, face, hull, lit, prism, shadeOf, SHADOW, type Paint, type Stage } from "./solids";

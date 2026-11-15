@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { houses, type House, type Side, type Tournament } from "./housesApi";
 import { NotifyButton } from "./NotifyButton";
 import { Choice } from "./RulesEditor";
-import { isKitGame, kitGame } from "@cardroom/games";
+import { isKitGame, kitGame } from "@journey-to-code/games";
 import { GAME_LIST } from "./GamePicker";
 import type { GameId } from "./storage";
 
@@ -280,7 +280,7 @@ export function NewTournament(props: {
   house: House;
   game: GameId;
   presetId: string;
-  settings: import("@spades/rules").TableSettings;
+  settings: import("@journey-to-code/rules").TableSettings;
   onMade: (id: string) => void;
   onClose: () => void;
 }) {

@@ -1,4 +1,4 @@
-import { canBidBlindNil, type Action, type GameState, type HandRecord, type Seat, type SeatView } from "@spades/rules";
+import { canBidBlindNil, type Action, type GameState, type HandRecord, type Seat, type SeatView } from "@journey-to-code/rules";
 import { useEffect, useRef, useState } from "react";
 
 /** A move as the table sends it: the seat is filled in by whoever decides it (the local game or the server). */

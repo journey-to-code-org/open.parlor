@@ -1,4 +1,4 @@
-import { describePalace, type PalaceRules } from "@cardroom/palace";
+import { describePalace, type PalaceRules } from "@journey-to-code/palace";
 import { Choice, Toggle } from "../RulesEditor";
 
 /** The Palace house rules as switches, in the words families use. */

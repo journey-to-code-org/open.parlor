@@ -1,4 +1,4 @@
-import { teamOf, type SeatView } from "@spades/rules";
+import { teamOf, type SeatView } from "@journey-to-code/rules";
 import { useEffect, useRef } from "react";
 import type { TableState } from "../useTable";
 import { play, type SoundName } from "./sounds";

@@ -14,8 +14,8 @@
 // behind it: every ball is drawn in its turn from the back of the table to the front, and
 // whatever stands in front of it is drawn again over it. A ball that ends up hidden is shown
 // through as a ring, so it is never lost.
-import type { SportBody, SportView } from "@cardroom/games";
-import type { Point } from "@cardroom/physics";
+import type { SportBody, SportView } from "@journey-to-code/games";
+import type { Point } from "@journey-to-code/physics";
 import { paintCourse, stageOf, type Painted } from "./paint/course";
 import { inFront } from "./paint/order";
 import type { Brush, Ctx } from "./paint/geometry";

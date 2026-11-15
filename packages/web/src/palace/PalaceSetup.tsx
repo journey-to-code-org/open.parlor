@@ -4,7 +4,7 @@ import {
   PALACE_PRESETS,
   validatePalaceRules,
   type PalaceRules,
-} from "@cardroom/palace";
+} from "@journey-to-code/palace";
 import SelectField from "@spades/ui/zubra-ui/select-field.zb";
 import TextField from "@spades/ui/zubra-ui/text-field.zb";
 import { useMemo, useState } from "react";

@@ -13,9 +13,9 @@ import {
   type PalaceRemark,
   type PalaceRules,
   type PalaceState,
-} from "@cardroom/palace";
-import type { ChatMessage } from "@spades/rooms/client";
-import { paceDelay, personaFor, pickPersonas, styleFor } from "@spades/rules";
+} from "@journey-to-code/palace";
+import type { ChatMessage } from "@journey-to-code/rooms/client";
+import { paceDelay, personaFor, pickPersonas, styleFor } from "@journey-to-code/rules";
 import { loadTableSettings, saveTableSettings } from "../storage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PalaceTable } from "./PalaceTable";

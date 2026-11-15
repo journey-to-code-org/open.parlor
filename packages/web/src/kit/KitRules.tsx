@@ -1,5 +1,5 @@
 // House rules for a kit game, drawn from the fields the game lists: toggles, choices and numbers.
-import { type TableGame } from "@cardroom/games";
+import { type TableGame } from "@journey-to-code/games";
 import { Choice, Toggle } from "../RulesEditor";
 
 type Rules = { id: string; name: string } & Record<string, unknown>;

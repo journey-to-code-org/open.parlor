@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { loadSameRules, saveSameRules } from "./storage";
-import type { RulePreset } from "@spades/rules";
+import type { RulePreset } from "@journey-to-code/rules";
 import SelectField from "@spades/ui/zubra-ui/select-field.zb";
 import ToggleSwitch from "@spades/ui/zubra-ui/toggle-switch.zb";
 

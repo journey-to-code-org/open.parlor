@@ -4,10 +4,10 @@
 //
 //   designs/<id>   server only: the design, its maker's player id, shared or not
 //
-// A design is data (colours and choices from fixed lists; see @cardroom/decks), checked here again
+// A design is data (colours and choices from fixed lists; see @journey-to-code/decks), checked here again
 // whatever the page sent, so nothing in the gallery can carry markup or CSS of its maker's own.
-import { STARTERS, cleanName, normalizeDesign, validateDesign, type CardDesign, type TableDeck } from "@cardroom/decks";
-import { newPlayerId, playerCookie, playerOf } from "@spades/rooms/server";
+import { STARTERS, cleanName, normalizeDesign, validateDesign, type CardDesign, type TableDeck } from "@journey-to-code/decks";
+import { newPlayerId, playerCookie, playerOf } from "@journey-to-code/rooms/server";
 
 export interface DesignDoc {
   id: string;
