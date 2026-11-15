@@ -1,13 +1,25 @@
 // Make a Mini Golf course: paint each hole on a grid, a piece a square (green, a wall, sand, water,
 // a slope, a bumper, the tee, the cup), see it as the table will draw it, play it against the
 // computer, and save it: for yourself, or shared, in everyone's Mini Golf setup.
-import { buildHole, courseProblems, holeProblems, LIMITS, PIECES, starterCourse, starterHole, suggestPar, TUNNELS, type CustomCourse, type CustomHole, type Piece } from "@open-parlor/courses";
+import { buildHole, courseProblems, holeProblems, LIMITS, PIECES, starterCourse, starterHole, suggestPar, TUNNELS, type CustomCourse, type CustomHole, type HoleTest, type Piece } from "@open-parlor/courses";
+import type { SportShot } from "@journey-to-code/games";
 import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
 import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadName } from "../storage";
 import { courses, learnCourse, type SavedCourse } from "./coursesApi";
 import { HolePreview } from "./HolePreview";
+import { usePlaytests } from "./usePlaytest";
+
+/** How a playtest's verdict reads, and the mark on a hole's tab. */
+const RATED: Record<HoleTest["rating"], { word: string; mark: string }> = {
+  easy: { word: "Easy", mark: "✓" },
+  fair: { word: "Fair", mark: "✓" },
+  hard: { word: "Hard", mark: "◆" },
+  "very hard": { word: "Very hard", mark: "◆" },
+  unplayable: { word: "Can't be played", mark: "!" },
+};
+const times = (n: number) => (n === 1 ? "once" : n === 2 ? "twice" : `${n} times`);
 
 /** The order pieces sit in the palette, and what a square of each looks like on the grid. */
 /**
@@ -133,7 +145,14 @@ export function CourseEditor({
   const problems = useMemo(() => courseProblems(course), [course]);
   const holeIssues = useMemo(() => holeProblems(hole), [hole]);
   const built = useMemo(() => (holeIssues.length ? null : buildHole(hole, `preview-${at}`)), [hole, holeIssues, at]);
-  const suggested = useMemo(() => suggestPar(hole), [hole]);
+  // Each hole the grid allows is played by the computer, off the page's thread.
+  const tests = usePlaytests<HoleTest>("minigolf", course.holes.map((h) => (holeProblems(h).length ? null : h)));
+  const test = holeIssues.length ? null : tests[at];
+  const [replay, setReplay] = useState<SportShot[] | null>(null);
+  useEffect(() => setReplay(null), [hole.cells, at]);
+  const suggested = test && test.rating !== "unplayable" ? test.par : suggestPar(hole);
+  const untested = course.holes.some((h, i) => !holeProblems(h).length && !tests[i]);
+  const unplayable = course.holes.flatMap((h, i) => (tests[i]?.rating === "unplayable" ? [h.name] : []));
   const unsaved = !saved || JSON.stringify(saved.course) !== JSON.stringify(course) || saved.shared !== shared;
 
   function remember() {
@@ -260,7 +279,13 @@ export function CourseEditor({
         {course.holes.map((h, i) => (
           <button key={i} type="button" className={i === at ? "picked" : ""} aria-pressed={i === at} onClick={() => setAt(i)}>
             {i + 1}
-            {holeProblems(h).length ? <span className="golf-flag" aria-label="needs work">!</span> : null}
+            {holeProblems(h).length ? (
+              <span className="golf-flag" aria-label="needs work">!</span>
+            ) : tests[i] ? (
+              <span className={`golf-rated rated-${tests[i]!.rating.replace(" ", "-")}`} aria-label={RATED[tests[i]!.rating].word}>
+                {RATED[tests[i]!.rating].mark}
+              </span>
+            ) : null}
           </button>
         ))}
         {course.holes.length < LIMITS.holes[1] && (
@@ -341,7 +366,7 @@ export function CourseEditor({
 
         <section className="golf-look" aria-label={`${hole.name}, as it plays`}>
           {built ? (
-            <HolePreview hole={built} label={`${hole.name} as the table draws it`} />
+            <HolePreview hole={built} label={`${hole.name} as the table draws it`} replay={replay} onReplayEnd={() => setReplay(null)} />
           ) : (
             <div className="hole-preview golf-unplayable">
               {holeIssues.map((p) => (
@@ -349,12 +374,38 @@ export function CourseEditor({
               ))}
             </div>
           )}
+          {built && (
+            <div className={`golf-verdict${test ? ` rated-${test.rating.replace(" ", "-")}` : ""}`} aria-live="polite">
+              {!test ? (
+                <p>The computer is playing it…</p>
+              ) : test.rating === "unplayable" ? (
+                <p>
+                  <strong>Can't be played.</strong>{" "}
+                  {test.possible
+                    ? `Putting like a decent player, the computer never got it in within ${test.limit} strokes, in ${test.tries} tries: only perfect aim does it. Watch the perfect try, then give the ball an easier way to the cup.`
+                    : "The computer couldn't get the ball in, even with perfect aim. Watch where it goes wrong, and open up the way to the cup."}
+                </p>
+              ) : (
+                <p>
+                  <strong>{RATED[test.rating].word}.</strong> Putting like a decent player, the computer holed it {times(test.holed)} in {test.tries}
+                  {test.average !== null ? `, in about ${Math.round(test.average * 10) / 10} strokes` : ""}. It plays to par {test.par}.
+                  {test.shown.trouble.length > 0 && ` On the try below it went ${[...new Set(test.shown.trouble)].join(" and ")}.`}
+                  {test.rating === "very hard" && " Most players won't get it in: worth making a little easier."}
+                </p>
+              )}
+              {test && (
+                <button type="button" className="secondary" disabled={!!replay} onClick={() => setReplay(test.shown.shots)}>
+                  {replay ? "Watching…" : test.rating === "unplayable" ? (test.possible ? "Watch the perfect try" : "Watch its best try") : "Watch the computer play it"}
+                </button>
+              )}
+            </div>
+          )}
           <TextField label="Hole name" required value={hole.name} maxlength={LIMITS.holeName} onValueChange={(e: CustomEvent<string>) => changeHole((h) => ({ ...h, name: e.detail }))} />
           <div className="golf-par">
             <SelectField label="Par" value={String(hole.par)} options={range(LIMITS.par).map((n) => ({ value: String(n), label: String(n) }))} onValueChange={(e: CustomEvent<string>) => changeHole((h) => ({ ...h, par: Number(e.detail) }))} />
-            {suggested !== hole.par && !holeIssues.length && (
+            {suggested !== hole.par && !holeIssues.length && test?.rating !== "unplayable" && (
               <button type="button" className="link" onClick={() => changeHole((h) => ({ ...h, par: suggested }))}>
-                Use {suggested} (suggested)
+                Use {suggested} ({test ? "how it played" : "suggested"})
               </button>
             )}
           </div>
@@ -367,9 +418,15 @@ export function CourseEditor({
           <input type="checkbox" checked={shared} onChange={(e) => setShared(e.target.checked)} />
           Share it: everyone can pick it in Mini Golf
         </label>
-        {problems.length > 0 && <p className="fine">Before it can be played: {problems[0]}</p>}
+        {problems.length > 0 ? (
+          <p className="fine">Before it can be played: {problems[0]}</p>
+        ) : unplayable.length > 0 ? (
+          <p className="fine">Before it can be saved: players won't get the ball in on {unplayable.join(", ")}. Make {unplayable.length === 1 ? "it" : "them"} a little easier.</p>
+        ) : untested ? (
+          <p className="fine">The computer is playing your holes…</p>
+        ) : null}
         <div className="rule-actions">
-          <button type="button" className="primary" disabled={busy || problems.length > 0 || !course.name.trim() || !unsaved} onClick={() => void save()}>
+          <button type="button" className="primary" disabled={busy || problems.length > 0 || untested || unplayable.length > 0 || !course.name.trim() || !unsaved} onClick={() => void save()}>
             {saved ? (unsaved ? "Save changes" : "Saved") : "Save the course"}
           </button>
           <button type="button" className="secondary" disabled={problems.length > 0} onClick={play}>
