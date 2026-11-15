@@ -11,6 +11,10 @@
 // people and by the computer players.
 import { COURSES, hole, type GolfCourse, type GolfHole } from "@journey-to-code/games";
 import type { Point } from "@journey-to-code/physics";
+import { rectangles } from "./grid.js";
+import { hasLane, laneProblems, normalizeLane, registerLane, unregisterLane, type CustomLane } from "./lanes.js";
+
+export * from "./lanes.js";
 
 /** What a square of the grid is. */
 export const PIECES = {
@@ -222,23 +226,6 @@ export function courseProblems(c: CustomCourse): string[] {
 
 // ---- From a grid to a hole ----------------------------------------------------------------------
 
-/** Rectangles that cover exactly the squares where `on` holds, as few as a simple sweep finds. */
-function rectangles(h: CustomHole, on: (piece: string) => boolean): [number, number, number, number][] {
-  const used = new Set<number>();
-  const out: [number, number, number, number][] = [];
-  for (let r = 0; r < h.rows; r++)
-    for (let c = 0; c < h.cols; c++) {
-      if (used.has(r * h.cols + c) || !on(at(h, c, r))) continue;
-      let w = 1;
-      while (c + w < h.cols && on(at(h, c + w, r)) && !used.has(r * h.cols + c + w)) w++;
-      let d = 1;
-      while (r + d < h.rows && Array.from({ length: w }, (_, i) => on(at(h, c + i, r + d)) && !used.has((r + d) * h.cols + c + i)).every(Boolean)) d++;
-      for (let y = r; y < r + d; y++) for (let x = c; x < c + w; x++) used.add(y * h.cols + x);
-      out.push([c, r, w, d]);
-    }
-  return out;
-}
-
 /** A way across the grid as a shot's angle: hundredths of a degree, 0 to the right, 9000 down the screen. */
 const angleOf = ([dc, dr]: readonly [number, number]) => (dc === 1 ? 0 : dr === 1 ? 9000 : dc === -1 ? 18000 : 27000);
 const corner = (c: number, r: number): Point => [MARGIN + c * CELL, MARGIN + r * CELL];
@@ -446,3 +433,19 @@ export function unregisterCourse(id: string): void {
 }
 
 export const hasCourse = (id: string) => COURSES.some((x) => x.id === id);
+
+// ---- Either kind ---------------------------------------------------------------------------------
+// The server keeps courses and lanes the same way (versions, sharing, moderation): a saved map is
+// one or the other, by `kind`.
+
+export type MapKind = "minigolf" | "bowling";
+export type CustomMap = CustomCourse | CustomLane;
+export const isMapKind = (k: unknown): k is MapKind => k === "minigolf" || k === "bowling";
+/** A map's game id: the same shape for both kinds (`custom-<doc>-<version>`). */
+export const isCustomMap = isCustomCourse;
+
+export const normalizeMap = (kind: MapKind, given: unknown): CustomMap => (kind === "bowling" ? normalizeLane(given) : normalizeCourse(given));
+export const mapProblems = (kind: MapKind, map: CustomMap): string[] => (kind === "bowling" ? laneProblems(map as CustomLane) : courseProblems(map as CustomCourse));
+export const registerMap = (kind: MapKind, map: CustomMap, id: string): boolean => (kind === "bowling" ? registerLane(map as CustomLane, id) : registerCourse(map as CustomCourse, id));
+export const hasMap = (kind: MapKind, id: string): boolean => (kind === "bowling" ? hasLane(id) : hasCourse(id));
+export const unregisterMap = (kind: MapKind, id: string): void => (kind === "bowling" ? unregisterLane(id) : unregisterCourse(id));

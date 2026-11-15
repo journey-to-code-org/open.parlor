@@ -294,6 +294,45 @@ function stepFace(points: Point[], drop: number, ground: Ground, material: Mater
   return g;
 }
 
+/** Arrows on the ground pointing downhill across a slope, one every so often, darker than what they're on. */
+function downhill(s: Shape, pull: Point, ground: Ground, lift: number): Group {
+  const g = new Group();
+  const pts = "points" in s ? s.points : [[s.x - s.r, s.y - s.r], [s.x + s.r, s.y + s.r]] as Point[];
+  const xs = pts.map((p) => p[0]);
+  const ys = pts.map((p) => p[1]);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const size = Math.min(900, (x1 - x0) * 0.4, (y1 - y0) * 0.4);
+  if (size < 120) return g;
+  const arrow = new Outline();
+  arrow.moveTo(size, 0);
+  arrow.lineTo(-size * 0.6, size * 0.65);
+  arrow.lineTo(-size * 0.25, 0);
+  arrow.lineTo(-size * 0.6, -size * 0.65);
+  arrow.lineTo(size, 0);
+  const shape = new ShapeGeometry(arrow).rotateX(-Math.PI / 2);
+  const material = new MeshBasicMaterial({ color: "#000000", transparent: true, opacity: 0.22, depthWrite: false });
+  const angle = Math.atan2(pull[1], pull[0]);
+  const step = size * 2.6;
+  for (let y = y0 + step / 2; y < y1; y += step)
+    for (let x = x0 + step / 2; x < x1; x += step) {
+      if ("points" in s && !insidePolygon(s.points, x, y)) continue;
+      const m = new Mesh(shape, material);
+      m.position.set(x, ground(x, y) + lift, y);
+      m.rotation.y = -angle;
+      g.add(m);
+    }
+  return g;
+}
+function insidePolygon(points: Point[], x: number, y: number): boolean {
+  let hit = false;
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const [xi, yi] = points[i]!;
+    const [xj, yj] = points[j]!;
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) hit = !hit;
+  }
+  return hit;
+}
+
 const SOIL = "#6b4a2e";
 /** A tunnel: a hole in the ground and a mound where it comes up, a pipe lying on the grass, or a hose. */
 function tunnelOf(kind: "pipe" | "hose" | "burrow", mouth: Point, r: number, out: Point, path: Point[] | undefined, ground: Ground, lift: number): Group {
@@ -689,6 +728,9 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
         const m = mesh(tilted(region.shape, ground, layer++ * 3), surfaceMaterial(r.surface), false);
         m.receiveShadow = true;
         g.add(m);
+      } else if (r.surface === "slope" && region.slope) {
+        // A slope that doesn't rise (on a bowling lane) is the lane itself, marked with arrows downhill.
+        g.add(downhill(region.shape, region.slope, ground, layer * 3 + 4));
       } else lay(region.shape, r.surface, 0, ground);
     }
     const walls = new Map(world.walls.map((w) => [w.id, w]));

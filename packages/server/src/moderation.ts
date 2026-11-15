@@ -371,7 +371,7 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
         return json({
           courses: made
             .filter((c) => c.shared || c.hidden)
-            .map((c) => ({ id: c.id, author: c.author, course: c.versions[String(c.version)], updated: c.updated, shared: c.shared, hidden: c.hidden ?? "", player: playerRef(c.owner), blocked: blocked.has(playerRef(c.owner)) })),
+            .map((c) => ({ id: c.id, kind: c.kind ?? "minigolf", author: c.author, course: c.versions[String(c.version)], updated: c.updated, shared: c.shared, hidden: c.hidden ?? "", player: playerRef(c.owner), blocked: blocked.has(playerRef(c.owner)) })),
         });
       }
       const course = made.find((c) => c.id === id);

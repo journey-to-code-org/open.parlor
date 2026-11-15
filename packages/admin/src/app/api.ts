@@ -72,8 +72,11 @@ export interface SharedDesign {
 /** A Mini Golf course someone made and shared (see the parlor's course editor). */
 export interface SharedCourse {
   id: string;
+  /** A Mini Golf course or a bowling lane. */
+  kind: "minigolf" | "bowling";
   author: string;
-  course: { name: string; holes: { name: string; par: number; cols: number; rows: number; cells: string }[] };
+  /** A course has holes; a lane is one grid of its own. */
+  course: { name: string; holes?: { name: string; par: number; cols: number; rows: number; cells: string }[]; cols?: number; rows?: number; cells?: string };
   updated: number;
   shared: boolean;
   /** Why it was hidden, or "". */

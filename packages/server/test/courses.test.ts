@@ -2,7 +2,7 @@
 // with each change of holes, and played at real tables, by people and by the computer players in
 // their worker threads.
 import { COURSES } from "@journey-to-code/games";
-import { starterHole, unregisterCourse, type CustomHole } from "@open-parlor/courses";
+import { LANE_COLS, LANE_ROWS, starterHole, starterLane, unregisterCourse, type CustomHole } from "@open-parlor/courses";
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCardRoom } from "../src/app.js";
@@ -154,10 +154,67 @@ describe("Mini Golf courses people make", () => {
       // Not handed the holes, the worker's own copy of the game plays the Back Garden: another putt.
       expect(await pool.think(job, { table: "u", signal })).not.toEqual(here);
       // Handed them, it aims at this course's cup, and keeps them for the thinks after.
-      expect(await pool.think({ ...job, courses: [{ id: made.game, course: app.courses.courseNow(made.game)! }] }, { table: "t", signal })).toEqual(here);
+      expect(await pool.think({ ...job, courses: [{ id: made.game, course: app.courses.courseNow(made.game)!.map }] }, { table: "t", signal })).toEqual(here);
       expect(await pool.think(job, { table: "v", signal })).toEqual(here);
     } finally {
       await pool.close();
     }
+  }, 40_000);
+});
+
+describe("bowling lanes people make", () => {
+  const lane = (name: string, rows: Record<number, string>) => {
+    let cells = "";
+    for (let r = 0; r < LANE_ROWS; r++) cells += rows[r] ?? ".".repeat(LANE_COLS);
+    return { name, cols: LANE_COLS, rows: LANE_ROWS, cells };
+  };
+  const crate = lane("Crate Lane", { 12: "....#.....", 13: "....#.....", 4: "ss......ww" });
+
+  it("keeps lanes apart from courses, and refuses one no ball gets through", async () => {
+    const { phone } = setup();
+    const maker = phone();
+    const made = await maker("/courses", { kind: "bowling", course: crate, shared: true });
+    expect(made.status).toBe(201);
+    expect(made.body).toMatchObject({ kind: "bowling", course: { name: "Crate Lane" }, mine: true });
+    expect((await phone()("/courses", { course: { name: "A Course", holes: [starterHole(1)] }, shared: true })).status).toBe(201);
+    expect((await phone()("/courses?kind=bowling")).body.courses.map((c: { course: { name: string } }) => c.course.name)).toEqual(["Crate Lane"]);
+    expect((await phone()("/courses")).body.courses.map((c: { course: { name: string } }) => c.course.name)).toEqual(["A Course"]);
+    const shut = await phone()("/courses", { kind: "bowling", course: lane("Shut", { 9: "##########" }) });
+    expect(shut.status).toBe(400);
+    expect(shut.body.error).toMatch(/No ball from the foul line gets to the pins/);
+    // A new version when the lane changes.
+    await sleep(1600);
+    const changed = await maker(`/courses/${made.body.id}`, { course: { ...crate, cells: starterLane().cells } });
+    expect(changed.body.game).toBe(made.body.game.replace(/-1$/, "-2"));
+  });
+
+  it("a table opens on a lane we have, and not on a course named as a lane", async () => {
+    const { phone } = setup();
+    const maker = phone();
+    const made = (await maker("/courses", { kind: "bowling", course: crate, shared: true })).body;
+    const course = (await phone()("/courses", { course: { name: "A Course", holes: [starterHole(1)] }, shared: true })).body;
+    const table = (rules: unknown) => maker("/rooms", { options: { game: "bowling", rules, seats: 1 } });
+    expect((await table({ id: "bowling-five", lane: made.game })).status).toBe(201);
+    expect((await table({ id: "bowling-five", lane: course.game })).body.error).toBe("That lane isn't one we have.");
+    await maker(`/courses/${made.id}/delete`, {});
+    expect((await table({ id: "bowling-five", lane: made.game })).body.error).toBe("That lane has been deleted.");
+  });
+
+  it("the computer players bowl a game on a lane people made, thinking in a worker thread", async () => {
+    const { app, phone } = setup({ bots: { workers: 1, warm: false } });
+    await app.bots!.ready;
+    const made = (await phone()("/courses", { kind: "bowling", course: crate, shared: true })).body;
+    const id = await app.rooms.create({ game: "bowling", rules: { id: "bowling-five", lane: made.game }, seats: 2 }, { skill: "hard", pace: "instant" });
+    await app.rooms.seatBot(id, 0, "Dot");
+    await app.rooms.seatBot(id, 1, "Bot");
+    expect(await app.rooms.start(id)).toBeNull();
+    const over = async () => {
+      const s = (await app.rooms.room(id))?.summary as { phase?: string; over?: boolean } | undefined;
+      return s?.phase === "finished" || s?.over === true;
+    };
+    for (let i = 0; i < 1200 && !(await over()); i++) await sleep(25);
+    expect(await over()).toBe(true);
+    expect(app.bots!.stats()).toMatchObject({ abandoned: 0, onMain: 0 });
+    expect(app.bots!.stats().thinks).toBeGreaterThan(0);
   }, 40_000);
 });

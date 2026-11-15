@@ -20,7 +20,9 @@ import { isKitGame, type KitGameId } from "@journey-to-code/games";
 import { KitSetup } from "./kit/KitSetup";
 import { CourseEditor } from "./golf/CourseEditor";
 import { onCourse } from "./golf/CoursePicker";
-import { nineHoles } from "@journey-to-code/games";
+import { LaneEditor } from "./golf/LaneEditor";
+import { onLane } from "./golf/LanePicker";
+import { fiveFrames, nineHoles } from "@journey-to-code/games";
 import { LocalKit } from "./kit/LocalKit";
 import { TournamentPage } from "./TournamentPage";
 import { loadGame, loadLastGame, loadName, loadSameRules, loadTableSettings, rememberHouse, saveGame, type GameId } from "./storage";
@@ -31,8 +33,9 @@ type Screen =
   | { kind: "lobby" }
   | { kind: "local"; name: string; preset: RulePreset; seed: number }
   | { kind: "local-palace"; name: string; rules: PalaceRules; seats: number; seed: number }
-  | { kind: "local-kit"; game: KitGameId; name: string; rules: unknown; seats: number; seed: number; /** Leaving goes back to the course editor, at this course. */ back?: string }
+  | { kind: "local-kit"; game: KitGameId; name: string; rules: unknown; seats: number; seed: number; /** Leaving goes back to the course (or lane) editor, at this one. */ back?: string }
   | { kind: "golf"; id: string }
+  | { kind: "lane"; id: string }
   | { kind: "room"; id: string; house: string | null }
   | { kind: "house"; slug: string; code: string | null }
   | { kind: "tournament"; slug: string; id: string }
@@ -52,6 +55,8 @@ function fromUrl(): Screen {
   if (q.get("lobby")) return { kind: "lobby" };
   const golf = q.get("golf");
   if (golf) return { kind: "golf", id: golf };
+  const lane = q.get("lane");
+  if (lane) return { kind: "lane", id: lane };
   // A game named in the address (or the blog embed) goes to its setup; otherwise the front page.
   return q.get("game") || q.get("embed") === "1" ? { kind: "setup" } : { kind: "home" };
 }
@@ -106,6 +111,12 @@ export function App() {
   const editCourse = (id: string) => {
     go({ golf: id });
     setScreen({ kind: "golf", id });
+    scrollTo(0, 0);
+  };
+  /** The bowling lane editor: a lane of yours, someone else's to copy, or "new". */
+  const editLane = (id: string) => {
+    go({ lane: id });
+    setScreen({ kind: "lane", id });
     scrollTo(0, 0);
   };
   const home = () => {
@@ -168,7 +179,23 @@ export function App() {
   if (screen.kind === "lobby") return <LobbyPage onOpenTable={(id) => openTable(id, null)} onLeave={home} />;
   if (screen.kind === "local") return <LocalTable key={screen.seed} {...screen} onLeave={home} />;
   if (screen.kind === "local-palace") return <LocalPalace key={screen.seed} {...screen} onLeave={home} />;
-  if (screen.kind === "local-kit") return <LocalKit key={screen.seed} {...screen} onLeave={screen.back ? () => editCourse(screen.back!) : home} />;
+  if (screen.kind === "local-kit") return <LocalKit key={screen.seed} {...screen} onLeave={screen.back ? () => (screen.game === "bowling" ? editLane : editCourse)(screen.back!) : home} />;
+  if (screen.kind === "lane")
+    return (
+      <LaneEditor
+        key={screen.id}
+        id={screen.id}
+        onLeave={() => pickGame("bowling")}
+        onSaved={(id) => {
+          const url = new URL(location.href);
+          url.searchParams.set("lane", id);
+          history.replaceState(null, "", url);
+        }}
+        onPlay={(lane, name) =>
+          setScreen({ kind: "local-kit", game: "bowling", name: loadName() || "You", rules: onLane({ ...fiveFrames }, lane, name), seats: 2, seed: Math.floor(Math.random() * 2 ** 31), back: new URLSearchParams(location.search).get("lane") ?? "new" })
+        }
+      />
+    );
   if (screen.kind === "golf")
     return (
       <CourseEditor
@@ -207,6 +234,7 @@ export function App() {
         onFindPlayers={(name, rules, seats) => findPlayers(game, name, rules, seats)}
         onOpenHouse={openHouse}
         onEditCourse={editCourse}
+        onEditLane={editLane}
       />
     );
   }

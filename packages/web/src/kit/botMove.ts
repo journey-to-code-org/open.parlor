@@ -3,8 +3,7 @@
 // (see `TableGame.heavy`), so it doesn't matter which thread is asked.
 import { QUICK_BUDGET, QUICK_STYLE, kitGame, type KitGameId, type ThinkBudget } from "@journey-to-code/games";
 import { personaFor, styleFor, type Skill } from "@journey-to-code/rules";
-import type { CustomCourse } from "@open-parlor/courses";
-import { learnHanded } from "../golf/coursesApi";
+import { learnHanded, type Handed } from "../golf/coursesApi";
 
 /** One think: everything the move depends on. It crosses to the worker by structured clone, so it's plain data. */
 export interface BotJob {
@@ -17,8 +16,8 @@ export interface BotJob {
   skill: Skill;
   /** How long the think may take, for a game that uses the time (see `TableGame.bot`). */
   budget?: ThinkBudget;
-  /** Mini Golf courses people made that the state is on: a worker's own copy of the game needs them handed over. */
-  courses?: { id: string; course: CustomCourse }[];
+  /** Mini Golf courses and bowling lanes people made that the state is on: a worker's own copy of the game needs them handed over. */
+  courses?: Handed[];
 }
 
 /** The move, exactly as the table has always asked for it. */
