@@ -1704,8 +1704,15 @@ html[data-motion="off"] .die, html[data-motion="off"] .die.tumbling { animation:
 .report-form { display: flex; flex-direction: column; gap: 12px; }
 .report-words { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
 .report-words small { font-weight: 400; color: var(--muted); }
-.report-words textarea { font: inherit; font-weight: 400; padding: 10px 12px; border-radius: 10px; border: 1px solid #c9bfa8; background: #fffdf7; color: var(--ink); resize: vertical; min-height: 4.5em; }
-.report-words textarea:focus-visible { outline: 2px solid var(--felt); outline-offset: 1px; }
+.report-words textarea, .report-words input { font: inherit; font-weight: 400; padding: 10px 12px; border-radius: 10px; border: 1px solid #c9bfa8; background: #fffdf7; color: var(--ink); }
+.report-words textarea { resize: vertical; min-height: 4.5em; }
+.report-words textarea:focus-visible, .report-words input:focus-visible { outline: 2px solid var(--felt); outline-offset: 1px; }
+/* Looking over a tidied report: what happened to it, and the way back to the player's own words. */
+.sheet.report-sheet .tidy-note { color: var(--ink); background: rgba(31, 77, 58, 0.08); border-radius: 10px; padding: 10px 12px; margin: 0; }
+.tidy-choices { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: -6px; }
+.sheet.report-sheet .tidy-choices .link { color: var(--felt); }
+.tidy-choices .link:disabled { opacity: 0.45; text-decoration: none; cursor: default; }
+.report-details dd.pre { white-space: pre-wrap; }
 .report-choice { display: flex; flex-direction: column; gap: 8px; }
 .report-shot { display: block; max-width: 100%; max-height: 180px; margin: 0 auto; border-radius: 8px; border: 1px solid #c9bfa8; object-fit: contain; }
 .report-details { font-size: 0.85rem; color: var(--muted); }
@@ -1749,8 +1756,24 @@ html[data-motion="off"] .die, html[data-motion="off"] .die.tumbling { animation:
    scrolls sideways keeps its scroll, and a card is picked up by holding it. */
 .hand.sortable:not([data-scrolls]) { touch-action: pan-y; }
 .hand[data-rearranging] > playing-card { transition: translate 140ms var(--ease-out); }
+/* A card on its way out of the hand (to the pile) mustn't be clipped by the hand's scroll box. */
+.hand[data-lifting] { overflow: visible; }
 .hand[data-rearranging] > playing-card[data-dragging] { transition: none; z-index: 3; cursor: grabbing; filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.35)); }
 html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: none; }
 /* Palace has no badge row above the hand: keep the bar clear of the chat button. */
 .palace .me:has(.chat-toggle) > .hand-sort { padding-left: 52px; }
 @media (max-width: 380px) { .hand-sort { gap: 4px; } .hand-sort button { padding: 0 0.65em; } }
+
+/* ---- Palace: picking a set in your hand, and dragging a card onto the pile ---- */
+.play-picked { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 10px; margin: 0 0 6px; position: relative; z-index: 2; }
+.play-picked .primary, .play-picked .secondary { padding: 8px 16px; font-size: 0.98rem; }
+.play-picked .secondary { color: var(--cream); }
+.play-picked small { width: 100%; text-align: center; color: #cfe2d6; font-size: var(--ui-s); }
+.palace .me:has(.chat-toggle) > .play-picked { padding-left: 52px; }
+.pile.ready { cursor: pointer; border-radius: 12px; outline: 2px dashed rgba(232, 196, 106, 0.7); outline-offset: 6px; }
+.pile.ready:focus-visible { outline-style: solid; outline-color: var(--gold); }
+.pile[data-drop-over], .my-table[data-drop-over] { border-radius: 12px; outline: 3px solid var(--gold); outline-offset: 6px; background: rgba(232, 196, 106, 0.12); }
+.my-table.drop-up { border-radius: 12px; outline: 2px dashed rgba(232, 196, 106, 0.5); outline-offset: 6px; min-height: var(--trick-h); min-width: calc(var(--trick-w) * 3); }
+@media (prefers-reduced-motion: no-preference) {
+  .pile[data-drop-over], .my-table[data-drop-over] { transition: background 120ms var(--ease-out), outline-color 120ms var(--ease-out); }
+}
