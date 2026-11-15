@@ -681,52 +681,68 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
     }
   }
 
+  let broken = "";
+  /** Camera, light, bodies, then one frame. */
+  const draw = (frame: Frame3d) => {
+    const { proj, width, height, table } = frame;
+    // The camera is projection.ts, in three's terms: a point of the world is where `project` puts it.
+    const s = proj.scale;
+    camera.left = (-proj.ox / s) * K;
+    camera.right = ((width - proj.ox) / s) * K;
+    camera.top = (proj.oy / s) * K;
+    camera.bottom = (-(height - proj.oy) / s) * K;
+    const reach = 220;
+    camera.position.set(0, Math.cos(proj.tilt) * reach, Math.sin(proj.tilt) * reach);
+    camera.up.set(0, 0, -1);
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+    turn.rotation.y = (-proj.turn * Math.PI) / 2;
+
+    // The sun stays where it is on the screen: it follows the middle of the table.
+    const f = table.look.frame;
+    const centre = new Vector3((f.x + f.w / 2) * K, 0, (f.y + f.h / 2) * K).applyAxisAngle(UP, turn.rotation.y);
+    const radius = Math.hypot(f.w, f.h) * 0.52 * K + 2;
+    sun.target.position.copy(centre);
+    sun.position.copy(centre).addScaledVector(LIGHT, -60);
+    const cam = sun.shadow.camera;
+    cam.left = cam.bottom = -radius;
+    cam.right = cam.top = radius;
+    cam.near = 1;
+    cam.far = 140;
+    cam.updateProjectionMatrix();
+
+    sync(frame);
+    renderer.render(scene, camera);
+    return true;
+  };
+
   const api: Sport3d = {
     supports: () => true,
     render(frame) {
       if (lost) return false;
-      const { proj, width, height, dpr, table } = frame;
+      const { width, height, dpr, table } = frame;
       const next = `${width}|${height}|${dpr}`;
       if (next !== size) {
         size = next;
         renderer.setPixelRatio(dpr);
         renderer.setSize(width, height, false);
       }
-      if (built !== table.key) {
-        built = table.key;
-        things.clear();
-        dynamic.clear();
-        buildStatic(table);
+      // A table this scene can't build (a map somebody made that has something it doesn't expect)
+      // is left to the flat drawing, and not tried again until the table changes.
+      if (broken === table.key) return false;
+      try {
+        if (built !== table.key) {
+          built = table.key;
+          things.clear();
+          dynamic.clear();
+          buildStatic(table);
+        }
+        return draw(frame);
+      } catch {
+        broken = table.key;
+        built = "";
+        return false;
       }
-      // The camera is projection.ts, in three's terms: a point of the world is where `project` puts it.
-      const s = proj.scale;
-      camera.left = (-proj.ox / s) * K;
-      camera.right = ((width - proj.ox) / s) * K;
-      camera.top = (proj.oy / s) * K;
-      camera.bottom = (-(height - proj.oy) / s) * K;
-      const reach = 220;
-      camera.position.set(0, Math.cos(proj.tilt) * reach, Math.sin(proj.tilt) * reach);
-      camera.up.set(0, 0, -1);
-      camera.lookAt(0, 0, 0);
-      camera.updateProjectionMatrix();
-      turn.rotation.y = (-proj.turn * Math.PI) / 2;
-
-      // The sun stays where it is on the screen: it follows the middle of the table.
-      const f = table.look.frame;
-      const centre = new Vector3((f.x + f.w / 2) * K, 0, (f.y + f.h / 2) * K).applyAxisAngle(UP, turn.rotation.y);
-      const radius = Math.hypot(f.w, f.h) * 0.52 * K + 2;
-      sun.target.position.copy(centre);
-      sun.position.copy(centre).addScaledVector(LIGHT, -60);
-      const cam = sun.shadow.camera;
-      cam.left = cam.bottom = -radius;
-      cam.right = cam.top = radius;
-      cam.near = 1;
-      cam.far = 140;
-      cam.updateProjectionMatrix();
-
-      sync(frame);
-      renderer.render(scene, camera);
-      return true;
     },
     dispose() {
       if (stat) clear(stat);

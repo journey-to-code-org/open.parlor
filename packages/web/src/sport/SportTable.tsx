@@ -21,7 +21,7 @@ import { Bubble, TableChat, useBubbles, type ChatProps } from "../Chat";
 import { Confetti } from "../Confetti";
 import { loadFeedbackSettings, play, saveFeedbackSettings } from "../feedback/sounds";
 import { named, ResultTable } from "../kit/KitTable";
-import { depthSetting, viewSetting } from "../display";
+import { viewSetting, wants3d } from "../display";
 import { reducedMotion } from "../motion";
 import { TableSettingsButton } from "../TableSettings";
 import { drawOverlay, drawScene, playFrame, powerColour, toneColour, type Aim, type Disc, type Effect } from "./draw";
@@ -214,7 +214,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     // under this one has the table and what is on it, and this one only what is laid over it.
     // Everywhere else (no WebGL, a table with a step or a pipe) the table is drawn flat as ever.
     const gl = glScene.current;
-    const solid = !!gl && depthSetting() === "3d" && drawsIn3d(table) && gl.render({ table, discs, proj: fit.current, width: w, height: h, dpr, time: now, still: reducedMotion() });
+    const solid = !!gl && wants3d(v.game) && drawsIn3d(table) && gl.render({ table, discs, proj: fit.current, width: w, height: h, dpr, time: now, still: reducedMotion() });
     if (glCanvas.current) glCanvas.current.style.visibility = solid ? "visible" : "hidden";
     if (solid) drawOverlay(ctx, w, h, dpr, fit.current, scene);
     else drawScene(ctx, w, h, dpr, fit.current, scene);
