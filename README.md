@@ -531,6 +531,25 @@ description and puts the course in `COURSES` wherever the game runs: the server,
 threads (a think on a custom course carries the course with it), and the browser for practice games
 (and the practice table's Web Worker, the same way).
 
+## Bowling
+
+Bowling plays the way bowling games on a phone do:
+
+- **Where you stand:** drag sideways on the lane to move along the foul line.
+- **The throw:** swipe up the lane. The faster the swipe, the harder the ball; the way it slants is
+  a little aim; and a swipe that **curls** at the end puts **spin** on the ball, which skids straight
+  and then hooks late, the way it curled (open.games' physics has the hook; see its README).
+  Before you throw, the lane shows the path the ball will take, hook and all.
+- **Buttons too:** Stand, Aim and Hook with a power slider and **Roll**, for anyone who'd rather
+  tap; on a keyboard, the arrows aim and set the power, Shift and the arrows move along the line,
+  and `[` `]` set the hook.
+- **In 3D** (bowling's default) the camera stands behind the bowler, down the lane, follows the
+  ball to the pins, and watches them go: they topple the way they're knocked and lie in the pit.
+- **The moment:** a strike, a spare, a split or a gutter ball gets a call-out, with **Replay** to
+  watch it again in slow motion, and the next ball waits a moment so it isn't missed. The ball and
+  the pins have their own sounds, and the score sheet (marks over running totals, the frame being
+  bowled picked out) is always on screen.
+
 ## Making a bowling lane
 
 Bowling's setup screen has a **Lane** list (the plain lane, everyone's shared lanes and your own)

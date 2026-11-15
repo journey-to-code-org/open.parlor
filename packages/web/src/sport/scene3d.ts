@@ -7,6 +7,7 @@ import { inShape, within } from "./paint/terrain";
 import type { SportView } from "@journey-to-code/games";
 import type { Disc } from "./draw";
 import type { Projection } from "./projection";
+import type { Point } from "@journey-to-code/physics";
 
 type Table = SportView["table"];
 
@@ -22,6 +23,12 @@ export interface Frame3d {
   time: number;
   /** The person has asked for less motion. */
   still: boolean;
+  /**
+   * Bowling: seen from behind the bowler, down the lane, rather than from above. `guide` is the
+   * path the throw as it stands would take, drawn on the lane; `follow` is the rolling ball's y,
+   * which the camera follows towards the pins (null when nothing is rolling).
+   */
+  bowler?: { guide: Point[] | null; follow: number | null };
 }
 
 export interface Sport3d {

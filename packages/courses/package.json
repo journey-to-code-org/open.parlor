@@ -18,8 +18,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@journey-to-code/games": "^0.1.5",
-    "@journey-to-code/physics": "^0.1.0"
+    "@journey-to-code/games": "^0.1.6",
+    "@journey-to-code/physics": "^0.1.1"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
