@@ -490,13 +490,23 @@ own) and **Make your own course**, which opens the course editor (`/?golf=new`).
 
 A hole is painted on a grid, up to 13 squares across and 17 down, one piece a square: green, a
 brick wall, sand, water, a slope (it runs downhill the way its arrow points), a toadstool bumper,
-the tee and the cup. Tap or drag; a drag fills every square it crosses. Beside the grid the hole is
+high ground, a tunnel and its molehill, the tee and the cup. Tap or drag; a drag fills every square
+it crosses.
+
+- **High ground** is a raised terrace. A ball rolls off it anywhere, down a step, but only gets up
+  it by a slope that runs downhill away from it: a ramp.
+- **Tunnels** are a mole's hole and the molehill it comes up at, up to three a hole, numbered so
+  each mouth goes with its molehill; the Tunnel and Molehill tools put down the next number
+  missing. A ball that rolls into the hole pops up at the molehill, rolling out onto the green
+  beside it (towards the cup, where there's a choice).
+ Beside the grid the hole is
 drawn exactly as the table will draw it. A course has up to nine holes, each with a name, a par (it
 follows a suggestion worked out from the route to the cup until you set your own) and a tip shown
 at the tee. **Play it against the computer** plays the course as it is, saved or not.
 
 A hole saves only if it can be played: one tee, one cup, and a way between them a ball can roll
-without crossing water, a wall or a bumper. So the computer players can get round every course
+without crossing water, a wall or a bumper or climbing a step (a tunnel counts as a way through).
+Every tunnel needs its molehill and the other way round. So the computer players can get round every course
 too. Garden shut in by the course becomes a wall rather than a hole in the green.
 
 **Saved, or shared.** A saved course is yours alone; share it and it's in everyone's course list.

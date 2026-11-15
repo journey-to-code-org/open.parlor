@@ -2008,6 +2008,9 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .bumper { background: radial-gradient(circle, #d8433a 0 38%, #7fc46b 40%); color: transparent; }
 .tee { background: #7fc46b; color: #fff; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5); }
 .cup { background: radial-gradient(circle, #1d1a16 0 30%, #7fc46b 32%); color: transparent; }
+.high { background: #a9dc8f; box-shadow: inset 0 -3px 0 #6e8a5c; color: #4d6b40; }
+.mouth { background: radial-gradient(circle, #2b2118 0 42%, #7fc46b 44%); color: #fff; font-size: 0.7em; }
+.molehill { background: radial-gradient(circle, #8a6440 0 48%, #7fc46b 50%); color: #fff; font-size: 0.7em; }
 .golf-swatch.garden { background: repeating-linear-gradient(45deg, #5f8f4a 0 4px, #557f43 4px 8px); }
 
 .golf-grid {
