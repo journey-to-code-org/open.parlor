@@ -10,12 +10,15 @@ export interface DisplaySettings {
   suits: 2 | 4;
   /** How a table sport is looked at: down from an angle, like a model on a table, or from straight above, like a plan. */
   view: TableView;
+  /** A table sport is drawn in 3-D (where the device can) or in the flat drawing it always had. */
+  depth: Depth;
   /** A board's coordinates (A to T, 1 to 19) are drawn round it. */
   coords: boolean;
   /** How a stone is put down on a board of crossings. */
   placing: Placing;
 }
 export type TableView = "angled" | "above";
+export type Depth = "3d" | "flat";
 /**
  * "tap": a tap on a crossing plays there. "confirm": a tap puts a ghost stone there, to be nudged
  * and then played with a second tap. "auto": two taps only where a finger can't be trusted with
@@ -24,7 +27,7 @@ export type TableView = "angled" | "above";
 export type Placing = "auto" | "confirm" | "tap";
 
 const KEY = "cardroom:display";
-export const DEFAULT_DISPLAY: DisplaySettings = { motion: "on", suits: 2, view: "angled", coords: true, placing: "auto" };
+export const DEFAULT_DISPLAY: DisplaySettings = { motion: "on", suits: 2, view: "angled", depth: "3d", coords: true, placing: "auto" };
 
 export const PLACINGS: { id: Placing; label: string; hint: string }[] = [
   { id: "auto", label: "Two taps when the board is small", hint: "On a touch screen with the crossings close together, the first tap shows the stone and the second plays it. Otherwise one tap plays." },
@@ -45,6 +48,7 @@ export function loadDisplay(): DisplaySettings {
       motion: saved.motion === "calm" || saved.motion === "off" ? saved.motion : "on",
       suits: saved.suits === 4 ? 4 : 2,
       view: saved.view === "above" ? "above" : "angled",
+      depth: saved.depth === "flat" ? "flat" : "3d",
       coords: saved.coords !== false,
       placing: saved.placing === "confirm" || saved.placing === "tap" ? saved.placing : "auto",
     };
@@ -59,6 +63,7 @@ export function applyDisplay(settings: DisplaySettings = loadDisplay()) {
   html.dataset.motion = settings.motion;
   html.dataset.suits = String(settings.suits);
   html.dataset.view = settings.view;
+  html.dataset.depth = settings.depth;
   html.dataset.coords = settings.coords ? "on" : "off";
   html.dataset.placing = settings.placing;
 }
@@ -80,6 +85,9 @@ export const motionSetting = (): Motion => {
 
 /** How table sports are looked at, as it stands on the page. */
 export const viewSetting = (): TableView => (typeof document !== "undefined" && document.documentElement.dataset.view === "above" ? "above" : "angled");
+
+/** Whether table sports are drawn in 3-D, as it stands on the page. */
+export const depthSetting = (): Depth => (typeof document !== "undefined" && document.documentElement.dataset.depth === "flat" ? "flat" : "3d");
 
 /** How stones are put down, as it stands on the page. */
 export const placingSetting = (): Placing => {

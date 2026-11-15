@@ -191,6 +191,17 @@ export function DisplayFields({ sport = false, stones = false }: { sport?: boole
           onChange={(v) => change({ view: v === "above" ? "above" : "angled" })}
         />
       )}
+      {sport && (
+        <Choice
+          label="The table is drawn"
+          value={display.depth}
+          options={[
+            ["3d", "In 3D"],
+            ["flat", "Flat, the classic drawing"],
+          ]}
+          onChange={(v) => change({ depth: v === "flat" ? "flat" : "3d" })}
+        />
+      )}
       {stones && (
         <>
           <Choice
