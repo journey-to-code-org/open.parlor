@@ -1,7 +1,7 @@
 // The house's AI connection: an owner or admin pastes the house's own Claude or OpenAI key and a
 // few notes about the family, and the computer players at the house's tables talk through it. When
 // whoever runs the card room has set a key for everyone, a house can use that one and paste nothing.
-import TextField from "@spades/ui/zubra-ui/text-field.zb";
+import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { useEffect, useState } from "react";
 import { Choice, Toggle } from "./RulesEditor";
 import { AI_PROVIDERS, houses, type AiProvider, type House } from "./housesApi";

@@ -55,7 +55,7 @@ Built-in presets ship with the engine (`classic`, `jokers-and-deuces`, `quick-25
 houses copy and tweak them. The active preset is shown to everyone before each deal
 and is snapshotted onto the game so later edits don't change a game in progress.
 
-See `packages/rules/src/types.ts` (`RulePreset`) for the authoritative shape. Current options:
+See [`packages/rules/src/types.ts`](https://github.com/journey-to-code-org/open.games/blob/main/packages/rules/src/types.ts) (`RulePreset`) for the authoritative shape. Current options:
 
 - **Trump**: ace-high spades, or jokers & deuces (Big Joker > Little Joker > 2♦ > 2♠ > A♠ …; 2♣ and 2♥ removed).
 - **Nil**: on/off, point value.
@@ -105,7 +105,7 @@ packages/
 1. **Rules engine** — presets, deck, legal plays, tricks, bidding, scoring, game reducer, tests. ✅
 2. **Local table** — `web` plays a full game against simple bots, no server. Rules editor saves presets in the browser. ✅
 3. **Zubra components** — the table and setup screen rebuilt on `.zb` components inside React. ✅
-4. **Rooms kit + family tables** — `packages/rooms` over `@zubra/sync`: seats, server-checked moves, per-seat views, bots and a move log; invite links and a lobby in the app; one container to host it. ✅
+4. **Rooms kit + family tables** — [`packages/rooms`](https://github.com/journey-to-code-org/open.rooms/tree/main/packages/rooms) over `@zubra/sync`: seats, server-checked moves, per-seat views, bots and a move log; invite links and a lobby in the app; one container to host it. ✅
 5. **Houses** — a family's house with one invite link that keeps working, members and roles (owner, admin, member), house rules with a default, and its tables. ✅
 6. **Leaderboard** — per house, from finished games: wins and win rate per member, best partners, nils, and the biggest comeback. ✅
 7. **Challenges + notifications** — an installable app; a challenge link anyone can use to challenge a player (it sets up a table and buzzes their phone); a buzz for the house when someone opens a table. ✅

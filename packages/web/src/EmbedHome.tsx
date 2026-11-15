@@ -1,7 +1,7 @@
 import { PALACE_PRESETS, type PalaceRules } from "@journey-to-code/palace";
 import { isBoardGame, isKitGame, isSportGame, kitGame } from "@journey-to-code/games";
 import type { RulePreset } from "@journey-to-code/rules";
-import TextField from "@spades/ui/zubra-ui/text-field.zb";
+import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { useState } from "react";
 import { Choice } from "./RulesEditor";
 import { OpponentSettings } from "./TableSettings";

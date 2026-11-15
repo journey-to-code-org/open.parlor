@@ -1,5 +1,5 @@
 {
-  "name": "@spades/server",
+  "name": "@open-parlor/server",
   "version": "0.1.0",
   "private": true,
   "description": "The spades server: family tables over the rooms kit, and the web app.",

@@ -12,12 +12,12 @@ export default defineConfig({
   // listens to its events as it does for any element, so there's no wrapper. The typings go in this
   // app's own folder, since the components are shared with apps in other frameworks.
   plugins: [zubra({ dts: { dir: ".zubra/types" } }), svelte()],
-  // `npm run dev -w @spades/server` serves the designs on 8787.
+  // `npm run dev -w @open-parlor/server` serves the designs on 8787.
   server: { port: 5174, proxy: { "/designs": "http://localhost:8787" } },
   resolve: {
     alias: {
       // From source, like the card room's app: the Pages build doesn't build the other packages first.
-      "@spades/ui": local("../ui/src"),
+      "@open-parlor/ui": local("../ui/src"),
     },
   },
 });

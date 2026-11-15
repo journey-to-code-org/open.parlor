@@ -1,6 +1,6 @@
 // A kit game in a house: open a table with the house's rules, and keep those rules.
 import { kitGame, type KitGameId } from "@journey-to-code/games";
-import TextField from "@spades/ui/zubra-ui/text-field.zb";
+import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { useEffect, useState } from "react";
 import { houses, type House, type KitRules } from "../housesApi";
 import { Choice } from "../RulesEditor";

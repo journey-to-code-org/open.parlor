@@ -11,7 +11,7 @@ export default defineConfig({
   // Solid's JSX the tags) go in this app's own folder, since the components are shared with apps
   // in other frameworks.
   plugins: [zubra({ dts: { dir: ".zubra/types" } }), solid()],
-  // `npm run dev -w @spades/server` serves the tables on 8787.
+  // `npm run dev -w @open-parlor/server` serves the tables on 8787.
   server: { port: 5176, proxy: { "/spectate": "http://localhost:8787", "/catalogue": "http://localhost:8787" } },
-  resolve: { alias: { "@spades/ui": fileURLToPath(new URL("../ui/src", import.meta.url)) } },
+  resolve: { alias: { "@open-parlor/ui": fileURLToPath(new URL("../ui/src", import.meta.url)) } },
 });

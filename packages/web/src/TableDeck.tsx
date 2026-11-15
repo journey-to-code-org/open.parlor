@@ -3,8 +3,8 @@
 // server keeps the table's copy, so it can't change under a game. A house picks the same way the
 // deck its tables start with.
 import { STARTERS, deckVars, type CardDesign, type TableDeck } from "@journey-to-code/decks";
-import PlayingCard from "@spades/ui/playing-card.zb";
-import SelectField from "@spades/ui/zubra-ui/select-field.zb";
+import PlayingCard from "@open-parlor/ui/playing-card.zb";
+import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
 import type { Card } from "@journey-to-code/rules";
 import { useEffect, useState } from "react";
 

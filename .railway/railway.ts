@@ -14,7 +14,7 @@ export default defineRailway(() => {
 
   const spades = service("spades", {
     // Railway builds the Dockerfile at the repository root.
-    source: github("mnichols08/spades", { branch: "main" }),
+    source: github("journey-to-code-org/open.parlor", { branch: "main" }),
     healthcheck: "/healthz",
     // One process holds the live connections and every game's state: never more than one.
     replicas: 1,

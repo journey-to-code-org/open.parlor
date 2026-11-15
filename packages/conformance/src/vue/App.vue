@@ -3,20 +3,20 @@
   v-model for every <prop> + <prop>change pair, children into the slots.
 -->
 <script setup lang="ts">
-import BidPad from "@spades/ui/bid-pad.zb";
-import PlayingCard from "@spades/ui/playing-card.zb";
-import SeatBadge from "@spades/ui/seat-badge.zb";
-import ActionButton from "@spades/ui/zubra-ui/action-button.zb";
-import AlertBanner from "@spades/ui/zubra-ui/alert-banner.zb";
-import DataTable from "@spades/ui/zubra-ui/data-table.zb";
-import EmptyState from "@spades/ui/zubra-ui/empty-state.zb";
-import ModalDialog from "@spades/ui/zubra-ui/modal-dialog.zb";
-import SegmentedControl from "@spades/ui/zubra-ui/segmented-control.zb";
-import StackLayout from "@spades/ui/zubra-ui/stack-layout.zb";
-import StatusBadge from "@spades/ui/zubra-ui/status-badge.zb";
-import TabList from "@spades/ui/zubra-ui/tab-list.zb";
-import TextField from "@spades/ui/zubra-ui/text-field.zb";
-import ToggleSwitch from "@spades/ui/zubra-ui/toggle-switch.zb";
+import BidPad from "@open-parlor/ui/bid-pad.zb";
+import PlayingCard from "@open-parlor/ui/playing-card.zb";
+import SeatBadge from "@open-parlor/ui/seat-badge.zb";
+import ActionButton from "@open-parlor/ui/zubra-ui/action-button.zb";
+import AlertBanner from "@open-parlor/ui/zubra-ui/alert-banner.zb";
+import DataTable from "@open-parlor/ui/zubra-ui/data-table.zb";
+import EmptyState from "@open-parlor/ui/zubra-ui/empty-state.zb";
+import ModalDialog from "@open-parlor/ui/zubra-ui/modal-dialog.zb";
+import SegmentedControl from "@open-parlor/ui/zubra-ui/segmented-control.zb";
+import StackLayout from "@open-parlor/ui/zubra-ui/stack-layout.zb";
+import StatusBadge from "@open-parlor/ui/zubra-ui/status-badge.zb";
+import TabList from "@open-parlor/ui/zubra-ui/tab-list.zb";
+import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
+import ToggleSwitch from "@open-parlor/ui/zubra-ui/toggle-switch.zb";
 import { ref } from "vue";
 import { CARDS, COLUMNS, EXTRA_ROW, ITEMS, ROWS, SEGMENTS, TABS, VARIANTS } from "../shared/fixture";
 

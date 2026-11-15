@@ -1,5 +1,5 @@
 {
-  "name": "@cardroom/conformance",
+  "name": "@open-parlor/conformance",
   "version": "0.1.0",
   "private": true,
   "description": "One fixture of Zubra components, written in every framework the card room uses, and one set of browser tests run against them all.",
@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && npm run build:angular",
-    "build:angular": "zubra build --lib ../ui/src --out angular/zubra --name @cardroom/conformance-zubra && ng build --project conformance",
+    "build:angular": "zubra build --lib ../ui/src --out angular/zubra --name @open-parlor/conformance-zubra && ng build --project conformance",
     "conformance": "playwright test",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

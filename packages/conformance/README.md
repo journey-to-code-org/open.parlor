@@ -5,9 +5,9 @@ Angular), and one set of browser tests run against all six. A check that passes 
 in the sixth is a difference in how the components behave in that framework.
 
 ```sh
-npm run build -w @cardroom/conformance        # the six pages
-npm run conformance -w @cardroom/conformance  # 18 checks × 6 frameworks, in Chrome
-npm run dev -w @cardroom/conformance          # http://localhost:4179/react/ and friends (not Angular)
+npm run build -w @open-parlor/conformance        # the six pages
+npm run conformance -w @open-parlor/conformance  # 18 checks × 6 frameworks, in Chrome
+npm run dev -w @open-parlor/conformance          # http://localhost:4179/react/ and friends (not Angular)
 ```
 
 ## What's checked

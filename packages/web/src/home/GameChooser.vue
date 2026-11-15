@@ -6,8 +6,8 @@
 -->
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import PlayingCard from "@spades/ui/playing-card.zb";
-import SelectField from "@spades/ui/zubra-ui/select-field.zb";
+import PlayingCard from "@open-parlor/ui/playing-card.zb";
+import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
 
 export interface ChooserGame {
   id: string;

@@ -2,7 +2,7 @@ import { openRoom, RoomError, type ChatMessage, type Room } from "@journey-to-co
 import { TableChat, type ChatProps } from "./Chat";
 import type { RoomDoc } from "@journey-to-code/rooms/server";
 import { cleanSettings, partnerOf, personaFor, pickPersonas, seatsOf, teamOf, type Seat, type SeatView, type TableSettings } from "@journey-to-code/rules";
-import TextField from "@spades/ui/zubra-ui/text-field.zb";
+import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { applyDeck, deckAtTable, prefersOwnDeck, savedDeck, type TableDeck } from "@journey-to-code/decks";
 import { TableDeckPicker } from "./TableDeck";
 import { useEffect, useMemo, useState, type ReactNode } from "react";

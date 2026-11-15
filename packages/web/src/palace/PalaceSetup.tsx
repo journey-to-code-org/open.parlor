@@ -5,8 +5,8 @@ import {
   validatePalaceRules,
   type PalaceRules,
 } from "@journey-to-code/palace";
-import SelectField from "@spades/ui/zubra-ui/select-field.zb";
-import TextField from "@spades/ui/zubra-ui/text-field.zb";
+import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
+import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { useMemo, useState } from "react";
 import { lobbyProblem } from "../lobbyApi";
 import { ChallengeLink } from "../ChallengeLink";

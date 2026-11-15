@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { loadSameRules, saveSameRules } from "./storage";
 import type { RulePreset } from "@journey-to-code/rules";
-import SelectField from "@spades/ui/zubra-ui/select-field.zb";
-import ToggleSwitch from "@spades/ui/zubra-ui/toggle-switch.zb";
+import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
+import ToggleSwitch from "@open-parlor/ui/zubra-ui/toggle-switch.zb";
 
 /** Every house rule as a form. Used on the setup screen and in a house's rules. */
 export function RulesFields({ rules, onChange: set }: { rules: RulePreset; onChange: (patch: Partial<RulePreset>) => void }) {

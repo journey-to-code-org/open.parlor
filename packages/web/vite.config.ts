@@ -30,11 +30,11 @@ export default defineConfig({
   ],
   // The practice tables' bot worker (src/kit/bot.worker.ts) is a module, like the page.
   worker: { format: "es" },
-  // `npm run dev -w @spades/server` serves the rooms and the sync log on 8787.
+  // `npm run dev -w @open-parlor/server` serves the rooms and the sync log on 8787.
   server: { proxy: Object.fromEntries(["/rooms", "/_zb", "/houses", "/challenges", "/lobby", "/push", "/bugs", "/designs", "/moderation", "/catalogue", "/spectate"].map((p) => [p, "http://localhost:8787"])) },
   resolve: {
     alias: {
-      "@spades/ui": local("../ui/src"),
+      "@open-parlor/ui": local("../ui/src"),
     },
   },
 });

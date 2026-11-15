@@ -1,7 +1,7 @@
 // Open tables: every table that's waiting for players, whatever the game. See who's playing what
 // and how long they've waited, and jump into a seat.
-import SelectField from "@spades/ui/zubra-ui/select-field.zb";
-import TextField from "@spades/ui/zubra-ui/text-field.zb";
+import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
+import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { useEffect, useState } from "react";
 import { GAME_LIST } from "./GamePicker";
 import { lobby, lobbyProblem, waited, whoIsThere, type OpenTable } from "./lobbyApi";

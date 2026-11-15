@@ -25,9 +25,9 @@ const port = Number(process.env.PORT ?? 8787);
 const web = resolve(setting("WEB") ?? fileURLToPath(new URL("../../web/dist", import.meta.url)));
 // The other apps live under the card room's address, each from its own build.
 const apps = [
-  { at: "/designer/", root: resolve(setting("DESIGNER") ?? fileURLToPath(new URL("../../designer/dist", import.meta.url))), build: "npm run build -w @cardroom/designer" },
-  { at: "/watch/", root: resolve(setting("WATCH") ?? fileURLToPath(new URL("../../watch/dist", import.meta.url))), build: "npm run build -w @cardroom/watch" },
-  { at: "/admin/", root: resolve(setting("ADMIN") ?? fileURLToPath(new URL("../../admin/dist/browser", import.meta.url))), build: "npm run build -w @cardroom/admin" },
+  { at: "/designer/", root: resolve(setting("DESIGNER") ?? fileURLToPath(new URL("../../designer/dist", import.meta.url))), build: "npm run build -w @open-parlor/designer" },
+  { at: "/watch/", root: resolve(setting("WATCH") ?? fileURLToPath(new URL("../../watch/dist", import.meta.url))), build: "npm run build -w @open-parlor/watch" },
+  { at: "/admin/", root: resolve(setting("ADMIN") ?? fileURLToPath(new URL("../../admin/dist/browser", import.meta.url))), build: "npm run build -w @open-parlor/admin" },
 ];
 
 // A SQLite log keeps tables across restarts; without CARDROOM_DB, they live in memory.
@@ -109,7 +109,7 @@ const server = createServer(async (req, res) => {
     const embed = !app && path.startsWith("/embed/");
     if (embed && (!existsSync(file) || statSync(file).isDirectory())) return void res.writeHead(404).end();
     if (!existsSync(file) || statSync(file).isDirectory()) file = join(root, "index.html"); // the app routes itself
-    if (!existsSync(file)) return void res.writeHead(404).end(`Build the app first: ${app?.build ?? "npm run build -w @spades/web"}`);
+    if (!existsSync(file)) return void res.writeHead(404).end(`Build the app first: ${app?.build ?? "npm run build -w @open-parlor/web"}`);
     // The page and the service worker must never be stale; the hashed assets can be cached for good.
     const fresh = file.endsWith("index.html") || file.endsWith("sw.js") || file.endsWith(".webmanifest");
     const hashed = /[.-][A-Za-z0-9_-]{8,}\.(js|css|woff2)$/.test(file);

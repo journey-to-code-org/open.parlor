@@ -1,9 +1,9 @@
 import { SetupLayout } from "./SetupLayout";
 import { OpponentSettings } from "./TableSettings";
 import { validatePreset, type RulePreset } from "@journey-to-code/rules";
-import SelectField from "@spades/ui/zubra-ui/select-field.zb";
+import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
 import { explain, RulesFields, SameRulesToggle, Toggle } from "./RulesEditor";
-import TextField from "@spades/ui/zubra-ui/text-field.zb";
+import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { ChallengeLink } from "./ChallengeLink";
 import type { GameId } from "./storage";
 import { useMemo, useState } from "react";

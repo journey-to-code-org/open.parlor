@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import TextField from "@spades/ui/zubra-ui/text-field.zb";
+import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { challenges, type OfferedGame } from "./challengesApi";
 import { GAME_LIST } from "./GamePicker";
 import { loadSavedName, saveName, type GameId } from "./storage";

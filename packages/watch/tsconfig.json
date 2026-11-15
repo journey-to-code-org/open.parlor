@@ -20,7 +20,7 @@
       "@zubra/unplugin/client"
     ],
     "paths": {
-      "@spades/ui/*": [
+      "@open-parlor/ui/*": [
         "./.zubra/types/__/ui/src/*",
         "../ui/src/*"
       ]

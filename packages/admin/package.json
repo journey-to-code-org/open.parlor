@@ -1,10 +1,10 @@
 {
-  "name": "@cardroom/admin",
+  "name": "@open-parlor/admin",
   "version": "0.1.0",
   "private": true,
   "description": "The card room's admin app: its host moderates tables, players and shared card designs. Angular, on Zubra components.",
   "scripts": {
-    "zubra": "zubra build --lib ../ui/src --out zubra --name @cardroom/admin-zubra",
+    "zubra": "zubra build --lib ../ui/src --out zubra --name @open-parlor/admin-zubra",
     "dev": "npm run zubra && ng serve",
     "build": "npm run zubra && ng build",
     "typecheck": "ngc -p tsconfig.app.json --noEmit"

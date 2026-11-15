@@ -2,7 +2,7 @@
 // the felt, with the name and some of the games. Run it against a running card room when the games
 // change:
 //
-//   npm run dev -w @spades/server            # or any running card room
+//   npm run dev -w @open-parlor/server            # or any running card room
 //   npm install --no-save puppeteer-core     # once; it isn't a dependency of the app
 //   node packages/web/scripts/og-image.mjs [http://localhost:8787] [path/to/og.jpg]
 //

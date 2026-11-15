@@ -1,8 +1,8 @@
 import type { PalaceMove, PalaceView } from "@journey-to-code/palace";
 import { cardId, type Card, type TableSettings } from "@journey-to-code/rules";
 import { TableSettingsButton } from "../TableSettings";
-import PalaceSeat from "@spades/ui/palace-seat.zb";
-import PlayingCard from "@spades/ui/playing-card.zb";
+import PalaceSeat from "@open-parlor/ui/palace-seat.zb";
+import PlayingCard from "@open-parlor/ui/playing-card.zb";
 import { useEffect, useRef, useState } from "react";
 import { Bubble, TableChat, useBubbles, type ChatProps } from "../Chat";
 import { loadFeedbackSettings, play, saveFeedbackSettings } from "../feedback/sounds";
