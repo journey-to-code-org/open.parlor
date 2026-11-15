@@ -22,7 +22,7 @@ import type { Brush, Ctx } from "./paint/geometry";
 import { ball as sphere, SHADOW, type Stage } from "./paint/solids";
 import { inPolygon } from "./paint/terrain";
 import { CUP_DEPTH, drawPin, drawToadstool, TONES, type Prop } from "./paint/things";
-import { depthOf, toCamera, type Projection } from "./projection";
+import { depthOf, groundMatrix, project, toCamera, type Projection } from "./projection";
 
 /** One disc to draw: a body of the world or a ghost, wherever it is this frame. */
 export interface Disc {
@@ -407,6 +407,62 @@ let lastTime = 0;
  * Draws the whole scene. `width` and `height` are the canvas's size in CSS pixels and `dpr` how
  * many device pixels each is, so lines stay crisp on a dense screen.
  */
+/**
+ * What is laid over a table that is drawn in 3-D (scene3d-gl.ts): the aim, the streaks behind fast
+ * balls, the splashes. It is drawn through the same projection the 3-D camera is, with nothing
+ * else on the canvas, so the 3-D scene shows through everywhere that isn't one of these.
+ */
+export function drawOverlay(ctx: Ctx, width: number, height: number, dpr: number, proj: Projection, scene: Scene) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, width * dpr, height * dpr);
+  ctx.globalAlpha = 1;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  const onGround = (z = 0): Brush => {
+    ctx.setTransform(groundMatrix(proj, dpr, z));
+    return { ctx, px: 1 / proj.scale, light: [SHADOW[0], SHADOW[1]] };
+  };
+  const screen = () => ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const onTurf = (p: Point): Point => project(proj, p[0], p[1], 0);
+  screen();
+  if (scene.trace && scene.trace.length > 1) {
+    ctx.save();
+    for (const [w, colour] of [[4.5, "rgba(0, 0, 0, 0.4)"], [2.5, "rgba(255, 255, 255, 0.95)"]] as const) {
+      ctx.setLineDash([2, 6]);
+      ctx.lineWidth = w;
+      ctx.strokeStyle = colour;
+      ctx.beginPath();
+      scene.trace.forEach((p, i) => {
+        const [x, y] = onTurf(p);
+        if (i) ctx.lineTo(x, y);
+        else ctx.moveTo(x, y);
+      });
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  for (const trail of scene.trails) {
+    const pts = trail.map(onTurf);
+    for (let i = 1; i < pts.length; i++) {
+      const f = i / pts.length;
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.34 * f})`;
+      ctx.lineWidth = 1 + 5 * f;
+      ctx.beginPath();
+      ctx.moveTo(pts[i - 1]![0], pts[i - 1]![1]);
+      ctx.lineTo(pts[i]![0], pts[i]![1]);
+      ctx.stroke();
+    }
+  }
+  for (const e of scene.effects) {
+    drawEffect(onGround(), e);
+    screen();
+  }
+  if (scene.aim) {
+    drawAim(onGround(), scene.aim);
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
 export function drawScene(ctx: Ctx, width: number, height: number, dpr: number, proj: Projection, scene: Scene) {
   // What never moves: painted the first time this hole is seen at this size, then kept. Painting
   // takes a moment, so while something is moving a painting made for a slightly different size

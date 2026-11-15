@@ -21,10 +21,11 @@ import { Bubble, TableChat, useBubbles, type ChatProps } from "../Chat";
 import { Confetti } from "../Confetti";
 import { loadFeedbackSettings, play, saveFeedbackSettings } from "../feedback/sounds";
 import { named, ResultTable } from "../kit/KitTable";
-import { viewSetting } from "../display";
+import { viewSetting, wants3d } from "../display";
 import { reducedMotion } from "../motion";
 import { TableSettingsButton } from "../TableSettings";
-import { drawScene, playFrame, powerColour, toneColour, type Aim, type Disc, type Effect } from "./draw";
+import { drawOverlay, drawScene, playFrame, powerColour, toneColour, type Aim, type Disc, type Effect } from "./draw";
+import { drawsIn3d, loadSport3d, type Sport3d } from "./scene3d";
 import { fitFrame, TILT, unprojectVector, type Projection } from "./projection";
 import { advanceRoll, beginRoll, finishRoll, landed, type Roll } from "./roll";
 import { SoundButton } from "../SoundButton";
@@ -139,6 +140,8 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
 
   const stage = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const glCanvas = useRef<HTMLCanvasElement>(null);
+  const glScene = useRef<Sport3d | null>(null);
   const box = useRef({ w: 0, h: 0, dpr: 1 });
   const sign = useRef<HTMLDivElement>(null);
   const fit = useRef<Projection>({ scale: 1, ox: 0, oy: 0, turn: 0, tilt: 0 });
@@ -206,7 +209,15 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
       const a = aimRef.current;
       aiming = { x: ball.x, y: ball.y, r: ball.r, angle: (a.angle * Math.PI) / 18000, power: a.power / 1000, pulling: !!pull.current, cancel: !!pull.current?.cancel };
     }
-    drawScene(ctx, w, h, dpr, fit.current, { table, discs, aim: aiming, trace: r?.jump && r.rested !== null ? r.trace : null, trails: r ? [...r.trails.values()] : [], effects, time: now, still: reducedMotion(), hurry: !!r || !!pull.current || slides.current.size > 0 });
+    const scene = { table, discs, aim: aiming, trace: r?.jump && r.rested !== null ? r.trace : null, trails: r ? [...r.trails.values()] : [], effects, time: now, still: reducedMotion(), hurry: !!r || !!pull.current || slides.current.size > 0 };
+    // Seen in three dimensions where the scene is up and can draw this table: the 3-D canvas
+    // under this one has the table and what is on it, and this one only what is laid over it.
+    // Everywhere else (no WebGL, a table with a step or a pipe) the table is drawn flat as ever.
+    const gl = glScene.current;
+    const solid = !!gl && wants3d(v.game) && drawsIn3d(table) && gl.render({ table, discs, proj: fit.current, width: w, height: h, dpr, time: now, still: reducedMotion() });
+    if (glCanvas.current) glCanvas.current.style.visibility = solid ? "visible" : "hidden";
+    if (solid) drawOverlay(ctx, w, h, dpr, fit.current, scene);
+    else drawScene(ctx, w, h, dpr, fit.current, scene);
   }, []);
 
   /** Draw now, and keep drawing while anything is moving. */
@@ -235,13 +246,33 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     frame.current = requestAnimationFrame(loop);
   }, [paint]);
   useEffect(() => () => cancelAnimationFrame(frame.current), []);
+  // The 3-D scene is fetched once the table is up, and only where WebGL works; until it is there
+  // (and for good, where it isn't) the table is drawn flat.
+  useEffect(() => {
+    const el = glCanvas.current;
+    if (!el) return;
+    let alive = true;
+    let made: Sport3d | null = null;
+    loadSport3d(el).then((g) => {
+      if (!alive || !g) return g?.dispose();
+      made = g;
+      glScene.current = g;
+      paint(performance.now());
+      wake();
+    });
+    return () => {
+      alive = false;
+      glScene.current = null;
+      made?.dispose();
+    };
+  }, [paint, wake]);
   // This device's choice of view (from an angle, or from above) is kept on the page: draw again when it changes.
   useEffect(() => {
     const watch = new MutationObserver(() => {
       paint(performance.now());
       wake();
     });
-    watch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-view"] });
+    watch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-view", "data-depth"] });
     return () => watch.disconnect();
   }, [paint, wake]);
 
@@ -583,6 +614,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
             onPointerCancel={cancelPull}
             onKeyDown={onKeyDown}
           >
+            <canvas ref={glCanvas} className="sport-gl" aria-hidden />
             <canvas ref={canvas} aria-hidden />
             {pulling && (
               <div className="sport-meter" aria-hidden>
