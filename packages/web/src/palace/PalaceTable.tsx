@@ -145,7 +145,10 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
   const breathe = useFlash(myTurn, 700, false) && myTurn;
   const pileRef = useRef<HTMLDivElement>(null);
   const myTableRef = useRef<HTMLDivElement>(null);
-  const holding = useHandOrder("palace", view.hand, cardId, cardKey, {
+  // While choosing, the cards picked so far leave the hand and sit on the table, so each one is
+  // in one place only (and dragging the same card twice can't happen).
+  const inHand = choosingUp && faceUp.length ? (view.hand as PCard[]).filter((c) => !faceUp.includes(cardId(c))) : view.hand;
+  const holding = useHandOrder("palace", inHand, cardId, cardKey, {
     // Drag a card out of your hand: onto the pile to play it, or onto your table to lay it face-up.
     drop: {
       target: () => (choosingUp ? myTableRef.current : myTurn && can?.source === "hand" ? pileRef.current : null),
@@ -469,7 +472,7 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
           className={`hand sortable ${breathe ? "breathe" : ""}`}
           role="group"
           aria-label="Your hand"
-          style={{ "--n": view.hand.length, ...(view.hand.length <= 6 ? { "--strip-max": "calc(var(--card-w) + 8px)" } : {}) } as React.CSSProperties}
+          style={{ "--n": inHand.length, ...(inHand.length <= 6 ? { "--strip-max": "calc(var(--card-w) + 8px)" } : {}) } as React.CSSProperties}
         >
           {holding.held.map(({ card, key }, i) => (
             <PlayingCard

@@ -2063,6 +2063,76 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .golf-rated.rated-very-hard { background: #d06a2c; }
 .golf-rated.rated-unplayable { background: #c0392b; }
 
+/* ---- Arcade games ---------------------------------------------------------------------------
+   One dark cabinet in the middle of the page: the field between two rails of numbers. The field
+   keeps its shape and takes all the height there is. */
+.arcade {
+  --arc-rail: #0b1022;
+  --arc-line: rgba(140, 170, 255, 0.22);
+  --arc-ink: #eaf1ff;
+  --arc-dim: #8b97b8;
+  --arc-cyan: #4cc9ff;
+  --arc-hot: #ff5a6e;
+  position: fixed; inset: 0; display: flex; justify-content: center; background: #05060f; color: var(--arc-ink);
+  overscroll-behavior: none; -webkit-user-select: none; user-select: none;
+}
+.arcade-cabinet { width: min(100%, 640px); height: 100%; display: flex; flex-direction: column; }
+.arcade-rail {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: max(8px, env(safe-area-inset-top)) 14px 8px;
+  background: var(--arc-rail); border-bottom: 1px solid var(--arc-line); font-variant-numeric: tabular-nums;
+}
+.arcade-rail.low { padding: 8px 14px max(8px, env(safe-area-inset-bottom)); border-bottom: 0; border-top: 1px solid var(--arc-line); }
+.arcade-cell { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.arcade-cell.right { align-items: flex-end; text-align: right; }
+.arcade-cell small { font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--arc-dim); }
+.arcade-cell b { font-size: 1.2rem; line-height: 1.15; white-space: nowrap; }
+.arcade-cell b[data-hot="1"] { color: var(--gold); }
+.arcade-cell b[data-hot="2"] { color: var(--arc-hot); text-shadow: 0 0 12px var(--arc-hot); }
+.arcade-score { font-size: 1.5rem !important; }
+.arcade-best { color: var(--gold); }
+.arcade-lives { color: var(--arc-cyan); letter-spacing: 0.12em; }
+.arcade-pips { color: #5ee6a0; letter-spacing: 0.1em; font-size: 1rem !important; }
+.arcade-pips.power { color: var(--arc-hot); }
+.arcade-bar { width: 100%; min-width: 44px; height: 5px; margin-top: 3px; border-radius: 4px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.arcade-bar::after { content: ""; display: block; height: 100%; width: var(--fill, 0%); background: var(--gold); }
+.arcade-grow { flex: 1; }
+.arcade-stage { position: relative; flex: 1; min-height: 0; display: grid; place-items: center; background: #02030a; }
+.arcade-stage canvas { display: block; touch-action: none; outline: none; }
+.arcade-btn {
+  font: inherit; font-weight: 600; font-size: 0.85rem; color: inherit; cursor: pointer; padding: 7px 12px; border-radius: 8px;
+  border: 1px solid var(--arc-line); background: rgba(255, 255, 255, 0.05);
+}
+.arcade-btn:hover { border-color: var(--arc-cyan); }
+.arcade-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+/* The button for the special move is for fingers: a keyboard has a key for it. */
+.arcade-btn.special { display: none; border-color: #5ee6a0; color: #5ee6a0; font-size: 1rem; padding: 10px 18px; }
+@media (pointer: coarse) { .arcade-btn.special { display: inline-block; } }
+.arcade-sheet { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; overflow-y: auto; background: rgba(3, 4, 12, 0.55); }
+.arcade-card {
+  width: min(100%, 420px); display: flex; flex-direction: column; gap: 14px; padding: 22px; border-radius: 16px;
+  background: rgba(9, 13, 32, 0.94); border: 1px solid var(--arc-line); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+.arcade-card h2 { margin: 0; font-size: 1.5rem; color: var(--arc-ink); }
+.arcade-card p { margin: 0; color: #c9d4ee; }
+.arcade-final { font-size: 2.8rem; font-weight: 700; line-height: 1; color: var(--gold); font-variant-numeric: tabular-nums; }
+.arcade-stats { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; margin: 0; font-size: 0.95rem; }
+.arcade-stats dt { color: var(--arc-dim); }
+.arcade-stats dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.arcade-pair { display: contents; }
+.arcade-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.arcade-controls { margin: 0; padding-left: 1.1rem; display: grid; gap: 5px; font-size: 0.88rem; color: #aab6d6; line-height: 1.35; }
+.arcade-how { margin: 14px 0 6px; font-size: 1rem; color: var(--gold); }
+.arcade-best-line { margin: 0; color: #d6e6dc; font-size: 0.95rem; }
+@media (max-width: 480px) {
+  .arcade-rail { gap: 10px; padding-left: 10px; padding-right: 10px; }
+  .arcade-rail.low { flex-wrap: nowrap; }
+  .arcade-cell small { font-size: 0.58rem; letter-spacing: 0.04em; }
+  .arcade-cell b { font-size: 1rem; }
+  .arcade-pips { font-size: 0.8rem !important; letter-spacing: 0; }
+  .arcade-btn { padding: 7px 9px; }
+  .arcade-btn.special { padding: 9px 12px; }
+}
+
 /* ---- Bowling: the score sheet, the call-outs, the controls ---- */
 .bowl-sheet { display: grid; gap: 3px; overflow-x: auto; padding-bottom: 2px; font-variant-numeric: tabular-nums; }
 .bowl-row { display: grid; grid-template-columns: minmax(2.6rem, 4.5rem) repeat(var(--frames, 10), minmax(1.45rem, 1fr)) minmax(2rem, auto); align-items: stretch; gap: 2px; border-radius: 8px; padding: 2px; }

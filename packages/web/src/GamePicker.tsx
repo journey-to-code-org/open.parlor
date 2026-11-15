@@ -1,4 +1,4 @@
-import { KIT_GAMES } from "@journey-to-code/games";
+import { ARCADE_GAMES, KIT_GAMES, type ArcadeGameId } from "@journey-to-code/games";
 import { arranged } from "./catalogue";
 import type { GameId } from "./storage";
 
@@ -7,6 +7,15 @@ export const GAME_LIST: { id: GameId; name: string; emoji: string; blurb: string
   { id: "palace", name: "Palace", emoji: "🏰", blurb: "First to shed every card wins" },
   ...KIT_GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, blurb: g.blurb })),
 ];
+
+/**
+ * The arcade games: played in this browser against the game itself. They are on the front page with
+ * the rest, but not in `GAME_LIST`, which is the games a table can be opened for (houses, the lobby,
+ * challenges and tournaments go by it).
+ */
+export const ARCADE_LIST: { id: ArcadeGameId; name: string; emoji: string; blurb: string }[] = ARCADE_GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, blurb: g.blurb }));
+/** Everything the front page offers. */
+export const EVERY_GAME: { id: GameId | ArcadeGameId; name: string; emoji: string; blurb: string }[] = [...GAME_LIST, ...ARCADE_LIST];
 
 /** Which game: a row of big, plain buttons. */
 export function GamePicker({ game, onPick }: { game: GameId; onPick: (game: GameId) => void }) {
