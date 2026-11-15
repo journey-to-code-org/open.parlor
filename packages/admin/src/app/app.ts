@@ -500,7 +500,7 @@ export class App implements OnDestroy {
 
   /** A hole as a little plan: one class a square, by the piece painted there. */
   protected plan(hole: SharedCourse["course"]["holes"][number]): string[] {
-    const PIECE: Record<string, string> = { ".": "garden", g: "green", "#": "wall", s: "sand", w: "water", "^": "slope", v: "slope", "<": "slope", ">": "slope", o: "bumper", t: "tee", c: "cup" };
+    const PIECE: Record<string, string> = { ".": "garden", g: "green", "#": "wall", s: "sand", w: "water", "^": "slope", v: "slope", "<": "slope", ">": "slope", o: "bumper", t: "tee", c: "cup", h: "high", "1": "mouth", "2": "mouth", "3": "mouth", x: "molehill", y: "molehill", z: "molehill" };
     return [...hole.cells].map((p) => PIECE[p] ?? "garden");
   }
 

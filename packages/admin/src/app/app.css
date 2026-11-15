@@ -77,3 +77,6 @@ h3 { font-size: 0.95rem; margin-bottom: 0.5rem; }
 .plan .bumper { background: radial-gradient(circle, #d8433a 0 40%, #7fc46b 42%); }
 .plan .tee { box-shadow: inset 0 0 0 2px #fff; }
 .plan .cup { background: radial-gradient(circle, #1d1a16 0 34%, #7fc46b 36%); }
+.plan .high { background: #a9dc8f; box-shadow: inset 0 -2px 0 #6e8a5c; }
+.plan .mouth { background: radial-gradient(circle, #2b2118 0 44%, #7fc46b 46%); }
+.plan .molehill { background: radial-gradient(circle, #8a6440 0 50%, #7fc46b 52%); }

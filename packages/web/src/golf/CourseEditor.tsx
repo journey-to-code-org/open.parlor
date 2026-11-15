@@ -1,7 +1,7 @@
 // Make a Mini Golf course: paint each hole on a grid, a piece a square (green, a wall, sand, water,
 // a slope, a bumper, the tee, the cup), see it as the table will draw it, play it against the
 // computer, and save it: for yourself, or shared, in everyone's Mini Golf setup.
-import { buildHole, courseProblems, holeProblems, LIMITS, PIECES, starterCourse, starterHole, suggestPar, type CustomCourse, type CustomHole, type Piece } from "@open-parlor/courses";
+import { buildHole, courseProblems, holeProblems, LIMITS, PIECES, starterCourse, starterHole, suggestPar, TUNNELS, type CustomCourse, type CustomHole, type Piece } from "@open-parlor/courses";
 import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
 import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -10,24 +10,35 @@ import { courses, learnCourse, type SavedCourse } from "./coursesApi";
 import { HolePreview } from "./HolePreview";
 
 /** The order pieces sit in the palette, and what a square of each looks like on the grid. */
-const PALETTE: { piece: Piece; glyph: string }[] = [
-  { piece: "g", glyph: "" },
-  { piece: "#", glyph: "" },
-  { piece: "s", glyph: "" },
-  { piece: "w", glyph: "" },
-  { piece: "^", glyph: "↑" },
-  { piece: "v", glyph: "↓" },
-  { piece: "<", glyph: "←" },
-  { piece: ">", glyph: "→" },
-  { piece: "o", glyph: "●" },
-  { piece: "t", glyph: "T" },
-  { piece: "c", glyph: "◉" },
-  { piece: ".", glyph: "" },
+/**
+ * What can be painted. Most tools are one piece; the tunnel and the molehill are three pieces each
+ * (tunnels 1 to 3), and paint the next one that's missing, so a mouth and its molehill pair up.
+ */
+type Tool = Piece | "tunnel" | "molehill";
+const PALETTE: { tool: Tool; glyph: string; name: string; hint: string; cls: string }[] = [
+  ...(["g", "#", "s", "w", "^", "v", "<", ">", "o", "h"] as const).map((p) => ({ tool: p, glyph: { "^": "↑", v: "↓", "<": "←", ">": "→", o: "●", h: "▲" }[p as string] ?? "", name: PIECES[p].name, hint: PIECES[p].hint, cls: "" })),
+  { tool: "tunnel", glyph: "1", name: "Tunnel", hint: "A mole's hole: a ball that rolls in pops up at the molehill with the same number", cls: "mouth" },
+  { tool: "molehill", glyph: "1", name: "Molehill", hint: "Where a ball that went down the tunnel with the same number comes up", cls: "molehill" },
+  { tool: "t", glyph: "T", name: PIECES.t.name, hint: PIECES.t.hint, cls: "" },
+  { tool: "c", glyph: "◉", name: PIECES.c.name, hint: PIECES.c.hint, cls: "" },
+  { tool: ".", glyph: "", name: PIECES["."].name, hint: PIECES["."].hint, cls: "" },
 ];
-const GLYPH = Object.fromEntries(PALETTE.map((p) => [p.piece, p.glyph])) as Record<string, string>;
+const TOOL = Object.fromEntries(PALETTE.map((p) => [p.tool, p])) as Record<Tool, (typeof PALETTE)[number]>;
+const GLYPH: Record<string, string> = { "^": "↑", v: "↓", "<": "←", ">": "→", o: "●", h: "▲", t: "T", c: "◉", "1": "1", "2": "2", "3": "3", x: "1", y: "2", z: "3" };
 /** A class name for each piece: what colour a square is. */
-const CLASS: Record<string, string> = { ".": "garden", g: "green", "#": "wall", s: "sand", w: "water", "^": "slope", v: "slope", "<": "slope", ">": "slope", o: "bumper", t: "tee", c: "cup" };
-const ONE_OF: Piece[] = ["t", "c"];
+const CLASS: Record<string, string> = { ".": "garden", g: "green", "#": "wall", s: "sand", w: "water", "^": "slope", v: "slope", "<": "slope", ">": "slope", o: "bumper", h: "high", t: "tee", c: "cup", "1": "mouth", "2": "mouth", "3": "mouth", x: "molehill", y: "molehill", z: "molehill" };
+/** Pieces there is only one of on a hole: painting one moves it. */
+const ONE_OF = ["t", "c", ...TUNNELS.flat()];
+
+/** The piece a tool paints on this hole: for a tunnel or a molehill, the next number that's missing one. Null: all three are down. */
+function pieceFor(tool: Tool, cells: string): Piece | null {
+  if (tool === "tunnel") return (TUNNELS.find(([m]) => !cells.includes(m))?.[0] as Piece) ?? null;
+  if (tool === "molehill") {
+    const [, hill] = TUNNELS.find(([m, x]) => cells.includes(m) && !cells.includes(x)) ?? TUNNELS.find(([, x]) => !cells.includes(x)) ?? [];
+    return (hill as Piece) ?? null;
+  }
+  return tool;
+}
 const HISTORY = 40;
 let drafts = 0;
 
@@ -75,7 +86,7 @@ export function CourseEditor({
   const [saved, setSaved] = useState<SavedCourse | null>(null);
   const [shared, setShared] = useState(draft?.shared ?? false);
   const [at, setAt] = useState(0);
-  const [piece, setPiece] = useState<Piece>("g");
+  const [tool, setTool] = useState<Tool>("g");
   const [problem, setProblem] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -84,6 +95,8 @@ export function CourseEditor({
   const [canUndo, setCanUndo] = useState(false);
   /** The square a drag last painted: a fast drag fills in every square between two moves. */
   const painting = useRef<[number, number] | null>(null);
+  /** What this drag paints: chosen when it starts, so a drag with the tunnel moves one tunnel rather than laying three. */
+  const dragging = useRef<Piece | null>(null);
   const grid = useRef<HTMLDivElement>(null);
 
   // A course of yours to change; someone else's, to start a copy from.
@@ -147,12 +160,14 @@ export function CourseEditor({
     }));
 
   /** Paint the squares from one to another, every one on the line between. A tee or a cup moves: there is one of each. */
-  function paint(to: [number, number], from: [number, number] = to) {
+  function paint(to: [number, number], from: [number, number] = to, chosen?: Piece | null) {
     const steps = Math.max(Math.abs(to[0] - from[0]), Math.abs(to[1] - from[1]));
     const line = Array.from({ length: steps + 1 }, (_, k) => [Math.round(from[0] + ((to[0] - from[0]) * k) / (steps || 1)), Math.round(from[1] + ((to[1] - from[1]) * k) / (steps || 1))] as const);
-    // A tee or a cup goes only where the drag ends.
-    const squares = ONE_OF.includes(piece) ? [line.at(-1)!] : line;
     changeHole((h) => {
+      const piece = chosen === undefined ? pieceFor(tool, h.cells) : chosen;
+      if (!piece) return h;
+      // A tee, a cup, a tunnel or a molehill goes only where the drag ends.
+      const squares = ONE_OF.includes(piece) ? [line.at(-1)!] : line;
       let cells = h.cells;
       if (ONE_OF.includes(piece)) cells = cells.replaceAll(piece, "g");
       for (const [col, row] of squares) {
@@ -258,14 +273,21 @@ export function CourseEditor({
       <div className="golf-work">
         <section className="golf-paint" aria-label={`Paint ${hole.name}`}>
           <div className="golf-palette" role="radiogroup" aria-label="What to paint">
-            {PALETTE.map(({ piece: p, glyph }) => (
-              <button key={p} type="button" role="radio" aria-checked={piece === p} className={piece === p ? "picked" : ""} title={PIECES[p].hint} onClick={() => setPiece(p)}>
-                <span className={`golf-swatch ${CLASS[p]}`}>{glyph}</span>
-                {PIECES[p].name}
+            {PALETTE.map(({ tool: t, glyph, name, hint, cls }) => (
+              <button key={t} type="button" role="radio" aria-checked={tool === t} className={tool === t ? "picked" : ""} title={hint} onClick={() => setTool(t)}>
+                <span className={`golf-swatch ${cls || CLASS[t]}`}>{glyph}</span>
+                {name}
               </button>
             ))}
           </div>
-          <p className="fine golf-hint">{PIECES[piece].hint}. Tap or drag across the squares.</p>
+          <p className="fine golf-hint">
+            {TOOL[tool].hint}.{" "}
+            {tool === "tunnel" || tool === "molehill"
+              ? pieceFor(tool, hole.cells)
+                ? "Tap a square. Up to three tunnels a hole; painting over one takes it away."
+                : `All three ${tool === "tunnel" ? "tunnels" : "molehills"} are down: paint over one to take it away.`
+              : "Tap or drag across the squares."}
+          </p>
           <div
             ref={grid}
             className="golf-grid"
@@ -275,14 +297,15 @@ export function CourseEditor({
               if (!square) return;
               e.currentTarget.setPointerCapture(e.pointerId);
               painting.current = square;
+              dragging.current = pieceFor(tool, hole.cells);
               remember();
-              paint(square);
+              paint(square, square, dragging.current);
             }}
             onPointerMove={(e) => {
               const last = painting.current;
               const square = squareAt(e);
               if (!last || !square || (square[0] === last[0] && square[1] === last[1])) return;
-              paint(square, last);
+              paint(square, last, dragging.current);
               painting.current = square;
             }}
             onPointerUp={() => (painting.current = null)}

@@ -43,6 +43,8 @@ import {
   SRGBColorSpace,
   Texture,
   TorusGeometry,
+  TubeGeometry,
+  CatmullRomCurve3,
   Vector2,
   Vector3,
   WebGLRenderer,
@@ -50,6 +52,7 @@ import {
 import type { Point, Shape } from "@journey-to-code/physics";
 import type { SportBody, SportDecor, SportMaterial, SportSurface, SportTone } from "@journey-to-code/games";
 import { toneColour, type Disc } from "./draw";
+import { landOf } from "./paint/terrain";
 import type { Frame3d, Sport3d } from "./scene3d";
 
 const K = 0.001;
@@ -209,8 +212,18 @@ const at = (o: Object3D, x: number, y: number, z: number) => {
   return o;
 };
 
-/** A rail: a box along each segment of the wall, beside the line the ball stops at, with the joints filled. */
-function rail(points: Point[], width: number, height: number, side: "left" | "right" | "both", closed: boolean, material: Material): Group {
+/** How high the ground is at a point of the world: flat unless a table has terraces or slopes. */
+type Ground = (x: number, y: number) => number;
+const level: Ground = () => 0;
+/** Pieces a long rail is cut into, so it can stand on ground that changes height along it. */
+const RAIL_STEP = 400;
+
+/**
+ * A rail: a box along each segment of the wall, beside the line the ball stops at, with the joints
+ * filled. Where the ground beside it isn't level (a terrace part of the way along), a segment is cut
+ * into short pieces, each standing on the ground on the ball's side of it.
+ */
+function rail(points: Point[], width: number, height: number, side: "left" | "right" | "both", closed: boolean, material: Material, ground: Ground = level): Group {
   const g = new Group();
   const n = closed ? points.length : points.length - 1;
   for (let i = 0; i < n; i++) {
@@ -223,12 +236,100 @@ function rail(points: Point[], width: number, height: number, side: "left" | "ri
     const off = side === "both" ? 0 : (side === "left" ? 1 : -1) * (width / 2);
     const cx = (x0 + x1) / 2 + dy * off;
     const cy = (y0 + y1) / 2 - dx * off;
-    const b = mesh(new BoxGeometry(len + (closed ? 0 : width), height, width), material);
-    b.position.set(cx, height / 2, cy);
+    // The ball's side of the line, where the ground it stands on is.
+    const inX = side === "left" ? -dy : side === "right" ? dy : 0;
+    const inY = side === "left" ? dx : side === "right" ? -dx : 0;
+    const sample = (t: number) => ground(x0 + (x1 - x0) * t + inX * (width / 2 + 20), y0 + (y1 - y0) * t + inY * (width / 2 + 20));
+    const pieces = ground === level ? 1 : Math.max(1, Math.ceil(len / RAIL_STEP));
+    const heights = Array.from({ length: pieces }, (_, k) => sample((k + 0.5) / pieces));
+    if (heights.every((h) => h === heights[0])) {
+      const b = mesh(new BoxGeometry(len + (closed ? 0 : width), height, width), material);
+      b.position.set(cx, heights[0]! + height / 2, cy);
+      b.rotation.y = -Math.atan2(dy, dx);
+      g.add(b);
+      continue;
+    }
+    for (let k = 0; k < pieces; k++) {
+      const piece = len / pieces;
+      const t = (k + 0.5) / pieces;
+      const b = mesh(new BoxGeometry(piece + (k === 0 || k === pieces - 1 ? (closed ? 0 : width / 2) : 0) + 2, height, width), material);
+      b.position.set(cx + (x1 - x0) * (t - 0.5), heights[k]! + height / 2, cy + (y1 - y0) * (t - 0.5));
+      b.rotation.y = -Math.atan2(dy, dx);
+      g.add(b);
+    }
+  }
+  return g;
+}
+
+/** A patch of the ground laid over a slope: its top plane tilted to the ground's height at each point. */
+function tilted(s: Shape, ground: Ground, lift: number): BufferGeometry {
+  const g = patch(s);
+  const pos = g.getAttribute("position");
+  for (let i = 0; i < pos.count; i++) pos.setY(i, ground(pos.getX(i), pos.getZ(i)) + lift);
+  pos.needsUpdate = true;
+  g.computeVertexNormals();
+  return g;
+}
+
+/** The face of a step down: a wall of stone along a ledge, on its low side, as high as the drop. */
+function stepFace(points: Point[], drop: number, ground: Ground, material: Material): Group {
+  const g = new Group();
+  const thick = 70;
+  for (let i = 0; i + 1 < points.length; i++) {
+    const [x0, y0] = points[i]!;
+    const [x1, y1] = points[i + 1]!;
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    if (len < 1) continue;
+    const dx = (x1 - x0) / len;
+    const dy = (y1 - y0) / len;
+    // A ledge has the high ground on its left: the face looks out over the right, the low side.
+    const ox = -dy * (thick / 2);
+    const oy = dx * (thick / 2);
+    const foot = ground((x0 + x1) / 2 - dy * 120, (y0 + y1) / 2 + dx * 120);
+    const b = mesh(new BoxGeometry(len, drop, thick), material);
+    b.position.set((x0 + x1) / 2 + ox, foot + drop / 2, (y0 + y1) / 2 + oy);
     b.rotation.y = -Math.atan2(dy, dx);
     g.add(b);
   }
   return g;
+}
+
+const SOIL = "#6b4a2e";
+/** A tunnel: a hole in the ground and a mound where it comes up, a pipe lying on the grass, or a hose. */
+function tunnelOf(kind: "pipe" | "hose" | "burrow", mouth: Point, r: number, out: Point, path: Point[] | undefined, ground: Ground, lift: number): Group {
+  const g = new Group();
+  if (kind === "burrow") {
+    const hole = new Mesh(new CircleOf(r * 0.92), paint("#140e09", 1));
+    hole.position.set(mouth[0], ground(...mouth) + lift + 4, mouth[1]);
+    g.add(hole);
+    const rim = new Mesh(new RingGeometry(r * 0.9, r * 1.3, 28).rotateX(-Math.PI / 2), paint(SOIL, 1));
+    rim.position.set(mouth[0], ground(...mouth) + lift + 6, mouth[1]);
+    rim.receiveShadow = true;
+    g.add(rim);
+    // The molehill: a low heap of soil with the hole in its top that the ball pops out of.
+    const hill = mesh(new SphereGeometry(r * 1.15, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), paint(SOIL, 1));
+    hill.scale.set(1, 0.32, 1);
+    hill.position.set(out[0], ground(...out) + lift, out[1]);
+    g.add(hill);
+    const top = new Mesh(new CircleOf(r * 0.45), paint("#140e09", 1));
+    top.position.set(out[0], ground(...out) + lift + r * 0.37, out[1]);
+    g.add(top);
+    return g;
+  }
+  const line = path && path.length >= 2 ? path : [mouth, out];
+  const radius = kind === "pipe" ? r * 0.95 : 150;
+  const curve = new CatmullRomCurve3(line.map(([x, y]) => new Vector3(x, ground(x, y) + lift + radius, y)), false, "catmullrom", kind === "pipe" ? 0 : 0.5);
+  const tube = mesh(new TubeGeometry(curve, Math.max(8, line.length * 12), radius, 18, false), paint(kind === "pipe" ? "#7d8a8f" : "#3f8f3a", kind === "pipe" ? 0.45 : 0.7, kind === "pipe" ? 0.4 : 0));
+  (tube.material as MeshStandardMaterial).side = DoubleSide;
+  g.add(tube);
+  return g;
+}
+/** A flat disc facing up. */
+class CircleOf extends RingGeometry {
+  constructor(r: number) {
+    super(0, r, 28);
+    this.rotateX(-Math.PI / 2);
+  }
 }
 
 // ---- Bodies --------------------------------------------------------------------------------------
@@ -543,6 +644,8 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
   turn.add(dynamic);
   let size = "";
   let cupFlags: Object3D[] = [];
+  /** How high the ground of the table being shown is, at a point. */
+  let ground: Ground = level;
 
   function clear(group: Group) {
     group.traverse((o) => {
@@ -556,6 +659,9 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
     if (stat) clear(stat);
     cupFlags = [];
     const { look, world } = table;
+    const land = landOf(table, 0);
+    const hilly = land.ramps.length > 0 || look.ground.some((p) => (p.level ?? 0) > 0);
+    ground = hilly ? land.heightAt : level;
     const g = new Group();
     const f = look.frame;
     const pad = Math.max(f.w, f.h) * 1.5;
@@ -564,10 +670,12 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
     base.receiveShadow = true;
     g.add(base);
     let layer = 1;
-    const lay = (shape: Shape, surface: SportSurface, level = 0) => {
-      const high = level + layer++ * 3;
+    const lay = (shape: Shape, surface: SportSurface, level = 0, on: Ground | null = null) => {
+      // A patch with no level of its own lies on the ground under it (sand on a terrace).
+      const under = on && "points" in shape ? Math.max(0, Math.min(...shape.points.map(([x, y]) => on(x, y)))) : 0;
+      const high = level + under + layer++ * 3;
       const m = mesh(level > 0 ? prism(shape, level) : patch(shape), surfaceMaterial(surface), false);
-      m.position.y = high;
+      m.position.y = level > 0 ? layer * 3 : high;
       m.receiveShadow = true;
       if (surface === "water") m.renderOrder = 2;
       g.add(m);
@@ -575,29 +683,46 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
     for (const p of look.ground) lay(p.shape, p.surface, p.level);
     for (const r of look.regions) {
       const region = world.regions.find((x) => x.id === r.id);
-      if (region) lay(region.shape, r.surface);
+      if (!region) continue;
+      // A slope that rises is laid as a tilted plane; the rest lie flat on what they're set in.
+      if (land.ramps.some((x) => x.id === r.id)) {
+        const m = mesh(tilted(region.shape, ground, layer++ * 3), surfaceMaterial(r.surface), false);
+        m.receiveShadow = true;
+        g.add(m);
+      } else lay(region.shape, r.surface, 0, ground);
     }
     const walls = new Map(world.walls.map((w) => [w.id, w]));
     for (const r of look.rails) {
       const w = walls.get(r.wall);
-      if (w) g.add(rail(w.points, r.width, r.height, r.side, !!w.closed, paint(SOLIDS[r.material], 0.75)));
+      if (w) g.add(rail(w.points, r.width, r.height, r.side, !!w.closed, paint(SOLIDS[r.material], 0.75), ground));
+    }
+    for (const l of look.ledges) {
+      const w = walls.get(l.wall);
+      if (w) g.add(stepFace(w.points, l.drop, ground, paint(SOLIDS[l.material], 0.9)));
+    }
+    for (const t of look.tunnels) {
+      const w = world.tunnels?.find((x) => x.id === t.id);
+      if (w) g.add(tunnelOf(t.kind, [w.x, w.y], w.r, t.out ?? w.to, t.path, ground, layer * 3));
     }
     for (const b of look.blocks) {
       const w = walls.get(b.wall);
       if (!w) continue;
       const m = mesh(prism({ points: w.points }, b.height), paint(BLOCKS[b.kind] ?? "#8b8a85", 0.9));
+      // On whatever it stands on: the highest ground under its corners.
+      m.position.y = Math.max(0, ...w.points.map(([x, y]) => ground(x, y)));
       g.add(m);
     }
     for (const p of world.pockets) {
       const cup = look.pockets === "cup";
-      g.add(at(mesh(new CylinderGeometry(p.r, p.r, 12, 28), paint("#0c0c0a", 1), false), p.x, layer * 3 + 6, p.y));
+      const z = ground(p.x, p.y);
+      g.add(at(mesh(new CylinderGeometry(p.r, p.r, 12, 28), paint("#0c0c0a", 1), false), p.x, z + layer * 3 + 6, p.y));
       const rim = new Mesh(new RingGeometry(p.r * 0.98, p.r * 1.3, 28).rotateX(-Math.PI / 2), paint(cup ? "#e9e6dc" : "#4a3322", 0.5));
-      rim.position.set(p.x, layer * 3 + 10, p.y);
+      rim.position.set(p.x, z + layer * 3 + 10, p.y);
       rim.receiveShadow = true;
       g.add(rim);
       if (cup) {
         const pole = new Group();
-        pole.position.set(p.x, layer * 3, p.y);
+        pole.position.set(p.x, z + layer * 3, p.y);
         flagpole(pole, 4200);
         pole.traverse((o) => ((o as Mesh).isMesh ? ((o as Mesh).castShadow = true) : null));
         g.add(pole);
@@ -606,7 +731,7 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
     }
     for (const d of look.decor) {
       const o = decorOf(d);
-      o.position.set(d.x, layer * 3, d.y);
+      o.position.set(d.x, ground(d.x, d.y) + layer * 3, d.y);
       g.add(o);
     }
     stat = g;
@@ -626,9 +751,11 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
         dynamic.add(t.group);
       }
       const { group } = t;
-      const lift = d.sunk ? -d.sunk * d.r * 2 : 0;
-      group.position.set(d.x, lift, d.y);
-      group.scale.setScalar(d.sunk ? 1 - d.sunk * 0.35 : 1);
+      // Into a cup or down a tunnel, it sinks and shrinks out of sight.
+      const down = d.sunk ?? d.gone ?? 0;
+      const lift = down ? -down * d.r * 2 : 0;
+      group.position.set(d.x, ground(d.x, d.y) + lift, d.y);
+      group.scale.setScalar(down ? 1 - down * 0.35 : 1);
       if (t.kind === "pin") {
         // A pin that has been moved lies down on its way: the further from its spot, the flatter.
         const dx = d.x - t.home[0];

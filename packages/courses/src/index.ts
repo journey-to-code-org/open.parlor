@@ -1,12 +1,13 @@
 // Mini Golf courses people make. A hole is painted on a grid, one piece a square (green, a wall,
-// sand, water, a slope, a bumper, the tee, the cup), and turned here into the same kind of hole the
+// sand, water, a slope, a bumper, high ground, a tunnel's mouth and its molehill, the tee, the
+// cup), and turned here into the same kind of hole the
 // built-in courses are made of (see `hole` in @journey-to-code/games). The game knows a course by
 // its id in COURSES; `registerCourse` puts one there, wherever the game runs: the server, its bot
 // worker threads, and a browser playing a practice game.
 //
 // A course is data only, checked here whatever a page sent: names are trimmed and capped, a square
 // is one of the pieces, and a hole must have one tee and one cup with a way between them that
-// doesn't need to cross water or a wall. So every hole that saves is a hole that can be played, by
+// doesn't need to cross water or a wall, or to climb a step. So every hole that saves is a hole that can be played, by
 // people and by the computer players.
 import { COURSES, hole, type GolfCourse, type GolfHole } from "@journey-to-code/games";
 import type { Point } from "@journey-to-code/physics";
@@ -23,6 +24,13 @@ export const PIECES = {
   "<": { name: "Slope left", hint: "Runs downhill to the left" },
   ">": { name: "Slope right", hint: "Runs downhill to the right" },
   o: { name: "Bumper", hint: "A toadstool that kicks the ball away" },
+  h: { name: "High ground", hint: "A raised terrace: a ball rolls off it anywhere, but only gets up it by a slope that runs down away from it" },
+  "1": { name: "Tunnel 1", hint: "A mole's hole: a ball that rolls in pops up at molehill 1" },
+  "2": { name: "Tunnel 2", hint: "A mole's hole: a ball that rolls in pops up at molehill 2" },
+  "3": { name: "Tunnel 3", hint: "A mole's hole: a ball that rolls in pops up at molehill 3" },
+  x: { name: "Molehill 1", hint: "Where a ball that went down tunnel 1 comes up" },
+  y: { name: "Molehill 2", hint: "Where a ball that went down tunnel 2 comes up" },
+  z: { name: "Molehill 3", hint: "Where a ball that went down tunnel 3 comes up" },
   t: { name: "Tee", hint: "Where every ball starts" },
   c: { name: "Cup", hint: "The hole to putt into" },
 } as const;
@@ -53,8 +61,24 @@ export const LIMITS = { cols: [5, 13], rows: [5, 17], holes: [1, 9], par: [1, 9]
 /** How hard a slope pulls (units/s²), as on the built-in holes. */
 const SLOPE_PULL = 7000;
 const PULLS: Record<string, Point> = { "^": [0, -SLOPE_PULL], v: [0, SLOPE_PULL], "<": [-SLOPE_PULL, 0], ">": [SLOPE_PULL, 0] };
-/** Pieces a ball can roll over (water takes it; walls and bumpers stop it). */
-const ROLLS = new Set(["g", "s", "^", "v", "<", ">", "t", "c"]);
+/** Pieces a ball can roll over (water takes it; walls and bumpers stop it; a tunnel's mouth swallows it). */
+const ROLLS = new Set(["g", "s", "^", "v", "<", ">", "t", "c", "h", "x", "y", "z"]);
+/** How far high ground stands above the rest of the course. */
+const HIGH = 450;
+/** The tunnels: each mouth and the molehill it comes up at. */
+export const TUNNELS = [
+  ["1", "x"],
+  ["2", "y"],
+  ["3", "z"],
+] as const;
+const MOLEHILL_OF: Record<string, string> = Object.fromEntries(TUNNELS);
+/** The four ways from a square, and which slope runs downhill each way. */
+const WAYS = [
+  [0, -1, "^"],
+  [1, 0, ">"],
+  [0, 1, "v"],
+  [-1, 0, "<"],
+] as const;
 
 const text = (value: unknown, max: number, or: string) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max) || or;
 const whole = (value: unknown, [min, max]: readonly [number, number], or: number) => {
@@ -103,6 +127,33 @@ const find = (h: CustomHole, piece: string) => {
   return out;
 };
 
+/** Can a ball roll from one square onto the next one along (`dc`, `dr`)? Up onto high ground only by a ramp. */
+function canStep(h: CustomHole, c: number, r: number, dc: number, dr: number): boolean {
+  const here = at(h, c, r);
+  const there = at(h, c + dc, r + dr);
+  if (there !== "h" || here === "h") return true;
+  // Climbing: only from a slope that runs downhill away from the high ground, back the way it came.
+  const away = WAYS.find(([x, y]) => x === -dc && y === -dr)![2];
+  return here === away;
+}
+
+/** Where a ball on a square can go next: the squares round it it can roll onto, or, down a tunnel, its molehill. */
+function nextSquares(h: CustomHole, c: number, r: number): [number, number][] {
+  const out: [number, number][] = [];
+  for (const [dc, dr] of WAYS) {
+    const nc = c + dc;
+    const nr = r + dr;
+    const there = at(h, nc, nr);
+    if (MOLEHILL_OF[there] && canStep(h, c, r, dc, dr)) {
+      const [exit] = find(h, MOLEHILL_OF[there]!);
+      if (exit) out.push(exit);
+      continue;
+    }
+    if (ROLLS.has(there) && canStep(h, c, r, dc, dr)) out.push([nc, nr]);
+  }
+  return out;
+}
+
 /** The shortest way from the tee to the cup over squares a ball can roll on, in squares, and its turns. Null: there's none. */
 export function routeOf(h: CustomHole): { squares: number; turns: number } | null {
   const [tee] = find(h, "t");
@@ -114,10 +165,8 @@ export function routeOf(h: CustomHole): { squares: number; turns: number } | nul
   while (queue.length) {
     const [c, r] = queue.shift()!;
     if (c === cup[0] && r === cup[1]) break;
-    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
-      const nc = c + dc;
-      const nr = r + dr;
-      if (!ROLLS.has(at(h, nc, nr)) || from.has(key(nc, nr))) continue;
+    for (const [nc, nr] of nextSquares(h, c, r)) {
+      if (from.has(key(nc, nr))) continue;
       from.set(key(nc, nr), key(c, r));
       queue.push([nc, nr]);
     }
@@ -151,7 +200,18 @@ export function holeProblems(h: CustomHole): string[] {
   const cups = find(h, "c").length;
   if (tees !== 1) problems.push(tees ? `${h.name} has ${tees} tees: it needs exactly one.` : `${h.name} needs a tee.`);
   if (cups !== 1) problems.push(cups ? `${h.name} has ${cups} cups: it needs exactly one.` : `${h.name} needs a cup.`);
-  if (tees === 1 && cups === 1 && !routeOf(h)) problems.push(`On ${h.name} there's no way from the tee to the cup without crossing water, a wall or a bumper.`);
+  for (const [mouth, hill] of TUNNELS) {
+    const mouths = find(h, mouth).length;
+    const hills = find(h, hill).length;
+    const n = mouth;
+    if (mouths > 1) problems.push(`${h.name} has ${mouths} tunnel ${n} holes: a tunnel has one.`);
+    if (hills > 1) problems.push(`${h.name} has ${hills} molehill ${n}s: a tunnel comes up at one.`);
+    if (mouths && !hills) problems.push(`On ${h.name}, tunnel ${n} needs molehill ${n}, where the ball comes up.`);
+    if (hills && !mouths) problems.push(`On ${h.name}, molehill ${n} needs tunnel ${n}, the hole a ball goes down.`);
+    const [exit] = find(h, hill);
+    if (exit && !exitWay(h, ...exit)) problems.push(`On ${h.name}, molehill ${n} needs green beside it for the ball to roll out onto.`);
+  }
+  if (tees === 1 && cups === 1 && !routeOf(h)) problems.push(`On ${h.name} there's no way from the tee to the cup without crossing water, a wall or a bumper, or climbing up high ground where there's no slope up.`);
   return problems;
 }
 
@@ -179,6 +239,8 @@ function rectangles(h: CustomHole, on: (piece: string) => boolean): [number, num
   return out;
 }
 
+/** A way across the grid as a shot's angle: hundredths of a degree, 0 to the right, 9000 down the screen. */
+const angleOf = ([dc, dr]: readonly [number, number]) => (dc === 1 ? 0 : dr === 1 ? 9000 : dc === -1 ? 18000 : 27000);
 const corner = (c: number, r: number): Point => [MARGIN + c * CELL, MARGIN + r * CELL];
 const centre = (c: number, r: number): Point => [MARGIN + c * CELL + CELL / 2, MARGIN + r * CELL + CELL / 2];
 const box = ([c, r, w, d]: [number, number, number, number]): Point[] => [corner(c, r), corner(c + w, r), corner(c + w, r + d), corner(c, r + d)];
@@ -253,6 +315,60 @@ function shutIn(h: CustomHole): Set<number> {
   return shut;
 }
 
+/**
+ * Which way a ball comes out of a molehill: onto a square beside it that it can roll on (not down
+ * another tunnel), towards the cup if there's a choice. Null: it's walled in.
+ */
+function exitWay(h: CustomHole, c: number, r: number): readonly [number, number] | null {
+  const [cup] = find(h, "c");
+  const ways = WAYS.filter(([dc, dr]) => ROLLS.has(at(h, c + dc, r + dr)) && canStep(h, c, r, dc, dr));
+  if (!ways.length) return null;
+  const toward = ([dc, dr]: readonly [number, number, string]) => (cup ? (cup[0] - c) * dc + (cup[1] - r) * dr : 0);
+  const best = [...ways].sort((a, b) => toward(b) - toward(a))[0]!;
+  return [best[0], best[1]];
+}
+
+/**
+ * The steps down from high ground: the sides where a square of it meets a lower square the ball can
+ * be on (not a slope up to it), joined into straight runs. Each runs with the high ground on its
+ * left, which is how a ledge is told which way is down.
+ */
+function ledgesOf(h: CustomHole): Point[][] {
+  const low = (c: number, r: number, dc: number, dr: number) => {
+    const p = at(h, c + dc, r + dr);
+    // A slope that runs down away from the high ground is the way up: no step there.
+    return at(h, c, r) === "h" && p !== "h" && p !== "." && p !== "#" && !canStep(h, c + dc, r + dr, -dc, -dr);
+  };
+  const runs: Point[][] = [];
+  // Across: a side along the bottom (high ground above it) runs left to right; along the top, right to left.
+  for (const [dr, flip] of [[1, false], [-1, true]] as const)
+    for (let r = 0; r < h.rows; r++) {
+      const y = dr === 1 ? r + 1 : r;
+      for (let c = 0; c < h.cols; c++) {
+        if (!low(c, r, 0, dr)) continue;
+        let e = c;
+        while (e + 1 < h.cols && low(e + 1, r, 0, dr)) e++;
+        const run: Point[] = [corner(c, y), corner(e + 1, y)];
+        runs.push(flip ? run.reverse() : run);
+        c = e;
+      }
+    }
+  // Down: a side on the right (high ground to its left) runs bottom to top; on the left, top to bottom.
+  for (const [dc, flip] of [[1, true], [-1, false]] as const)
+    for (let c = 0; c < h.cols; c++) {
+      const x = dc === 1 ? c + 1 : c;
+      for (let r = 0; r < h.rows; r++) {
+        if (!low(c, r, dc, 0)) continue;
+        let e = r;
+        while (e + 1 < h.rows && low(c, e + 1, dc, 0)) e++;
+        const run: Point[] = [corner(x, r), corner(x, e + 1)];
+        runs.push(flip ? run.reverse() : run);
+        r = e;
+      }
+    }
+  return runs;
+}
+
 const TIPS = [
   "Take a look at the whole hole before the first putt.",
   "A soft putt that stops near the cup beats a hard one that skips over it.",
@@ -284,6 +400,16 @@ export function buildHole(h: CustomHole, id: string): GolfHole {
     water: solo("w").map((points) => ({ points })),
     slopes: (["^", "v", "<", ">"] as const).flatMap((d) => solo(d).map((points) => ({ shape: { points }, pull: PULLS[d]! }))),
     bumpers: find(h, "o").map(([c, r]) => ({ at: centre(c, r), r: 340 })),
+    decks: solo("h").map((points) => ({ points, level: HIGH })),
+    ledges: ledgesOf(h).map((points) => ({ points, drop: HIGH, material: "stone" as const })),
+    tunnels: TUNNELS.flatMap(([mouth, hill]) => {
+      const [from] = find(h, mouth);
+      const [to] = find(h, hill);
+      const way = to && exitWay(h, ...to);
+      if (!from || !to || !way) return [];
+      // Out from the molehill's middle, rolling gently onto the square beside it.
+      return [{ kind: "burrow" as const, from: centre(...from), r: 380, maxSpeed: 14000, to: centre(...to), angle: angleOf(way), speed: 2400, ticks: 50, enter: 9000 }];
+    }),
     // A little garden round the course, the way the built-in holes have one.
     decor: [
       { kind: "flowers", x: MARGIN / 2, y: MARGIN / 2, tone: "pink" },
