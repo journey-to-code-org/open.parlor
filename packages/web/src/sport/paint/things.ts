@@ -987,6 +987,22 @@ export function tunnelProps(st: Stage, tunnel: Tunnel, look: SportTunnel, over: 
 
 // ---- Bumpers ---------------------------------------------------------------------------------------
 
+/** A bowling pin: a white body, a neck with two red stripes and a round head, standing on its spot. */
+export function drawPin(st: Stage, x: number, y: number, z: number, r: number, height: number) {
+  const { ctx } = st;
+  const [gx, gy] = st.at(x + SHADOW[0] * height * 0.5, y + SHADOW[1] * height * 0.5, z);
+  ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+  ctx.beginPath();
+  ctx.ellipse(gx, gy, r * 1.15 * st.s, Math.max(0.01, r * 1.15 * st.s * st.k), 0, 0, Math.PI * 2);
+  ctx.fill();
+  const cream = "#fbf8ee";
+  drum(st, x, y, r * 0.86, z, z + height * 0.36, cream, null, { r1: r, depth: 0.3 });
+  drum(st, x, y, r, z + height * 0.36, z + height * 0.74, cream, null, { r1: r * 0.4, depth: 0.3 });
+  drum(st, x, y, r * 0.5, z + height * 0.6, z + height * 0.65, "#c4281d", null, { r1: r * 0.46, depth: 0.2 });
+  drum(st, x, y, r * 0.44, z + height * 0.68, z + height * 0.72, "#c4281d", null, { r1: r * 0.41, depth: 0.2 });
+  mound(st, x, y, z + height * 0.74, r * 0.62, r * 0.56, cream, 0.44, "rgba(60, 50, 40, 0.5)");
+}
+
 /** A toadstool: a pale stalk and a red cap with spots, squashed a little when it has just been hit. */
 export function drawToadstool(st: Stage, x: number, y: number, z: number, r: number, tone: SportTone, height: number, squash = 0) {
   const { ctx } = st;

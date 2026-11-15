@@ -103,8 +103,11 @@ const EMPTY_BOARD: MiniBoard = { cols: 3, cells: Array(9).fill(null) };
 
 /** A table sport's tile shows a little table from above: its surface, a hole, a ball or two (in a 100 × 100 box). */
 type MiniTable = { surface: "green" | "felt" | "lane"; cup?: [x: number, y: number]; balls: { x: number; y: number; tone: string }[] };
+/** A bowling lane: six pins in a triangle at the far end, and a ball on its way. */
+const PINS = [[50, 14], [43, 22], [57, 22], [36, 30], [50, 30], [64, 30]].map(([x, y]) => ({ x: x!, y: y!, tone: "white" }));
 const TABLES: Record<string, MiniTable> = {
   // Two balls out on the green: they knock into each other.
+  bowling: { surface: "lane", balls: [...PINS, { x: 50, y: 80, tone: "red" }] },
   minigolf: { surface: "green", cup: [66, 32], balls: [{ x: 36, y: 72, tone: "white" }, { x: 70, y: 62, tone: "red" }] },
 };
 const EMPTY_TABLE: MiniTable = { surface: "green", balls: [] };

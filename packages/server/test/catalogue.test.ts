@@ -256,7 +256,7 @@ describe("watching", () => {
     await host("/moderation/games", { off: [] });
 
     // A game this parlor doesn't have (a table left from a version that had it) isn't shown as Spades.
-    await app.rooms.sync.write("rooms", spades.id, { info: { game: "bowling", rules: "Ten pins" } });
+    await app.rooms.sync.write("rooms", spades.id, { info: { game: "curling", rules: "Eight ends" } });
     expect(await listed()).toEqual([palace.id]);
 
     // Nobody has moved at the Palace table for a quarter of an hour: they've gone.

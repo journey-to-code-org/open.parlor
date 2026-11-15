@@ -21,7 +21,7 @@ import { inFront } from "./paint/order";
 import type { Brush, Ctx } from "./paint/geometry";
 import { ball as sphere, SHADOW, type Stage } from "./paint/solids";
 import { inPolygon } from "./paint/terrain";
-import { CUP_DEPTH, drawToadstool, TONES, type Prop } from "./paint/things";
+import { CUP_DEPTH, drawPin, drawToadstool, TONES, type Prop } from "./paint/things";
 import { depthOf, toCamera, type Projection } from "./projection";
 
 /** One disc to draw: a body of the world or a ghost, wherever it is this frame. */
@@ -564,7 +564,7 @@ export function drawScene(ctx: Ctx, width: number, height: number, dpr: number, 
       const long = gy - ty;
       let nearest = Infinity;
       for (const t of things) {
-        if (t.d.look?.kind === "toadstool") continue;
+        if (t.d.look?.kind === "toadstool" || t.d.look?.kind === "pin") continue;
         const [bx, by] = st.at(t.x, t.y, t.z + t.d.r);
         // How far the ball is, on the screen, from the pole and from the pennant.
         const pole = Math.hypot(bx - gx, by - Math.min(gy, Math.max(ty, by)));
@@ -577,6 +577,14 @@ export function drawScene(ctx: Ctx, width: number, height: number, dpr: number, 
       continue;
     }
     const d = item.d;
+    if (d.look?.kind === "pin") {
+      const high = d.look.height ?? 3800;
+      drawPin(st, x, y, z, d.r, high);
+      const [gx, gy] = st.at(x, y, z);
+      const reach = d.r * st.s * 1.25;
+      cover(x, y, [gx - reach, gy - high * st.r * st.s - reach, gx + reach * 2, gy + reach * 1.6]);
+      continue;
+    }
     if (d.look?.kind === "toadstool") {
       const high = d.look.height ?? 450;
       drawToadstool(st, x, y, z, d.r, d.look.tone, high, d.struck ?? 0);
