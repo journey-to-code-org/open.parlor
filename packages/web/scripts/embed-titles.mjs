@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const dist = join(dirname(fileURLToPath(import.meta.url)), "../dist/embed");
 for (const [file, from, to] of [
   ["wordpress/cardroom/cardroom.php", "'title' => 'Card Room'", "'title' => 'open.parlor'"],
+  ["wordpress/cardroom/editor.js", '"title": "Card Room"', '"title": "open.parlor"'],
   ["shopify/blocks/card-room.liquid", '"name": "Card Room"', '"name": "open.parlor"'],
 ]) {
   const path = join(dist, file);
