@@ -1,8 +1,12 @@
+// The parlor's side of "Report a problem" and "Ask for a game". How an issue is built, the limits and
+// the screenshots are @journey-to-code/relay's, and tested there; this is what the parlor adds: its
+// names, a table described without saying who is at it, players told apart by their cookie, and
+// everything kept in the sync log where the pull route can't reach it.
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCardRoom } from "../src/app.js";
+import { DEFAULT_REPO, type BugOptions } from "../src/bugs.js";
 import { playerRef } from "../src/moderation.js";
-import { plain, SHOT_LIMIT, type BugOptions } from "../src/bugs.js";
 
 const BASE = "https://cards.test";
 let open: ReturnType<typeof createCardRoom>[] = [];
@@ -16,11 +20,11 @@ const jpeg = (size = 64) => `data:image/jpeg;base64,${Buffer.concat([Buffer.from
 
 function setup(bugs: BugOptions = {}) {
   /** What GitHub was asked, newest last. */
-  const asked: { url: string; headers: Record<string, string>; body: { title: string; body: string; labels: string[] } }[] = [];
-  let github: () => Response = () => new Response(JSON.stringify({ number: 40 + asked.length, html_url: `https://github.com/o/r/issues/${40 + asked.length}` }), { status: 201 });
+  const asked: { url: string; method: string; headers: Record<string, string>; body: { title: string; body: string; labels: string[] } }[] = [];
   const fetch = (async (url: string, init: RequestInit) => {
-    asked.push({ url, headers: init.headers as Record<string, string>, body: JSON.parse(String(init.body)) });
-    return github();
+    asked.push({ url, method: String(init.method), headers: init.headers as Record<string, string>, body: init.body ? JSON.parse(String(init.body)) : null });
+    if (init.method === "GET") return new Response("[]");
+    return new Response(JSON.stringify({ number: 40 + asked.length, html_url: `https://github.com/o/r/issues/${40 + asked.length}` }), { status: 201 });
   }) as unknown as typeof globalThis.fetch;
   const app = createCardRoom({ log: memoryLog({ keep: "latest" }), botDelay: 5, talk: false, adminToken: "a-long-admin-token", bugs: { token: "ghp_secret", repo: "o/r", version: "abc1234", fetch, ...bugs } });
   open.push(app);
@@ -34,7 +38,7 @@ function setup(bugs: BugOptions = {}) {
       return { status: r.status, type: r.headers.get("content-type"), body: r.headers.get("content-type") === "application/json" ? await r.json() : Buffer.from(await r.arrayBuffer()) };
     };
   };
-  return { app, phone, asked, failGitHub: (status = 500) => (github = () => new Response("no", { status })) };
+  return { app, phone, asked };
 }
 
 describe("reporting a problem", () => {
@@ -46,72 +50,22 @@ describe("reporting a problem", () => {
     expect(asked).toEqual([]);
   });
 
-  it("opens an issue from a player's words, and tells them its number", async () => {
+  it("files an issue in the parlor's own words", async () => {
     const { phone, asked } = setup();
-    const me = phone();
-    expect((await me("/bugs/config")).body).toEqual({ enabled: true, tidy: false });
-    const sent = await me("/bugs", { description: "The cards overlap on my phone.\nI couldn't tap the ace.", screen: "table", game: "spades", built: "2026-11-14T09:00Z" });
+    const sent = await phone()("/bugs", { description: "The cards overlap on my phone.", screen: "table", scope: "spades", built: "2026-11-14T09:00Z" });
     expect(sent).toMatchObject({ status: 201, body: { ok: true, number: 41, url: "https://github.com/o/r/issues/41" } });
-
-    const [issue] = asked;
-    expect(issue!.url).toBe("https://api.github.com/repos/o/r/issues");
-    expect(issue!.headers.authorization).toBe("Bearer ghp_secret");
-    expect(issue!.body.title).toBe("The cards overlap on my phone.");
-    expect(issue!.body.labels).toEqual(["bug", "player report"]);
-    expect(issue!.body.body).toContain("> The cards overlap on my phone.\n> I couldn't tap the ace.");
-    expect(issue!.body.body).toContain("| Where | table (spades) |");
-    expect(issue!.body.body).toContain("`abc1234`");
-    expect(issue!.body.body).toContain("No screenshot.");
-    expect(issue!.body.body).toContain("chose not to share browser details");
-    // The token is the server's alone.
-    expect(JSON.stringify(sent.body)).not.toContain("ghp_secret");
+    const issue = asked[0]!.body;
+    expect(issue.labels).toEqual(["bug", "player report"]);
+    expect(issue.body).toContain("| Where | table (spades) |");
+    expect(issue.body).toContain("Sent from inside open.parlor with “Report a problem”.");
+    expect(issue.body).toContain("The player chose not to share browser details.");
   });
 
-  it("needs no description at all", async () => {
-    const { phone, asked } = setup();
-    expect((await phone()("/bugs", { screen: "lobby" })).status).toBe(201);
-    expect(asked[0]!.body.title).toBe("Problem reported on lobby");
-    expect(asked[0]!.body.body).toContain("didn't add a description");
-  });
-
-  it("can't be used to mention people, link issues or break out of the report", async () => {
-    const { phone, asked } = setup();
-    await phone()("/bugs", {
-      description: "@octocat look at #1 <img src=x> [click](http://evil.test) ```",
-      errors: ["TypeError: x is undefined\n```\n@octocat ![](http://evil.test/a.png)"],
-      browser: { userAgent: "Mozilla ``` @octocat", viewport: "390×844", sneaky: "ignored" },
-    });
-    const { title, body } = asked[0]!.body;
-    expect(title).not.toMatch(/@octocat/);
-    const quoted = body.split("\n").find((l) => l.startsWith("> "))!;
-    expect(quoted).toBe("> @​octocat look at \\#1 \\<img src=x\\> \\[click\\](http://evil.test) \\`\\`\\`");
-    // What the page logged sits in code blocks that its own backticks can't close.
-    expect(body).toContain("````\nTypeError: x is undefined\n```\n@octocat ![](http://evil.test/a.png)\n````");
-    expect(body).toContain("````\nBrowser: Mozilla ``` @octocat\nWindow: 390×844\n````");
-    expect(body).not.toContain("ignored");
-    expect(plain("a_b*c")).toBe("a\\_b\\*c");
-  });
-
-  it("keeps an agreed screenshot and links the issue to it", async () => {
-    const { phone, asked } = setup();
-    const me = phone();
-    const picture = jpeg();
-    expect((await me("/bugs", { description: "Look", screenshot: picture })).status).toBe(201);
-    const link = asked[0]!.body.body.match(/!\[What the player saw\]\((https:\/\/cards\.test\/bugs\/shots\/[a-z0-9]{20}\.jpg)\)/)?.[1];
-    expect(link).toBeTruthy();
-    const shown = await me(link!.replace(BASE, ""));
-    expect(shown).toMatchObject({ status: 200, type: "image/jpeg" });
-    expect((shown.body as Buffer).toString("base64")).toBe(picture.split(",")[1]);
-    expect((await me("/bugs/shots/aaaaaaaaaaaaaaaaaaaa.jpg")).status).toBe(404);
-
-    // Only a JPEG that fits is taken; anything else is refused before GitHub hears of it.
-    expect((await me("/bugs", { screenshot: "data:image/svg+xml;base64,PHN2Zz4=" })).status).toBe(400);
-    expect((await me("/bugs", { screenshot: `data:image/jpeg;base64,${Buffer.from("<html>").toString("base64")}` })).status).toBe(400);
-    expect((await me("/bugs", { screenshot: jpeg(SHOT_LIMIT) })).status).toBe(400);
-    expect(asked).toHaveLength(1);
-    // Nobody can pull the pictures (or which table a report came from) through the sync log.
-    const pulled = (await me("/_zb/sync/pull?since=0")).body.changes.map((c: { collection: string }) => c.collection);
-    expect(pulled).not.toContain("bugs");
+  it("files into this repository unless told otherwise", async () => {
+    expect(DEFAULT_REPO).toBe("journey-to-code-org/open.parlor");
+    const { phone, asked } = setup({ repo: "not a repo" });
+    await phone()("/bugs", { description: "Hello" });
+    expect(asked[0]!.url).toBe(`https://api.github.com/repos/${DEFAULT_REPO}/issues`);
   });
 
   it("describes the table without saying who is at it, or how to get in", async () => {
@@ -121,8 +75,9 @@ describe("reporting a problem", () => {
     await me("/rooms/" + id + "/sit", { seat: 0, name: "Grammi" });
     await phone()("/rooms/" + id + "/sit", { seat: 1, name: "Pappy" });
     await me("/rooms/" + id + "/start", {});
-    const sent = await me("/bugs", { description: "Stuck", screen: "table", table: id });
+    const sent = await me("/bugs", { description: "Stuck", screen: "table", ref: id });
     const { body } = asked[0]!.body;
+    expect(body).toContain("<summary>The table</summary>");
     expect(body).toContain("Game: Gin Rummy");
     expect(body).toContain("Seats: 2 (2 people, 0 computer, 0 empty)");
     expect(body).toMatch(/Dealt: yes, \d+ moves? in/);
@@ -131,147 +86,89 @@ describe("reporting a problem", () => {
     expect(body).not.toContain(id);
     // Whoever runs the server can still find the table.
     const kept = (await app.rooms.sync.documents()).get("bugs", "reports");
-    expect(kept).toMatchObject({ [`n${sent.body.number}`]: { table: id } });
+    expect(kept).toMatchObject({ [`n${sent.body.number}`]: { ref: id } });
   });
 
-  it("says so when GitHub can't be reached, and keeps nothing", async () => {
-    const { app, phone, failGitHub } = setup();
-    failGitHub(401);
-    const sent = await phone()("/bugs", { description: "Oh no", screenshot: jpeg() });
-    expect(sent).toMatchObject({ status: 502, body: { error: expect.stringContaining("couldn't be sent") } });
-    const shots = (await app.rooms.sync.documents()).get("bugs", "shots") ?? {};
-    expect(Object.values(shots).filter(Boolean)).toEqual([]);
+  it("says nothing about a table that isn't there", async () => {
+    const { phone, asked } = setup();
+    await phone()("/bugs", { description: "Stuck", ref: "no-such-table" });
+    expect(asked[0]!.body.body).not.toContain("<summary>The table</summary>");
   });
 
-  it("takes only a few from one browser, and a day's worth from everyone", async () => {
-    let at = 1_000_000;
-    const { phone, asked } = setup({ each: 2, daily: 3, now: () => at });
+  it("keeps an agreed screenshot in the sync log, where nobody can pull it", async () => {
+    const { phone, asked } = setup();
     const me = phone();
-    const { id } = (await me("/rooms", { options: { game: "gin" } })).body; // gives this phone its player cookie
-    expect(id).toBeTruthy();
+    const picture = jpeg();
+    expect((await me("/bugs", { description: "Look", screenshot: picture })).status).toBe(201);
+    const link = asked[0]!.body.body.match(/!\[What the player saw\]\((https:\/\/cards\.test\/bugs\/shots\/[a-z0-9]{20}\.jpg)\)/)?.[1];
+    expect(link).toBeTruthy();
+    const shown = await me(link!.replace(BASE, ""));
+    expect(shown).toMatchObject({ status: 200, type: "image/jpeg" });
+    expect((shown.body as Buffer).toString("base64")).toBe(picture.split(",")[1]);
+    const pulled = (await me("/_zb/sync/pull?since=0")).body.changes.map((c: { collection: string }) => c.collection);
+    expect(pulled).not.toContain("bugs");
+  });
+
+  it("takes only a few from one player, told apart by their cookie", async () => {
+    const { phone, asked } = setup({ each: 2 });
+    const me = phone();
+    expect((await me("/lobby/join", { game: "gin", name: "Anna" })).status).toBe(201); // gives this phone its player cookie
     expect((await me("/bugs", { description: "one" })).status).toBe(201);
     expect((await me("/bugs", { description: "two" })).status).toBe(201);
     expect(await me("/bugs", { description: "three" })).toMatchObject({ status: 429, body: { error: expect.stringContaining("ten minutes") } });
-    at += 11 * 60_000;
-    expect((await me("/bugs", { description: "three" })).status).toBe(201);
-    at += 11 * 60_000;
-    expect(await me("/bugs", { description: "four" })).toMatchObject({ status: 429, body: { error: expect.stringContaining("tomorrow") } });
+    // Another phone, at the same address, has its own few.
+    const other = phone();
+    expect((await other("/lobby/join", { game: "gin", name: "Ben" })).status).toBeLessThan(300);
+    expect((await other("/bugs", { description: "three" })).status).toBe(201);
     expect(asked).toHaveLength(3);
   });
 
   it("isn't for a blocked player", async () => {
-    const { phone, asked } = setup();
-    const { phone: _phone, app } = { phone, app: open.at(-1)! };
+    const { app, asked } = setup();
     let cookie = "";
     const pest = async (path: string, body: unknown) => {
       const r = (await app.fetch(new Request(BASE + path, { method: "POST", headers: { "content-type": "application/json", cookie }, body: JSON.stringify(body) })))!;
       cookie = r.headers.get("set-cookie")?.split(";")[0] ?? cookie;
       return { status: r.status };
     };
-    const { status } = await pest("/lobby/join", { game: "gin", name: "Pest" });
-    expect(status).toBe(201);
+    expect((await pest("/lobby/join", { game: "gin", name: "Pest" })).status).toBe(201);
     // The parlor's host blocks them in the admin app.
     const blocked = await app.fetch(
       new Request(`${BASE}/moderation/players/${playerRef(cookie.split("=")[1]!)}/block`, { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer a-long-admin-token" }, body: JSON.stringify({ reason: "spam" }) }),
     );
     expect(blocked!.status).toBe(200);
     expect((await pest("/bugs", { description: "spam" })).status).toBe(403);
+    expect((await pest("/bugs/request", { name: "Spam" })).status).toBe(403);
     expect(asked).toEqual([]);
   });
 });
 
 describe("asking for a game", () => {
-  /** A GitHub that remembers the issues it was given. */
-  function setup(bugs: BugOptions = {}) {
-    const issues: { number: number; title: string; body: string; labels: string[]; html_url: string }[] = [];
-    const comments: { issue: number; body: string }[] = [];
-    const fetch = (async (url: string, init: RequestInit) => {
-      const path = url.replace("https://api.github.com/repos/o/r", "");
-      const sent = init.body ? JSON.parse(String(init.body)) : null;
-      if (init.method === "GET" && path.startsWith("/issues?")) {
-        expect(path).toContain("labels=game%20request");
-        return new Response(JSON.stringify(issues.filter((i) => i.labels.includes("game request"))));
-      }
-      const comment = path.match(/^\/issues\/(\d+)\/comments$/);
-      if (comment) return comments.push({ issue: Number(comment[1]), body: sent.body }), new Response(JSON.stringify({ id: comments.length }), { status: 201 });
-      const issue = { number: 7 + issues.length, html_url: `https://github.com/o/r/issues/${7 + issues.length}`, ...sent };
-      issues.push(issue);
-      return new Response(JSON.stringify(issue), { status: 201 });
-    }) as unknown as typeof globalThis.fetch;
-    const app = createCardRoom({ log: memoryLog({ keep: "latest" }), botDelay: 5, talk: false, bugs: { token: "ghp_secret", repo: "o/r", fetch, ...bugs } });
-    open.push(app);
-    const ask = async (body: unknown) => {
-      const r = (await app.fetch(new Request(BASE + "/bugs/game", { method: "POST", headers: { "content-type": "application/json", "x-forwarded-for": `10.0.0.${issues.length + comments.length}` }, body: JSON.stringify(body) })))!;
-      return { status: r.status, body: await r.json() };
-    };
-    return { ask, issues, comments };
-  }
-
-  it("opens an issue for a game nobody has asked for", async () => {
-    const { ask, issues } = setup();
-    expect(await ask({ game: "Mah-Jongg", note: "The way @grandma plays it, with jokers" })).toEqual({ status: 201, body: { ok: true, number: 7, url: "https://github.com/o/r/issues/7", again: false } });
-    expect(issues[0]).toMatchObject({ title: "Game request: Mah-Jongg", labels: ["enhancement", "game request"] });
-    expect(issues[0]!.body).toContain("A player asked for **Mah-Jongg**.");
-    expect(issues[0]!.body).toContain("> The way @\u200bgrandma plays it, with jokers");
-  });
-
-  it("adds a voice to the open request for the same game", async () => {
-    const { ask, issues, comments } = setup();
-    await ask({ game: "Mah-Jongg" });
-    expect(await ask({ game: "  mah jongg! ", note: "Yes please" })).toMatchObject({ status: 201, body: { number: 7, again: true } });
-    await ask({ game: "Backgammon" });
-    expect(issues.map((i) => i.title)).toEqual(["Game request: Mah-Jongg", "Game request: Backgammon"]);
-    expect(comments).toEqual([{ issue: 7, body: expect.stringMatching(/^Another player asked for this\.\n\n> Yes please/) }]);
-  });
-
-  it("needs a game's name, a token, and not too many at once", async () => {
-    const { ask, issues } = setup({ each: 1 });
-    expect((await ask({ game: " ! " })).status).toBe(400);
-    expect((await setup({ token: "" }).ask({ game: "Chess" })).status).toBe(503);
-    expect(issues).toEqual([]);
-    const one = setup({ each: 1, daily: 1 });
-    expect((await one.ask({ game: "Chess" })).status).toBe(201);
-    expect(await one.ask({ game: "Go" })).toMatchObject({ status: 429, body: { error: expect.stringContaining("tomorrow") } });
+  it("files a game request, labelled the way the parlor's issues already are", async () => {
+    const { phone, asked } = setup();
+    const sent = await phone()("/bugs/request", { name: "Mah-Jongg", note: "The way Grammi plays it" });
+    expect(sent).toMatchObject({ status: 201, body: { ok: true, again: false } });
+    const [look, file] = asked;
+    expect(look!.url).toContain("labels=game%20request");
+    expect(file!.body).toMatchObject({ title: "Game request: Mah-Jongg", labels: ["enhancement", "game request"] });
+    expect(file!.body.body).toContain("A player asked for **Mah-Jongg**.");
+    expect(file!.body.body).toContain("with “Ask for a game”");
   });
 });
 
 describe("tidying before sending", () => {
-  const tidied = { kind: "bug" as const, title: "Palace: can draw before playing on a 10", report: "- After a 10 or a 2, the player draws before playing on top.\n- Toggles look broken." };
-  const tidy = async (input: { kind: string }) => (input.kind === "bug" ? tidied : { kind: "game" as const, game: "Mahjong", note: "Hong Kong style, four players." });
+  const tidy = async (input: { kind: string }) => (input.kind === "bug" ? { kind: "bug" as const, title: "Palace: draws early", report: "- One." } : { kind: "request" as const, name: "Mahjong", note: "Hong Kong style." });
 
-  it("tidies a report for the player to look over, and sends nothing", async () => {
+  it("is on when the parlor has a way to tidy, and answers in the relay's shapes", async () => {
     const { phone, asked } = setup({ tidy });
     const me = phone();
     expect((await me("/bugs/config")).body).toEqual({ enabled: true, tidy: true });
-    const answer = await me("/bugs/tidy", { kind: "bug", description: "in palace you can draw after a 10, and the toggles are broken", screen: "table", game: "palace" });
-    expect(answer).toMatchObject({ status: 200, body: tidied });
-    expect((await me("/bugs/tidy", { kind: "game", game: "mah jong", note: "hk style" })).body).toMatchObject({ game: "Mahjong" });
+    expect((await me("/bugs/tidy", { kind: "bug", description: "in palace you can draw after a 10", screen: "table", scope: "palace" })).body).toEqual({ kind: "bug", title: "Palace: draws early", report: "- One." });
+    expect((await me("/bugs/tidy", { kind: "request", name: "mah jong" })).body).toMatchObject({ kind: "request", name: "Mahjong" });
     expect(asked).toEqual([]);
-    expect((await me("/bugs/tidy", { kind: "bug", description: "broken" })).status).toBe(400);
   });
 
-  it("is off without an AI key, says so when it fails, and takes only so many", async () => {
+  it("is off without one", async () => {
     expect((await setup().phone()("/bugs/tidy", { kind: "bug", description: "The cards overlap on my phone." })).status).toBe(503);
-    const failing = setup({ tidy: async () => null }).phone();
-    expect(await failing("/bugs/tidy", { kind: "bug", description: "The cards overlap on my phone." })).toMatchObject({ status: 502, body: { error: expect.stringContaining("own words") } });
-    const busy = setup({ tidy, tidies: 1 }).phone();
-    expect((await busy("/bugs/tidy", { kind: "bug", description: "The cards overlap on my phone." })).status).toBe(200);
-    expect((await busy("/bugs/tidy", { kind: "bug", description: "The cards overlap on my phone." })).status).toBe(429);
-  });
-
-  it("sends the player's chosen title and words, with what they first wrote folded away", async () => {
-    const { phone, asked } = setup({ tidy });
-    const me = phone();
-    await me("/bugs", { title: "Palace: @someone #12 draws early", description: tidied.report, original: "in palace you can draw after a 10" });
-    const issue = asked[0]!.body;
-    expect(issue.title).toBe("Palace: @​someone \\#12 draws early");
-    expect(issue.body.startsWith("> - After a 10 or a 2")).toBe(true);
-    expect(issue.body).toContain("<summary>The player's own words</summary>\n\n> in palace you can draw after a 10");
-    expect(issue.body).toContain("Tidied with AI");
-    // Put back to their own words: nothing extra.
-    await me("/bugs", { description: "The cards overlap.", original: "The cards overlap." });
-    expect(asked[1]!.body.body).not.toContain("own words");
-    expect(asked[1]!.body.body).not.toContain("Tidied");
   });
 });
-
