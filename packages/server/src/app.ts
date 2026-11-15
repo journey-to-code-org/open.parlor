@@ -1,4 +1,4 @@
-// The card room as one handler: houses, rooms, card designs, moderation and the sync log. index.ts
+// The parlor as one handler: houses, rooms, card designs, moderation and the sync log. index.ts
 // serves it with the web app, the card designer and the admin app.
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Log } from "@zubra/sync/server";
@@ -117,7 +117,7 @@ export function createCardRoom(
     // A game the host has switched off takes no new tables.
     // Whether people's tables can be watched is the host's call.
     spectators: () => catalogue.watching(),
-    allow: async (given) => ((await catalogue.isOn(gameOfOptions(given))) ? null : `${gameName(gameOfOptions(given))} is switched off in this card room.`),
+    allow: async (given) => ((await catalogue.isOn(gameOfOptions(given))) ? null : `${gameName(gameOfOptions(given))} is switched off in this parlor.`),
     onStart: ({ id, state, room }) => {
       speak(id, talk.greet(state, castOf(room)));
       lobby.started(id);
@@ -145,7 +145,7 @@ export function createCardRoom(
   const spectate = createSpectate(rooms, catalogue, options.spectate);
   const moderation = createModeration(rooms, designs, { token: options.adminToken, houses, catalogue, backups: options.backups, bots: bots ? () => bots.stats() : undefined });
   // "Report a problem": a player's report becomes an issue on GitHub.
-  // With the card room's own AI key, a report or request can be tidied before it's sent.
+  // With the parlor's own AI key, a report or request can be tidied before it's sent.
   const bugs = createBugs(rooms, { ...(ai.shared ? { tidy: (input) => ai.tidy(input) } : {}), ...options.bugs });
 
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -166,7 +166,7 @@ export function createCardRoom(
       return json({ ok: true });
     }
     if (pathname === "/push/test" && request.method === "POST") {
-      const n = await push.notify(player, { title: "Card Room 🃏", body: "Notifications are on. You'll hear about challenges and new tables.", url: "/", tag: "test" });
+      const n = await push.notify(player, { title: "open.parlor 🃏", body: "Notifications are on. You'll hear about challenges and new tables.", url: "/", tag: "test" });
       return json({ delivered: n });
     }
     return json({ error: "Not found" }, 404);

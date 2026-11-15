@@ -47,11 +47,11 @@ None today: all 18 checks pass in all six frameworks on Zubra 5.15.0.
 `KNOWN` in `tests/conformance.spec.ts` is where a difference goes when one turns up: the check's
 title and the Zubra issue it was reported in. A listed check is expected to fail, so the run stays
 green. When Zubra fixes it, the check passes, the run goes red with "Expected to fail, but
-passed", and the entry comes out (with any workaround in the card room's apps).
+passed", and the entry comes out (with any workaround in the parlor's apps).
 
 The first run of this suite, on Zubra 5.9, found five (zubra#261, #262, #267, #268, #269) and a
 gap in the typings (#270). All were fixed in 5.15.0, and the workarounds they needed are gone from
-the admin app and the card room.
+the admin app and the parlor.
 
 ## Adding a check
 

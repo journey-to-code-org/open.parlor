@@ -1,9 +1,9 @@
-// The catalogue: which games this card room offers, in what order, and whether people may watch
+// The catalogue: which games this parlor offers, in what order, and whether people may watch
 // tables that have players at them. Its host sets it from the admin app; every page reads it.
 //
 //   settings/catalogue   server only: the order, the games switched off, the watching switch
 //
-// A game the host has never placed (one added to the card room since) comes after the ones they
+// A game the host has never placed (one added to the parlor since) comes after the ones they
 // have, switched on. Switching a game off stops new tables of it; tables already going carry on.
 import { GAMES, isGameId, type GameId } from "./games.js";
 

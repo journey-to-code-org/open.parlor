@@ -1,4 +1,4 @@
-// Palace in the card room: a table plays to the end with a person and bots, a house keeps Palace
+// Palace in the parlor: a table plays to the end with a person and bots, a house keeps Palace
 // rules and a Palace leaderboard beside its spades ones, and a challenge link takes Palace challenges.
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, describe, expect, it } from "vitest";

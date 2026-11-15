@@ -18,13 +18,13 @@ copyFileSync(source, join(out, "card-room.zb"));
 
 const declaration = {
   "card-room": {
-    label: "Card room",
+    label: "Parlor",
     description: "Play Palace or Spades right on the page, and a button to challenge you to a game.",
     script: "components/card-room.js",
     source: "components/card-room.zb",
     fallback: "A card table sits here: play Palace or Spades against the computer, or send a challenge.",
     props: [
-      { name: "server", type: "text", label: "Card room address", required: true, maxLength: 200, help: "Where your card room runs, like https://your-card-room.up.railway.app" },
+      { name: "server", type: "text", label: "Parlor address", required: true, maxLength: 200, help: "Where your parlor runs, like https://your-card-room.up.railway.app" },
       {
         name: "game",
         type: "choice",
@@ -49,7 +49,7 @@ writeFileSync(
 1. Copy \`card-room.js\`, \`card-room.zb\` and \`card-room.css\` into your theme's \`components/\` folder.
 2. Add the \`components\` entry from \`theme-components.json\` to your theme's \`theme.json\`, and list
    \`components/card-room.css\` under its \`stylesheets\`.
-3. In Admin, open **Landing page → Add a section → Card room**, and fill in your card room's address and
+3. In Admin, open **Landing page → Add a section → Parlor**, and fill in your parlor's address and
    (optionally) your challenge link code.
 
 With seasons, declare it on the theme the seasons extend, so every season offers it.

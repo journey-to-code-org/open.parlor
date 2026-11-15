@@ -115,7 +115,7 @@ import "./zubra";
       </section>
 
       <section>
-        <h2>The card room's own</h2>
+        <h2>The parlor's own</h2>
         <playing-card data-t="card" [card]="CARDS[card() % CARDS.length]" [playable]="true" (pick)="picks.set(picks() + 1)"></playing-card>
         <output data-t="card-out">{{ picks() }}</output>
         <button data-t="card-next" type="button" (click)="card.set(card() + 1)">Next card</button>

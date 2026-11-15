@@ -3,7 +3,7 @@
 //
 //   node packages/web/scripts/practice-hitch.mjs http://localhost:8787 [runs]
 //
-// against a running card room (any server that serves the built web app). It plays practice games
+// against a running parlor (any server that serves the built web app). It plays practice games
 // of Checkers (International, the big board) and Mini Golf (all at once, five computer players) at
 // full skill, and reports the main thread's long tasks and the longest gap between two frames while
 // the computer players are thinking. Chrome and playwright-core are the ones the conformance tests use.

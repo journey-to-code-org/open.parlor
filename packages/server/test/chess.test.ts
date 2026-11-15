@@ -1,4 +1,4 @@
-// Chess in the card room, through the room: a house table played to mate and onto the leaderboard,
+// Chess in the parlor, through the room: a house table played to mate and onto the leaderboard,
 // what a watcher sees, a tournament match, and the chess clock kept by the server (the increment,
 // an offer made while it runs, a restart in the middle of a game, a flag falling, and a computer
 // player held to it like anyone). On a fake clock.

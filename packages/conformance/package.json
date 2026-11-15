@@ -2,7 +2,7 @@
   "name": "@open-parlor/conformance",
   "version": "0.1.0",
   "private": true,
-  "description": "One fixture of Zubra components, written in every framework the card room uses, and one set of browser tests run against them all.",
+  "description": "One fixture of Zubra components, written in every framework the parlor uses, and one set of browser tests run against them all.",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -1,5 +1,5 @@
 import { createTournaments } from "./tournaments.js";
-// Houses: a family's own corner of the card room. A house has members (who joined with its invite
+// Houses: a family's own corner of the parlor. A house has members (who joined with its invite
 // link), saved house rules with one as the default, and the tables it has opened.
 //
 // Everything is one server-only document per house (`houses/<slug>` in the sync log); pages read
@@ -149,12 +149,12 @@ function cleanPreset(value: unknown): RulePreset | string {
 
 export function createHouses(
   rooms: Rooms,
-  { mount = "/houses", push, ai = createAi(), gameOn = () => true, deckFor }: { mount?: string; push?: Push; ai?: Ai; /** The deck a design id stands for, for a player who may use it (the card room's designs). */ deckFor?: (wanted: unknown, player: string | null) => Promise<TableDeck | undefined>; /** Whether new tables of a game may be opened (the card room's catalogue). */ gameOn?: (game: GameId) => boolean | Promise<boolean> } = {},
+  { mount = "/houses", push, ai = createAi(), gameOn = () => true, deckFor }: { mount?: string; push?: Push; ai?: Ai; /** The deck a design id stands for, for a player who may use it (the parlor's designs). */ deckFor?: (wanted: unknown, player: string | null) => Promise<TableDeck | undefined>; /** Whether new tables of a game may be opened (the parlor's catalogue). */ gameOn?: (game: GameId) => boolean | Promise<boolean> } = {},
 ) {
   const docs = rooms.sync.documents();
   const get = async (slug: string) => {
     const doc = (await docs).get("houses", slug);
-    // A house the card room's host deleted is gone: its name is free again.
+    // A house the parlor's host deleted is gone: its name is free again.
     if (!doc || doc.deleted) return undefined;
     // Keep only the house's own fields (the view may carry sync bookkeeping such as $clocks).
     const { slug: s, name, code, members, presets, defaultPreset, palacePresets, palaceDefault, tables, tournaments, kitRules, deck, ai: houseAi } = doc as unknown as HouseDoc;
@@ -209,11 +209,11 @@ export function createHouses(
       palaceDefault: house.palaceDefault,
       tournaments: await tournaments.list(house),
       kitRules: Object.fromEntries(KIT_GAMES.map((g) => [g.id, kitRulesOf(house, g.id)])),
-      /** The cards the house's tables start with, or null for the card room's own. */
+      /** The cards the house's tables start with, or null for the parlor's own. */
       deck: house.deck ?? null,
       // Everyone sees whether the bots talk through a model; only managers see how it's set up (never the key).
       ai: me.role === "member" ? (ai.view(house.ai) ? { on: ai.view(house.ai)!.on } : null) : ai.view(house.ai),
-      /** The card room has an AI account of its own that houses may use. */
+      /** The parlor has an AI account of its own that houses may use. */
       aiServer: ai.shared,
       // Games still going first, then the rest, newest first.
       tables: tables.sort((a, b) => Number((a.summary as { phase?: string } | null)?.phase === "finished") - Number((b.summary as { phase?: string } | null)?.phase === "finished")),
@@ -338,7 +338,7 @@ export function createHouses(
       // under way plays out, like any table already going.
       if (parts.length === 2 && method === "POST") {
         const game = gameOf(input.game);
-        if (!(await gameOn(game))) return json({ error: `${gameName(game)} is switched off in this card room.` }, 403);
+        if (!(await gameOn(game))) return json({ error: `${gameName(game)} is switched off in this parlor.` }, 403);
       }
       const reply = await tournaments.handle(house, me, parts.slice(2), method, input, rulesFor);
       return json(reply.body, reply.status);
@@ -363,7 +363,7 @@ export function createHouses(
     // POST /houses/:slug/tables { game?, presetId?, seats?, settings? } → a new table with house rules
     if (action === "tables") {
       const game = gameOf(input.game);
-      if (!(await gameOn(game))) return json({ error: `${gameName(game)} is switched off in this card room.` }, 403);
+      if (!(await gameOn(game))) return json({ error: `${gameName(game)} is switched off in this parlor.` }, 403);
       let id: string;
       let rulesName: string;
       if (isKitGame(game)) {
@@ -424,9 +424,9 @@ export function createHouses(
         await save(house);
         return json(await forMember(house, me));
       }
-      // The card room's own account: no key to paste, just the house's notes and its switch.
+      // The parlor's own account: no key to paste, just the house's notes and its switch.
       if (input.provider === "server" || (input.provider === undefined && (house.ai?.provider ?? (ai.shared ? "server" : undefined)) === "server")) {
-        if (!ai.shared) return json({ error: "This card room has no AI account of its own. Connect the house's own." }, 400);
+        if (!ai.shared) return json({ error: "This parlor has no AI account of its own. Connect the house's own." }, 400);
         const was = house.ai?.provider === "server" ? house.ai : undefined;
         house.ai = {
           provider: "server",
@@ -641,7 +641,7 @@ export function createHouses(
     tableFinished: (id: string, summary: unknown) => tournaments.tableFinished(id, summary, get),
     /**
      * The AI connection a table's bots talk through, if any is switched on: its house's own, or the
-     * card room's (for a house that set nothing, and for tables that aren't in a house). `who` and
+     * parlor's (for a house that set nothing, and for tables that aren't in a house). `who` and
      * `limit` are whose daily allowance a line counts against.
      */
     async aiFor(table: string): Promise<{ who: string; limit: number; name: string; ai: HouseAi } | null> {
@@ -659,12 +659,12 @@ export function createHouses(
           const theirs = found && (await get(found.key));
           if (!theirs?.ai) continue;
           const family = seated.every((p) => theirs.members.some((m) => m.player === p));
-          return { who: theirs.slug, limit: DAILY_LINES, name: family ? theirs.name : "the Card Room", ai: family ? theirs.ai : { ...theirs.ai, context: "" } };
+          return { who: theirs.slug, limit: DAILY_LINES, name: family ? theirs.name : "the open.parlor", ai: family ? theirs.ai : { ...theirs.ai, context: "" } };
         }
       }
       const connected = house?.ai ?? ai.fallback();
       if (!usable(connected)) return null;
-      return house ? { who: house.slug, limit: DAILY_LINES, name: house.name, ai: connected } : { who: `table/${table}`, limit: TABLE_LINES, name: "the Card Room", ai: connected };
+      return house ? { who: house.slug, limit: DAILY_LINES, name: house.name, ai: connected } : { who: `table/${table}`, limit: TABLE_LINES, name: "the open.parlor", ai: connected };
     },
     /** Answers house requests; null for anything else. */
     async fetch(request: Request): Promise<Response | null> {

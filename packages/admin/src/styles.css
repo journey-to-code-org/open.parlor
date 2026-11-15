@@ -1,5 +1,5 @@
 /* zubra-ui's default theme (shadcn/ui's variables), light or dark with the system. The components
-   read these; the page only adds the card room's green as the primary colour. */
+   read these; the page only adds the parlor's green as the primary colour. */
 @import "../../ui/src/zubra-ui/themes/default.css";
 @import "../../ui/src/zubra-ui/themes/system.css";
 

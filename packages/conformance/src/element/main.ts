@@ -197,7 +197,7 @@ document.getElementById("app")!.append(
       }),
     ),
     section(
-      "The card room's own",
+      "The parlor's own",
       el("playing-card", { "data-t": "card", card: CARDS[0], playable: true, onpick: () => show("card-out", ++picks) }),
       output("card-out", "0"),
       button("card-next", "Next card", () => set("card", "card", CARDS[++card % CARDS.length])),

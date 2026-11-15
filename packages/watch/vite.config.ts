@@ -4,7 +4,7 @@ import { defineConfig } from "vite";
 import solid from "vite-plugin-solid";
 
 export default defineConfig({
-  // The card room serves this page at /watch/; the GitHub Pages build sets its own base.
+  // The parlor serves this page at /watch/; the GitHub Pages build sets its own base.
   base: process.env.BASE_PATH ?? "/watch/",
   // In a Solid project a .zb import is the custom element itself: Solid sets its properties
   // (prop:) and listens to its events (on:) as it does for any element. The typings (which teach

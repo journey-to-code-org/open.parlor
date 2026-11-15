@@ -1,4 +1,4 @@
-// The card room's catalogue: which games its host offers, and in what order (set in the admin app).
+// The parlor's catalogue: which games its host offers, and in what order (set in the admin app).
 // The last answer is kept in this browser, so the front page is right from its first paint; a card
 // room with no server (the GitHub Pages copy) offers every game in the built-in order.
 const KEY = "cardroom.catalogue";

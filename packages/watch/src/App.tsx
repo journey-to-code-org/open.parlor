@@ -3,7 +3,7 @@
 //
 // Quiet when nothing is happening: what's playing comes first, a line or two when nothing is, and
 // dealing the computers a game is one button that opens a short form. The server lists only
-// what's really going (see spectate.ts): games this card room has and hasn't switched off, at
+// what's really going (see spectate.ts): games this parlor has and hasn't switched off, at
 // tables someone is still playing.
 //
 // The page is Solid; everything on it is a zubra-ui component (see zubra.ts). They're custom
@@ -64,10 +64,10 @@ async function ask<T>(path: string, body?: unknown): Promise<T> {
   try {
     response = await fetch(beside(path), body === undefined ? {} : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   } catch {
-    throw new Error("Couldn't reach the card room. Check your connection and try again.");
+    throw new Error("Couldn't reach the parlor. Check your connection and try again.");
   }
   const answer = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
-  if (!response.ok || !answer) throw new Error(answer?.error ?? "This card room can't do that.");
+  if (!response.ok || !answer) throw new Error(answer?.error ?? "This parlor can't do that.");
   return answer;
 }
 
@@ -179,7 +179,7 @@ export function App() {
       <div class="page">
         <header class="top">
           <a class="home" href="../">
-            <span aria-hidden="true">←</span> Card Room
+            <span aria-hidden="true">←</span> open.parlor
           </a>
           <h1>Watch a game</h1>
         </header>
@@ -192,9 +192,9 @@ export function App() {
           </Match>
           <Match when={live.offline}>
             <alert-banner prop:variant="info" prop:heading="Nothing to watch here">
-              <span>This copy of the card room has no server behind it, so there are no tables to watch. You can still practise against the computer.</span>
+              <span>This copy of the parlor has no server behind it, so there are no tables to watch. You can still practise against the computer.</span>
               <action-button slot="actions" prop:variant="outline" prop:size="sm" prop:href="../">
-                Back to the card room
+                Back to the parlor
               </action-button>
             </alert-banner>
           </Match>
@@ -222,11 +222,11 @@ export function App() {
             <Show when={!live.tables.length}>
               <section class="calm" aria-live="polite">
                 <p class="lead">Nobody's playing right now.</p>
-                <p class="quiet">{live.watching ? "When someone is, their table shows up here." : "This card room keeps people's tables private; the computers' tables show up here."}</p>
+                <p class="quiet">{live.watching ? "When someone is, their table shows up here." : "This parlor keeps people's tables private; the computers' tables show up here."}</p>
               </section>
             </Show>
             <Show when={live.tables.length && !live.watching}>
-              <p class="quiet">This card room keeps people's tables private.</p>
+              <p class="quiet">This parlor keeps people's tables private.</p>
             </Show>
 
             <section class="deal-box" aria-labelledby="deal-heading">

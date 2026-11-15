@@ -1,4 +1,4 @@
-// A table sport in the card room, through the same doors as the card and board games: a house
+// A table sport in the parlor, through the same doors as the card and board games: a house
 // table with house rules, putted to the end by a person (from nothing but what their view shows)
 // against a computer player, the leaderboard, private views, the turn timer and a restart.
 import { PHYSICS_VERSION, simulate } from "@journey-to-code/physics";
@@ -77,7 +77,7 @@ async function playRound(send: Send, id: string, seat: number) {
   throw new Error("the round didn't finish");
 }
 
-describe("table sports in the card room", () => {
+describe("table sports in the parlor", () => {
   it("warms the physics up without fuss", () => {
     expect(warmSports()).toBeGreaterThanOrEqual(0);
   });

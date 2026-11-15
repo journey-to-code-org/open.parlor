@@ -1,5 +1,5 @@
 // Names on public tables. A family table is among people who know each other; an open table's
-// names are shown to everyone in the card room, so the crudest ones are turned away.
+// names are shown to everyone in the parlor, so the crudest ones are turned away.
 //
 // This is a short list on purpose: it stops the obvious, not the determined. Whoever runs the card
 // room can add words of their own with CARDROOM_BLOCKED_NAMES (comma-separated).

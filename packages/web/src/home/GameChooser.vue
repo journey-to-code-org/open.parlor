@@ -1,5 +1,5 @@
 <!--
-  The Card Room's front door: every game as a tile, a "who's playing?" filter, your houses, and the
+  The open.parlor's front door: every game as a tile, a "who's playing?" filter, your houses, and the
   tables that are waiting for players right now.
   A Vue island inside the React app. The cards and the select are Zubra components: in a .vue file a
   .zb import is a Vue component (Zubra's Vue adapter), with props, events and v-model.
@@ -34,7 +34,7 @@ const props = defineProps<{
   name: string;
   /** Tables waiting for players, longest wait first. */
   open: { id: string; game: string; who: string; free: number }[];
-  /** Whether this card room takes requests for games it doesn't have. */
+  /** Whether this parlor takes requests for games it doesn't have. */
   canAsk?: boolean;
 }>();
 const emit = defineEmits<{ pick: [id: string]; house: [slug: string]; lobby: []; ask: [] }>();
@@ -73,7 +73,7 @@ const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spa
   <div class="chooser">
     <header class="hero">
       <div class="suits" aria-hidden="true">♠&#xFE0E; ♥&#xFE0E; ♣&#xFE0E; ♦&#xFE0E;</div>
-      <h1>Card Room</h1>
+      <h1>open.parlor</h1>
       <p>{{ hello }}</p>
     </header>
 

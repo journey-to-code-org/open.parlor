@@ -28,7 +28,7 @@ type Rules = { id: string; name: string } & Record<string, unknown>;
 
 interface Props {
   game: KitGameId;
-  /** Back to the Card Room's front page, with every game. */
+  /** Back to the open.parlor's front page, with every game. */
   onHome: () => void;
   onPractice: (name: string, rules: Rules, seats: number) => void;
   onFamilyTable: (rules: Rules, seats: number) => Promise<void>;
@@ -218,7 +218,7 @@ export function KitSetup({
                   await onFamilyTable(rules, game.teams ? 4 : seats);
                 } catch {
                   setProblem(
-                    "Couldn't reach the card room. Try again in a minute.",
+                    "Couldn't reach the parlor. Try again in a minute.",
                   );
                   setBusy(false);
                 }

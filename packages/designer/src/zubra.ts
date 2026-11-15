@@ -1,4 +1,4 @@
-// The Zubra components the designer uses: the card room's own <playing-card>, and zubra-ui's
+// The Zubra components the designer uses: the parlor's own <playing-card>, and zubra-ui's
 // controls, cards, dialogs and toasts (copied into packages/ui/src/zubra-ui). Importing one defines
 // its tag; Svelte templates then use the tags as they are.
 import "@open-parlor/ui/playing-card.zb";

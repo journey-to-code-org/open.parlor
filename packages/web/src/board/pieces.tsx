@@ -1,4 +1,4 @@
-// The card room's own chess set: six plain, solid silhouettes drawn here as SVG, so a knight looks
+// The parlor's own chess set: six plain, solid silhouettes drawn here as SVG, so a knight looks
 // the same on every phone (the chess figures in fonts don't: some are thin outlines, some are
 // colour emoji, and the two sides rarely match in weight). An engine only ever says a piece's
 // `kind` ("knight") and whose it is; what that looks like is decided here.

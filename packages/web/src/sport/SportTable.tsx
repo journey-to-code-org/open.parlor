@@ -303,7 +303,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     if (!landed(r)) {
       // This should never happen: the physics core is deterministic by construction. If it does,
       // the screen is put right by showing the server's table below; say so where a developer will see.
-      console.warn(`Card Room: shot ${r.record.n} rolled to a different place here than on the server. Showing the server's table.`, { shot: r.record.shot, server: r.record.rest, here: [...r.at] });
+      console.warn(`open.parlor: shot ${r.record.n} rolled to a different place here than on the server. Showing the server's table.`, { shot: r.record.shot, server: r.record.rest, here: [...r.at] });
       if (import.meta.env.DEV) console.assert(false, "a locally stepped shot must end exactly where the server's did");
     }
     show(r.target);

@@ -1,4 +1,4 @@
-// The games the card room plays, and one room definition that hands each table to its game.
+// The games the parlor plays, and one room definition that hands each table to its game.
 //
 // A room's options say which game it is. Spades rooms keep the options they always had (the house
 // rules themselves), so tables and logs from before there were other games still work; any other

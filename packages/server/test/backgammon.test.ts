@@ -1,4 +1,4 @@
-// Backgammon in the card room: a house table with house rules (a match with the cube) played to
+// Backgammon in the parlor: a house table with house rules (a match with the cube) played to
 // the end by a person against a computer player, with dice thrown by the server; the leaderboard;
 // a tournament match, where a win is a win whatever it was won for; and what someone watching is
 // shown: the board, the dice and the cube, and nothing to press.
@@ -55,7 +55,7 @@ async function playOut(send: Send, view: Kit["view"], id: string, seat: number, 
   throw new Error("the game didn't finish");
 }
 
-describe("Backgammon in the card room", () => {
+describe("Backgammon in the parlor", () => {
   it("a house table with house rules: a match with the cube against a computer player, to the end, on the leaderboard", async () => {
     const { phone, view } = setup();
     const grammi = phone();

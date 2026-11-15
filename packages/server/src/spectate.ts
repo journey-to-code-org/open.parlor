@@ -8,7 +8,7 @@
 // `watchView` in games.ts). The host can switch watching people's tables off altogether (the
 // catalogue).
 //
-// Only what's really going is listed: a game this card room has (a table whose game it doesn't know
+// Only what's really going is listed: a game this parlor has (a table whose game it doesn't know
 // is left out, not shown as something else), that the host hasn't switched off, at a table where
 // someone has moved lately. A table its players walked away from isn't "playing now".
 import { kitGame, isKitGame } from "@journey-to-code/games";
@@ -72,7 +72,7 @@ export function createSpectate(rooms: Rooms, catalogue: Catalogue, { mount = "/s
   /** When a dealt table with no moves yet was first listed: its clock until someone moves. */
   const firstSeen = new Map<string, number>();
 
-  /** A room's game, or null when it's one this card room doesn't have. Spades rooms predate `game`. */
+  /** A room's game, or null when it's one this parlor doesn't have. Spades rooms predate `game`. */
   function gameOfRoom(r: RoomDoc<unknown>): GameId | null {
     const named = ((r.info ?? r.summary) as { game?: unknown } | null)?.game;
     if (named === undefined) return "spades";
@@ -93,7 +93,7 @@ export function createSpectate(rooms: Rooms, catalogue: Catalogue, { mount = "/s
 
   /**
    * Every table a watcher may see now: people's tables first, the liveliest first, then the
-   * computers'. Left out: games this card room doesn't have or has switched off, tables people have
+   * computers'. Left out: games this parlor doesn't have or has switched off, tables people have
    * walked away from, and people's tables altogether when the host keeps them private.
    */
   async function live() {
@@ -155,7 +155,7 @@ export function createSpectate(rooms: Rooms, catalogue: Catalogue, { mount = "/s
     const input = ((await request.json().catch(() => ({}))) ?? {}) as Record<string, unknown>;
     const game = input.game;
     if (!isGameId(game)) return json({ error: "Pick a game for the computers to play." }, 400);
-    if (!(await catalogue.isOn(game))) return json({ error: `${gameName(game)} is switched off in this card room.` }, 403);
+    if (!(await catalogue.isOn(game))) return json({ error: `${gameName(game)} is switched off in this parlor.` }, 403);
     if ((await live()).filter((t) => t.computers).length >= COMPUTER_TABLES) return json({ error: "The computers' tables are all busy. Watch one of those, or try again when a game ends." }, 429);
     if (now() - lastStarted < START_GAP_MS) return json({ error: "Someone just started one. Give it a moment." }, 429);
     lastStarted = now();

@@ -1,4 +1,4 @@
-// The lobby: tables open to anyone in the card room. Find players for a game, or see every open
+// The lobby: tables open to anyone in the parlor. Find players for a game, or see every open
 // table (who's playing what, and since when) and jump in.
 import type { GameId } from "./storage";
 
@@ -54,7 +54,7 @@ export const lobby = {
 };
 
 /** What to tell someone when the lobby said no, or couldn't be reached. */
-export const lobbyProblem = (e: unknown) => (e instanceof LobbyError ? e.message : "Couldn't reach the card room. Try again in a minute.");
+export const lobbyProblem = (e: unknown) => (e instanceof LobbyError ? e.message : "Couldn't reach the parlor. Try again in a minute.");
 
 /** "just now", "3 min", "2 hr": how long a table has been waiting. */
 export function waited(since: number, now = Date.now()): string {

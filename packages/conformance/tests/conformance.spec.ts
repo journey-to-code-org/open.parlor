@@ -3,7 +3,7 @@
 //
 // KNOWN lists the differences already reported upstream, each as { [check's title]: issue link }.
 // Those checks are expected to fail; when one starts passing (Zubra fixed it), the run says so,
-// and the entry and the workaround in the card room's own apps can go.
+// and the entry and the workaround in the parlor's own apps can go.
 import { expect, test, type Page } from "@playwright/test";
 
 const FRAMEWORKS = ["element", "react", "vue", "svelte", "solid", "angular"] as const;
@@ -214,7 +214,7 @@ for (const framework of FRAMEWORKS) {
       await expect(t(page, "tab-count")).toHaveText("1");
     });
 
-    check("the card room's own components take objects and fire their events", async (page) => {
+    check("the parlor's own components take objects and fire their events", async (page) => {
       const card = t(page, "card").getByRole("button");
       const first = await card.getAttribute("aria-label");
       expect(first).toMatch(/A of spades/i);

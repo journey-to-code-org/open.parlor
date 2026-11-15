@@ -1,4 +1,4 @@
-// A board game in the card room, through the same doors as the card games: a house table with
+// A board game in the parlor, through the same doors as the card games: a house table with
 // house rules played to the end by a person (from nothing but what their view offers) against a
 // computer player, the leaderboard, a challenge, and a tournament match that names a champion.
 import { movesOffered, type BoardView } from "@journey-to-code/games";
@@ -50,7 +50,7 @@ async function playBoard(send: Send, id: string, seat: number) {
   throw new Error("the game didn't finish");
 }
 
-describe("board games in the card room", () => {
+describe("board games in the parlor", () => {
   it("Tic-Tac-Toe: a house table with house rules, played to the end, on the leaderboard", async () => {
     const { phone } = setup();
     const grammi = phone();

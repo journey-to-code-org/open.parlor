@@ -148,24 +148,24 @@ export class Api {
         cache: "no-store",
       });
     } catch {
-      throw new ApiError("Couldn't reach the card room. Check your connection and try again.", 0);
+      throw new ApiError("Couldn't reach the parlor. Check your connection and try again.", 0);
     }
     const answer = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
-    if (!response.ok || !answer) throw new ApiError(answer?.error ?? `The card room answered ${response.status}.`, response.status);
+    if (!response.ok || !answer) throw new ApiError(answer?.error ?? `The parlor answered ${response.status}.`, response.status);
     return answer;
   }
 
   overview = () => this.send<Overview>("/overview");
 
-  /** A copy of the card room's database, made now: its file name and bytes. */
+  /** A copy of the parlor's database, made now: its file name and bytes. */
   async backup(): Promise<{ name: string; file: Blob }> {
     let response: Response;
     try {
       response = await fetch(`${BASE}/backup`, { headers: { authorization: `Bearer ${this.token()}` }, credentials: "omit", cache: "no-store" });
     } catch {
-      throw new ApiError("Couldn't reach the card room. Check your connection and try again.", 0);
+      throw new ApiError("Couldn't reach the parlor. Check your connection and try again.", 0);
     }
-    if (!response.ok) throw new ApiError(((await response.json().catch(() => null)) as { error?: string } | null)?.error ?? `The card room answered ${response.status}.`, response.status);
+    if (!response.ok) throw new ApiError(((await response.json().catch(() => null)) as { error?: string } | null)?.error ?? `The parlor answered ${response.status}.`, response.status);
     const name = /filename="([^"]+)"/.exec(response.headers.get("content-disposition") ?? "")?.[1] ?? "cardroom-backup.db";
     return { name, file: await response.blob() };
   }

@@ -1,4 +1,4 @@
-// The Card Room server: rooms (moves, seats, bots), the sync log, and the built apps: the card room
+// The open.parlor server: rooms (moves, seats, bots), the sync log, and the built apps: the parlor
 // itself at /, the card designer at /designer/, the watch page at /watch/ and the admin app at /admin/.
 //
 //   PORT=8787 CARDROOM_DB=cardroom.db node dist/index.js
@@ -23,7 +23,7 @@ function setting(name: string): string | undefined {
 
 const port = Number(process.env.PORT ?? 8787);
 const web = resolve(setting("WEB") ?? fileURLToPath(new URL("../../web/dist", import.meta.url)));
-// The other apps live under the card room's address, each from its own build.
+// The other apps live under the parlor's address, each from its own build.
 const apps = [
   { at: "/designer/", root: resolve(setting("DESIGNER") ?? fileURLToPath(new URL("../../designer/dist", import.meta.url))), build: "npm run build -w @open-parlor/designer" },
   { at: "/watch/", root: resolve(setting("WATCH") ?? fileURLToPath(new URL("../../watch/dist", import.meta.url))), build: "npm run build -w @open-parlor/watch" },
@@ -55,7 +55,7 @@ const cardRoom = createCardRoom({
   bugs: { token: setting("GITHUB_TOKEN"), repo: setting("GITHUB_REPO"), version: setting("VERSION") ?? process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) },
   lobby: { blockedNames: (setting("BLOCKED_NAMES") ?? "").split(",").map((w) => w.trim()).filter(Boolean) },
   // Houses can connect their own AI key for their bots' table talk; this seals those keys at rest.
-  // CARDROOM_AI_KEY is the card room's own key: with it, every table's bots talk through a model.
+  // CARDROOM_AI_KEY is the parlor's own key: with it, every table's bots talk through a model.
   // Computer players think in worker threads: as many as CARDROOM_BOT_WORKERS says (0 for none), or
   // what suits the machine. The workers start, and warm up, while the server is already listening.
   bots: { workers: workersFrom(setting("BOT_WORKERS")), budgetMs: Number(setting("BOT_BUDGET")) || undefined, ceilingMs: Number(setting("BOT_CEILING")) || undefined },
@@ -131,7 +131,7 @@ const server = createServer(async (req, res) => {
   }
 });
 server.listen(port, () => {
-  console.log(`Card Room on http://localhost:${port}`);
+  console.log(`open.parlor on http://localhost:${port}`);
   backups?.start();
   const bots = cardRoom.bots?.stats();
   console.log(bots?.workers ? `computer players think in ${bots.workers} worker thread${bots.workers === 1 ? "" : "s"} (CARDROOM_BOT_WORKERS=0 for none)` : "computer players think on the main thread");

@@ -1,6 +1,6 @@
 # Roadmap: beyond cards
 
-Card Room has the card games covered. This is the plan for the next kinds of game: board games,
+The app has the card games covered. This is the plan for the next kinds of game: board games,
 dice, tiles and words first, then games with a ball in them (mini golf, billiards, bowling).
 
 The rule that got us this far still holds: **one PR per game**, and a game isn't done until it has
@@ -57,11 +57,10 @@ Each of these is its own PR, and each lands just ahead of the first game that ne
       Worker.
 - [ ] **The front page.** With forty-odd games it needs sections (Cards, Boards, Dice, Tiles,
       Table sports), search, and tiles that aren't a fan of three cards.
-- [ ] **A new name.** "Card Room" stops describing it. Decided: the project is **open.parlor**,
-      with the engine in open.games and the rooms in open.rooms. Done: the repositories, the
-      packages and the README. Not done: the name the app shows (the page title, the manifest, the
-      headings), the embed's element name (keep `<card-room>` working) and the environment
-      variables (`SPADES_DB`, `CARDROOM_*`), which are kept so a running server isn't disturbed.
+- [x] **A new name.** "Card Room" stopped describing it, so the app is **open.parlor**, with the engine in
+      open.games and the rooms in open.rooms. The page titles, manifest and headings say so. Kept on
+      purpose, so nothing running is disturbed: the `<card-room>` embed element, the environment
+      variables (`SPADES_DB`, `CARDROOM_*`) and the database file.
 - [ ] **Our own game names.** Several of the games below are sold under trademarked names, so
       they ship under ours, as Fruit Salad did: Drop Four, Combat, Yacht, Criss-Crosswords.
 
@@ -173,7 +172,7 @@ new netcode and is a separate decision.
 
 ## Open questions
 
-1. **The new name.** Decided: open.parlor (see the checklist above for what is and isn't renamed yet).
+1. **The new name.** Decided and done: open.parlor.
 2. **Chess and Go bots:** write our own (fits the repo, modest strength), or wrap an existing
    engine for the top skill levels?
 3. **Order across phases:** Phase 5 is the most new work and the most fun. Mini golf could start

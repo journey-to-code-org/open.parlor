@@ -1,4 +1,4 @@
-// Yacht in the card room: dice thrown by the server, a table played to the end by a person against
+// Yacht in the parlor: dice thrown by the server, a table played to the end by a person against
 // a computer player, what someone watching is shown (the dice and sheets that are public, never a
 // seat's own dice when everyone rolls at once), and the turn timer playing for someone who has gone.
 import { movesOffered, type BoardView } from "@journey-to-code/games";
@@ -42,7 +42,7 @@ async function table(sends: Send[], options: Record<string, unknown>, seats: num
   return id as string;
 }
 
-describe("Yacht in the card room", () => {
+describe("Yacht in the parlor", () => {
   it("a table against a computer player, rolled, kept and scored to the end", async () => {
     const { phone, view } = setup();
     const grammi = phone();

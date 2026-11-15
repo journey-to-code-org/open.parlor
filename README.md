@@ -320,8 +320,8 @@ Open tables are where strangers meet, so:
 - **A buzz when someone's waiting.** On the Open tables page, pick a game (or any game) and turn
   notifications on: your phone buzzes when a table opens for it, at most once every ten minutes.
 
-Blocking someone from the whole card room, closing a table and removing a chat message are the
-card room host's, in the admin app (see `CARDROOM_ADMIN_TOKEN`). Family tables that were never
+Blocking someone from the whole parlor, closing a table and removing a chat message are the
+parlor host's, in the admin app (see `CARDROOM_ADMIN_TOKEN`). Family tables that were never
 opened to everyone have no table host, no chat filter and no mute.
 
 ### Report a problem
@@ -346,7 +346,7 @@ server).
   says so. Which table a report came from is kept on the server (`bugs/reports` in the log).
 - GitHub's API can't attach a picture to an issue, so screenshots are kept by the server (the
   newest 30) and the issue links to `/bugs/shots/<id>.jpg`.
-- One browser can send 3 reports in ten minutes, and the whole card room 40 a day. A blocked player
+- One browser can send 3 reports in ten minutes, and the whole parlor 40 a day. A blocked player
   can't send any. A player's words can't mention people or link other issues.
 
 **Ask for a game.** With the same token, the front page's footer shows “Don't see your game? Ask
@@ -354,14 +354,14 @@ for it”: a game's name and an optional note become an issue labelled `enhancem
 `game request`. Asking for a game that already has an open request adds a comment to it instead, so
 an issue's comments count how many want it. Requests share the reports' limits.
 
-**Tidied before it's sent.** When the card room has its own AI key (`CARDROOM_AI_KEY`, see **Bot
+**Tidied before it's sent.** When the parlor has its own AI key (`CARDROOM_AI_KEY`, see **Bot
 talk from a model**), the form's button says **Next**: the player's words come back as a short title
 and a concise report (for a request, the game's proper name and a short note). The player sees it
 before anything is sent, and can change any of it, put their own words back, go back, or look at
 **See exactly what's sent**. A tidied report keeps the player's own words too, folded away under
 “The player's own words”, and says it was tidied. The model is told to keep every fact and add
 none. If it fails, the player is told and their own words go. One browser can ask for 8 tidy-ups in
-ten minutes, and the card room 200 a day (counted against the key's daily ceiling too).
+ten minutes, and the parlor 200 a day (counted against the key's daily ceiling too).
 
 ## Packages
 
@@ -380,7 +380,7 @@ The game engine and the rooms live in their own repositories and come in from np
 | [`packages/conformance`](packages/conformance) | One fixture of the components in every framework, and one set of browser tests run against them all |
 | [`packages/ui`](packages/ui) | Components in Zubra: our own (cards, seats), the ones copied from zubra-ui, and the `<card-room>` embed |
 
-One set of Zubra components serves five frameworks: React and Vue in the card room, Svelte in the
+One set of Zubra components serves five frameworks: React and Vue in the parlor, Svelte in the
 designer, Solid on the watch page and Angular in the admin app.
 
 The server decides every move. Each player's browser only ever receives its own view of a table
@@ -453,13 +453,13 @@ token: `CARDROOM_ADMIN_TOKEN=anything npm run dev -w @open-parlor/server`.
 
 ## Designing cards
 
-The card designer lives at `/designer/` (there's a link on the card room's front page). A deck is
+The card designer lives at `/designer/` (there's a link on the parlor's front page). A deck is
 its back (a pattern, three colours and an emblem), its paper, an ink for each suit (two colours or
 four), its lettering and its corners. Saving one keeps it under **My decks**; turning on **Share
-it in the gallery** puts it where everyone in the card room can play with it or remix it.
+it in the gallery** puts it where everyone in the parlor can play with it or remix it.
 
 **A table's deck.** In a table's lobby, before the deal, anyone seated picks the table's cards:
-one of the card room's own decks, one of theirs, or any deck in the gallery. Everyone at the table
+one of the parlor's own decks, one of theirs, or any deck in the gallery. Everyone at the table
 and everyone watching then sees those cards. The table keeps its own copy of the design, so its
 maker changing or deleting it, or the host hiding it, never changes the cards in the middle of a
 game. A table can only wear a deck its chooser could show everyone: theirs, or a shared one.
@@ -476,7 +476,7 @@ again on the server ([`packages/decks`](https://github.com/journey-to-code-org/o
 
 ## Watching a game
 
-The watch page lives at `/watch/` (there's a link on the card room's front page).
+The watch page lives at `/watch/` (there's a link on the parlor's front page).
 
 - **Learn from the computer.** Pick a game, how well the computer players should play and how
   fast, and they sit down and play it out. You see every hand, and can look over any seat's
@@ -493,7 +493,7 @@ of game names its private parts as well (`watchView` in [`packages/server/src/ga
 `sharedView` from the rooms kit). `packages/server/test/watching.test.ts` plays every game and
 checks no card reaches a watcher that any seat can't see.
 
-## Moderating the card room
+## Moderating the parlor
 
 Whoever runs the server can look after it from the admin app at `/admin/`. It's off until the
 server has an admin token (see **Settings**); sign in with that token.
@@ -503,7 +503,7 @@ server has an admin token (see **Settings**); sign in with that token.
 | **Tables** | Every table and who's at it. Look at one to read its chat, remove a message, take someone out of a seat (a computer player takes over if the game has started), or close the table for good, with a reason everyone there sees. |
 | **Players** | Everyone who's sat down, joined a house or saved a design. Blocking someone stops them sitting, playing, chatting, opening houses and sharing designs; tables they're at carry on without them. Unblocking undoes it. |
 | **Houses** | Every house and its members. Rename a house (its invite link stays the same), remove a member, hand it to a new owner, or delete it. |
-| **Games** | Which games the card room offers and in what order: the front page follows. Switching a game off stops new tables of it everywhere (tables already going carry on). Also the switch for whether tables with players can be watched (the table, never a hand). |
+| **Games** | Which games the parlor offers and in what order: the front page follows. Switching a game off stops new tables of it everywhere (tables already going carry on). Also the switch for whether tables with players can be watched (the table, never a hand). |
 | **Card designs** | Every shared deck. Hiding one takes it out of the gallery; its maker keeps it and sees your reason. |
 | **Activity** | Everything done from the admin app, newest first. |
 
@@ -530,7 +530,7 @@ the worked example (the engine is [`@journey-to-code/palace`](https://github.com
 ## Putting a game on a site
 
 The web build makes a `<card-room>` widget with Zubra's embed build. Paste this into any page (an
-open.blog post, a WordPress HTML block, a Squarespace code block), with the card room's address:
+open.blog post, a WordPress HTML block, a Squarespace code block), with the parlor's address:
 
 ```html
 <script type="module" src="https://your-card-room/embed/cardroom.js"></script>
@@ -539,14 +539,14 @@ open.blog post, a WordPress HTML block, a Squarespace code block), with the card
 
 | Attribute | |
 | --- | --- |
-| `server` | The card room's address. Required. |
-| `game` | `palace`, `spades`, or leave it out to offer both. (The widget plays these two; the other games open in the card room.) |
+| `server` | The parlor's address. Required. |
+| `game` | `palace`, `spades`, or leave it out to offer both. (The widget plays these two; the other games open in the parlor.) |
 | `challenge` | Your challenge link's code (the end of `?challenge=…`), for a "Challenge Grammi" button. |
 | `who` | The name on that button. |
 
 **Play here** deals a practice game against the computer inside the page. **Challenge** and
-family tables open the card room in a new tab: browsers don't let a game in a frame on someone
-else's site keep you signed in, and the card room is where your houses and tables live.
+family tables open the parlor in a new tab: browsers don't let a game in a frame on someone
+else's site keep you signed in, and the parlor is where your houses and tables live.
 
 The build also writes a WordPress plugin and a Shopify app block to `packages/web/dist/embed`
 (see its README).
@@ -561,13 +561,13 @@ The web build writes `<card-room>` in that shape to `packages/web/dist/embed/ope
 1. Copy `card-room.js`, `card-room.zb` and `card-room.css` into the theme's `components/` folder.
 2. Add the `components` entry from `theme-components.json` to the theme's `theme.json`, and list
    `components/card-room.css` under its `stylesheets`. With seasons, put it on the theme they extend.
-3. In Admin: **Landing page → Add a section → Card room**, then the card room's address and, for a
+3. In Admin: **Landing page → Add a section → Parlor**, then the parlor's address and, for a
    Challenge button, your challenge link code.
 
 With the `zubra` command installed where the site builds, open.blog renders the widget ahead, so
-readers without JavaScript still see it and its link to the card room.
+readers without JavaScript still see it and its link to the parlor.
 
-## Hosting the card room
+## Hosting the parlor
 
 One container runs everything; mount a volume so tables survive restarts:
 
@@ -590,7 +590,7 @@ docker run -p 8787:8787 -v spades:/data cardroom
 | `CARDROOM_VAPID_PRIVATE_KEY` | Push notifications: the private key; keep it secret |
 | `CARDROOM_VAPID_SUBJECT` | Optional: a `mailto:` or `https:` address push services can reach you at |
 | `CARDROOM_SECRET` | Any long random text: encrypts the AI keys houses connect (see **Bot talk from a model**). Keep it the same for good. |
-| `CARDROOM_AI_KEY` | Optional: an Anthropic or OpenAI API key for the whole card room, so every table's bots talk through a model (see **Bot talk from a model**) |
+| `CARDROOM_AI_KEY` | Optional: an Anthropic or OpenAI API key for the whole parlor, so every table's bots talk through a model (see **Bot talk from a model**) |
 | `CARDROOM_AI_PROVIDER` | `anthropic` or `openai`, if the key doesn't say (a key starting `sk-ant-` is Anthropic's) |
 | `CARDROOM_AI_MODEL` | The model for that key. Default: `claude-haiku-5-5` or `gpt-5.6-luna`. |
 | `CARDROOM_AI_DAILY` | The most lines a day on that key, everyone together. Default 3000. |
@@ -615,7 +615,7 @@ database file's name (`spades.db`) as it is: renaming it leaves saved tables and
 
 With a database (`CARDROOM_DB`), the server copies it once a day into `backups/` beside it
 (`/data/backups` in the image) and keeps the newest seven. A copy is a whole SQLite database
-(`cardroom-2026-11-14T09-30-00.db`), taken while the card room stays open.
+(`cardroom-2026-11-14T09-30-00.db`), taken while the parlor stays open.
 
 Those copies are on the same disk as the database: they're for a bad deploy or a mistake, not for
 losing the disk. To keep one somewhere else, press **Download a copy now** on the admin app's
@@ -631,7 +631,7 @@ gone, tables in the middle of a game included.
 
 ### On Railway
 
-`.railway/railway.ts` describes the card room as its own Railway project: the service built
+`.railway/railway.ts` describes the parlor as its own Railway project: the service built
 from this repository's Dockerfile, a 1 GB volume at `/data`, the health check, and one replica
 (the server holds live connections and game state in one process, so never run two). Keep it in
 a project of its own, because applying the file makes the whole project match it.
@@ -661,7 +661,7 @@ a bot's name, gets an answer too.
   family notes. Never a hand.
 - The house's account pays for the lines (a few words each, at most 600 a day per house). If the
   model is slow, out of credit or switched off, the bots say their own lines.
-- Leave the model empty and the card room picks a small one the account has, or tap **Choose from
+- Leave the model empty and the parlor picks a small one the account has, or tap **Choose from
   this account's models** to pick from the account's own list.
 - A table outside the house (a quick table, a challenge) talks through the house's account too
   when one of its members is sitting at it. The family notes are only used when everyone at that
@@ -670,7 +670,7 @@ a bot's name, gets an answer too.
   set) and never sent to a page again: admins see its last four characters. A changed or lost
   `CARDROOM_SECRET` means pasting the keys again.
 
-**One key for everyone.** Whoever runs the card room can set `CARDROOM_AI_KEY` instead (see
+**One key for everyone.** Whoever runs the parlor can set `CARDROOM_AI_KEY` instead (see
 **Settings**). Then the bots at every table talk through it, in a house or not, and a house's
 owner or admins only add their family notes, switch it off, or connect the house's own account
 in its place. That account pays for everyone, so it has ceilings: 3000 lines a day in all
@@ -678,7 +678,7 @@ in its place. That account pays for everyone, so it has ceilings: 3000 lines a d
 tidies bug reports and game requests before players send them (see **Report a problem**). The key lives only in
 the server's settings: it's never stored in the database or sent to a page.
 
-Card Room connects with an API key from the provider's developer console; signing in with a Claude
+open.parlor connects with an API key from the provider's developer console; signing in with a Claude
 or ChatGPT subscription isn't supported.
 
 ### Notifications
@@ -696,7 +696,7 @@ Put the keys in the service's variables (on Railway: the service → **Variables
 same keys for good: new keys quietly cut off every phone that already said yes.
 
 On an iPhone, notifications only work from the Home Screen app (iOS 16.4 or later): open the
-site in Safari, tap Share, **Add to Home Screen**, open Card Room from there and turn them on.
+site in Safari, tap Share, **Add to Home Screen**, open open.parlor from there and turn them on.
 The app explains this when it's opened in Safari. Android phones can turn them on straight from
 the browser.
 
@@ -712,21 +712,21 @@ the browser.
 4. **Variables:** none needed: the image keeps its database at `/data/spades.db`. Without the
    volume, tables live in the container and every deploy wipes them.
 5. **Networking → Generate Domain.** The target port must be the one the server logs at start
-   (`Card Room on http://localhost:8080`). Railway sets `PORT` (usually 8080), which overrides
+   (`open.parlor on http://localhost:8080`). Railway sets `PORT` (usually 8080), which overrides
    the Dockerfile's 8787. Or set `PORT=8787` yourself and use 8787.
 
 #### When it doesn't work
 
 | What you see | Why | Fix |
 | --- | --- | --- |
-| "Application failed to respond", but the deploy log says `Card Room on http://localhost:8080` | The domain points at another port | Set the domain's target port to the logged one |
+| "Application failed to respond", but the deploy log says `open.parlor on http://localhost:8080` | The domain points at another port | Set the domain's target port to the logged one |
 | `/healthz` says `ok`, the page says "Build the web app first" | Built from `packages/server`, so the web app wasn't built | Root directory `/`, builder Dockerfile |
 | Tables disappear after a deploy | No volume at `/data` | A volume mounted at `/data` |
 | Players at one table see different games | More than one replica | One replica |
 | A merge to `main` didn't change the site | The service isn't set to deploy on push | **Settings → Source**, auto-deploy on, or deploy from the dashboard |
 | A Node version error in the build | The builder picked an old Node | `.nvmrc` pins 24; or set `RAILPACK_NODE_VERSION=24` |
 
-Keep the card room in a project of its own, so `railway config apply` can never touch another app.
+Keep the parlor in a project of its own, so `railway config apply` can never touch another app.
 
 See [docs/SPEC.md](docs/SPEC.md) for the original plan.
 See [docs/ROADMAP.md](docs/ROADMAP.md) for what's next: board games, dice, tiles and table sports.

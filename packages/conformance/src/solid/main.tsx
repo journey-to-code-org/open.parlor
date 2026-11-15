@@ -173,7 +173,7 @@ function App() {
       </section>
 
       <section>
-        <h2>The card room's own</h2>
+        <h2>The parlor's own</h2>
         <playing-card data-t="card" prop:card={CARDS[card() % CARDS.length]} prop:playable={true} on:pick={() => setPicks(picks() + 1)} />
         <output data-t="card-out">{picks()}</output>
         <button data-t="card-next" type="button" onClick={() => setCard(card() + 1)}>

@@ -1,4 +1,4 @@
-// What a computer player's think is, for every game in the card room, as plain functions of a plain
+// What a computer player's think is, for every game in the parlor, as plain functions of a plain
 // job: the bot pool's worker threads import this file and run `think`, and the main thread runs the
 // very same functions when it has to answer itself (see botpool.ts and bots.ts). Nothing here keeps
 // anything between calls that changes an answer, so it doesn't matter which thread is asked.

@@ -136,7 +136,7 @@ function remount() {
     </section>
 
     <section>
-      <h2>The card room's own</h2>
+      <h2>The parlor's own</h2>
       <PlayingCard data-t="card" :card="CARDS[card % CARDS.length]" :playable="true" @pick="picks++" />
       <output data-t="card-out">{{ picks }}</output>
       <button data-t="card-next" type="button" @click="card++">Next card</button>

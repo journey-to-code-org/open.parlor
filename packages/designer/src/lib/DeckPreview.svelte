@@ -1,6 +1,6 @@
 <!--
   A deck at a glance, on a strip of felt: its back and two faces (the queen of diamonds shows a
-  four-colour deck's blue). The cards are the card room's own <playing-card>, wearing the design
+  four-colour deck's blue). The cards are the parlor's own <playing-card>, wearing the design
   through the CSS variables set on the strip.
 -->
 <script lang="ts">

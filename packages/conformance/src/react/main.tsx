@@ -183,7 +183,7 @@ function App() {
       </section>
 
       <section>
-        <h2>The card room's own</h2>
+        <h2>The parlor's own</h2>
         <PlayingCard data-t="card" card={CARDS[card % CARDS.length]} playable onPick={() => setPicks((n) => n + 1)} />
         <output data-t="card-out">{picks}</output>
         <button data-t="card-next" type="button" onClick={() => setCard(card + 1)}>

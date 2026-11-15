@@ -28,7 +28,7 @@ export function ChallengePage({ code, onSent, onLeave }: { code: string; onSent:
       <main className="setup">
         <p className="error">{problem}</p>
         <button type="button" className="link" onClick={onLeave}>
-          Go to the card room
+          Go to the parlor
         </button>
       </main>
     );

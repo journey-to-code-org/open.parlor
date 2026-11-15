@@ -41,7 +41,7 @@ async function housesIn(file: string): Promise<string> {
 }
 
 describe("backups", () => {
-  it("a copy is a whole database of its own, taken while the card room is open", async () => {
+  it("a copy is a whole database of its own, taken while the parlor is open", async () => {
     const { folder, backups, send } = await setup();
     await send("/houses", { name: "Grammi's House", you: "brokennil" });
     expect(backups.list()).toEqual([]);
@@ -97,7 +97,7 @@ describe("backups", () => {
     expect(backups.list()).toHaveLength(1);
   });
 
-  it("a card room that keeps nothing on disk has nothing to copy", async () => {
+  it("a parlor that keeps nothing on disk has nothing to copy", async () => {
     const app = createCardRoom({ adminToken: "host-token" });
     open.push(app);
     const admin = async (path: string) => (await app.fetch(new Request(`${BASE}/moderation${path}`, { headers: { authorization: "Bearer host-token" } })))!;

@@ -1,7 +1,7 @@
 {
-  "name": "Card Room",
-  "short_name": "Card Room",
-  "description": "Spades, Palace, Hearts, Euchre and more with the family: your house rules, and computer players who talk back.",
+  "name": "open.parlor",
+  "short_name": "open.parlor",
+  "description": "Card and board games with the family: Spades, Palace, Chess, Go and more: your house rules, and computer players who talk back.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

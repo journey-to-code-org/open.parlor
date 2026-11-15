@@ -4,8 +4,8 @@
   <main class="door">
     <form class="door-card" (submit)="signIn(undefined, $event)" novalidate>
       <div class="suits" aria-hidden="true">♠&#xFE0E; ♥&#xFE0E; ♣&#xFE0E; ♦&#xFE0E;</div>
-      <h1>Card Room admin</h1>
-      <p class="quiet">For whoever runs this card room. Sign in with the admin token you set on the server.</p>
+      <h1>open.parlor admin</h1>
+      <p class="quiet">For whoever runs this parlor. Sign in with the admin token you set on the server.</p>
       @if (signInError()) {
         <alert-banner variant="danger" heading="Couldn't sign in">{{ signInError() }}</alert-banner>
       }
@@ -20,18 +20,18 @@
         [required]="true"
       ></text-field>
       <action-button type="submit" [loading]="checking()">Sign in</action-button>
-      <a class="back" href="../">Back to the card room</a>
+      <a class="back" href="../">Back to the parlor</a>
     </form>
   </main>
 } @else {
   <div class="shell">
     <header class="top">
       <div>
-        <h1><span aria-hidden="true">♠&#xFE0E;</span> Card Room admin</h1>
+        <h1><span aria-hidden="true">♠&#xFE0E;</span> open.parlor admin</h1>
       </div>
       <cluster-layout gap="0.5rem" justify="flex-end">
         <action-button variant="outline" size="sm" (click)="refresh()">Refresh</action-button>
-        <action-button variant="ghost" size="sm" href="../" target="_blank">Open the card room</action-button>
+        <action-button variant="ghost" size="sm" href="../" target="_blank">Open the parlor</action-button>
         <action-button variant="ghost" size="sm" (click)="signOut()">Sign out</action-button>
       </cluster-layout>
     </header>
@@ -41,7 +41,7 @@
     }
 
     @if (!loaded()) {
-      <div class="waiting"><loading-spinner label="Loading the card room" [inline]="true"></loading-spinner></div>
+      <div class="waiting"><loading-spinner label="Loading the parlor" [inline]="true"></loading-spinner></div>
     } @else {
       <tab-list [tabs]="sections" [value]="section()" (valuechange)="setSection($event)" label="Sections">
         <!-- Overview -->
@@ -76,15 +76,15 @@
             @if (o.backups; as b) {
               <p class="quiet" data-backups>
                 @if (b.latest; as latest) {
-                  The last copy of the card room's database was made {{ when(latest.at) }} ({{ size(latest.size) }}).
+                  The last copy of the parlor's database was made {{ when(latest.at) }} ({{ size(latest.size) }}).
                 } @else {
-                  No copy of the card room's database has been made yet.
+                  No copy of the parlor's database has been made yet.
                 }
                 The server makes one every {{ b.hours }} hours and keeps the newest {{ b.keep }}, on the same disk as the database.
               </p>
               <action-button variant="outline" [loading]="savingBackup()" (click)="downloadBackup()">Download a copy now</action-button>
             } @else {
-              <p class="quiet" data-backups>Nothing is being backed up: this card room keeps its tables in memory, or backups are switched off.</p>
+              <p class="quiet" data-backups>Nothing is being backed up: this parlor keeps its tables in memory, or backups are switched off.</p>
             }
           }
         </section>
@@ -113,8 +113,8 @@
             <p class="quiet hint">Tick a table to look at who's there and what's been said, or to close it.</p>
           } @else {
             <empty-state heading="No tables yet">
-              When someone opens a table in the card room, it shows up here.
-              <action-button slot="actions" variant="outline" href="../" target="_blank">Open the card room</action-button>
+              When someone opens a table in the parlor, it shows up here.
+              <action-button slot="actions" variant="outline" href="../" target="_blank">Open the parlor</action-button>
             </empty-state>
           }
         </section>
@@ -182,7 +182,7 @@
               }
             </auto-grid>
           } @else {
-            <empty-state heading="No houses yet">A house is a family's own corner of the card room: its members, its house rules and its tournaments. When someone starts one, it shows up here.</empty-state>
+            <empty-state heading="No houses yet">A house is a family's own corner of the parlor: its members, its house rules and its tournaments. When someone starts one, it shows up here.</empty-state>
           }
         </section>
 

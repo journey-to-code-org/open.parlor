@@ -1,4 +1,4 @@
-// How the card room's computer players think: off the main thread when the game says a think is a
+// How the parlor's computer players think: off the main thread when the game says a think is a
 // heavy one (see `TableGame.heavy`), on it otherwise. The rooms kit asks `think` for every bot move;
 // this decides where the work is done, and the answer is the same either way (see brain.ts).
 //
@@ -23,7 +23,7 @@ export interface BotOptions {
   ceilingMs?: number;
   /** Whether workers warm the engines up as they start. Default true. */
   warm?: boolean;
-  /** The brain module the workers import, if not the card room's own (for tests: it must give the same answers as brain.ts). */
+  /** The brain module the workers import, if not the parlor's own (for tests: it must give the same answers as brain.ts). */
   brain?: URL | string;
 }
 

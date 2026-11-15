@@ -1,4 +1,4 @@
-// Reversi in the card room: a house table with house rules, played to the end by a person (from
+// Reversi in the parlor: a house table with house rules, played to the end by a person (from
 // nothing but what their view offers) against a computer player, and on the leaderboard.
 import { movesOffered, type BoardView } from "@journey-to-code/games";
 import { memoryLog } from "@zubra/sync/server";
@@ -30,7 +30,7 @@ async function viewOf(send: ReturnType<typeof phone>, id: string, seat: number):
   return changes.filter((c) => c.collection === "views" && c.key === `${id}/${seat}` && c.field === "view").at(-1)?.value;
 }
 
-describe("Reversi in the card room", () => {
+describe("Reversi in the parlor", () => {
   it("a house table with house rules, played to the end against a computer player", async () => {
     const grammi = phone();
     const made = (await grammi("/houses", { name: "Grammi's House", you: "brokennil" })).body;

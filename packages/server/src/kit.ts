@@ -1,4 +1,4 @@
-// The games on the kit, card games, board games and table sports alike, in the card room: one room definition
+// The games on the kit, card games, board games and table sports alike, in the parlor: one room definition
 // serves them all. A room's options say which game, its house rules and how many seats. Nothing
 // here looks inside a view, so it doesn't matter what a game's table is made of.
 import { kitGame, QUICK_STYLE, SPORT_GAMES, type BoardView, type KitGameId, type KitSummary, type KitView, type SportView, type TableGame, type ThinkBudget } from "@journey-to-code/games";
