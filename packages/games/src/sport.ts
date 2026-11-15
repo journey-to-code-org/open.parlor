@@ -16,7 +16,7 @@
 // ball a player; eight-ball has sixteen bodies and you strike the cue ball; Carrom's striker and
 // a bowling ball are bigger, heavier bodies in the same list.
 import type { Body, Point, Shape, Shot, World } from "@cardroom/physics";
-import type { BaseRules, Choices, GameOver, RoundResult, Scores, SportGameId, TableGame } from "./table.js";
+import type { BaseRules, Choices, GameOver, RoundResult, Scores, ScoreSheet, SportGameId, TableGame } from "./table.js";
 
 /**
  * Lengths in a sport's world are tenths of a millimetre, as in the physics core's examples, so a
@@ -229,18 +229,11 @@ export interface SportShot {
   physics: number;
 }
 
-/** A score sheet with a column per hole (or frame, or rack) and a row per player. */
-export interface SportCard {
-  title: string;
-  /** `sub` is a second line under the label: a hole's par. */
-  columns: { label: string; sub?: string }[];
-  /** The column being played, if any. */
-  current: number | null;
-  rows: { seat: number; cells: string[]; total: string; note?: string }[];
-  /** What `total` and `note` are, for the headings: "Total", "To par". */
-  totalLabel: string;
-  noteLabel?: string;
-}
+/**
+ * A score sheet with a column per hole (or frame, or rack) and a row per player. It is the kit-wide
+ * `ScoreSheet` (table.ts), which the board kit uses too.
+ */
+export type SportCard = ScoreSheet;
 
 export interface SportSeat {
   /** A short line under the name: "2 strokes", "Holed in 3". */

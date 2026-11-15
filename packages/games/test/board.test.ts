@@ -13,7 +13,8 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 export function checkBoardView(v: BoardView, seat: number) {
   expect(v.me).toBe(seat);
   expect(v.players).toHaveLength(v.seats);
-  expect(v.grids.length).toBeGreaterThan(0);
+  // Something is on the table: a board, or (for a game of dice and a scorecard) dice or a sheet.
+  expect(v.grids.length + (v.dice ? 1 : 0) + (v.sheet ? 1 : 0)).toBeGreaterThan(0);
   expect(new Set(v.grids.map((g) => g.id)).size).toBe(v.grids.length);
   for (const g of v.grids) {
     const size = g.rows * g.cols;
@@ -60,8 +61,64 @@ export function checkBoardView(v: BoardView, seat: number) {
     // A private grid is only ever sent to the seat it belongs to.
     if (g.owner !== undefined) expect(g.owner).toBe(seat);
     for (const piece of g.cells) if (piece) expect(piece.glyph && piece.label && piece.kind).toBeTruthy();
+    // A stack is a whole number of pieces, and when it says which they are it names each of them, once on the whole board.
+    const stacked = g.cells.flatMap((piece) => piece?.ids ?? []);
+    expect(new Set(stacked).size).toBe(stacked.length);
+    for (const piece of g.cells) {
+      if (piece?.count !== undefined) expect(Number.isInteger(piece.count) && piece.count >= 1, `a stack of ${piece.count}`).toBe(true);
+      if (piece?.ids) expect(piece.ids).toHaveLength(piece.count ?? 1);
+    }
+    // A track is made of cells of this grid, each once: the places along it, then a bar and a home for every seat.
+    if (g.track) {
+      const { path, bar = [], home = [] } = g.track;
+      const places = [...path, ...bar, ...home];
+      expect(path.length).toBeGreaterThan(0);
+      for (const cell of places) expect(on(cell)).toBe(true);
+      expect(new Set(places).size).toBe(places.length);
+      for (const beside of [bar, home]) if (beside.length) expect(beside).toHaveLength(v.seats);
+    }
+  }
+  if (v.cube) {
+    // The cube shows a power of two, and is in the middle or on the side of someone at the table.
+    const { value, owner, offered } = v.cube;
+    expect(Number.isInteger(Math.log2(value)) && value >= 1, `a cube on ${value}`).toBe(true);
+    for (const who of [owner, offered]) if (who !== null) expect(Number.isInteger(who) && who >= 0 && who < v.seats).toBe(true);
+    // Only whoever could turn it can have offered it.
+    if (offered !== null && owner !== null) expect(offered).toBe(owner);
   }
   for (const r of v.reserves) for (const p of r.pieces) expect(p.count).toBeGreaterThanOrEqual(0);
+  if (v.dice) {
+    const { dice, tap, roll, sides = 6, owner } = v.dice;
+    // Each die is one thing with its own id, and shows a face it has (or nothing, before it's thrown).
+    expect(new Set(dice.map((d) => d.id)).size).toBe(dice.length);
+    for (const d of dice) {
+      expect(Number.isInteger(d.id)).toBe(true);
+      if (d.value !== null) expect(Number.isInteger(d.value) && d.value >= 1 && d.value <= sides, `a die showing ${d.value}`).toBe(true);
+    }
+    expect(Number.isInteger(roll) && roll >= 0).toBe(true);
+    // A die you can tap is on the table, once.
+    for (const id of tap?.dice ?? []) expect(dice.some((d) => d.id === id)).toBe(true);
+    expect(new Set(tap?.dice).size).toBe(tap?.dice.length ?? 0);
+    // Private dice are only ever sent to the seat they belong to.
+    if (owner !== undefined) expect(owner).toBe(seat);
+  }
+  if (v.sheet) {
+    const { columns, rows, pick, last, current } = v.sheet;
+    expect(new Set(rows.map((r) => r.seat)).size).toBe(rows.length);
+    for (const r of rows) expect(r.cells).toHaveLength(columns.length);
+    if (current !== null) expect(columns[current]).toBeTruthy();
+    if (last) expect([rows.some((r) => r.seat === last.seat), !!columns[last.column]]).toEqual([true, true]);
+    // A cell you can choose is in your own row, in a column a move can name, still empty, once.
+    const mine = rows.find((r) => r.seat === seat);
+    for (const c of pick?.cells ?? []) {
+      expect(columns[c.column]?.id, "a column that can be chosen has an id").toBeTruthy();
+      expect(columns[c.column]!.kind).toBeUndefined();
+      expect(mine?.cells[c.column]).toBe("");
+      expect(typeof c.would).toBe("string");
+    }
+    expect(new Set(pick?.cells.map((c) => c.column)).size).toBe(pick?.cells.length ?? 0);
+    expect(new Set(columns.flatMap((c) => (c.id === undefined ? [] : [c.id]))).size).toBe(columns.filter((c) => c.id !== undefined).length);
+  }
   if (v.over) expect(v.over.winners.length).toBeGreaterThan(0);
   // Offers (see offers.test.ts): only the seat an offer was made to answers it, and never its maker.
   if (v.offers) {
@@ -126,6 +183,41 @@ describe("the board kit's helpers", () => {
     };
     checkBoardView(view, 0);
     expect(movesOffered(view)).toEqual([{ type: "move", from: 0, to: 1 }, { type: "move", from: 0, to: 4 }, { type: "move", from: "ship", to: 5 }, { type: "pass" }]);
+    // Dice that can be tapped and a sheet with cells to choose: a move per die, and one per cell by its column's id.
+    const rolled: BoardView = {
+      ...base,
+      grids: [],
+      dice: { dice: [{ id: 0, value: 3, held: true }, { id: 1, value: 6 }, { id: 2, value: null }], roll: 2, tap: { type: "hold", dice: [0, 1] } },
+      sheet: { title: "Sheet", columns: [{ id: "ones", label: "Ones" }, { label: "Bonus", kind: "sum" }, { id: "chance", label: "Chance" }], current: null, rows: [{ seat: 0, cells: ["3", "3/63", ""], total: "3" }, { seat: 1, cells: ["", "0/63", ""], total: "0" }], totalLabel: "Total", last: { seat: 0, column: 0 }, pick: { type: "score", cells: [{ column: 2, would: "9" }] } },
+      choices: { prompt: "", options: [{ label: "Roll", move: { type: "roll" } }] },
+    };
+    checkBoardView(rolled, 0);
+    expect(movesOffered(rolled)).toEqual([{ type: "score", cell: "chance" }, { type: "hold", die: 0 }, { type: "hold", die: 1 }, { type: "roll" }]);
+    // A view with nothing on the table at all, a die showing a face it hasn't got, two dice with one id,
+    // a tap on a die that isn't there, someone else's private dice, a cell to choose that's filled in: none add up.
+    expect(() => checkBoardView({ ...base, grids: [] }, 0)).toThrow();
+    expect(() => checkBoardView({ ...rolled, dice: { ...rolled.dice!, dice: [{ id: 0, value: 7 }] } }, 0)).toThrow();
+    expect(() => checkBoardView({ ...rolled, dice: { ...rolled.dice!, sides: 8, dice: [{ id: 0, value: 7 }], tap: null } }, 0)).not.toThrow();
+    expect(() => checkBoardView({ ...rolled, dice: { ...rolled.dice!, dice: [{ id: 0, value: 1 }, { id: 0, value: 2 }] } }, 0)).toThrow();
+    expect(() => checkBoardView({ ...rolled, dice: { ...rolled.dice!, tap: { type: "hold", dice: [9] } } }, 0)).toThrow();
+    expect(() => checkBoardView({ ...rolled, dice: { ...rolled.dice!, owner: 1 } }, 0)).toThrow();
+    expect(() => checkBoardView({ ...rolled, sheet: { ...rolled.sheet!, pick: { type: "score", cells: [{ column: 0, would: "1" }] } } }, 0)).toThrow();
+    expect(() => checkBoardView({ ...rolled, sheet: { ...rolled.sheet!, pick: { type: "score", cells: [{ column: 1, would: "1" }] } } }, 0)).toThrow();
+    // A track of points with stacks on them, and a cube: the stacks, the track and the cube all have to add up.
+    const stack = { ...piece, kind: "checker", count: 3, ids: ["c0", "c1", "c2"] };
+    const points: BoardView = { ...base, cube: { value: 2, owner: 1, offered: null, dead: false }, grids: [{ ...grid, cells: [stack, null, null, { ...stack, owner: 1, count: 1, ids: ["c3"] }, null, null], track: { kind: "points", path: [0, 1, 3, 4], bar: [2, 5], home: [] }, flip: "rows", select: { type: "move", sources: [{ from: 0, to: [1] }], quick: true } }] };
+    checkBoardView(points, 0);
+    expect(movesOffered(points)).toEqual([{ type: "move", from: 0, to: 1 }]);
+    const pointsGrid = points.grids[0]!;
+    expect(() => checkBoardView({ ...points, grids: [{ ...pointsGrid, cells: [{ ...stack, count: 2 }, null, null, null, null, null] }] }, 0)).toThrow();
+    expect(() => checkBoardView({ ...points, grids: [{ ...pointsGrid, cells: [stack, stack, null, null, null, null] }] }, 0)).toThrow();
+    expect(() => checkBoardView({ ...points, grids: [{ ...pointsGrid, cells: [{ ...stack, count: 0, ids: [] }, null, null, null, null, null] }] }, 0)).toThrow();
+    expect(() => checkBoardView({ ...points, grids: [{ ...pointsGrid, track: { kind: "points", path: [0, 1, 1] } }] }, 0)).toThrow();
+    expect(() => checkBoardView({ ...points, grids: [{ ...pointsGrid, track: { kind: "points", path: [0, 9] } }] }, 0)).toThrow();
+    expect(() => checkBoardView({ ...points, grids: [{ ...pointsGrid, track: { kind: "points", path: [0, 1], bar: [2] } }] }, 0)).toThrow();
+    expect(() => checkBoardView({ ...points, cube: { value: 3, owner: null, offered: null, dead: false } }, 0)).toThrow();
+    expect(() => checkBoardView({ ...points, cube: { value: 2, owner: 5, offered: null, dead: false } }, 0)).toThrow();
+    expect(() => checkBoardView({ ...points, cube: { value: 2, owner: 1, offered: 0, dead: false } }, 0)).toThrow();
     // With two boards, a move says which one it's on.
     const two = { ...base, grids: [{ ...grid, id: "theirs", tap: { type: "shoot", cells: [3] } }, { ...grid, id: "mine", owner: 0 }] };
     checkBoardView(two, 0);
@@ -277,7 +369,7 @@ for (const game of BOARD_GAMES) {
       }
       // When it's one seat's turn, nobody else is offered a move on the board.
       const turn = views[0]!.turn;
-      if (turn !== null) for (const v of views) if (v.me !== turn) expect(v.grids.every((g) => !g.tap?.cells.length && !g.select?.sources.length)).toBe(true);
+      if (turn !== null) for (const v of views) if (v.me !== turn) expect(v.grids.every((g) => !g.tap?.cells.length && !g.select?.sources.length) && !v.dice?.tap?.dice.length && !v.sheet?.pick?.cells.length).toBe(true);
       // When everyone moves at once (placing ships), one seat's move never changes what another may do.
       if (turn === null && !views[0]!.over) {
         for (const v of views) {
@@ -298,7 +390,11 @@ for (const game of BOARD_GAMES) {
       const move = movesOffered(game.view(s, mover))[0]!;
       const idle = Array.from({ length: game.seats.default }, (_, i) => i).find((seat) => !game.bot(s, seat, {}));
       if (idle !== undefined) expect(() => game.apply(s, idle, move)).toThrow(GameError);
-      for (const junk of [{ type: "nonsense" }, {}, null, { type: move.type }, { ...move, cell: -1, from: -1, to: 1e9, col: 99 }, { ...move, cell: "x", from: "x", to: "x", col: "x" }]) {
+      // A move that says where (a cell, a column, a die) is refused with the where missing or wrong.
+      // A button has no where to get wrong: a game that opens with one (roll the dice) is spared those.
+      const placed = Object.keys(move).length > 1;
+      const misplaced = placed ? [{ type: move.type }, { ...move, cell: -1, from: -1, to: 1e9, col: 99, die: -1 }, { ...move, cell: "x", from: "x", to: "x", col: "x", die: "x" }] : [];
+      for (const junk of [{ type: "nonsense" }, {}, null, ...misplaced]) {
         expect(() => game.apply(s, mover, junk), JSON.stringify(junk)).toThrow(GameError);
       }
       expect(JSON.stringify(s)).toBe(before);

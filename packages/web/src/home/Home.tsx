@@ -63,7 +63,7 @@ const FANS: Record<string, object[]> = {
 };
 
 /** A board game's tile shows a little board instead: a position that says what the game is about. */
-type MiniBoard = { cols: number; cells: ({ glyph: string; tone: string; shade?: "dark" } | null)[]; shade?: "green" | "wood" };
+type MiniBoard = { cols: number; cells: ({ glyph: string; tone: string; shade?: "dark" | "point-down" | "point-up" } | null)[]; shade?: "green" | "wood" | "points" };
 const X = { glyph: "✕", tone: "red" };
 const O = { glyph: "◯", tone: "blue" };
 const DARK = { glyph: "●", tone: "dark" };
@@ -81,6 +81,11 @@ const KING_DARK = { ...SQUARE, glyph: "♛", tone: "dark" };
 // Chess: the corner of a board with a king castled behind its pawns.
 const LIGHT_SQUARE = { glyph: "", tone: "none" };
 const on = (glyph: string, tone: string, dark: boolean) => (dark ? { ...SQUARE, glyph, tone } : { glyph, tone });
+// Backgammon: a few points from each side of the board, with checkers standing on them.
+const DOWN = { glyph: "", tone: "none", shade: "point-down" as const };
+const UP = { glyph: "", tone: "none", shade: "point-up" as const };
+const CHECKER_LIGHT = { glyph: "●", tone: "light" };
+const CHECKER_DARK = { glyph: "●", tone: "dark" };
 const BOARDS: Record<string, MiniBoard> = {
   tictactoe: { cols: 3, cells: [X, O, null, null, X, O, O, null, X] },
   // The bottom of a rack: red about to make four on the slant.
@@ -90,6 +95,7 @@ const BOARDS: Record<string, MiniBoard> = {
   reversi: { cols: 4, shade: "green", cells: [null, null, null, null, null, DARK, LIGHT, null, DARK, DARK, DARK, null, null, null, LIGHT, null] },
   checkers: { cols: 4, cells: [null, MAN_LIGHT, null, MAN_LIGHT, SQUARE, null, KING_DARK, null, null, MAN_LIGHT, null, SQUARE, MAN_DARK, null, MAN_DARK, null] },
   chess: { cols: 4, cells: [LIGHT_SQUARE, on("♞\uFE0E", "dark", true), LIGHT_SQUARE, SQUARE, SQUARE, LIGHT_SQUARE, on("♝\uFE0E", "dark", true), LIGHT_SQUARE, on("♟\uFE0E", "light", false), on("♟\uFE0E", "light", true), on("♟\uFE0E", "light", false), SQUARE, SQUARE, on("♜\uFE0E", "light", false), on("♚\uFE0E", "light", true), LIGHT_SQUARE] },
+  backgammon: { cols: 4, shade: "points", cells: [{ ...DOWN, ...CHECKER_DARK }, DOWN, { ...DOWN, ...CHECKER_LIGHT }, DOWN, CHECKER_DARK, null, CHECKER_LIGHT, null, null, CHECKER_LIGHT, null, CHECKER_DARK, UP, { ...UP, ...CHECKER_LIGHT }, UP, { ...UP, ...CHECKER_DARK }] },
 };
 // Go: a corner of the board with a ko on it. Black has just taken a stone, and White may not take straight back.
 BOARDS.go = { cols: 5, shade: "wood", cells: [null, null, null, null, null, null, DARK, LIGHT, null, null, DARK, null, DARK, LIGHT, null, null, DARK, LIGHT, null, null, null, null, null, null, null] };
@@ -102,6 +108,12 @@ const TABLES: Record<string, MiniTable> = {
   minigolf: { surface: "green", cup: [66, 32], balls: [{ x: 36, y: 72, tone: "white" }, { x: 70, y: 62, tone: "red" }] },
 };
 const EMPTY_TABLE: MiniTable = { surface: "green", balls: [] };
+
+/** A dice game's tile shows a few dice instead of a board: the faces they landed on. */
+const DICE: Record<string, number[]> = {
+  // Three fives up and two to come: most of the way to a Yacht.
+  yacht: [5, 5, 5],
+};
 
 const SEATS: Record<string, { seats: [number, number]; teams: boolean }> = {
   spades: { seats: [4, 4], teams: true },
@@ -120,7 +132,7 @@ export function Home({ last, onPick, onOpenHouse, onLobby }: { last: GameId | nu
 
   useEffect(() => {
     // The games the card room's host offers, in their order (every game, where there's no server).
-    const games = () => arranged(GAME_LIST).map((g) => ({ ...g, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, board: isBoardGame(g.id) ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
+    const games = () => arranged(GAME_LIST).map((g) => ({ ...g, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: isBoardGame(g.id) && !DICE[g.id] ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
     const props = reactive({
       games: games(),
       houses: loadMyHouses(),

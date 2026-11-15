@@ -54,6 +54,8 @@ export * from "./checkers.js";
 export * from "./goboard.js";
 export * from "./go.js";
 export * from "./chess.js";
+export * from "./yacht.js";
+export * from "./backgammon.js";
 export * from "./horserace.js";
 export * from "./drinkingpyramid.js";
 export * from "./sport.js";

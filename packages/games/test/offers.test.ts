@@ -419,7 +419,7 @@ describe("taking a move back", () => {
     // A game without offers gets its rules back untouched.
     expect(matchRules(hearts, hearts.presets[0]!)).toBe(hearts.presets[0]);
     // Every board game, opened that way, keeps nothing and offers no take-back, however far it is played.
-    for (const game of BOARD_GAMES) {
+    for (const game of OFFER_GAMES) {
       const s = advance(game, game.newGame(game.normalize(matchRules(game, game.presets[0])), 2, 3), 8);
       expect(s.offers.past, game.id).toEqual([]);
       for (const seat of [0, 1]) expect(game.view(s, seat).offers!.can, game.id).toEqual(["resign", "draw"]);
@@ -627,9 +627,14 @@ function advance(game: Any, s: any, n: number) {
   return s;
 }
 
+// The board games with offers. Yacht has no one to play against, and Backgammon waits for offers of its own:
+// its dice make a take-back impossible, and its match is scored its own way. Both are checked to be the only ones left out.
+const OFFER_GAMES = BOARD_GAMES.filter((g) => g.fields.some((f) => f.key === "offers"));
+
 describe("every board game", () => {
   it("has offers switched on, with a house rule for them", () => {
-    for (const game of BOARD_GAMES) {
+    expect(BOARD_GAMES.filter((g) => !OFFER_GAMES.includes(g)).map((g) => g.id)).toEqual(["yacht", "backgammon"]);
+    for (const game of OFFER_GAMES) {
       expect(game.fields.at(-1)?.key, game.id).toBe("offers");
       for (const p of game.presets) expect(p.offers, p.id).toBe("all");
       const s = game.newGame(game.presets[0], 2, 3);
@@ -638,7 +643,7 @@ describe("every board game", () => {
   });
 
   it("can be resigned and drawn by agreement, in a single game and in a match", () => {
-    for (const game of BOARD_GAMES) {
+    for (const game of OFFER_GAMES) {
       for (const preset of game.presets) {
         const s = advance(game, game.newGame(preset, 2, 5), 6);
         for (const seat of [0, 1]) {
