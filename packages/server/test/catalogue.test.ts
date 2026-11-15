@@ -3,7 +3,7 @@
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCardRoom } from "../src/app.js";
-import { COMPUTER_TABLES } from "../src/spectate.js";
+import { COMPUTER_TABLES, IDLE_MS } from "../src/spectate.js";
 
 const BASE = "http://test";
 const TOKEN = "let-grammi-in";
@@ -221,6 +221,50 @@ describe("watching", () => {
     await admin("/games", { watching: true });
     await admin(`/tables/${id}/close`, {});
     expect((await phone()("/spectate")).body.tables.map((t: { id: string }) => t.id)).not.toContain(id);
+  });
+
+  it("lists only what's really going: games this card room has and hasn't switched off, at tables someone's still at", async () => {
+    const clock = { now: 5_000_000 };
+    const app = createCardRoom({ log: memoryLog({ keep: "latest" }), botDelay: 5, talk: false, adminToken: "admin-token", spectate: { now: () => clock.now } });
+    open.push(app);
+    const send = (cookie: string) => async (path: string, body?: unknown, headers: Record<string, string> = {}) => {
+      const r = (await app.fetch(new Request(BASE + path, { method: body ? "POST" : "GET", headers: { "content-type": "application/json", cookie, ...headers }, body: body ? JSON.stringify(body) : undefined })))!;
+      return { status: r.status, body: await r.json(), cookie: r.headers.get("set-cookie")?.split(";")[0] ?? cookie };
+    };
+    const host = (path: string, body: unknown) => send("")(path, body, { authorization: "Bearer admin-token" });
+    const listed = async () => ((await send("")("/spectate")).body.tables as { id: string; game: string; gameName: string }[]).map((t) => t.id);
+    // A family Palace table with two people at it, and a Spades one.
+    const table = async (options: unknown) => {
+      let a = await send("")("/rooms", { options });
+      const id = a.body.id as string;
+      const seats = (await send("")(`/rooms/${id}`)).body.seats.length as number;
+      const cookies: string[] = [];
+      for (let seat = 0; seat < seats; seat++) {
+        a = await send("")(`/rooms/${id}/sit`, { seat, name: `P${seat}` });
+        cookies.push(a.cookie);
+      }
+      await send(cookies[0]!)(`/rooms/${id}/start`, {});
+      return { id, cookies };
+    };
+    const palace = await table(PALACE.options);
+    const spades = await table({});
+    expect((await listed()).sort()).toEqual([palace.id, spades.id].sort());
+
+    // Switched off in the admin app: not listed, though the game carries on for its players.
+    expect((await host("/moderation/games", { off: ["palace"] })).status).toBe(200);
+    expect(await listed()).toEqual([spades.id]);
+    await host("/moderation/games", { off: [] });
+
+    // A game this card room doesn't have (a table left from a version that had it) isn't shown as Spades.
+    await app.rooms.sync.write("rooms", spades.id, { info: { game: "bowling", rules: "Ten pins" } });
+    expect(await listed()).toEqual([palace.id]);
+
+    // Nobody has moved at the Palace table for a quarter of an hour: they've gone.
+    clock.now += IDLE_MS + 1;
+    expect(await listed()).toEqual([]);
+    // The computers' tables play themselves, so they stay listed.
+    await send("")("/spectate", { game: "war", pace: "instant" });
+    expect((await send("")("/spectate")).body.tables.map((t: { computers: boolean }) => t.computers)).toEqual([true]);
   });
 
   it("keeps the computers to a few tables at a time", async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GOLF_HOLE, PhysicsError, POOL_TABLE, simulate, validateShot, validateWorld, type World } from "../src/index.js";
+import { GARDEN_HOLE, GOLF_HOLE, PhysicsError, POOL_TABLE, simulate, validateShot, validateWorld, type World } from "../src/index.js";
 
 const edit = (change: (w: any) => void): unknown => {
   const w = JSON.parse(JSON.stringify(GOLF_HOLE));
@@ -8,9 +8,33 @@ const edit = (change: (w: any) => void): unknown => {
 };
 
 describe("validateWorld", () => {
-  it("passes the two example tables", () => {
+  it("passes the example tables", () => {
     expect(validateWorld(POOL_TABLE)).toEqual([]);
     expect(validateWorld(GOLF_HOLE)).toEqual([]);
+    expect(validateWorld(GARDEN_HOLE)).toEqual([]);
+  });
+
+  it("checks tunnels, ledges and bumpers", () => {
+    const garden = (change: (w: any) => void): unknown => {
+      const w = JSON.parse(JSON.stringify(GARDEN_HOLE));
+      change(w);
+      return w;
+    };
+    expect(validateWorld(garden((w) => delete w.tunnels))).toEqual([]);
+    expect(validateWorld(garden((w) => (w.tunnels = {})))[0]).toMatch(/tunnels must be a list/);
+    expect(validateWorld(garden((w) => (w.tunnels[0].r = 0)))[0]).toMatch(/radius/);
+    expect(validateWorld(garden((w) => (w.tunnels[0].x = 0.5)))[0]).toMatch(/mouth/);
+    expect(validateWorld(garden((w) => (w.tunnels[0].to = [1, 2, 3])))[0]).toMatch(/come out/);
+    expect(validateWorld(garden((w) => (w.tunnels[0].to = [99999, 0])))[0]).toMatch(/outside the bounds/);
+    expect(validateWorld(garden((w) => (w.tunnels[0].to = [2100, 20100])))[0]).toMatch(/its own mouth/);
+    expect(validateWorld(garden((w) => (w.tunnels[0].angle = 36000)))[0]).toMatch(/angle/);
+    expect(validateWorld(garden((w) => (w.tunnels[0].angle = 12.5)))[0]).toMatch(/angle/);
+    expect(validateWorld(garden((w) => (w.tunnels[0].speed = -1)))[0]).toMatch(/speed/);
+    expect(validateWorld(garden((w) => (w.tunnels[0].maxSpeed = "slow")))[0]).toMatch(/maxSpeed/);
+    expect(validateWorld(garden((w) => (w.tunnels[0].ticks = 1.5)))[0]).toMatch(/ticks/);
+    expect(validateWorld(garden((w) => w.tunnels.push({ ...w.tunnels[0] })))[0]).toMatch(/Two tunnels are called "pipe"/);
+    expect(validateWorld(garden((w) => (w.walls[1].oneWay = "down")))[0]).toMatch(/oneWay/);
+    expect(validateWorld(garden((w) => (w.bodies[1].kick = -5)))[0]).toMatch(/kick/);
   });
 
   it("passes a world that has been through JSON", () => {

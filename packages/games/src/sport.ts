@@ -15,8 +15,8 @@
 // and what a seat may do is one line: which body it may strike and how hard. Mini golf has one
 // ball a player; eight-ball has sixteen bodies and you strike the cue ball; Carrom's striker and
 // a bowling ball are bigger, heavier bodies in the same list.
-import type { Body, Point, Shot, World } from "@cardroom/physics";
-import type { BaseRules, Choices, GameOver, RoundResult, Scores, SportGameId, TableGame } from "./table.js";
+import type { Body, Point, Shape, Shot, World } from "@cardroom/physics";
+import type { BaseRules, Choices, GameOver, RoundResult, Scores, ScoreSheet, SportGameId, TableGame } from "./table.js";
 
 /**
  * Lengths in a sport's world are tenths of a millimetre, as in the physics core's examples, so a
@@ -24,8 +24,72 @@ import type { BaseRules, Choices, GameOver, RoundResult, Scores, SportGameId, Ta
  */
 export const UNITS_PER_METRE = 10000;
 
+// ---- What is on the table, for whoever draws it -------------------------------------------------
+// A view says what things are and where, in the world's own units: a timber rail this wide and
+// this high, a rock, a patch of sand, a gnome. It never says a colour, a pixel or how anything is
+// shaded. The table screen decides what a "rock" looks like, and a different renderer (one in
+// three dimensions, say) could draw the same view its own way: that is why heights are here even
+// though the physics is flat.
+
 /** What a patch of the table is, for drawing: the table screen decides what each looks like. */
-export type SportSurface = "green" | "rough" | "sand" | "water" | "slope" | "felt" | "wood" | "lane";
+export type SportSurface = "green" | "rough" | "sand" | "water" | "slope" | "felt" | "wood" | "lane" | "lawn" | "gravel" | "paving" | "soil" | "deck";
+
+/** What a rail, a block or a ledge is made of. */
+export type SportMaterial = "timber" | "brick" | "stone";
+
+/** A patch of ground: scenery round the table or the surface that is played on. */
+export interface SportGround {
+  shape: Shape;
+  surface: SportSurface;
+  /**
+   * How far above the ground round the table this patch stands (a terrace, a raised bed), in world
+   * units. Left out: it lies on whatever was laid under it, and if it is water or sand, the
+   * screen may sink it a little.
+   */
+  level?: number;
+}
+
+/**
+ * A wall of the world that is a rail: a border with thickness, standing beside the line a ball
+ * stops at. `side` is where the rail's body lies as you walk along the wall's points (with y down
+ * the screen): to the left of the line, to the right, or astride it.
+ */
+export interface SportRail {
+  wall: string;
+  material: SportMaterial;
+  side: "left" | "right" | "both";
+  /** Across, and how high it stands, in world units. */
+  width: number;
+  height: number;
+}
+
+/** A closed wall of the world that is a solid thing standing on the table. */
+export interface SportBlock {
+  wall: string;
+  kind: "rock" | "brick" | "timber" | "planter" | "pot" | "stone" | "castle" | "crate";
+  /** How high it stands, in world units. */
+  height: number;
+}
+
+/** A one-way wall of the world that is a step down: the ground on its open side is `drop` higher. */
+export interface SportLedge {
+  wall: string;
+  drop: number;
+  material: SportMaterial;
+}
+
+/** A tunnel of the world: what it is, and where its pipe runs if any of it shows. */
+export interface SportTunnel {
+  id: string;
+  /** A pipe with open ends, a garden hose, or a burrow: a hole in the ground and a mound where it comes up. */
+  kind: "pipe" | "hose" | "burrow";
+  /** The way a ball rolls into the mouth, in hundredths of a degree: which way the opening faces. */
+  enter: number;
+  /** Where the pipe can be seen lying between its two ends. Left out when it runs underground or through something. */
+  path?: Point[];
+  /** Where the far opening is, when that isn't quite where the ball is let go (a pipe's end set in a rock face). */
+  out?: Point;
+}
 
 /** The colours a ball can take. */
 export type SportTone = "white" | "red" | "blue" | "gold" | "green" | "purple" | "orange" | "pink" | "maroon" | "black";
@@ -36,7 +100,7 @@ export interface SportBody {
   id: string;
   /** Whose it is (a seat), or null for something that is nobody's: an object ball, a pin, a bumper. */
   owner: number | null;
-  /** What it is, in the game's own words: "ball", "cue", "striker", "pin", "bumper". */
+  /** What it is, in the game's own words: "ball", "cue", "striker", "pin", "toadstool". */
   kind: string;
   tone: SportTone;
   /** What a screen reader says: "your ball", "the 8 ball". */
@@ -45,11 +109,14 @@ export interface SportBody {
   mark?: string;
   /** A striped pool ball. */
   striped?: boolean;
+  /** How high it stands, in world units, for something that isn't a ball. */
+  height?: number;
 }
 
 /**
- * Something drawn on the table that the physics of this view knows nothing about: in mini golf,
- * the other players' balls (which never collide with yours). It can't be struck or hit.
+ * Something drawn on the table that the physics of this view knows nothing about: in mini golf
+ * played all at once, the other players' balls (which never collide with yours), and in turn, a
+ * ball lifted out of the way of the one about to be struck. It can't be struck or hit.
  */
 export interface SportGhost extends SportBody {
   x: number;
@@ -59,23 +126,65 @@ export interface SportGhost extends SportBody {
 
 /** Scenery, in world units. None of it touches the ball. */
 export interface SportDecor {
-  kind: "tee" | "flag" | "bush" | "flowers" | "rock" | "tree";
+  kind:
+    | "tee"
+    | "flag"
+    | "bush"
+    | "flowers"
+    | "rock"
+    | "tree"
+    | "gnome"
+    | "flowerpot"
+    | "wateringcan"
+    | "wheelbarrow"
+    | "steppingstone"
+    | "lilypad"
+    | "fish"
+    | "reeds"
+    | "duck"
+    | "bucket"
+    | "spade"
+    | "bricks"
+    | "bench"
+    | "birdbath"
+    | "molehill"
+    | "poolring"
+    | "doormat"
+    | "hosereel"
+    | "plank"
+    | "shell";
   x: number;
   y: number;
   /** Size, for the things that have one. */
   r?: number;
+  /** Which way it faces, in hundredths of a degree (0 along +x), for the things that face a way. */
+  angle?: number;
+  /** A length, for the things that are longer than they are wide (a plank, a bench). */
+  length?: number;
+  /** How high it stands, in world units. Left out: as high as such a thing usually is. */
+  height?: number;
+  tone?: SportTone;
 }
 
 /** How the world is drawn. The world says where things are; this says what they are. */
 export interface SportLook {
   /** The rectangle the screen fits and centres: the table and a margin round it. */
   frame: { x: number; y: number; w: number; h: number };
-  /** The playing surface, filled in order: the green of a hole, the cloth of a pool table. */
-  ground: { points: Point[]; surface: SportSurface }[];
-  /** What each region of the world is drawn as, in drawing order. A region left out is not drawn. */
-  regions: { id: string; surface: SportSurface }[];
-  /** Closed walls that are solid things standing on the table (a block, a planter), filled in. */
-  blocks: string[];
+  /** What lies under and around everything else, as far as the screen goes. */
+  base: SportSurface;
+  /** Patches of ground, laid in order: the scenery first, then what is played on (the green of a hole, the cloth of a pool table). */
+  ground: SportGround[];
+  /**
+   * What each region of the world is drawn as, in drawing order. A region left out is not drawn.
+   * `rise` is for a slope: how much higher its top is than its foot, in world units.
+   */
+  regions: { id: string; surface: SportSurface; rise?: number }[];
+  /** The walls that are rails. A wall named nowhere in the look is not drawn. */
+  rails: SportRail[];
+  /** Closed walls that are solid things standing on the table (a rock, a planter). */
+  blocks: SportBlock[];
+  ledges: SportLedge[];
+  tunnels: SportTunnel[];
   /** Pockets are drawn as golf cups (with a flag) or as the pockets of a pool table. */
   pockets: "cup" | "pocket";
   decor: SportDecor[];
@@ -120,18 +229,11 @@ export interface SportShot {
   physics: number;
 }
 
-/** A score sheet with a column per hole (or frame, or rack) and a row per player. */
-export interface SportCard {
-  title: string;
-  /** `sub` is a second line under the label: a hole's par. */
-  columns: { label: string; sub?: string }[];
-  /** The column being played, if any. */
-  current: number | null;
-  rows: { seat: number; cells: string[]; total: string; note?: string }[];
-  /** What `total` and `note` are, for the headings: "Total", "To par". */
-  totalLabel: string;
-  noteLabel?: string;
-}
+/**
+ * A score sheet with a column per hole (or frame, or rack) and a row per player. It is the kit-wide
+ * `ScoreSheet` (table.ts), which the board kit uses too.
+ */
+export type SportCard = ScoreSheet;
 
 export interface SportSeat {
   /** A short line under the name: "2 strokes", "Holed in 3". */

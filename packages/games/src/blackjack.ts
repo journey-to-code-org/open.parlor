@@ -409,8 +409,10 @@ function bot(s: BlackjackState, seat: number, style: PlayStyle): Move | null {
   if (s.phase === "bet") {
     if (s.ready[seat]) return null;
     const bold = style.bold ?? 0.3;
+    // A timid player (bold below zero) would otherwise reach before the first bet in the list and
+    // bet nothing at all, which the table refuses, and then the hand never starts.
     const can = BETS.filter((b) => b <= s.chips[seat]! && b <= s.chips[seat]! * (0.15 + bold * 0.3));
-    return { type: "bet", amount: can.length ? can[Math.min(can.length - 1, Math.floor(Math.random() * 2 + bold * 2))]! : minBet(s, seat) };
+    return { type: "bet", amount: can.length ? can[Math.max(0, Math.min(can.length - 1, Math.floor(Math.random() * 2 + bold * 2)))]! : minBet(s, seat) };
   }
   if (s.phase === "settled") return s.ready[seat] ? null : { type: "next" };
   if (s.phase !== "play" || s.turn !== seat) return null;

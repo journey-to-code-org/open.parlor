@@ -19,7 +19,7 @@ import { playerOf } from "@spades/rooms/server";
 import { gameName, gameOfOptions, tableRoom, talk, type GameId, type Remark } from "./games.js";
 
 export function createCardRoom(
-  options: { log?: Log; botDelay?: number; talk?: boolean; push?: PushOptions; ai?: AiOptions; lobby?: LobbyOptions; /** Turns moderation on (see moderation.ts). */ adminToken?: string; bugs?: BugOptions; /** Copies of the database (see backup.ts), for the admin app to report and hand out. */ backups?: Backups } = {},
+  options: { log?: Log; botDelay?: number; talk?: boolean; push?: PushOptions; ai?: AiOptions; lobby?: LobbyOptions; /** Turns moderation on (see moderation.ts). */ adminToken?: string; bugs?: BugOptions; /** Copies of the database (see backup.ts), for the admin app to report and hand out. */ backups?: Backups; /** The clock, for tests. */ spectate?: { now?: () => number } } = {},
 ) {
   const talking = options.talk ?? true;
   const timers = new Set<ReturnType<typeof setTimeout>>();
@@ -138,7 +138,7 @@ export function createCardRoom(
   const challenges = createChallenges(rooms, push, { gameOn: catalogue.isOn });
   const lobby = createLobby(rooms, { push, gameOn: catalogue.isOn, ...options.lobby });
   const designs = createDesigns(rooms.sync, { tables: rooms });
-  const spectate = createSpectate(rooms, catalogue);
+  const spectate = createSpectate(rooms, catalogue, options.spectate);
   const moderation = createModeration(rooms, designs, { token: options.adminToken, houses, catalogue, backups: options.backups });
   // "Report a problem": a player's report becomes an issue on GitHub.
   const bugs = createBugs(rooms, options.bugs);
