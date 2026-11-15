@@ -1,11 +1,11 @@
-// Skyfire's controls: keys and fingers in, one tick's input out.
+// The arcade games' controls: keys and fingers in, one tick's input out.
 import { SKYFIRE_SPEED, skyfire } from "@journey-to-code/games";
 import { describe, expect, it } from "vitest";
 import { skyfireControls } from "../src/arcade/controls";
 
 const make = (autofire = false) => skyfireControls({ autofire: () => autofire });
 
-describe("Skyfire's controls", () => {
+describe("Shitstorm's controls (skyfire)", () => {
   it("rests when nothing is touched, and fires by itself only when asked to", () => {
     expect(make().read()).toEqual(skyfire.idle);
     expect(make(true).read()).toEqual({ ...skyfire.idle, fire: true });
@@ -71,7 +71,7 @@ describe("Skyfire's controls", () => {
   });
 });
 
-describe("Bulwark's controls", () => {
+describe("Tower of Ryan's controls (bulwark)", () => {
   it("sends each order once, with the next number, and holds the last one after", async () => {
     const { bulwarkControls } = await import("../src/arcade/controls");
     const { bulwark } = await import("@journey-to-code/games");

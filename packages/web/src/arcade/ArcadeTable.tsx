@@ -2,8 +2,8 @@
 // the rest. The game runs at its own rate whatever the screen's (a fixed step, caught up a few ticks
 // at a time), is drawn from its view on a canvas, and stops while the page is hidden or paused.
 //
-// A game that is steered (Skyfire) is played with the keys and a finger on the field. A game that
-// builds on a grid (Bulwark) says so in its view (`build`), and gets a shop under the field: pick
+// A game that is steered (Shitstorm) is played with the keys and a finger on the field. A game that
+// builds on a grid (Tower of Ryan) says so in its view (`build`), and gets a shop under the field: pick
 // something and tap a square to build it, or tap what stands there to upgrade or sell it.
 import { arcadeGame, points, type ArcadeBuild, type ArcadeGameId, type ArcadeView } from "@journey-to-code/games";
 import { useEffect, useMemo, useRef, useState } from "react";

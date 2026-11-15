@@ -28,7 +28,7 @@ export interface ArcadeControls<I> {
 const SLOW = 30;
 
 /**
- * Skyfire: arrows or WASD to move (Shift to go slowly), Z, Space or J to fire, X, B or K to bomb.
+ * Shitstorm (skyfire): arrows or WASD to move (Shift to go slowly), Z, Space or J to fire, X, B or K to bomb.
  * A finger drags the ship from wherever it touches, a little further than the finger moves, and a
  * second finger is a bomb. `autofire` keeps the guns going without a key held.
  */
@@ -99,7 +99,7 @@ export function skyfireControls(options: { autofire: () => boolean }): ArcadeCon
 }
 
 /**
- * Bulwark: nothing is steered. Orders wait in a line and go out one a tick, each with the next
+ * Tower of Ryan (bulwark): nothing is steered. Orders wait in a line and go out one a tick, each with the next
  * number, which is how the game knows an order from the same order still being held.
  */
 export function bulwarkControls(): ArcadeControls<BulwarkInput> {
