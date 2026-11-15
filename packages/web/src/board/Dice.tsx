@@ -10,6 +10,7 @@ import type { BoardDice, BoardDie } from "@journey-to-code/games";
 import { useEffect, useRef, useState } from "react";
 import { play } from "../feedback/sounds";
 import { reducedMotion } from "../motion";
+import { DARK, LIGHT, loadDice3d, type Dice3d, type Die3d } from "./dice3d";
 
 /** Where each face's pips sit in a die's three-by-three (0 is the top left, 8 the bottom right). */
 const PIPS: Record<number, number[]> = { 1: [4], 2: [2, 6], 3: [2, 4, 6], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
@@ -38,6 +39,41 @@ function Face({ value }: { value: number | null }) {
   );
 }
 
+/** The three-dimensional dice, once they've loaded (null on the way, and wherever WebGL doesn't work). */
+function useDice3d(sides: number): Dice3d | null {
+  const [three, setThree] = useState<Dice3d | null>(null);
+  useEffect(() => {
+    if (sides !== 6) return;
+    let live = true;
+    void loadDice3d().then((d) => live && setThree(d));
+    return () => {
+      live = false;
+    };
+  }, [sides]);
+  return sides === 6 ? three : null;
+}
+
+/** A die drawn as a cube: shows its face, and spins to it when it's thrown. */
+function Face3d({ three, value, dark, tumbling, index }: { three: Dice3d; value: number; dark: boolean; tumbling: boolean; index: number }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const die = useRef<Die3d | null>(null);
+  const was = useRef(false);
+  useEffect(() => {
+    die.current = three.create(canvas.current!, dark ? DARK : LIGHT);
+    die.current.show(value);
+    return () => die.current?.dispose();
+  }, [three]);
+  useEffect(() => {
+    die.current?.setPalette(dark ? DARK : LIGHT);
+  }, [dark]);
+  useEffect(() => {
+    if (tumbling && !was.current) die.current?.tumble(value, TUMBLE_MS, index * 40);
+    else if (!tumbling) die.current?.show(value);
+    was.current = tumbling;
+  }, [value, tumbling]);
+  return <canvas ref={canvas} className="die-3d" aria-hidden />;
+}
+
 export interface DiceProps {
   dice: BoardDice;
   /** A tap (or Enter) on a die the view lists as tappable. */
@@ -55,6 +91,7 @@ export interface DiceProps {
 
 export function Dice({ dice, onTap, still, onTumble, split }: DiceProps) {
   const sides = dice.sides ?? 6;
+  const three = useDice3d(sides);
   const row = useRef<HTMLDivElement>(null);
   // While dice tumble they show faces of their own choosing; `faces` is what each shows this instant.
   const [faces, setFaces] = useState<Map<number, number> | null>(null);
@@ -100,11 +137,12 @@ export function Dice({ dice, onTap, still, onTumble, split }: DiceProps) {
 
   const one = (die: BoardDie, i: number) => {
     const tumbling = faces?.has(die.id);
-    const cls = ["die", die.held ? "held" : "", die.used ? "used" : "", tumbling ? "tumbling" : "", die.value === null ? "unrolled" : "", typeof die.owner === "number" ? `owner-${die.owner % 2}` : ""].filter(Boolean).join(" ");
+    const flat = !three || die.value === null;
+    const cls = ["die", flat ? "" : "d3", die.held ? "held" : "", die.used ? "used" : "", tumbling ? "tumbling" : "", die.value === null ? "unrolled" : "", typeof die.owner === "number" ? `owner-${die.owner % 2}` : ""].filter(Boolean).join(" ");
     const style = { "--i": i } as React.CSSProperties;
     const body = (
       <>
-        <Face value={tumbling ? faces!.get(die.id)! : die.value} />
+        {flat ? <Face value={tumbling ? faces!.get(die.id)! : die.value} /> : <Face3d three={three} value={die.value!} dark={typeof die.owner === "number" && die.owner % 2 === 1} tumbling={!!tumbling} index={i} />}
         {/* Set aside: a held die sits up out of the row with a tag under it. */}
         {die.held && (
           <span className="die-tag" aria-hidden>
