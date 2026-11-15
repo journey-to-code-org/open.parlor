@@ -331,6 +331,14 @@ of every screen (at a table on a phone: under ⚙︎) opens a short form: what w
 and two switches, one for a picture of the screen and one for the browser's details. The server
 then opens an issue on GitHub for them and tells them its number.
 
+This is [open.relay](https://github.com/journey-to-code-org/open.relay) set up for the parlor:
+`@journey-to-code/relay` files the issues and enforces the limits, and `@journey-to-code/relay-ui`
+draws the sheets, dressed in the parlor's own styles and zubra-ui's switch and text field. What's
+left here is the glue: [`bugs.ts`](packages/server/src/bugs.ts) on the server (where it keeps its
+records, who is asking, how a table is described) and [`bugReport.ts`](packages/web/src/bugReport.ts),
+[`ReportProblem.tsx`](packages/web/src/ReportProblem.tsx) and [`GameRequest.tsx`](packages/web/src/GameRequest.tsx)
+on the page.
+
 To turn it on, make a [fine-grained token](https://github.com/settings/personal-access-tokens/new)
 for this repository only, with **Issues: Read and write** and nothing else, and set it as
 `CARDROOM_GITHUB_TOKEN`. Issues are opened in the name of the token's account, labelled `bug` and
@@ -365,7 +373,7 @@ ten minutes, and the parlor 200 a day (counted against the key's daily ceiling t
 
 ## Packages
 
-The game engine and the rooms live in their own repositories and come in from npm: [open.games](https://github.com/journey-to-code-org/open.games) (the `@journey-to-code/games`, `rules`, `palace`, `physics` and `decks` packages) and [open.rooms](https://github.com/journey-to-code-org/open.rooms) (`@journey-to-code/rooms`). This repository is the app built from them. Paths such as [`packages/games/src/...`](https://github.com/journey-to-code-org/open.games/tree/main/packages/games/src/...) in the sections below are in open.games.
+The game engine and the rooms live in their own repositories and come in from npm: [open.games](https://github.com/journey-to-code-org/open.games) (the `@journey-to-code/games`, `rules`, `palace`, `physics` and `decks` packages) and [open.rooms](https://github.com/journey-to-code-org/open.rooms) (`@journey-to-code/rooms`); reporting a problem and asking for a game come from [open.relay](https://github.com/journey-to-code-org/open.relay) (`@journey-to-code/relay` and `relay-ui`). This repository is the app built from them. Paths such as [`packages/games/src/...`](https://github.com/journey-to-code-org/open.games/tree/main/packages/games/src/...) in the sections below are in open.games.
 
 | Package | |
 | --- | --- |
@@ -628,7 +636,7 @@ docker run -p 8787:8787 -v spades:/data cardroom
 | `CARDROOM_AI_MODEL` | The model for that key. Default: `claude-haiku-5-5` or `gpt-5.6-luna`. |
 | `CARDROOM_AI_DAILY` | The most lines a day on that key, everyone together. Default 3000. |
 | `CARDROOM_GITHUB_TOKEN` | Optional: turns on **Report a problem**. A GitHub token that may open issues on the repository below; keep it secret. |
-| `CARDROOM_GITHUB_REPO` | Where reports are filed, as `owner/name`. Default `mnichols08/card-room`. |
+| `CARDROOM_GITHUB_REPO` | Where reports are filed, as `owner/name`. Default `journey-to-code-org/open.parlor`. |
 | `CARDROOM_BLOCKED_NAMES` | Optional: more words that names and chat at open tables may not contain, comma-separated |
 | `CARDROOM_ADMIN_TOKEN` | Turns on the admin app at `/admin/`: the token its host signs in with. Make it long and keep it secret (`openssl rand -hex 24`) |
 | `CARDROOM_BOT_DELAY` | Fixed thinking time for computer players, in milliseconds (handy for testing) |
