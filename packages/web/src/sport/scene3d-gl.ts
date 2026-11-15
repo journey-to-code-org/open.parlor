@@ -32,6 +32,7 @@ import {
   NoToneMapping,
   Object3D,
   OrthographicCamera,
+  PerspectiveCamera,
   PCFShadowMap,
   Quaternion,
   RepeatWrapping,
@@ -430,6 +431,8 @@ interface Thing {
   rolls: boolean;
   tone: SportTone | undefined;
   stem?: Mesh;
+  /** A pin going over: when it began, which way (a unit vector on the ground), and a twist of its own. */
+  fall?: { at: number; hx: number; hy: number; twist: number };
 }
 
 const markerMaterial = new MeshBasicMaterial({ color: "#ffd45a", transparent: true, opacity: 0.9, side: DoubleSide, depthWrite: false });
@@ -663,6 +666,38 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
 
   const scene = new Scene();
   const camera = new OrthographicCamera(-1, 1, 1, -1, 1, 600);
+  // Bowling's camera: behind the bowler, down the lane, following the ball towards the pins.
+  // The near plane is well out from the camera (nothing comes closer than the ball at the bowler's
+  // feet), so the lane laid a few units over the floor never fights it for depth on a phone.
+  const chase = new PerspectiveCamera(40, 1, 3, 300);
+  /** Where the chasing camera is (world y) and when it was last moved, so it eases rather than jumps. */
+  const chaseAt = { y: Number.NaN, time: 0 };
+  const guideLayer = new Group();
+  /** Behind the pins, in the bowler's view: the alley's dark masking panel, with its lit stripe. */
+  let backdrop: { key: string; group: Group } | null = null;
+  function showBackdrop(table: Frame3d["table"] | null) {
+    if (backdrop && (!table || backdrop.key !== table.key)) {
+      clear(backdrop.group);
+      backdrop = null;
+    }
+    if (!table || backdrop) return;
+    const g = new Group();
+    const back = table.look.frame.y - 400;
+    const wall = mesh(new BoxGeometry(90000, 34000, 400), paint("#161c2c", 0.95), false);
+    wall.position.set(0, 17000, back);
+    g.add(wall);
+    // A band of light across it, and a fainter one above, the way an alley's masking unit glows.
+    const band = mesh(new BoxGeometry(90000, 900, 450), new MeshBasicMaterial({ color: "#f2b84b" }), false);
+    band.position.set(0, 7600, back + 20);
+    const glow = mesh(new BoxGeometry(90000, 300, 450), new MeshBasicMaterial({ color: "#5ad1e6" }), false);
+    glow.position.set(0, 9600, back + 20);
+    g.add(band, glow);
+    turn.add(g);
+    backdrop = { key: table.key, group: g };
+  }
+  let guideShown: Point[] | null = null;
+  const guideMaterial = new MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0.85, depthWrite: false });
+  const guideShadow = new MeshBasicMaterial({ color: "#000000", transparent: true, opacity: 0.28, depthWrite: false });
   const turn = new Group();
   turn.scale.setScalar(K);
   scene.add(turn);
@@ -681,6 +716,7 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
   const things = new Map<string, Thing>();
   const dynamic = new Group();
   turn.add(dynamic);
+  turn.add(guideLayer);
   let size = "";
   let cupFlags: Object3D[] = [];
   /** How high the ground of the table being shown is, at a point. */
@@ -799,15 +835,26 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
       group.position.set(d.x, ground(d.x, d.y) + lift, d.y);
       group.scale.setScalar(down ? 1 - down * 0.35 : 1);
       if (t.kind === "pin") {
-        // A pin that has been moved lies down on its way: the further from its spot, the flatter.
+        // A pin that's knocked goes over the way it was knocked, all the way down in a moment, and
+        // turns as it goes; one that is back on its spot (a new frame) stands again.
         const dx = d.x - t.home[0];
         const dy = d.y - t.home[1];
         const away = Math.hypot(dx, dy);
-        const lean = Math.min(1.5, Math.max(0, (away - d.r * 0.25) / (d.r * 2.2)) * 1.5);
+        if (away < d.r * 0.08) t.fall = undefined;
+        else if (!t.fall && away > d.r * 0.3) {
+          const mx = d.x - t.last[0];
+          const my = d.y - t.last[1];
+          const run = Math.hypot(mx, my);
+          const [hx, hy] = run > 1 ? [mx / run, my / run] : [dx / away, dy / away];
+          t.fall = { at: time, hx, hy, twist: ((d.id.charCodeAt(d.id.length - 1) * 37) % 100) / 100 - 0.5 };
+        }
+        const lean = t.fall ? (frame.still ? 1.45 : Math.min(1.45, ((time - t.fall.at) / 260) * 1.45)) : Math.min(0.25, Math.max(0, (away - d.r * 0.1) / (d.r * 2)));
         if (lean > 0) {
-          const heading = new Vector3(dx, 0, dy).normalize();
+          const [hx, hy] = t.fall ? [t.fall.hx, t.fall.hy] : [dx / (away || 1), dy / (away || 1)];
+          const heading = new Vector3(hx, 0, hy).normalize();
           const toward = UP.clone().multiplyScalar(Math.cos(lean)).add(heading.multiplyScalar(Math.sin(lean)));
           group.quaternion.setFromUnitVectors(UP, toward.normalize());
+          if (t.fall) group.quaternion.multiply(new Quaternion().setFromAxisAngle(UP, t.fall.twist * Math.min(1, (time - t.fall.at) / 500) * 2));
           group.position.y += Math.sin(lean) * d.r * 0.9;
         } else group.quaternion.identity();
       } else if (t.kind === "toadstool") {
@@ -852,8 +899,70 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
 
   let broken = "";
   /** Camera, light, bodies, then one frame. */
+  /** The guide on the lane: chalk dots along the path, rebuilt only when the path changes. */
+  function showGuide(path: Point[] | null) {
+    if (path === guideShown) return;
+    guideShown = path;
+    clear(guideLayer);
+    guideLayer.clear();
+    turn.add(guideLayer);
+    if (!path || path.length < 2) return;
+    const dot = new CircleOf(150);
+    const under = new CircleOf(210);
+    let gone = 0;
+    for (let i = 1; i < path.length; i++) {
+      gone += Math.hypot(path[i]![0] - path[i - 1]![0], path[i]![1] - path[i - 1]![1]);
+      if (gone < 1400) continue;
+      gone = 0;
+      const [x, y] = path[i]!;
+      const z = ground(x, y);
+      const shadow = new Mesh(under, guideShadow);
+      shadow.position.set(x, z + 8, y);
+      const m = new Mesh(dot, guideMaterial);
+      m.position.set(x, z + 10, y);
+      guideLayer.add(shadow, m);
+    }
+  }
+
   const draw = (frame: Frame3d) => {
     const { proj, width, height, table } = frame;
+    if (frame.bowler) {
+      // Behind the bowler: low over the foul line looking up the lane at the pins, and, while a
+      // ball rolls, following it down to a little short of them, to watch them go.
+      const ball = table.world.bodies.find((b) => !b.fixed && b.id === "ball");
+      const foul = ball ? ball.y : table.look.frame.y + table.look.frame.h;
+      const stop = Math.max(table.look.frame.y, 0) + 15000;
+      const wanted = frame.bowler.follow === null ? foul + 12500 : Math.max(stop, Math.min(foul + 12500, frame.bowler.follow + 12500));
+      const dt = chaseAt.time ? Math.min(0.1, (frame.time - chaseAt.time) / 1000) : 1;
+      chaseAt.time = frame.time;
+      // Following a ball it keeps up; back to the foul line afterwards it's brisk, so the next bowler isn't kept waiting.
+      chaseAt.y = Number.isNaN(chaseAt.y) || frame.still ? wanted : chaseAt.y + (wanted - chaseAt.y) * Math.min(1, dt * (frame.bowler.follow === null ? 7 : 5));
+      const high = frame.bowler.follow === null ? 7200 : 5600;
+      chase.aspect = width / Math.max(1, height);
+      chase.fov = width < height ? 46 : 34;
+      chase.position.set(0, high * K, chaseAt.y * K);
+      chase.lookAt(0, 0, Math.max(-6000, chaseAt.y - 40000) * K);
+      chase.updateProjectionMatrix();
+      turn.rotation.y = 0;
+      showGuide(frame.bowler.guide);
+      showBackdrop(table);
+      const f = table.look.frame;
+      const centre = new Vector3((f.x + f.w / 2) * K, 0, (f.y + f.h / 2) * K);
+      const radius = Math.hypot(f.w, f.h) * 0.52 * K + 2;
+      sun.target.position.copy(centre);
+      sun.position.copy(centre).addScaledVector(LIGHT, -60);
+      const cam = sun.shadow.camera;
+      cam.left = cam.bottom = -radius;
+      cam.right = cam.top = radius;
+      cam.near = 1;
+      cam.far = 140;
+      cam.updateProjectionMatrix();
+      sync(frame);
+      renderer.render(scene, chase);
+      return true;
+    }
+    showGuide(null);
+    showBackdrop(null);
     // The camera is projection.ts, in three's terms: a point of the world is where `project` puts it.
     const s = proj.scale;
     camera.left = (-proj.ox / s) * K;

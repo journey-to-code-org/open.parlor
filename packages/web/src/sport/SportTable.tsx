@@ -28,6 +28,8 @@ import { drawOverlay, drawScene, playFrame, powerColour, toneColour, type Aim, t
 import { drawsIn3d, loadSport3d, type Sport3d } from "./scene3d";
 import { fitFrame, TILT, unprojectVector, type Projection } from "./projection";
 import { advanceRoll, beginRoll, finishRoll, landed, type Roll } from "./roll";
+import { AIM_LIMIT, guideOf, readSwipe, sideways, type Throw, type Touch } from "./throw";
+import type { Point } from "@journey-to-code/physics";
 import { SoundButton } from "../SoundButton";
 
 export interface SportTableProps {
@@ -44,10 +46,20 @@ export interface SportTableProps {
   };
 }
 
-/** An aim, in the numbers that are sent: hundredths of a degree and a power within the view's range. */
+/** An aim, in the numbers that are sent: hundredths of a degree and a power within the view's range; and, where the game takes them, side spin and a place to start from. */
 interface AimAt {
   angle: number;
   power: number;
+  spin?: number;
+  at?: number;
+}
+/** A finger on a bowling lane: a sideways drag (where to stand) or a swipe up it (the throw). */
+interface Swipe {
+  pointer: number;
+  path: Touch[];
+  mode: "unsure" | "stand" | "throw";
+  /** Where the bowler stood when the drag began. */
+  from: number;
 }
 /** A finger down on the table, pulling. */
 interface Pull {
@@ -126,6 +138,15 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
   const [sending, setSending] = useState(false);
   const [soundOn, setSoundOn] = useState(() => loadFeedbackSettings().sound);
   const [cardOpen, setCardOpen] = useState(false);
+  /** Bowling's big moment after a ball: a strike, a spare, a split, a gutter ball. */
+  const [callout, setCallout] = useState<{ kind: "strike" | "spare" | "split" | "gutter"; text: string; n: number } | null>(null);
+  /** How fast a roll plays: slower for a replay. */
+  const slow = useRef(1);
+  /** This roll has hit the pins already: the crash is heard once. */
+  const crashed = useRef(false);
+  /** A strike's moment isn't cut short: the next ball waits until this time (ms, the page's clock). */
+  const holdUntil = useRef(0);
+  const holdTimer = useRef(0);
   const bubbles = useBubbles(chat?.messages ?? []);
 
   // ---- The aim ----------------------------------------------------------------------------------
@@ -133,6 +154,9 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
   const aimRef = useRef(aim);
   const pull = useRef<Pull | null>(null);
   const [pulling, setPulling] = useState(false);
+  const swipe = useRef<Swipe | null>(null);
+  /** The ball's path for the throw as it stands (bowling): drawn on the lane before it's thrown. */
+  const guide = useRef<Point[] | null>(null);
   const setAim = (next: AimAt) => {
     aimRef.current = next;
     setAimState(next);
@@ -171,13 +195,22 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     fit.current = fitFrame(playFrame(table), w, h, { top: over, tilt: viewSetting() === "above" ? 0 : TILT });
     lastPaint.current = now;
     const looks = new Map<string, SportBody>(table.bodies.map((b) => [b.id, b]));
+    // The ball that's rolling is the colour of whoever threw it, not of whoever is up next.
+    if (r) {
+      const struck = looks.get(r.record.shot.body);
+      const thrower = r.target.players[r.record.seat]?.body;
+      if (struck && thrower && struck.owner !== null && thrower.tone) looks.set(struck.id, { ...struck, tone: thrower.tone });
+    }
     // What lies still: the bodies and ghosts of the view on screen (of the shot's own table, if
     // the shot is on a different one), except whatever the roll is moving.
     const still = r && v.table.key !== r.target.table.key ? r.target : v;
     const discs: Disc[] = [];
     for (const b of still.table.world.bodies) {
       if (r?.at.has(b.id) || b.pocketed !== undefined || b.out !== undefined) continue;
-      discs.push({ id: b.id, x: b.x, y: b.y, r: b.r, look: looks.get(b.id), mine: canShootRef.current && b.id === v.shoot?.body });
+      const mine = canShootRef.current && b.id === v.shoot?.body;
+      // A bowler stands where they've chosen to on the foul line: the ball is there.
+      const x = mine && v.shoot?.place ? (aimRef.current.at ?? b.x) : b.x;
+      discs.push({ id: b.id, x, y: b.y, r: b.r, look: looks.get(b.id), mine });
     }
     for (const g of still.table.ghosts) {
       if (r?.at.has(g.id)) continue;
@@ -194,7 +227,10 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
         // A ball that has just gone into a tunnel is seen going in, for a moment.
         const entered = r.entered.get(id);
         const gone = entered && !at.live && r.clock - entered.at < GONE_MS ? (r.clock - entered.at) / GONE_MS : undefined;
-        if (!at.live && dropped === undefined && gone === undefined) continue;
+        // Pins in the pit and a ball in the gutter stay where they went, lying there, until the
+        // pinsetter sweeps them; anywhere else, a ball that's out of play is gone.
+        const lies = v.game === "bowling" && !at.live && dropped === undefined;
+        if (!at.live && dropped === undefined && gone === undefined && !lies) continue;
         const hit = r.struck.get(id);
         discs.push({ id, x: at.x, y: at.y, r: at.r, look: looks.get(id), sunk: dropped === undefined ? 0 : Math.min(1, (r.clock - dropped) / 260), struck: hit === undefined ? 0 : Math.max(0, 1 - (r.clock - hit) / 180), ...(gone !== undefined && dropped === undefined ? { gone, tunnel: entered!.tunnel } : {}) });
       }
@@ -205,18 +241,25 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     }
     let aiming: Aim | null = null;
     const ball = strikable(v);
-    if (canShootRef.current && ball && v.shoot) {
+    const throwing = !!v.shoot?.place;
+    if (canShootRef.current && ball && v.shoot && !throwing) {
       const a = aimRef.current;
       aiming = { x: ball.x, y: ball.y, r: ball.r, angle: (a.angle * Math.PI) / 18000, power: a.power / 1000, pulling: !!pull.current, cancel: !!pull.current?.cancel };
     }
-    const scene = { table, discs, aim: aiming, trace: r?.jump && r.rested !== null ? r.trace : null, trails: r ? [...r.trails.values()] : [], effects, time: now, still: reducedMotion(), hurry: !!r || !!pull.current || slides.current.size > 0 };
+    const shownGuide = canShootRef.current && throwing ? guide.current : null;
+    const scene = { table, discs, aim: aiming, trace: r?.jump && r.rested !== null ? r.trace : shownGuide, trails: r ? [...r.trails.values()] : [], effects, time: now, still: reducedMotion(), hurry: !!r || !!pull.current || slides.current.size > 0 };
     // Seen in three dimensions where the scene is up and can draw this table: the 3-D canvas
     // under this one has the table and what is on it, and this one only what is laid over it.
     // Everywhere else (no WebGL, a table with a step or a pipe) the table is drawn flat as ever.
     const gl = glScene.current;
-    const solid = !!gl && wants3d(v.game) && drawsIn3d(table) && gl.render({ table, discs, proj: fit.current, width: w, height: h, dpr, time: now, still: reducedMotion() });
+    // Bowling in 3-D is seen from behind the bowler, following the ball: the guide is drawn on the
+    // lane in the scene itself, since the flat overlay is drawn from above and wouldn't line up.
+    const behind = v.game === "bowling";
+    const rollingBall = r ? r.at.get(r.record.shot.body) : undefined;
+    const bowler = behind ? { guide: shownGuide, follow: rollingBall ? rollingBall.y : null } : undefined;
+    const solid = !!gl && wants3d(v.game) && drawsIn3d(table) && gl.render({ table, discs, proj: fit.current, width: w, height: h, dpr, time: now, still: reducedMotion(), ...(bowler ? { bowler } : {}) });
     if (glCanvas.current) glCanvas.current.style.visibility = solid ? "visible" : "hidden";
-    if (solid) drawOverlay(ctx, w, h, dpr, fit.current, scene);
+    if (solid) drawOverlay(ctx, w, h, dpr, fit.current, behind ? { ...scene, aim: null, trace: null, trails: [], effects: [] } : scene);
     else drawScene(ctx, w, h, dpr, fit.current, scene);
   }, []);
 
@@ -233,13 +276,13 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
       if (r) {
         // Catching up on shots that arrived while this one rolled: play faster the further behind.
         const behind = waiting.current.filter((v) => v.last && v.last.n > r.record.n).length;
-        const speed = (paceRef.current === "fast" ? 1.5 : 1) * (behind >= 3 ? 4 : behind >= 1 ? 2 : 1);
+        const speed = (paceRef.current === "fast" ? 1.5 : 1) * (behind >= 3 ? 4 : behind >= 1 ? 2 : 1) * slow.current;
         hear(advanceRoll(r, ms, speed));
         if (r.over) settle();
       }
       // A shot, a slide or a pull is drawn every frame. With nothing going on there is still the
       // water and the marker on the ball to play, which are happy at half that.
-      const busy = !!roll.current || slides.current.size > 0 || !!pull.current;
+      const busy = !!roll.current || slides.current.size > 0 || !!pull.current || !!swipe.current;
       if (busy || now - lastPaint.current >= 30) paint(now);
       if (busy || !reducedMotion()) frame.current = requestAnimationFrame(loop);
     };
@@ -279,6 +322,22 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
   // ---- Sounds, from what the simulation says happened -------------------------------------------
   const lastKnock = useRef(0);
   function hear(events: ReturnType<typeof advanceRoll>) {
+    if (shownRef.current.game === "bowling") {
+      for (const e of events) {
+        if (e.type === "hit" && (e.a.startsWith("pin") || e.b.startsWith("pin"))) {
+          // The ball into the pins is the crash; the pins rattling into each other after it are knocks.
+          if (!crashed.current) {
+            crashed.current = true;
+            play("pins");
+          } else if (e.speed > 2500) {
+            const now = performance.now();
+            if (now - lastKnock.current > 60) play("knock");
+            lastKnock.current = now;
+          }
+        } else if ((e.type === "wall" || e.type === "hit") && e.speed > 1500) play("knock");
+      }
+      return;
+    }
     for (const e of events) {
       if (e.type === "pocket") play("cup");
       else if (e.type === "out") play(shownRef.current.table.look.regions.some((g) => g.id === e.region && g.surface === "water") ? "splash" : "nope");
@@ -316,8 +375,10 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     // they get where it went, with the path drawn for a moment.
     roll.current = beginRoll(v, reducedMotion() || paceRef.current === "instant");
     seen.current = v.last!.n;
+    crashed.current = false;
+    setCallout(null);
     setRolling(true);
-    play("putt");
+    play(v.game === "bowling" ? "bowl" : "putt");
     wake();
   }
 
@@ -339,12 +400,59 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     }
     show(r.target);
     roll.current = null;
+    // A replay ends where it began; a new ball's outcome gets its moment.
+    if (slow.current !== 1) slow.current = 1;
+    else if (r.target.game === "bowling") callOut(r.target, r.record.n);
+    setRolling(false);
+    flushWaiting();
+  }
+
+  /** Whatever arrived while a ball rolled (or a strike was being enjoyed): played, or shown, in order. */
+  function flushWaiting() {
+    const wait = holdUntil.current - performance.now();
+    if (wait > 0 && waiting.current.some((v) => v.last && v.last.n > seen.current)) {
+      clearTimeout(holdTimer.current);
+      holdTimer.current = window.setTimeout(flushWaiting, wait);
+      return;
+    }
     while (waiting.current.length) {
       const next = waiting.current.shift()!;
       if (next.last && next.last.n > seen.current) return begin(next);
       show(next);
     }
-    setRolling(false);
+  }
+  useEffect(() => () => clearTimeout(holdTimer.current), []);
+
+  /** The moment after a ball, from what the game said happened. */
+  function callOut(v: SportView, n: number) {
+    const said = v.narration ?? "";
+    const kind = /strike/i.test(said) ? "strike" : /spare/i.test(said) ? "spare" : /split/i.test(said) ? "split" : /gutter/i.test(said) ? "gutter" : null;
+    if (!kind) return;
+    const split = /the ([\d-]+) split/i.exec(said)?.[1];
+    setCallout({ kind, n, text: kind === "strike" ? "STRIKE!" : kind === "spare" ? "SPARE!" : kind === "split" ? `${split ?? ""} split`.trim() : "Gutter ball" });
+    // Long enough to enjoy it (and reach Replay) before anyone else's ball rolls.
+    holdUntil.current = performance.now() + (kind === "gutter" ? 900 : reducedMotion() ? 1200 : 2600);
+    if (kind === "strike") play("strike");
+    else if (kind === "spare") play("trickUs");
+  }
+  useEffect(() => {
+    if (!callout) return;
+    const t = setTimeout(() => setCallout((c) => (c === callout ? null : c)), callout.kind === "gutter" ? 1600 : 4200);
+    return () => clearTimeout(t);
+  }, [callout]);
+
+  /** That ball again, slowly: the last shot played back from where everything stood. */
+  function replay() {
+    const v = shownRef.current;
+    if (!v.last || roll.current) return;
+    slow.current = 0.45;
+    holdUntil.current = 0;
+    roll.current = beginRoll(v, false);
+    crashed.current = false;
+    setCallout(null);
+    setRolling(true);
+    play("bowl");
+    wake();
   }
 
   /** Stop watching: the rest of this roll, and any that are queued, happen at once. */
@@ -364,10 +472,11 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
 
   useEffect(() => {
     if (view === shownRef.current) return;
-    if (roll.current) {
+    if (roll.current || (holdUntil.current > performance.now() && view.last && view.last.n > seen.current)) {
       waiting.current.push(view);
       // Far behind (a phone that slept through several putts): drop the oldest and catch up.
       if (waiting.current.length > 6) waiting.current.splice(0, waiting.current.length - 6);
+      if (!roll.current) flushWaiting();
       return;
     }
     take(view);
@@ -411,13 +520,43 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
   const ballKey = shown.shoot && ball ? `${shown.table.key}/${ball.id}/${ball.x}/${ball.y}` : "";
   useEffect(() => {
     if (!ball || !shown.shoot) return;
+    if (shown.shoot.place) {
+      // A bowler keeps their spot and their spin from ball to ball, and starts aimed straight.
+      const was = aimRef.current;
+      setAim({ angle: 27000, power: Math.min(shown.shoot.maxPower, Math.max(shown.shoot.minPower, was.power > 400 ? was.power : 780)), spin: was.spin ?? 0, at: was.at ?? 0 });
+      return;
+    }
     const pocket = nearestPocket(shown, ball);
     setAim({ angle: pocket ? angleTo(ball, pocket) : 27000, power: Math.min(shown.shoot.maxPower, Math.max(shown.shoot.minPower, 400)) });
   }, [ballKey]);
+  // The guide follows the throw as it stands, whichever way it was set (a swipe, the buttons, the keys).
+  useEffect(() => {
+    const ballNow = strikable(shown);
+    if (!canShoot || !shown.shoot?.place || !ballNow) {
+      guide.current = null;
+      return;
+    }
+    guide.current = guideOf(shown.table, ballNow.id, { at: aim.at ?? 0, angle: aim.angle, power: aim.power, spin: aim.spin ?? 0 });
+  }, [aim, canShoot, shown]);
 
   const clampPower = (power: number) => (shown.shoot ? Math.min(shown.shoot.maxPower, Math.max(shown.shoot.minPower, Math.round(power))) : power);
-  const turn = (by: number) => canShoot && setAim({ ...aimRef.current, angle: wrap(aimRef.current.angle + by) });
+  const turn = (by: number) => {
+    if (!canShoot) return;
+    // Down a lane, the aim is a few degrees either side of straight.
+    const angle = shown.shoot?.place ? 27000 + Math.max(-AIM_LIMIT, Math.min(AIM_LIMIT, aimRef.current.angle - 27000 + by)) : wrap(aimRef.current.angle + by);
+    setAim({ ...aimRef.current, angle });
+  };
   const push = (by: number) => canShoot && setAim({ ...aimRef.current, power: clampPower(aimRef.current.power + by) });
+  const stand = (by: number) => {
+    const place = shown.shoot?.place;
+    if (!canShoot || !place) return;
+    setAim({ ...aimRef.current, at: Math.round(Math.max(place.min, Math.min(place.max, (aimRef.current.at ?? 0) + by))) });
+  };
+  const hook = (by: number) => {
+    const max = shown.shoot?.maxSpin ?? 0;
+    if (!canShoot || !max) return;
+    setAim({ ...aimRef.current, spin: Math.round(Math.max(-max, Math.min(max, (aimRef.current.spin ?? 0) + by))) });
+  };
 
   async function shoot() {
     const v = shownRef.current;
@@ -426,7 +565,8 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     sendingRef.current = true;
     setSending(true);
     // Whole numbers, whatever the pointer maths made of them.
-    const refused = await act({ type: "shot", body: v.shoot.body, angle: wrap(a.angle), power: clampPower(a.power) });
+    const extra = v.shoot.place ? { at: Math.round(a.at ?? 0), ...(a.spin ? { spin: Math.round(a.spin) } : {}) } : {};
+    const refused = await act({ type: "shot", body: v.shoot.body, angle: wrap(a.angle), power: clampPower(a.power), ...extra });
     sendingRef.current = false;
     setSending(false);
     if (refused) {
@@ -440,6 +580,17 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
 
   function onPointerDown(e: React.PointerEvent) {
     if (!canShoot || !shown.shoot || (e.pointerType === "mouse" && e.button !== 0)) return;
+    if (shown.shoot.place) {
+      if (swipe.current) return cancelPull();
+      swipe.current = { pointer: e.pointerId, path: [{ x: e.clientX, y: e.clientY, t: e.timeStamp }], mode: "unsure", from: aimRef.current.at ?? 0 };
+      try {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      } catch {}
+      setPulling(true);
+      e.preventDefault();
+      wake();
+      return;
+    }
     // A second finger calls the pull off.
     if (pull.current) return cancelPull();
     pull.current = { pointer: e.pointerId, x: e.clientX, y: e.clientY, before: aimRef.current, cancel: true };
@@ -452,6 +603,21 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     e.preventDefault();
   }
   function onPointerMove(e: React.PointerEvent) {
+    const sw = swipe.current;
+    if (sw && sw.pointer === e.pointerId && shown.shoot?.place) {
+      sw.path.push({ x: e.clientX, y: e.clientY, t: e.timeStamp });
+      if (sw.mode === "unsure") sw.mode = sideways(sw.path) ? "stand" : Math.abs(e.clientY - sw.path[0]!.y) > 12 ? "throw" : "unsure";
+      if (sw.mode === "stand") {
+        // Across the lane: most of the table's width is the whole foul line.
+        const place = shown.shoot.place;
+        const per = (place.max - place.min) / Math.max(120, box.current.w * 0.7);
+        setAim({ ...aimRef.current, at: Math.round(Math.max(place.min, Math.min(place.max, sw.from + (e.clientX - sw.path[0]!.x) * per))) });
+      } else if (sw.mode === "throw") {
+        const th = readSwipe(sw.path, shown.shoot, aimRef.current.at ?? 0, box.current.h);
+        if (th) setAim({ ...aimRef.current, angle: th.angle, power: th.power, spin: th.spin });
+      }
+      return;
+    }
     const p = pull.current;
     if (!p || p.pointer !== e.pointerId || !shown.shoot) return;
     const dx = e.clientX - p.x;
@@ -469,6 +635,18 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     setAim({ angle, power: clampPower(shown.shoot.minPower + share * (shown.shoot.maxPower - shown.shoot.minPower)) });
   }
   function onPointerUp(e: React.PointerEvent) {
+    const sw = swipe.current;
+    if (sw && sw.pointer === e.pointerId) {
+      swipe.current = null;
+      setPulling(false);
+      if (sw.mode !== "throw" || !shown.shoot) return;
+      sw.path.push({ x: e.clientX, y: e.clientY, t: e.timeStamp });
+      const th: Throw | null = readSwipe(sw.path, shown.shoot, aimRef.current.at ?? 0, box.current.h);
+      if (!th) return;
+      setAim({ ...aimRef.current, angle: th.angle, power: th.power, spin: th.spin });
+      void shoot();
+      return;
+    }
     const p = pull.current;
     if (!p || p.pointer !== e.pointerId) return;
     pull.current = null;
@@ -477,6 +655,11 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     void shoot();
   }
   function cancelPull() {
+    if (swipe.current) {
+      swipe.current = null;
+      setPulling(false);
+      return;
+    }
     const p = pull.current;
     if (!p) return;
     pull.current = null;
@@ -497,6 +680,21 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
     if (!canShoot || e.target !== e.currentTarget) return;
     const fine = e.altKey ? 10 : e.shiftKey ? 500 : 100;
     const step = e.shiftKey ? 100 : 20;
+    if (shown.shoot?.place) {
+      // Bowling: Shift and the arrows move along the foul line; [ and ] set the hook.
+      if (e.shiftKey && e.key === "ArrowLeft") stand(-400);
+      else if (e.shiftKey && e.key === "ArrowRight") stand(400);
+      else if (e.key === "ArrowLeft") turn(-25);
+      else if (e.key === "ArrowRight") turn(25);
+      else if (e.key === "[") hook(-100);
+      else if (e.key === "]") hook(100);
+      else if (e.key === "ArrowUp") push(20);
+      else if (e.key === "ArrowDown") push(-20);
+      else if (e.key === "Enter" || e.key === " ") void shoot();
+      else return;
+      e.preventDefault();
+      return;
+    }
     if (e.key === "ArrowLeft") turn(-fine);
     else if (e.key === "ArrowRight") turn(fine);
     else if (e.key === "ArrowUp") push(step);
@@ -562,7 +760,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
   ) : shooter !== null ? (
     shooter === me ? "There it goes…" : `${names[shooter] ?? "Someone"} ${shown.game === "bowling" ? "bowls" : "putts"}…`
   ) : shown.over || shown.result ? null : canShoot ? (
-    <span className="mine">{shown.seats > 1 ? "Your shot" : "Pull back and let go"}</span>
+    <span className="mine">{shown.game === "bowling" ? "Drag sideways to stand, swipe up to bowl" : shown.seats > 1 ? "Your shot" : "Pull back and let go"}</span>
   ) : sending ? (
     "…"
   ) : shown.turn !== null ? (
@@ -577,6 +775,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
   const pocket = mine && mine.pocketed === undefined ? nearestPocket(shown, mine) : null;
   const picture = `${shown.table.name}. ${shown.info.join(". ")}.${pocket ? ` Your ball is ${metres(pocket.far)} from ${shown.table.look.pockets === "cup" ? "the cup" : "the nearest pocket"}.` : ""}`;
   const percent = Math.round(aim.power / 10);
+  const throwing = !!shown.shoot?.place || shown.game === "bowling";
 
   return (
     <main className={`table kit sport sport-${shown.game}`} onKeyDown={(e) => e.key === "Escape" && onKeyDown(e)}>
@@ -598,7 +797,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
       {banner}
 
       <div className="felt sport-felt">
-        <ScorePanel view={shown} names={names} active={shooter ?? shown.turn} />
+        {shown.game === "bowling" && shown.card ? <BowlingSheet view={shown} card={shown.card} names={names} active={shooter ?? shown.turn} /> : <ScorePanel view={shown} names={names} active={shooter ?? shown.turn} />}
 
         <div className="sport-view">
           <HoleSign view={shown} names={names} board={sign} />
@@ -607,7 +806,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
             className={`sport-stage${canShoot ? " can" : ""}${pulling ? " pulling" : ""}`}
             tabIndex={0}
             role="group"
-            aria-label={`${picture}${canShoot ? " Arrow keys aim, up and down set the power, Enter putts." : ""}`}
+            aria-label={`${picture}${canShoot ? (throwing ? " Left and right aim, Shift with them moves along the foul line, [ and ] set the hook, up and down the power, Enter bowls." : " Arrow keys aim, up and down set the power, Enter putts.") : ""}`}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -626,6 +825,16 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
                 Skip ⏭
               </button>
             )}
+            {callout && !rolling && (
+              <div key={callout.n} className={`bowl-callout bowl-${callout.kind}`} role="status">
+                <span>{callout.text}</span>
+                {callout.kind !== "gutter" && !reducedMotion() && (
+                  <button type="button" className="bowl-replay" onClick={replay} onPointerDown={(e) => e.stopPropagation()}>
+                    ↺ Replay
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -639,6 +848,9 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
           {/* Kept in place (hidden) while a shot rolls or someone else plays, so the table doesn't change size between shots. */}
           {!shown.over && !shown.result && !shown.players[me]?.done && (
             <div className={`sport-controls${canShoot ? "" : " idle"}`} role="group" aria-label="Aim and power" aria-hidden={!canShoot} inert={!canShoot}>
+              {throwing ? (
+                <BowlControls aim={aim} place={shown.shoot?.place ?? null} maxSpin={shown.shoot?.maxSpin ?? 0} stand={stand} turn={turn} hook={hook} />
+              ) : (
               <div className="sport-row">
                 <button type="button" aria-label="Aim 5 degrees left" onClick={() => turn(-500)}>
                   ⟲
@@ -654,6 +866,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
                   ⟳
                 </button>
               </div>
+              )}
               <div className="sport-row">
                 <button type="button" aria-label="Less power" onClick={() => push(-20)}>
                   −
@@ -811,6 +1024,48 @@ function ScorePanel({ view, names, active }: { view: SportView; names: string[];
   );
 }
 
+/**
+ * Bowling's score sheet, always in view: a row per bowler, a box per frame with its marks (X, /,
+ * pins) over the running total, the frame being bowled and the bowler who's up picked out.
+ */
+function BowlingSheet({ view, card, names, active }: { view: SportView; card: SportCard; names: string[]; active: number | null }) {
+  const now = card.current;
+  return (
+    <div className="bowl-sheet" role="table" aria-label="Score sheet" style={{ "--frames": card.columns.length } as React.CSSProperties}>
+      {card.rows.map((row) => {
+        const on = active === row.seat && !view.over;
+        const tone = view.players[row.seat]?.body?.tone;
+        return (
+          <div key={row.seat} role="row" className={`bowl-row${on ? " is-up" : ""}${row.seat === view.me ? " is-me" : ""}`}>
+            <span role="rowheader" className="bowl-who">
+              <span className="sport-dot" style={{ background: toneColour(tone) }} aria-hidden />
+              {names[row.seat] ?? `Seat ${row.seat + 1}`}
+            </span>
+            {row.cells.map((cell, f) => {
+              const [mark = "", total = ""] = cell.split(" ");
+              return (
+                <span key={f} role="cell" className={`bowl-frame${f === now ? " is-now" : ""}${f === card.columns.length - 1 ? " is-tenth" : ""}`} aria-label={`Frame ${f + 1}: ${mark || "not bowled"}${total ? `, ${total}` : ""}`}>
+                  <span className="bowl-marks">
+                    {[...mark].map((m, i) => (
+                      <span key={i} className={m === "X" ? "x" : m === "/" ? "sl" : ""}>
+                        {m}
+                      </span>
+                    ))}
+                  </span>
+                  <span className="bowl-total">{total}</span>
+                </span>
+              );
+            })}
+            <strong role="cell" className="bowl-sum">
+              {row.total}
+            </strong>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /** The score sheet: a column per hole with its par, a row per player, the totals at the end. */
 function Scorecard({ card, names, me }: { card: SportCard; names: string[]; me: number }) {
   return (
@@ -854,6 +1109,51 @@ function Scorecard({ card, names, me }: { card: SportCard; names: string[]; me: 
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/** Where the bowler stands, the aim and the hook, for those who'd rather tap than swipe. */
+function BowlControls({ aim, place, maxSpin, stand, turn, hook }: { aim: AimAt; place: { min: number; max: number } | null; maxSpin: number; stand: (by: number) => void; turn: (by: number) => void; hook: (by: number) => void }) {
+  const at = aim.at ?? 0;
+  const spot = !place ? "" : Math.abs(at) < 200 ? "the middle" : `${Math.round((Math.abs(at) / place.max) * 100)}% ${at < 0 ? "left" : "right"}`;
+  const off = (aim.angle - 27000) / 100;
+  const spin = aim.spin ?? 0;
+  const curl = !maxSpin || spin === 0 ? "none" : `${Math.round((Math.abs(spin) / maxSpin) * 100)}% ${spin < 0 ? "left" : "right"}`;
+  return (
+    <div className="bowl-controls">
+      <div className="sport-row">
+        <span className="bowl-label">Stand</span>
+        <button type="button" aria-label="Stand further left" onClick={() => stand(-400)}>
+          ‹
+        </button>
+        <output className="sport-aim">{spot}</output>
+        <button type="button" aria-label="Stand further right" onClick={() => stand(400)}>
+          ›
+        </button>
+      </div>
+      <div className="sport-row">
+        <span className="bowl-label">Aim</span>
+        <button type="button" aria-label="Aim a little left" onClick={() => turn(-25)}>
+          ‹
+        </button>
+        <output className="sport-aim">{Math.abs(off) < 0.05 ? "straight" : `${Math.abs(off).toFixed(1)}° ${off < 0 ? "left" : "right"}`}</output>
+        <button type="button" aria-label="Aim a little right" onClick={() => turn(25)}>
+          ›
+        </button>
+      </div>
+      {maxSpin > 0 && (
+        <div className="sport-row">
+          <span className="bowl-label">Hook</span>
+          <button type="button" aria-label="Hook more to the left" onClick={() => hook(-100)}>
+            ‹
+          </button>
+          <output className="sport-aim">{curl}</output>
+          <button type="button" aria-label="Hook more to the right" onClick={() => hook(100)}>
+            ›
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -2049,3 +2049,33 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .golf-share input { width: 20px; height: 20px; accent-color: var(--gold); }
 .golf-course-pick { display: flex; flex-direction: column; gap: 4px; }
 .golf-course-pick .rule-actions { flex-wrap: wrap; gap: 4px 16px; }
+
+/* ---- Bowling: the score sheet, the call-outs, the controls ---- */
+.bowl-sheet { display: grid; gap: 3px; overflow-x: auto; padding-bottom: 2px; font-variant-numeric: tabular-nums; }
+.bowl-row { display: grid; grid-template-columns: minmax(2.6rem, 4.5rem) repeat(var(--frames, 10), minmax(1.45rem, 1fr)) minmax(2rem, auto); align-items: stretch; gap: 2px; border-radius: 8px; padding: 2px; }
+.bowl-row.is-up { background: rgba(255, 212, 90, 0.18); box-shadow: inset 0 0 0 1px rgba(255, 212, 90, 0.55); }
+.bowl-who { display: flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 2px; }
+.bowl-frame { display: grid; grid-template-rows: 1fr 1fr; background: #f6f1e4; color: #2a2118; border-radius: 3px; min-height: 2.1rem; font-size: 0.68rem; line-height: 1; min-width: 0; }
+.bowl-frame.is-now { box-shadow: 0 0 0 2px #ffd45a; }
+.bowl-marks { display: flex; justify-content: flex-end; gap: 0; padding: 2px 1px 0; font-weight: 700; }
+.bowl-marks span { min-width: 0.7em; text-align: center; }
+.bowl-marks .x { color: #c0392b; }
+.bowl-marks .sl { color: #2a6db0; }
+.bowl-total { display: grid; place-items: center; font-weight: 600; font-size: 0.78rem; }
+.bowl-sum { display: grid; place-items: center; background: #2a2118; color: #ffd45a; border-radius: 3px; font-size: 0.85rem; padding: 0 3px; }
+@media (min-width: 900px) {
+  .bowl-sheet { grid-column: 1; grid-row: 2; align-self: start; }
+}
+
+.bowl-callout { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 0.8rem; pointer-events: none; z-index: 3; }
+.bowl-callout > span { font: 900 clamp(2.4rem, 13vw, 4.6rem) / 1 var(--font-display, Georgia, serif); letter-spacing: 0.02em; color: #fff; text-shadow: 0 4px 0 rgba(0, 0, 0, 0.35), 0 0 24px rgba(0, 0, 0, 0.4); animation: callout-in 520ms cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+.bowl-strike > span { color: #ffd45a; text-shadow: 0 4px 0 #9a4d00, 0 0 30px rgba(255, 190, 60, 0.75); }
+.bowl-spare > span { color: #7fd3ff; text-shadow: 0 4px 0 #1d4f7a, 0 0 24px rgba(90, 200, 255, 0.6); }
+.bowl-split > span { font-size: clamp(1.8rem, 9vw, 3rem); color: #ffb08a; }
+.bowl-gutter > span { font-size: clamp(1.5rem, 7vw, 2.4rem); color: rgba(255, 255, 255, 0.85); }
+.bowl-replay { pointer-events: auto; animation: callout-in 400ms 300ms both; }
+@keyframes callout-in { from { opacity: 0; transform: scale(0.4) translateY(12px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .bowl-callout > span, .bowl-replay { animation: none; } }
+
+.bowl-controls { display: grid; gap: 4px; }
+.bowl-label { min-width: 3.2rem; font-size: 0.82rem; opacity: 0.85; }

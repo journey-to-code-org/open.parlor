@@ -25,7 +25,10 @@ export type SoundName =
   | "lost"
   | "nope"
   | "message"
-  | "hurry";
+  | "hurry"
+  | "bowl"
+  | "pins"
+  | "strike";
 
 type Ctx = BaseAudioContext;
 type Play = (ctx: Ctx, out: AudioNode, t: number) => void;
@@ -164,6 +167,29 @@ export const SOUNDS: Record<SoundName, Play> = {
     swish(ctx, out, t + 0.02, { freq: 1800, q: 0.5, peak: 0.22, decay: 0.3, type: "highpass" });
     swish(ctx, out, t + 0.05, { freq: 700, q: 0.6, peak: 0.14, decay: 0.22, type: "lowpass" });
   },
+  /** A bowling ball set down on the lane and rolling away: a thud, then a low rumble that fades. */
+  bowl: (ctx, out, t) => {
+    glide(ctx, out, t, 140, 70, { peak: 0.4, decay: 0.12, type: "sine" });
+    swish(ctx, out, t + 0.04, { freq: 180, q: 0.7, peak: 0.22, decay: 0.9, type: "lowpass" });
+    swish(ctx, out, t + 0.04, { freq: 420, q: 1.2, peak: 0.06, decay: 0.7, type: "bandpass" });
+  },
+  /** The ball into the pins: a crack, then wooden pins clattering against each other and the deck. */
+  pins: (ctx, out, t) => {
+    glide(ctx, out, t, 980, 380, { peak: 0.34, decay: 0.05, type: "triangle" });
+    swish(ctx, out, t, { freq: 2200, q: 0.9, peak: 0.24, decay: 0.08 });
+    let at = t + 0.03;
+    for (let i = 0; i < 9; i++) {
+      glide(ctx, out, at, 620 + Math.random() * 520, 260 + Math.random() * 120, { peak: 0.2 - i * 0.017, decay: 0.035 + Math.random() * 0.03, type: "triangle" });
+      swish(ctx, out, at, { freq: 1500 + Math.random() * 1500, q: 1.4, peak: 0.08 - i * 0.007, decay: 0.03 });
+      at += 0.025 + Math.random() * 0.045;
+    }
+    swish(ctx, out, t + 0.05, { freq: 300, q: 0.6, peak: 0.12, decay: 0.45, type: "lowpass" });
+  },
+  /** A strike: a bright rising run, as the alley lights up. */
+  strike: (ctx, out, t) => {
+    [N.C5, N.E5, N.G5, N.C6, N.E6].forEach((f, i) => bell(ctx, out, t + i * 0.07, f, { peak: 0.13, decay: 0.5 }));
+    swish(ctx, out, t + 0.3, { freq: 5000, q: 0.5, peak: 0.07, decay: 0.6, type: "highpass" });
+  },
   /** A bid placed: a wooden tap. */
   bid: (ctx, out, t) => glide(ctx, out, t, 900, 600, { peak: 0.25, decay: 0.07, type: "triangle" }),
   /** Your turn: two gentle rising notes. */
@@ -243,6 +269,7 @@ export const BUZZES: Partial<Record<SoundName, number | number[]>> = {
 export const LENGTHS: Record<SoundName, number> = {
   deal: 0.8, card: 0.2, piece: 0.15, stone: 0.12, capture: 0.45, dice: 0.75, putt: 0.15, knock: 0.1, cup: 0.75, splash: 0.45, bid: 0.15, yourTurn: 0.7, trickUs: 0.85, trickThem: 0.65, spadesBroken: 0.4,
   nilMade: 0.9, set: 1.0, handDone: 1.3, won: 2.0, lost: 1.3, nope: 0.35, message: 0.15, hurry: 0.35,
+  bowl: 1.1, pins: 0.7, strike: 1.2,
 };
 
 /** Overall level, into a limiter. Phone speakers are small: the loudest sound peaks near -3 dB. */
