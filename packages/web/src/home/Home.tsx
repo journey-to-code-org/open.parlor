@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { bugs } from "../bugReport";
 import { openGameRequest } from "../GameRequest";
 import { arranged, refreshCatalogue } from "../catalogue";
+import { categoryOf, GAME_CATEGORIES } from "../categories";
 import { GAME_LIST } from "../GamePicker";
 import { lobby, whoIsThere, type OpenTable } from "../lobbyApi";
 import { loadMyHouses, loadName, type GameId } from "../storage";
@@ -136,9 +137,10 @@ export function Home({ last, onPick, onOpenHouse, onLobby }: { last: GameId | nu
 
   useEffect(() => {
     // The games the parlor's host offers, in their order (every game, where there's no server).
-    const games = () => arranged(GAME_LIST).map((g) => ({ ...g, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: isBoardGame(g.id) && !DICE[g.id] ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
+    const games = () => arranged(GAME_LIST).map((g) => ({ ...g, category: categoryOf(g.id), ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: isBoardGame(g.id) && !DICE[g.id] ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
     const props = reactive({
       games: games(),
+      categories: GAME_CATEGORIES,
       houses: loadMyHouses(),
       last,
       name: loadName(),
