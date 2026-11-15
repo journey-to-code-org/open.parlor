@@ -140,7 +140,8 @@ export function createCardRoom(
   const spectate = createSpectate(rooms, catalogue, options.spectate);
   const moderation = createModeration(rooms, designs, { token: options.adminToken, houses, catalogue });
   // "Report a problem": a player's report becomes an issue on GitHub.
-  const bugs = createBugs(rooms, options.bugs);
+  // With the card room's own AI key, a report or request can be tidied before it's sent.
+  const bugs = createBugs(rooms, { ...(ai.shared ? { tidy: (input) => ai.tidy(input) } : {}), ...options.bugs });
 
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
   /** /push: the public key, and saying yes (or no) to notifications on this phone. */
