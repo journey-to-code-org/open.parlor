@@ -1,8 +1,8 @@
-// The card room's admin app: its host sees every table and everyone at them, and can close a table,
+// The parlor's admin app: its host sees every table and everyone at them, and can close a table,
 // take someone out of a seat, remove a chat message, block a player and hide a shared card design.
 //
 // The page is Angular; everything on it is a Zubra component (see zubra.ts): zubra-ui's tabs, data
-// tables, dialogs, stat cards, badges, buttons, fields and toasts, and the card room's own
+// tables, dialogs, stat cards, badges, buttons, fields and toasts, and the parlor's own
 // <playing-card> for previewing designs.
 import { CUSTOM_ELEMENTS_SCHEMA, ChangeDetectionStrategy, Component, computed, effect, signal, type OnDestroy } from "@angular/core";
 import { FormsModule } from "@angular/forms";

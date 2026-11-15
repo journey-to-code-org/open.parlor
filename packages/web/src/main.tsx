@@ -22,7 +22,7 @@ window.addEventListener("storage", (event) => {
 unlockAudioOnFirstTap();
 registerServiceWorker();
 
-/** The crash screen's way to the report sheet: only where this card room takes reports, so it is never a button that does nothing. */
+/** The crash screen's way to the report sheet: only where this parlor takes reports, so it is never a button that does nothing. */
 function ReportCrash() {
   if (!useReports()) return null;
   return (

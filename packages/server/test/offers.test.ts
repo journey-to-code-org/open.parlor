@@ -1,4 +1,4 @@
-// Offers at a board in the card room (resign, a draw by agreement, a move taken back; see
+// Offers at a board in the parlor (resign, a draw by agreement, a move taken back; see
 // packages/games/src/offers.ts), through the room: the result reaches the leaderboard and a
 // tournament bracket, a computer player answers, a watcher sees what happened and can't act, a
 // tournament match has no taking back, and neither the turn timer nor a game's own clock is put

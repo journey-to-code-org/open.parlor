@@ -1,6 +1,6 @@
 # Roadmap: beyond cards
 
-Card Room has the card games covered. This is the plan for the next kinds of game: board games,
+The app has the card games covered. This is the plan for the next kinds of game: board games,
 dice, tiles and words first, then games with a ball in them (mini golf, billiards, bowling).
 
 The rule that got us this far still holds: **one PR per game**, and a game isn't done until it has
@@ -11,10 +11,10 @@ page, and works in houses, challenges, tournaments and practice.
 
 What already carries over to any game, untouched:
 
-- `packages/rooms`: seats, server-decided moves, private per-seat views, bots, chat, the move log.
+- [`packages/rooms`](https://github.com/journey-to-code-org/open.rooms/tree/main/packages/rooms): seats, server-decided moves, private per-seat views, bots, chat, the move log.
   Nothing in it knows what a card is.
 - Houses, presets, challenges, leaderboards, single-elimination tournaments, push notifications.
-- The engine shape in `packages/games/src/kit.ts`: a pure, deterministic
+- The engine shape in [`packages/games/src/kit.ts`](https://github.com/journey-to-code-org/open.games/blob/main/packages/games/src/kit.ts): a pure, deterministic
   `newGame / apply / view / bot / thinkingTime / summary` with presets and rule fields.
 - Seats that all move at once (`turn: null`) and races (`reactionTime`), from Speed and Slapjack.
 
@@ -57,9 +57,10 @@ Each of these is its own PR, and each lands just ahead of the first game that ne
       Worker.
 - [ ] **The front page.** With forty-odd games it needs sections (Cards, Boards, Dice, Tiles,
       Table sports), search, and tiles that aren't a fan of three cards.
-- [ ] **A new name.** "Card Room" stops describing it, so the app gets a name that fits a whole
-      game room (see open questions). The rename touches the app, the manifest, the embed's
-      element name (keep `<card-room>` working) and the docs; the database file keeps its name.
+- [x] **A new name.** "Card Room" stopped describing it, so the app is **open.parlor**, with the engine in
+      open.games and the rooms in open.rooms. The page titles, manifest and headings say so. Kept on
+      purpose, so nothing running is disturbed: the `<card-room>` embed element, the environment
+      variables (`SPADES_DB`, `CARDROOM_*`) and the database file.
 - [ ] **Our own game names.** Several of the games below are sold under trademarked names, so
       they ship under ours, as Fruit Salad did: Drop Four, Combat, Yacht, Criss-Crosswords.
 
@@ -142,14 +143,14 @@ The plan is to keep these **turn-based on the same rooms**, so no new netcode:
   games run it locally, as now.
 - That only works if the simulation gives the same answer everywhere. So: fixed time step,
   whole-number or fixed-point positions, and no `Math.sin`/`Math.cos` inside the loop (engines
-  may round them differently). `packages/physics` gets a test that replays recorded shots and
+  may round them differently). [`packages/physics`](https://github.com/journey-to-code-org/open.games/tree/main/packages/physics) gets a test that replays recorded shots and
   compares results exactly.
 - The room replays its move log after a restart; with physics that is slow, so store a snapshot
   of the state every so often.
 
 | # | Game | Players | Notes | Size |
 | --- | --- | --- | --- | --- |
-| 13 | Physics core + aiming | | `packages/physics`: discs, walls, friction, cushions, pockets, slopes. A canvas table with drag-to-aim, a power meter and touch controls that work on a phone. | L |
+| 13 | Physics core + aiming | | [`packages/physics`](https://github.com/journey-to-code-org/open.games/tree/main/packages/physics): discs, walls, friction, cushions, pockets, slopes. A canvas table with drag-to-aim, a power meter and touch controls that work on a phone. | L |
 | 14 | Mini golf | 1 to 6 | One ball, still walls: the gentlest test of the core. Nine holes to start, then a course format so new courses are data. Modes: in turn, or everyone putts at once (balls don't collide, so each seat's shot is simulated on its own). Later: moving obstacles, a course editor. | L |
 | 15 | Billiards | 2, or 4 as partners | Eight-ball first, then nine-ball, straight pool, snooker. House rules are a natural fit: call your shot, ball in hand, what a scratch on the eight costs. Bot: aim error grows as skill drops. | L |
 | 16 | Carrom | 2, or 4 as partners | The flick board: a striker, nine pieces a side, the queen and four corner pockets. Discs and pockets from #15 with a flick from the baseline in place of a cue. House rules: covering the queen, fouls and dues, points or first to clear. | M |
@@ -171,7 +172,7 @@ new netcode and is a separate decision.
 
 ## Open questions
 
-1. **The new name.** Decided: "Card Room" goes. Not decided: what replaces it.
+1. **The new name.** Decided and done: open.parlor.
 2. **Chess and Go bots:** write our own (fits the repo, modest strength), or wrap an existing
    engine for the top skill levels?
 3. **Order across phases:** Phase 5 is the most new work and the most fun. Mini golf could start

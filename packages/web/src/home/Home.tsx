@@ -1,4 +1,4 @@
-// The Card Room's start page: the Vue game chooser, mounted inside the React app.
+// The open.parlor's start page: the Vue game chooser, mounted inside the React app.
 import { isBoardGame, isSportGame, KIT_GAMES } from "@journey-to-code/games";
 import { createApp, h, reactive } from "vue";
 import { useEffect, useRef, useState } from "react";
@@ -131,7 +131,7 @@ export function Home({ last, onPick, onOpenHouse, onLobby }: { last: GameId | nu
   handlers.current = { onPick, onOpenHouse, onLobby };
 
   useEffect(() => {
-    // The games the card room's host offers, in their order (every game, where there's no server).
+    // The games the parlor's host offers, in their order (every game, where there's no server).
     const games = () => arranged(GAME_LIST).map((g) => ({ ...g, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: isBoardGame(g.id) && !DICE[g.id] ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
     const props = reactive({
       games: games(),
@@ -143,7 +143,7 @@ export function Home({ last, onPick, onOpenHouse, onLobby }: { last: GameId | nu
       // Tables waiting for players, kept fresh while the page is in front.
       open: [] as ReturnType<typeof brief>[],
       onLobby: () => handlers.current.onLobby(),
-      // "Ask for a game" in the footer, where the card room takes requests.
+      // "Ask for a game" in the footer, where the parlor takes requests.
       canAsk: false,
       onAsk: openGameRequest,
     });

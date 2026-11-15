@@ -66,11 +66,11 @@ describe("the catalogue", () => {
     expect((await admin("/games", { off: ["palace"] })).body.games.find((g: { id: string }) => g.id === "palace").on).toBe(false);
     const refused = await grammi("/rooms", PALACE);
     expect(refused.status).toBe(403);
-    expect(refused.body.error).toBe("Palace is switched off in this card room.");
+    expect(refused.body.error).toBe("Palace is switched off in this parlor.");
     expect((await grammi(`/houses/${house}/tables`, { game: "palace" })).status).toBe(403);
     const tournament = await grammi(`/houses/${house}/tournaments`, { name: "Thanksgiving Palace", game: "palace" });
     expect(tournament.status).toBe(403);
-    expect(tournament.body.error).toBe("Palace is switched off in this card room.");
+    expect(tournament.body.error).toBe("Palace is switched off in this parlor.");
     expect((await grammi(`/houses/${house}/tournaments`, { name: "Thanksgiving Hearts", game: "hearts" })).status).toBe(201);
     expect((await grammi("/spectate", { game: "palace" })).status).toBe(403);
     // Other games are untouched, and the table that was open still takes players.
@@ -223,7 +223,7 @@ describe("watching", () => {
     expect((await phone()("/spectate")).body.tables.map((t: { id: string }) => t.id)).not.toContain(id);
   });
 
-  it("lists only what's really going: games this card room has and hasn't switched off, at tables someone's still at", async () => {
+  it("lists only what's really going: games this parlor has and hasn't switched off, at tables someone's still at", async () => {
     const clock = { now: 5_000_000 };
     const app = createCardRoom({ log: memoryLog({ keep: "latest" }), botDelay: 5, talk: false, adminToken: "admin-token", spectate: { now: () => clock.now } });
     open.push(app);
@@ -255,7 +255,7 @@ describe("watching", () => {
     expect(await listed()).toEqual([spades.id]);
     await host("/moderation/games", { off: [] });
 
-    // A game this card room doesn't have (a table left from a version that had it) isn't shown as Spades.
+    // A game this parlor doesn't have (a table left from a version that had it) isn't shown as Spades.
     await app.rooms.sync.write("rooms", spades.id, { info: { game: "bowling", rules: "Ten pins" } });
     expect(await listed()).toEqual([palace.id]);
 

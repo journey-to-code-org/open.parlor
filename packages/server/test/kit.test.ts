@@ -1,4 +1,4 @@
-// The kit games in the card room: a house table played to the end by a person (from nothing but
+// The kit games in the parlor: a house table played to the end by a person (from nothing but
 // what their view offers) and computer players; house rules, the leaderboard, a challenge, and a
 // tournament for a game that needs more than two players.
 import { memoryLog } from "@zubra/sync/server";

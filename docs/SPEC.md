@@ -1,6 +1,6 @@
 # Spades — Spec
 
-> Written when this was a Spades site. It has since become Card Room, with fourteen games on the same
+> Written when this was a Spades site. It has since become open.parlor, with fourteen games on the same
 > rooms, houses and tables; the [README](../README.md) describes what's built now. The plan below is
 > kept as it was.
 
@@ -55,7 +55,7 @@ Built-in presets ship with the engine (`classic`, `jokers-and-deuces`, `quick-25
 houses copy and tweak them. The active preset is shown to everyone before each deal
 and is snapshotted onto the game so later edits don't change a game in progress.
 
-See `packages/rules/src/types.ts` (`RulePreset`) for the authoritative shape. Current options:
+See [`packages/rules/src/types.ts`](https://github.com/journey-to-code-org/open.games/blob/main/packages/rules/src/types.ts) (`RulePreset`) for the authoritative shape. Current options:
 
 - **Trump**: ace-high spades, or jokers & deuces (Big Joker > Little Joker > 2♦ > 2♠ > A♠ …; 2♣ and 2♥ removed).
 - **Nil**: on/off, point value.
@@ -85,7 +85,7 @@ packages/
   ui/       table components written in Zubra (.zb): custom elements shared by web and embed
   web/      the card table app: React, using the ui components through @zubra/unplugin
   rooms/    a kit over @zubra/sync for server-decided, turn-based rooms with private per-seat views
-  server/   the card room: rooms + the sync log + the web app, in one Node process
+  server/   the parlor: rooms + the sync log + the web app, in one Node process
   embed/    the ui components on open.blog pages: game nights, leaderboard, join button
 ```
 
@@ -105,12 +105,12 @@ packages/
 1. **Rules engine** — presets, deck, legal plays, tricks, bidding, scoring, game reducer, tests. ✅
 2. **Local table** — `web` plays a full game against simple bots, no server. Rules editor saves presets in the browser. ✅
 3. **Zubra components** — the table and setup screen rebuilt on `.zb` components inside React. ✅
-4. **Rooms kit + family tables** — `packages/rooms` over `@zubra/sync`: seats, server-checked moves, per-seat views, bots and a move log; invite links and a lobby in the app; one container to host it. ✅
+4. **Rooms kit + family tables** — [`packages/rooms`](https://github.com/journey-to-code-org/open.rooms/tree/main/packages/rooms) over `@zubra/sync`: seats, server-checked moves, per-seat views, bots and a move log; invite links and a lobby in the app; one container to host it. ✅
 5. **Houses** — a family's house with one invite link that keeps working, members and roles (owner, admin, member), house rules with a default, and its tables. ✅
 6. **Leaderboard** — per house, from finished games: wins and win rate per member, best partners, nils, and the biggest comeback. ✅
 7. **Challenges + notifications** — an installable app; a challenge link anyone can use to challenge a player (it sets up a table and buzzes their phone); a buzz for the house when someone opens a table. ✅
 8. **More games: Palace** — a second game on the same rooms, houses, challenges, bots and chat: Palace (Castle) with house-rule presets, a Palace table, Palace house rules and a Palace leaderboard. ✅
-9. **Embed** — a `<card-room>` widget for any site (practice in the page, challenges and family tables in the card room), and the same widget as an open.blog theme component an owner places from Admin. ✅
+9. **Embed** — a `<card-room>` widget for any site (practice in the page, challenges and family tables in the parlor), and the same widget as an open.blog theme component an owner places from Admin. ✅
 10. **Tournaments** — a bracket with one locked set of house rules, feeding the leaderboard.
 11. **Public lobby** — find players for a game, or browse every open table and jump in; open tables deal themselves when they fill. ✅
 

@@ -7,7 +7,7 @@
 // writes it in character. It sees what the whole table sees (names, the public score, the chat) and
 // never a hand. If the model is slow, over its allowance or broken, the bot says its own line.
 //
-// Whoever runs the server can also set one key for the whole card room (CARDROOM_AI_KEY): then every
+// Whoever runs the server can also set one key for the whole parlor (CARDROOM_AI_KEY): then every
 // table's bots talk through it, and a house needs no key of its own (it may still connect one).
 //
 // That key also tidies what players send the developers ("Report a problem", "Ask for a game"): a
@@ -26,11 +26,11 @@ export const defaultModel = (provider: AiProvider) => AI_PROVIDERS.find((p) => p
 export const CONTEXT_LIMIT = 1500;
 /** Lines a house's bots may ask a model for in a day. Past it they say their own lines. */
 export const DAILY_LINES = 600;
-/** On the card room's own key: lines a day for one table that isn't a house's, and for everyone together. */
+/** On the parlor's own key: lines a day for one table that isn't a house's, and for everyone together. */
 export const TABLE_LINES = 60;
 export const SHARED_LINES = 3000;
 const LINE_LIMIT = 200;
-/** Tidy-ups (a report or a request) the card room's key does in a day, for everyone together. */
+/** Tidy-ups (a report or a request) the parlor's key does in a day, for everyone together. */
 export const TIDY_DAILY = 200;
 export const TIDY_TITLE_LIMIT = 90;
 export const TIDY_REPORT_LIMIT = 1500;
@@ -105,7 +105,7 @@ export function parseTidy(kind: TidyInput["kind"], text: string): Tidied | null 
 
 /** What a house keeps about its connection. `key` is sealed; it never leaves the server. */
 export interface HouseAi {
-  /** "server": the card room's own key (set by whoever runs it); then `key` and `model` are empty. */
+  /** "server": the parlor's own key (set by whoever runs it); then `key` and `model` are empty. */
   provider: AiProvider | "server";
   key: string;
   model: string;
@@ -126,7 +126,7 @@ export interface HouseAiView {
 export interface AiOptions {
   /** Seals keys at rest (CARDROOM_SECRET). Without one they're stored as given, in the server-only log. */
   secret?: string;
-  /** The card room's own key, for every table (CARDROOM_AI_KEY and friends). */
+  /** The parlor's own key, for every table (CARDROOM_AI_KEY and friends). */
   shared?: { provider?: string; key?: string; model?: string; daily?: number };
   /** For tests. */
   fetch?: typeof fetch;
@@ -162,7 +162,7 @@ const clean = (text: string) =>
 
 export function promptFor(ai: Pick<HouseAi, "context">, m: Moment): { system: string; user: string } {
   const system = [
-    `You are ${m.bot}, a computer player at a family card table playing ${m.game} in the card room at "${m.house}".`,
+    `You are ${m.bot}, a computer player at a family card table playing ${m.game} in the parlor at "${m.house}".`,
     m.character ? `Your character: ${m.character}.` : "",
     "Write the one short line of table talk you say right now: under 20 words, warm, family-friendly, in character. An emoji is fine.",
     "Reply with the line only: no quotation marks, no name in front, no explanation.",
@@ -211,14 +211,14 @@ export function createAi(options: AiOptions = {}) {
     }
   }
 
-  // The card room's own connection. A key that starts "sk-ant-" is Anthropic's unless told otherwise.
+  // The parlor's own connection. A key that starts "sk-ant-" is Anthropic's unless told otherwise.
   const given = options.shared?.key?.trim();
   const sharedProvider: AiProvider = isProvider(options.shared?.provider) ? options.shared.provider : given?.startsWith("sk-ant-") ? "anthropic" : "openai";
   const shared: (HouseAi & { provider: AiProvider }) | null = given
     ? { provider: sharedProvider, key: `plain:${given}`, model: options.shared?.model?.trim() || defaultModel(sharedProvider), context: "", on: true }
     : null;
   const sharedDaily = options.shared?.daily && options.shared.daily > 0 ? options.shared.daily : SHARED_LINES;
-  /** A house's connection as it's actually called: the card room's key when that's what it uses. */
+  /** A house's connection as it's actually called: the parlor's key when that's what it uses. */
   const resolve = (ai: HouseAi): (HouseAi & { provider: AiProvider }) | null =>
     ai.provider === "server" ? (shared ? { ...shared, context: ai.context, on: ai.on } : null) : (ai as HouseAi & { provider: AiProvider });
 
@@ -232,7 +232,7 @@ export function createAi(options: AiOptions = {}) {
   /** The model's whole answer, as it gave it. Throws like `ask`. */
   async function complete(asked: HouseAi, system: string, user: string, maxTokens: number, maxReasoning: number, wait = timeout): Promise<string> {
     const ai = resolve(asked);
-    if (!ai) throw new Error("This card room has no AI account of its own any more. Connect the house's own.");
+    if (!ai) throw new Error("This parlor has no AI account of its own any more. Connect the house's own.");
     const key = open(ai.key);
     if (!key) throw new Error("The saved key can't be read any more. Paste it again.");
     const anthropic = ai.provider === "anthropic";
@@ -314,14 +314,14 @@ export function createAi(options: AiOptions = {}) {
     models,
     /** Whether a sealed key can still be opened here. */
     readable: (ai: HouseAi) => open(ai.key) !== null,
-    /** Whether the card room has a key of its own. */
+    /** Whether the parlor has a key of its own. */
     get shared() {
       return shared !== null;
     },
-    /** What a table uses when its house hasn't set anything (or it has no house): the card room's key, if any. */
+    /** What a table uses when its house hasn't set anything (or it has no house): the parlor's key, if any. */
     fallback: (): HouseAi | null => (shared ? { provider: "server", key: "", model: "", context: "", on: true } : null),
     view: (ai: HouseAi | undefined): HouseAiView | null => {
-      // A house that's set nothing rides on the card room's key, when there is one.
+      // A house that's set nothing rides on the parlor's key, when there is one.
       if (!ai) return shared ? { provider: "server", model: shared.model, context: "", on: true, keyEnding: "" } : null;
       if (ai.provider === "server") return { provider: "server", model: shared?.model ?? "", context: ai.context, on: ai.on && shared !== null, keyEnding: "" };
       const key = open(ai.key) ?? "";
@@ -333,7 +333,7 @@ export function createAi(options: AiOptions = {}) {
       return ask(ai, system, user);
     },
     /**
-     * A player's report or request, tidied on the card room's own key: null when there's no key, the
+     * A player's report or request, tidied on the parlor's own key: null when there's no key, the
      * day's tidy-ups are used up, or the model failed (the player then sends their own words).
      */
     async tidy(input: TidyInput): Promise<Tidied | null> {
@@ -352,7 +352,7 @@ export function createAi(options: AiOptions = {}) {
     async line(who: string, ai: HouseAi | undefined, moment: Moment, limit = DAILY_LINES): Promise<string | null> {
       if (!ai?.on || !resolve(ai)) return null;
       if (!spend(who, limit)) return null;
-      // Whoever runs the card room pays for its own key: one ceiling for everyone on it.
+      // Whoever runs the parlor pays for its own key: one ceiling for everyone on it.
       if (ai.provider === "server" && !spend("\u0000shared", sharedDaily)) return null;
       const { system, user } = promptFor(ai, moment);
       try {

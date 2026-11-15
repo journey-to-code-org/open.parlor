@@ -74,7 +74,7 @@ describe("watching a table with people at it", () => {
   for (const game of GAMES.map((g) => g.id) as GameId[]) {
     it(`${game}: a watcher sees no card that any seat can't`, async () => {
       const { app, send, view } = setup();
-      // Past the per-request pace limit: each test has its own card room.
+      // Past the per-request pace limit: each test has its own parlor.
       const made = await send("/spectate", { game, pace: "instant" });
       expect(made.status, JSON.stringify(made.body)).toBe(201);
       const id = made.body.id as string;
@@ -103,7 +103,7 @@ describe("watching a table with people at it", () => {
     });
   }
 
-  it("covers every game the card room has", () => {
+  it("covers every game the parlor has", () => {
     expect(GAMES.length).toBe(KIT_GAMES.length + 2);
   });
 });

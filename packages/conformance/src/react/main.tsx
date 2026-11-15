@@ -1,19 +1,19 @@
 // The fixture in React. A .zb import in a .tsx file is a React component: props in, on<Event>
 // handlers out, children into the slots.
-import BidPad from "@spades/ui/bid-pad.zb";
-import PlayingCard from "@spades/ui/playing-card.zb";
-import SeatBadge from "@spades/ui/seat-badge.zb";
-import ActionButton from "@spades/ui/zubra-ui/action-button.zb";
-import AlertBanner from "@spades/ui/zubra-ui/alert-banner.zb";
-import DataTable from "@spades/ui/zubra-ui/data-table.zb";
-import EmptyState from "@spades/ui/zubra-ui/empty-state.zb";
-import ModalDialog from "@spades/ui/zubra-ui/modal-dialog.zb";
-import SegmentedControl from "@spades/ui/zubra-ui/segmented-control.zb";
-import StackLayout from "@spades/ui/zubra-ui/stack-layout.zb";
-import StatusBadge from "@spades/ui/zubra-ui/status-badge.zb";
-import TabList from "@spades/ui/zubra-ui/tab-list.zb";
-import TextField from "@spades/ui/zubra-ui/text-field.zb";
-import ToggleSwitch from "@spades/ui/zubra-ui/toggle-switch.zb";
+import BidPad from "@open-parlor/ui/bid-pad.zb";
+import PlayingCard from "@open-parlor/ui/playing-card.zb";
+import SeatBadge from "@open-parlor/ui/seat-badge.zb";
+import ActionButton from "@open-parlor/ui/zubra-ui/action-button.zb";
+import AlertBanner from "@open-parlor/ui/zubra-ui/alert-banner.zb";
+import DataTable from "@open-parlor/ui/zubra-ui/data-table.zb";
+import EmptyState from "@open-parlor/ui/zubra-ui/empty-state.zb";
+import ModalDialog from "@open-parlor/ui/zubra-ui/modal-dialog.zb";
+import SegmentedControl from "@open-parlor/ui/zubra-ui/segmented-control.zb";
+import StackLayout from "@open-parlor/ui/zubra-ui/stack-layout.zb";
+import StatusBadge from "@open-parlor/ui/zubra-ui/status-badge.zb";
+import TabList from "@open-parlor/ui/zubra-ui/tab-list.zb";
+import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
+import ToggleSwitch from "@open-parlor/ui/zubra-ui/toggle-switch.zb";
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { CARDS, COLUMNS, EXTRA_ROW, ITEMS, ROWS, SEGMENTS, TABS, VARIANTS } from "../shared/fixture";
@@ -183,7 +183,7 @@ function App() {
       </section>
 
       <section>
-        <h2>The card room's own</h2>
+        <h2>The parlor's own</h2>
         <PlayingCard data-t="card" card={CARDS[card % CARDS.length]} playable onPick={() => setPicks((n) => n + 1)} />
         <output data-t="card-out">{picks}</output>
         <button data-t="card-next" type="button" onClick={() => setCard(card + 1)}>

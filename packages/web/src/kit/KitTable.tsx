@@ -9,7 +9,7 @@ import {
   type Meld,
 } from "@journey-to-code/games";
 import { type TableSettings } from "@journey-to-code/rules";
-import PlayingCard from "@spades/ui/playing-card.zb";
+import PlayingCard from "@open-parlor/ui/playing-card.zb";
 import { useEffect, useRef, useState } from "react";
 import { Bubble, TableChat, useBubbles, type ChatProps } from "../Chat";
 import { Confetti } from "../Confetti";

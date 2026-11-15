@@ -1,10 +1,10 @@
 // The service worker: shows the buzz when the server pushes one, and opens the right table when
-// it's tapped. It doesn't cache anything; the card room needs the server to play anyway.
+// it's tapped. It doesn't cache anything; the parlor needs the server to play anyway.
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
 
 self.addEventListener("push", (event) => {
-  let notice = { title: "Card Room 🃏", body: "", url: "./" };
+  let notice = { title: "open.parlor 🃏", body: "", url: "./" };
   try {
     notice = { ...notice, ...event.data.json() };
   } catch {}

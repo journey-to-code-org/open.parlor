@@ -15,7 +15,7 @@ const page = (name: string) => local(`./${name}/index.html`);
 export default defineConfig({
   base: "/",
   plugins: [zubra({ dts: false }), react({ include: /src\/react\/.*\.tsx$/ }), solid({ include: /src\/solid\/.*\.tsx$/ }), vue(), svelte()],
-  resolve: { alias: { "@spades/ui": local("../ui/src") } },
+  resolve: { alias: { "@open-parlor/ui": local("../ui/src") } },
   build: { rollupOptions: { input: { element: page("element"), react: page("react"), vue: page("vue"), svelte: page("svelte"), solid: page("solid") } } },
   server: { port: 4179 },
   preview: { port: 4179, strictPort: true },

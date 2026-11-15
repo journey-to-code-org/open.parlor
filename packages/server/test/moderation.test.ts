@@ -57,7 +57,7 @@ describe("moderation", () => {
     const { admin } = setup();
     expect((await admin("/overview", undefined, null)).status).toBe(401);
     expect((await admin("/overview", undefined, "guess")).status).toBe(401);
-    expect((await admin("/tables", undefined, "guess")).body).toEqual({ error: "That isn't this card room's admin token." });
+    expect((await admin("/tables", undefined, "guess")).body).toEqual({ error: "That isn't this parlor's admin token." });
     expect((await admin("/overview")).status).toBe(200);
   });
 
@@ -263,10 +263,10 @@ describe("card designs", () => {
     expect(listed).toHaveLength(1);
     expect(listed[0]).toMatchObject({ id: made.id, author: "Rowdy", hidden: "", player: playerRef(rowdy.cookie()) });
 
-    expect((await admin(`/designs/${made.id}/hide`, { reason: "Not for a family card room." })).status).toBe(200);
+    expect((await admin(`/designs/${made.id}/hide`, { reason: "Not for a family parlor." })).status).toBe(200);
     expect((await grammi("/designs")).body.designs).toEqual([]);
     expect((await grammi(`/designs/${made.id}`)).status).toBe(404);
-    expect((await rowdy("/designs/mine")).body.designs[0]).toMatchObject({ id: made.id, hidden: "Not for a family card room." });
+    expect((await rowdy("/designs/mine")).body.designs[0]).toMatchObject({ id: made.id, hidden: "Not for a family parlor." });
     expect((await admin("/overview")).body.designs).toEqual({ total: 1, shared: 0, hidden: 1 });
 
     expect((await admin(`/designs/${made.id}/restore`, {})).status).toBe(200);
@@ -307,8 +307,8 @@ describe("card designs", () => {
     await pearl(`/designs/${shared.id}/delete`, {});
     expect((await stranger(`/rooms/${id}`)).body.deck.design.name).toBe("Pearl's deck");
 
-    // One of the card room's own, the maker's own private deck at their own table, and none at all.
-    expect((await grammi(`/designs/table/${id}`, { design: "starter:Holly" })).body.deck).toMatchObject({ id: "starter:Holly", author: "Card Room", design: { name: "Holly" } });
+    // One of the parlor's own, the maker's own private deck at their own table, and none at all.
+    expect((await grammi(`/designs/table/${id}`, { design: "starter:Holly" })).body.deck).toMatchObject({ id: "starter:Holly", author: "open.parlor", design: { name: "Holly" } });
     await rick(`/rooms/${id}/sit`, { seat: 1, name: "Pappy" });
     expect((await rick(`/designs/table/${id}`, { design: secret.id })).body.deck.design.name).toBe("Not yet");
     expect((await grammi(`/designs/table/${id}`, { design: null })).body).toEqual({ deck: null });

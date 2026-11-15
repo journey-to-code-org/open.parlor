@@ -1,10 +1,10 @@
 <!--
   The card designer: draw a deck (its back, paper, inks and lettering), then keep it for yourself
-  or share it with everyone in the card room. "Play with it" makes it the deck this browser sees at
+  or share it with everyone in the parlor. "Play with it" makes it the deck this browser sees at
   every table.
 
   The page is Svelte; everything on it is a Zubra component (see zubra.ts): zubra-ui's tabs, fields,
-  swatches, switches, sliders, cards, dialogs and toasts, and the card room's own <playing-card>.
+  swatches, switches, sliders, cards, dialogs and toasts, and the parlor's own <playing-card>.
   They're custom elements, so Svelte sets their properties and listens to their events directly.
 -->
 <script lang="ts">
@@ -33,13 +33,13 @@
   let shareIt = $state(false);
   let saving = $state(false);
 
-  /** Null until we know whether a card room server is behind the page. */
+  /** Null until we know whether a parlor server is behind the page. */
   let online = $state<boolean | null>(null);
   let myDecks = $state<SavedDesign[]>([]);
   let shared = $state<SavedDesign[]>([]);
   let loadError = $state("");
 
-  /** The deck this browser plays with, or null for the card room's own. */
+  /** The deck this browser plays with, or null for the parlor's own. */
   let playing = $state<CardDesign | null>(savedDeck());
   /** Their own deck even at tables that chose their own cards. */
   let always = $state(prefersOwnDeck());
@@ -100,7 +100,7 @@
 
   onMount(() => {
     void load();
-    // Another tab (the card room itself, say) changed the deck this browser plays with.
+    // Another tab (the parlor itself, say) changed the deck this browser plays with.
     const follow = () => (playing = savedDeck());
     window.addEventListener("storage", follow);
     return () => window.removeEventListener("storage", follow);
@@ -166,7 +166,7 @@
   function stopPlaying() {
     saveDeck(null);
     playing = null;
-    toast("Back to the card room's own deck.");
+    toast("Back to the parlor's own deck.");
   }
 
   async function setShared(saved: SavedDesign, on: boolean) {
@@ -205,16 +205,16 @@
 <div class="page">
   <header class="top">
     <div>
-      <a class="home" href="../"><span aria-hidden="true">←</span> Card Room</a>
+      <a class="home" href="../"><span aria-hidden="true">←</span> open.parlor</a>
       <h1>Card designer</h1>
       <p class="quiet">Draw your own deck. Keep it for yourself, or share it with everyone here.</p>
     </div>
     <div class="now" aria-live="polite">
       {#if playing}
         <span>Playing with <strong>{playing.name}</strong></span>
-        <action-button variant="link" size="sm" onclick={stopPlaying}>Use the card room's deck</action-button>
+        <action-button variant="link" size="sm" onclick={stopPlaying}>Use the parlor's deck</action-button>
       {:else}
-        <span>Playing with the card room's own deck</span>
+        <span>Playing with the parlor's own deck</span>
       {/if}
     </div>
   </header>
@@ -236,7 +236,7 @@
 
   {#if online === false}
     <alert-banner variant="info" heading="Decks stay on this device here">
-      <span>This copy of the card room has no server behind it, so there's no gallery to share to. You can still design decks and play with them.</span>
+      <span>This copy of the parlor has no server behind it, so there's no gallery to share to. You can still design decks and play with them.</span>
     </alert-banner>
   {/if}
   {#if loadError}
@@ -318,7 +318,7 @@
             <legend>Keep it</legend>
             <text-field label="Your name" description="Shown on the deck when it's shared." value={author} maxlength={30} autocomplete="nickname" onvaluechange={(event: News<string>) => (author = event.detail)}></text-field>
             {#if online}
-              <toggle-switch label="Share it in the gallery" description="Everyone in this card room can see it, play with it and remix it. Leave it off to keep the deck to yourself." checked={shareIt} oncheckedchange={(event: News<boolean>) => (shareIt = event.detail)}></toggle-switch>
+              <toggle-switch label="Share it in the gallery" description="Everyone in this parlor can see it, play with it and remix it. Leave it off to keep the deck to yourself." checked={shareIt} oncheckedchange={(event: News<boolean>) => (shareIt = event.detail)}></toggle-switch>
             {/if}
             <cluster-layout gap="0.6rem">
               <action-button type="submit" loading={saving} disabled={problems.length > 0}><span>{editing ? "Save changes" : "Save deck"}</span></action-button>
@@ -351,7 +351,7 @@
                 {/if}
               </cluster-layout>
               {#if saved.hidden}
-                <p class="reason">The card room's host says: {saved.hidden}</p>
+                <p class="reason">The parlor's host says: {saved.hidden}</p>
               {/if}
               <cluster-layout slot="footer" gap="0.4rem">
                 <action-button size="sm" disabled={same(playing, saved.design)} onclick={() => playWith(saved.design)}>Play with it</action-button>
@@ -375,10 +375,10 @@
     <!-- Gallery -->
     <section data-tab="gallery">
       <h2>Starters</h2>
-      <p class="quiet">The card room's own decks. Play with one as it is, or remix it into yours.</p>
+      <p class="quiet">The parlor's own decks. Play with one as it is, or remix it into yours.</p>
       <auto-grid min="16rem" gap="1rem">
         {#each STARTERS as starter (starter.name)}
-          {@const card = { id: starter.name, author: "Card Room", design: starter, shared: true, created: 0, updated: 0, mine: false }}
+          {@const card = { id: starter.name, author: "open.parlor", design: starter, shared: true, created: 0, updated: 0, mine: false }}
           <content-card heading={starter.name}>
             <div slot="media"><DeckPreview design={starter} /></div>
             <cluster-layout slot="footer" gap="0.4rem">

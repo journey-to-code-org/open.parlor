@@ -1384,7 +1384,7 @@ html[data-motion="off"] .board-grid .cell.mark-must::before { animation: none; }
 }
 .board-checkers .board-grid .piece.kind-king { box-shadow: 0 max(2px, 0.5cqw) 0 rgba(0, 0, 0, 0.5), 0 max(4px, 1cqw) 0 rgba(0, 0, 0, 0.3), inset 0 0 0 max(2px, 0.6cqw) #e8c46a; }
 .board-checkers .piece.small { border-radius: 50%; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4); font-size: 0.7em; }
-/* Chess. The pieces are the card room's own set (board/pieces.tsx): solid shapes with an outline,
+/* Chess. The pieces are the parlor's own set (board/pieces.tsx): solid shapes with an outline,
    cream for White and near-black for Black, the same weight on every phone. */
 .piece.art { width: 100%; height: 100%; background: none; text-shadow: none; --fill: #fbf6ea; --edge: #2b2520; --detail: #2b2520; }
 .piece.art.tone-dark { --fill: #35302b; --edge: #15120f; --detail: #e9dfcb; }

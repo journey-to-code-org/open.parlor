@@ -1,4 +1,4 @@
-// The lobby: tables that are open to anyone in the card room, not only people holding the link.
+// The lobby: tables that are open to anyone in the parlor, not only people holding the link.
 //
 // Two ways in. "Find players" names a game: you're seated at a waiting table for that game if there
 // is one, and otherwise a new open table is set up with your rules and you wait there. Or you look
@@ -19,7 +19,7 @@
 //
 // After the deal the table stays the host's: they can still remove a player (a computer player takes
 // over the seat and plays on) and mute one, and its chat stays filtered. Blocking someone from the
-// whole card room is its host's job, in the admin app (moderation.ts).
+// whole parlor is its host's job, in the admin app (moderation.ts).
 //
 //   lobby/alerts   server only: one field per player who asked (the games they want to hear about)
 import { kitGame, isKitGame } from "@journey-to-code/games";
@@ -85,7 +85,7 @@ export interface LobbyOptions {
   alertGap?: number;
   /** More words that names on open tables may not contain. */
   blockedNames?: string[];
-  /** Whether new tables of a game may be opened (the card room's catalogue). */
+  /** Whether new tables of a game may be opened (the parlor's catalogue). */
   gameOn?: (game: GameId) => boolean | Promise<boolean>;
 }
 
@@ -375,7 +375,7 @@ export function createLobby(rooms: Rooms, { mount = "/lobby", quietAfter = 90_00
         const at = now();
         if (at - (lastNew.get(me) ?? 0) < NEW_TABLE_GAP_MS) return json({ error: "Give it a second, then try again." }, 429, cookie);
         if (Object.values(await entries()).filter((e) => !e.dealt).length >= limit) return json({ error: "The lobby is full right now. Try again in a little while." }, 503, cookie);
-        if (!(await gameOn(game))) return json({ error: `${about.name} is switched off in this card room.` }, 403, cookie);
+        if (!(await gameOn(game))) return json({ error: `${about.name} is switched off in this parlor.` }, 403, cookie);
         lastNew.set(me, at);
         const id = await rooms.create(options, input.settings);
         await rooms.seatPlayer(id, 0, me, name);

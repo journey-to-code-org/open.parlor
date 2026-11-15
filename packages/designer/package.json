@@ -1,8 +1,8 @@
 {
-  "name": "@cardroom/designer",
+  "name": "@open-parlor/designer",
   "version": "0.1.0",
   "private": true,
-  "description": "The card designer: draw a deck, keep it for yourself or share it with everyone in the card room. Svelte, on Zubra components.",
+  "description": "The card designer: draw a deck, keep it for yourself or share it with everyone in the parlor. Svelte, on Zubra components.",
   "type": "module",
   "scripts": {
     "dev": "vite",

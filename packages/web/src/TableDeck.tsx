@@ -1,10 +1,10 @@
 // A table's deck: the cards everyone at the table (and anyone watching) sees. The players choose
-// it before the deal, from the card room's own decks, their own designs and the gallery; the
+// it before the deal, from the parlor's own decks, their own designs and the gallery; the
 // server keeps the table's copy, so it can't change under a game. A house picks the same way the
 // deck its tables start with.
 import { STARTERS, deckVars, type CardDesign, type TableDeck } from "@journey-to-code/decks";
-import PlayingCard from "@spades/ui/playing-card.zb";
-import SelectField from "@spades/ui/zubra-ui/select-field.zb";
+import PlayingCard from "@open-parlor/ui/playing-card.zb";
+import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
 import type { Card } from "@journey-to-code/rules";
 import { useEffect, useState } from "react";
 
@@ -44,8 +44,8 @@ function Preview({ design }: { design: CardDesign | null }) {
 }
 
 /**
- * A deck chosen from the card room's own, the chooser's designs and the gallery. `save` sends the
- * choice (a design's id, or null for the card room's own) and throws with what to tell them.
+ * A deck chosen from the parlor's own, the chooser's designs and the gallery. `save` sends the
+ * choice (a design's id, or null for the parlor's own) and throws with what to tell them.
  */
 function DeckPicker({ deck, canChoose, save, label, description, line, onProblem }: { deck: TableDeck | null; canChoose: boolean; save: (design: string | null) => Promise<unknown>; label: string; description: string; /** What someone not choosing reads before the deck's name. */ line: string; onProblem: (message: string | null) => void }) {
   const [mine, setMine] = useState<Saved[]>([]);
@@ -82,7 +82,7 @@ function DeckPicker({ deck, canChoose, save, label, description, line, onProblem
 
   const value = picked ?? deck?.id ?? OWN;
   const options = [
-    { value: OWN, label: "The card room's own deck" },
+    { value: OWN, label: "The parlor's own deck" },
     ...STARTERS.filter((s) => s.name !== "Classic").map((s) => ({ value: `starter:${s.name}`, label: s.name })),
     ...mine.map((d) => ({ value: d.id, label: `${d.design.name} (yours)` })),
     ...gallery.map((d) => ({ value: d.id, label: `${d.design.name} by ${d.author}` })),

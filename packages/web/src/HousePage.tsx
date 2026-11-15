@@ -1,5 +1,5 @@
 import { validatePreset, type RulePreset } from "@journey-to-code/rules";
-import TextField from "@spades/ui/zubra-ui/text-field.zb";
+import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { HouseAiBlock } from "./HouseAi";
 import { HouseDeckPicker } from "./TableDeck";
 import { useCallback, useEffect, useState } from "react";

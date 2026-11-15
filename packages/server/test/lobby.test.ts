@@ -291,7 +291,7 @@ describe("the lobby", () => {
     expect((await fam("/lobby/" + made + "/mute", { seat: 0 })).status).toBe(404);
   });
 
-  it("goes by the card room host's rules: blocked players and switched-off games stay out of the lobby", async () => {
+  it("goes by the parlor host's rules: blocked players and switched-off games stay out of the lobby", async () => {
     const app = createCardRoom({ log: memoryLog({ keep: "latest" }), botDelay: 5, talk: false, adminToken: "a-long-admin-token" });
     open.push(app);
     const host = (path: string, body: unknown = {}) =>

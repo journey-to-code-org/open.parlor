@@ -1,4 +1,4 @@
-# @spades/ui
+# @open-parlor/ui
 
 The table's components, written in [Zubra](https://github.com/journey-to-code-org/zubra) as `.zb` files.
 Each one compiles to a standard custom element, so the same source runs in the React app
@@ -13,12 +13,12 @@ Each one compiles to a standard custom element, so the same source runs in the R
 | `hand-summary` | How a hand scored | `next` |
 
 `playing-card` wears a deck's design through the `--deck-*` CSS variables (`deckVars` in
-`packages/decks`): set them on the card or anything around it. Without them it's the card room's
+[`packages/decks`](https://github.com/journey-to-code-org/open.games/tree/main/packages/decks)): set them on the card or anything around it. Without them it's the parlor's
 own deck.
 
 `zubra-ui/` holds components copied from [zubra-ui](https://github.com/journey-to-code-org/zubra-ui),
 and its default theme (`zubra-ui/themes/`). They're ours to edit; each file says which commit it
-came from. The card room's setup screens use the text field, select field and toggle switch; the
+came from. The parlor's setup screens use the text field, select field and toggle switch; the
 card designer and the admin app are built from the rest: buttons, tabs, data tables, dialogs,
 toasts, alerts, badges, stat cards, content cards, swatches, sliders, the flip card and the layout
 helpers.
@@ -34,8 +34,8 @@ helpers.
 
 The apps share this folder, so each keeps the typings Zubra writes for it in a folder of its own
 (`zubra({ dts: { dir: ".zubra/types" } })`), typed for its framework: React props and handlers in
-the card room, the elements for Svelte in the designer, and Solid's JSX tags on the watch page.
-Each app's `tsconfig.json` points the `@spades/ui/*` alias at that folder first.
+the parlor, the elements for Svelte in the designer, and Solid's JSX tags on the watch page.
+Each app's `tsconfig.json` points the `@open-parlor/ui/*` alias at that folder first.
 
 A component says what its props and events carry where the default value can't
 (`@prop {Type} name` and `@fires name {Type}` in its header comment): see `playing-card` and

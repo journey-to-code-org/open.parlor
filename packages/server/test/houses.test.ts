@@ -157,8 +157,8 @@ describe("the house's cards", () => {
     await pearl.send(`/designs/${shared.id}/delete`, {});
     expect((await grammi.send("/houses/grammis-house")).body.deck.design.name).toBe("Pearl's deck");
 
-    // One of the card room's own, one of the owner's own (never shared), and none at all.
-    expect((await grammi.send("/houses/grammis-house/deck", { design: "starter:Holly" })).body.deck).toMatchObject({ id: "starter:Holly", author: "Card Room" });
+    // One of the parlor's own, one of the owner's own (never shared), and none at all.
+    expect((await grammi.send("/houses/grammis-house/deck", { design: "starter:Holly" })).body.deck).toMatchObject({ id: "starter:Holly", author: "open.parlor" });
     expect((await grammi.send("/houses/grammis-house/deck", { design: mine.id })).body.deck.design.name).toBe("Grammi's own");
     expect((await grammi.send("/houses/grammis-house/deck", { design: null })).body.deck).toBeNull();
     const plain = (await rick.send("/houses/grammis-house/tables", { game: "palace" })).body.id as string;

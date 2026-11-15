@@ -1,4 +1,4 @@
-// Combat in the card room: the first board game with something to hide. A person plays a table to
+// Combat in the parlor: the first board game with something to hide. A person plays a table to
 // the end against a computer player over HTTP, and nothing the server sends them (their own view,
 // the room anyone can read) says where the other fleet is until the game is over. Then two people:
 // each is sent their own grid and never the other's.
@@ -39,7 +39,7 @@ const viewIn = (changes: Change[], id: string, seat: number): BoardView | undefi
 const viewOf = async (send: Send, id: string, seat: number) => viewIn(await pull(send), id, seat);
 const grid = (v: BoardView, id: string) => v.grids.find((g) => g.id === id)!;
 
-describe("Combat in the card room", () => {
+describe("Combat in the parlor", () => {
   it("a table against a computer player, played to the end: its fleet stays hidden until then", async () => {
     const { phone } = setup();
     const grammi = phone();

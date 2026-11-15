@@ -215,7 +215,7 @@ describe("models, and tables outside a house", () => {
   }, 15_000);
 });
 
-describe("the card room's own key", () => {
+describe("the parlor's own key", () => {
   const SERVER_KEY = "sk-ant-the-card-rooms-own-key-0000";
   const table = async (send: (path: string, body?: unknown) => Promise<{ body: any }>, made: string, say: string) => {
     await send(`/rooms/${made}/sit`, { seat: 0, name: "brokennil" });
@@ -314,7 +314,7 @@ describe("tidying a report for the developers", () => {
     expect(parseTidy("game", '{"game": "Mahjong", "note": ""}')).toEqual({ kind: "game", game: "Mahjong", note: "" });
   });
 
-  it("goes through the card room's own key only, and gives up quietly when the model fails", async () => {
+  it("goes through the parlor's own key only, and gives up quietly when the model fails", async () => {
     const answer = JSON.stringify({ title: "Toggles look broken", report: "The switches are misshapen." });
     const { fake, calls } = service(() => ({ line: answer }));
     expect(await createAi({ fetch: fake }).tidy({ kind: "bug", description: "the toggles are broken" })).toBeNull();

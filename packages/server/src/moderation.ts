@@ -1,4 +1,4 @@
-// Moderation: what the person who runs this card room can see and do about its tables and the
+// Moderation: what the person who runs this parlor can see and do about its tables and the
 // people at them. The admin app (packages/admin, served at /admin/) is its only page.
 //
 // It's off until the server has an admin token (CARDROOM_ADMIN_TOKEN). Every request carries it as
@@ -53,7 +53,7 @@ export interface LogEntry {
 }
 
 /** What everyone but the admin is told when a blocked player tries to do something. */
-export const BLOCKED_MESSAGE = "This card room's host has blocked you from playing here.";
+export const BLOCKED_MESSAGE = "This parlor's host has blocked you from playing here.";
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 const clean = (value: unknown, max: number) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
@@ -70,7 +70,7 @@ const finished = (summary: unknown) => {
 /** How many wrong tokens a minute before everyone waits. */
 const WRONG_TOKENS_PER_MINUTE = 20;
 
-export function createModeration(rooms: Rooms, designs: Designs, { token, houses, catalogue, backups, bots, mount = "/moderation", now = () => Date.now() }: { token?: string; houses?: Houses; catalogue?: Catalogue; /** Copies of the database, when the card room keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
+export function createModeration(rooms: Rooms, designs: Designs, { token, houses, catalogue, backups, bots, mount = "/moderation", now = () => Date.now() }: { token?: string; houses?: Houses; catalogue?: Catalogue; /** Copies of the database, when the parlor keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
   const secret = token?.trim() ? digest(token.trim()) : null;
   const docs = rooms.sync.documents();
   let wrong: number[] = [];
@@ -155,7 +155,7 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
     const given = request.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
     if (given && timingSafeEqual(digest(given), secret)) return null;
     wrong.push(at);
-    return json({ error: given ? "That isn't this card room's admin token." : "Sign in with the admin token." }, 401);
+    return json({ error: given ? "That isn't this parlor's admin token." : "Sign in with the admin token." }, 401);
   }
 
   async function handle(request: Request, path: string): Promise<Response> {
@@ -178,7 +178,7 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
         blocked: (await bans()).size,
         houses: view.all("houses").length,
         designs: { total: made.length, shared: made.filter((d) => d.shared && !d.hidden).length, hidden: made.filter((d) => d.hidden).length },
-        // Null when the card room keeps nothing on disk (no CARDROOM_DB) or backups are off.
+        // Null when the parlor keeps nothing on disk (no CARDROOM_DB) or backups are off.
         backups: backups ? { latest: backups.list()[0] ?? null, kept: backups.list().length, keep: backups.keep, hours: backups.hours } : null,
         // How the computer players' thinking is going: null when it all happens on the main thread.
         bots: bots?.() ?? null,
@@ -187,7 +187,7 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
 
     // GET /moderation/backup → a copy of the database, made now, to keep somewhere else
     if (area === "backup" && method === "GET") {
-      if (!backups) return json({ error: "There's nothing to back up: this card room keeps its tables in memory (set CARDROOM_DB)." }, 404);
+      if (!backups) return json({ error: "There's nothing to back up: this parlor keeps its tables in memory (set CARDROOM_DB)." }, 404);
       const file = await backups.make();
       const bytes = backups.read(file.name);
       if (!bytes) return json({ error: "The backup couldn't be read back. Try again." }, 500);
@@ -227,7 +227,7 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
       // POST /moderation/tables/:id/close { reason } → nobody can sit, move or talk there again
       if (action === "close") {
         if (table.closed) return json({ error: "That table is already closed." }, 409);
-        const reason = clean(input.reason, 200) || "This table was closed by the card room's host.";
+        const reason = clean(input.reason, 200) || "This table was closed by the parlor's host.";
         await rooms.closeTable(id, reason);
         await record("Closed a table", name, reason);
         return json({ ok: true });
@@ -350,7 +350,7 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
       const name = `“${design.design.name}” by ${design.author}`;
       // POST /moderation/designs/:id/hide { reason } → out of the gallery; its maker sees why
       if (action === "hide") {
-        const reason = clean(input.reason, 200) || "The card room's host took this out of the gallery.";
+        const reason = clean(input.reason, 200) || "The parlor's host took this out of the gallery.";
         await designs.hide(id, reason);
         await record("Hid a card design", name, reason);
         return json({ ok: true });

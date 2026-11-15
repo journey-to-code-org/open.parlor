@@ -1,5 +1,5 @@
 // Computer players thinking in worker threads (bots.ts): the move is the same whichever thread
-// works it out, for every game in the card room, and a real table's bot gets its moves from a worker.
+// works it out, for every game in the parlor, and a real table's bot gets its moves from a worker.
 import { KIT_GAMES, kitGame } from "@journey-to-code/games";
 import { PALACE_PRESETS } from "@journey-to-code/palace";
 import { classic, familyTable, jokersAndDeuces, pickPersonas, quick250, mulberry32, type Skill } from "@journey-to-code/rules";
@@ -14,7 +14,7 @@ import { kitHeavy } from "../src/kit.js";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Every game the card room plays, at every preset: the room options that deal it, and how many sit down. */
+/** Every game the parlor plays, at every preset: the room options that deal it, and how many sit down. */
 function everyTable(): { name: string; options: TableOptions; seats: number; kit: boolean; budget?: { ms: number } }[] {
   const tables: { name: string; options: TableOptions; seats: number; kit: boolean; budget?: { ms: number } }[] = [];
   for (const preset of [familyTable, classic, jokersAndDeuces, quick250]) tables.push({ name: `spades/${preset.name}`, options: preset, seats: 4, kit: false });
@@ -126,7 +126,7 @@ describe("a think is the same move on any thread", () => {
   });
 });
 
-describe("the card room's bots", () => {
+describe("the parlor's bots", () => {
   let open: ReturnType<typeof createCardRoom>[] = [];
   afterEach(async () => {
     await Promise.all(open.map((c) => c.close()));

@@ -13,7 +13,7 @@ export function ChallengeLink({ name, rules, palaceRules, kitRules }: { name: st
   const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
-    // No card room behind this copy of the app (the GitHub Pages one): no challenge links.
+    // No parlor behind this copy of the app (the GitHub Pages one): no challenge links.
     challenges.mine().then(setLink, () => setNoServer(true));
   }, []);
   if (!link || noServer) return null;

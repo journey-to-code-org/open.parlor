@@ -1,4 +1,4 @@
-# The whole card room in one container: the server, the sync log and the web app.
+# The whole parlor in one container: the server, the sync log and the web app.
 #   docker build -t cardroom . && docker run -p 8787:8787 -v spades:/data cardroom
 FROM node:24-slim AS build
 WORKDIR /app

@@ -1,19 +1,19 @@
 // The fixture with no framework: the custom elements, driven by the DOM. This is the baseline the
 // framework pages are measured against.
-import "@spades/ui/bid-pad.zb";
-import "@spades/ui/playing-card.zb";
-import "@spades/ui/seat-badge.zb";
-import "@spades/ui/zubra-ui/action-button.zb";
-import "@spades/ui/zubra-ui/alert-banner.zb";
-import "@spades/ui/zubra-ui/data-table.zb";
-import "@spades/ui/zubra-ui/empty-state.zb";
-import "@spades/ui/zubra-ui/modal-dialog.zb";
-import "@spades/ui/zubra-ui/segmented-control.zb";
-import "@spades/ui/zubra-ui/stack-layout.zb";
-import "@spades/ui/zubra-ui/status-badge.zb";
-import "@spades/ui/zubra-ui/tab-list.zb";
-import "@spades/ui/zubra-ui/text-field.zb";
-import "@spades/ui/zubra-ui/toggle-switch.zb";
+import "@open-parlor/ui/bid-pad.zb";
+import "@open-parlor/ui/playing-card.zb";
+import "@open-parlor/ui/seat-badge.zb";
+import "@open-parlor/ui/zubra-ui/action-button.zb";
+import "@open-parlor/ui/zubra-ui/alert-banner.zb";
+import "@open-parlor/ui/zubra-ui/data-table.zb";
+import "@open-parlor/ui/zubra-ui/empty-state.zb";
+import "@open-parlor/ui/zubra-ui/modal-dialog.zb";
+import "@open-parlor/ui/zubra-ui/segmented-control.zb";
+import "@open-parlor/ui/zubra-ui/stack-layout.zb";
+import "@open-parlor/ui/zubra-ui/status-badge.zb";
+import "@open-parlor/ui/zubra-ui/tab-list.zb";
+import "@open-parlor/ui/zubra-ui/text-field.zb";
+import "@open-parlor/ui/zubra-ui/toggle-switch.zb";
 import { CARDS, COLUMNS, EXTRA_ROW, ITEMS, ROWS, SEGMENTS, TABS, VARIANTS } from "../shared/fixture";
 import "../shared/styles.css";
 
@@ -197,7 +197,7 @@ document.getElementById("app")!.append(
       }),
     ),
     section(
-      "The card room's own",
+      "The parlor's own",
       el("playing-card", { "data-t": "card", card: CARDS[0], playable: true, onpick: () => show("card-out", ++picks) }),
       output("card-out", "0"),
       button("card-next", "Next card", () => set("card", "card", CARDS[++card % CARDS.length])),

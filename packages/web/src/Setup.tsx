@@ -1,9 +1,9 @@
 import { SetupLayout } from "./SetupLayout";
 import { OpponentSettings } from "./TableSettings";
 import { validatePreset, type RulePreset } from "@journey-to-code/rules";
-import SelectField from "@spades/ui/zubra-ui/select-field.zb";
+import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
 import { explain, RulesFields, SameRulesToggle, Toggle } from "./RulesEditor";
-import TextField from "@spades/ui/zubra-ui/text-field.zb";
+import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { ChallengeLink } from "./ChallengeLink";
 import type { GameId } from "./storage";
 import { useMemo, useState } from "react";
@@ -27,7 +27,7 @@ import {
 } from "./storage";
 
 interface Props {
-  /** Back to the Card Room's front page, with every game. */
+  /** Back to the open.parlor's front page, with every game. */
   onHome: () => void;
   onStart: (name: string, preset: RulePreset) => void;
   /** Start a table on the server with these rules. Rejects when the server can't be reached. */
@@ -258,7 +258,7 @@ export function Setup({
                 await onFamilyTable(rules);
               } catch {
                 setProblem(
-                  "Couldn't reach the card room. Try again in a minute.",
+                  "Couldn't reach the parlor. Try again in a minute.",
                 );
                 setBusy(false);
               }
@@ -340,7 +340,7 @@ export function Setup({
                     );
                   } catch {
                     setProblem(
-                      "Couldn't reach the card room. Try again in a minute.",
+                      "Couldn't reach the parlor. Try again in a minute.",
                     );
                     setBusy(false);
                   }

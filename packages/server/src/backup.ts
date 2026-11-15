@@ -1,4 +1,4 @@
-// Backups: copies of the card room's database (tables, houses, designs, everything in the sync
+// Backups: copies of the parlor's database (tables, houses, designs, everything in the sync
 // log), made on a timer and kept beside it.
 //
 //   <dir>/cardroom-2026-11-14T09-30-00.db   one whole database, openable as it is

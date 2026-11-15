@@ -51,7 +51,7 @@ export const DESIGNS_PER_PLAYER = 40;
 export const GALLERY_SIZE = 120;
 const CREATE_GAP_MS = 1500;
 
-export function createDesigns(sync: Sync, { mount = "/designs", tables, now = () => Date.now() }: { mount?: string; /** The card room's tables, so a table can wear a design. */ tables?: Tables; now?: () => number } = {}) {
+export function createDesigns(sync: Sync, { mount = "/designs", tables, now = () => Date.now() }: { mount?: string; /** The parlor's tables, so a table can wear a design. */ tables?: Tables; now?: () => number } = {}) {
   const docs = sync.documents();
   const lastMade = new Map<string, number>();
 
@@ -86,13 +86,13 @@ export function createDesigns(sync: Sync, { mount = "/designs", tables, now = ()
   }
 
   /**
-   * The deck a design id stands for, as a table or a house keeps it: one of the card room's own
+   * The deck a design id stands for, as a table or a house keeps it: one of the parlor's own
    * ("starter:<name>"), the player's own, or one in the gallery. Nobody shows everyone a deck its
    * maker kept private.
    */
   async function deckFor(wanted: unknown, player: string | null): Promise<TableDeck | undefined> {
     const starter = STARTERS.find((s) => wanted === `starter:${s.name}`);
-    if (starter) return { id: `starter:${starter.name}`, author: "Card Room", design: starter };
+    if (starter) return { id: `starter:${starter.name}`, author: "open.parlor", design: starter };
     const design = typeof wanted === "string" ? await get(wanted) : undefined;
     const usable = design && !design.deleted && (design.owner === player || (design.shared && !design.hidden));
     return usable ? { id: design.id, author: design.author, design: design.design } : undefined;

@@ -1,6 +1,6 @@
-// Where designs are kept. With a card room server behind the page, they're saved there (yours
+// Where designs are kept. With a parlor server behind the page, they're saved there (yours
 // under your player cookie; shared ones in the gallery for everyone). Without one (the GitHub Pages
-// copy of the card room), they stay in this browser and there's no gallery to share to.
+// copy of the parlor), they stay in this browser and there's no gallery to share to.
 import { normalizeDesign, validateDesign, type CardDesign } from "@journey-to-code/decks";
 
 export interface SavedDesign {
@@ -11,7 +11,7 @@ export interface SavedDesign {
   created: number;
   updated: number;
   mine: boolean;
-  /** Why the card room's host took it out of the gallery. */
+  /** Why the parlor's host took it out of the gallery. */
   hidden?: string;
 }
 
@@ -35,14 +35,14 @@ async function send<T>(path: string, body?: unknown): Promise<T> {
       credentials: "same-origin",
     });
   } catch {
-    throw new StoreError("Couldn't reach the card room. Check your connection and try again.");
+    throw new StoreError("Couldn't reach the parlor. Check your connection and try again.");
   }
   const answer = (await response.json().catch(() => null)) as (T & { error?: string }) | null;
-  if (!response.ok || !answer) throw new StoreError(answer?.error ?? "The card room couldn't do that. Try again.");
+  if (!response.ok || !answer) throw new StoreError(answer?.error ?? "The parlor couldn't do that. Try again.");
   return answer;
 }
 
-/** Whether a card room server is behind this page. Asked once. */
+/** Whether a parlor server is behind this page. Asked once. */
 export async function hasServer(): Promise<boolean> {
   if (server !== null) return server;
   try {

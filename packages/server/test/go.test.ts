@@ -1,4 +1,4 @@
-// Go in the card room: a house table played to the end by a person against a computer player, the
+// Go in the parlor: a house table played to the end by a person against a computer player, the
 // count agreed between them, a half-point result on the leaderboard, and what someone watching sees.
 import { goPoint, movesOffered, type BoardView } from "@journey-to-code/games";
 import { memoryLog } from "@zubra/sync/server";
@@ -27,7 +27,7 @@ function phone() {
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-describe("Go in the card room", () => {
+describe("Go in the parlor", () => {
   it("a house table against a computer player: play, pass, agree the count, and the leaderboard", async () => {
     const { send: grammi, view } = phone();
     const made = (await grammi("/houses", { name: "Grammi's House", you: "brokennil" })).body;

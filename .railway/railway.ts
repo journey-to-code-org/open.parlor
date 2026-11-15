@@ -1,4 +1,4 @@
-// The card room on Railway, as Infrastructure as Code. Keep it in its own Railway project:
+// The parlor on Railway, as Infrastructure as Code. Keep it in its own Railway project:
 // `railway config apply` makes the project match this file.
 //
 //   railway link            # pick the spades project
@@ -14,7 +14,7 @@ export default defineRailway(() => {
 
   const spades = service("spades", {
     // Railway builds the Dockerfile at the repository root.
-    source: github("mnichols08/spades", { branch: "main" }),
+    source: github("journey-to-code-org/open.parlor", { branch: "main" }),
     healthcheck: "/healthz",
     // One process holds the live connections and every game's state: never more than one.
     replicas: 1,

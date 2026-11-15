@@ -5,8 +5,8 @@ import {
   validatePalaceRules,
   type PalaceRules,
 } from "@journey-to-code/palace";
-import SelectField from "@spades/ui/zubra-ui/select-field.zb";
-import TextField from "@spades/ui/zubra-ui/text-field.zb";
+import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
+import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { useMemo, useState } from "react";
 import { lobbyProblem } from "../lobbyApi";
 import { ChallengeLink } from "../ChallengeLink";
@@ -28,7 +28,7 @@ import {
 import { PalaceRulesFields, PalaceRulesSheet } from "./PalaceRules";
 
 interface Props {
-  /** Back to the Card Room's front page, with every game. */
+  /** Back to the open.parlor's front page, with every game. */
   onHome: () => void;
   onPractice: (name: string, rules: PalaceRules, seats: number) => void;
   onFamilyTable: (rules: PalaceRules, seats: number) => Promise<void>;
@@ -193,7 +193,7 @@ export function PalaceSetup({
                 await onFamilyTable(rules, seats);
               } catch {
                 setProblem(
-                  "Couldn't reach the card room. Try again in a minute.",
+                  "Couldn't reach the parlor. Try again in a minute.",
                 );
                 setBusy(false);
               }

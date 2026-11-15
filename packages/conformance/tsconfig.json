@@ -10,7 +10,7 @@
     "sourceMap": false,
     "isolatedModules": true,
     "types": ["vite/client", "node"],
-    "paths": { "@spades/ui/*": ["../ui/src/*"] }
+    "paths": { "@open-parlor/ui/*": ["../ui/src/*"] }
   },
   "include": ["src/shared", "src/element", "src/react", "src/zb.d.ts", "tests", "playwright.config.ts", "vite.config.ts"]
 }

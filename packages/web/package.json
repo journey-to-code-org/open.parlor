@@ -1,11 +1,11 @@
 {
-  "name": "@spades/web",
+  "name": "@open-parlor/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && zubra build --embed ../ui/embed --out dist/embed --name cardroom && node scripts/openblog-component.mjs",
+    "build": "vite build && zubra build --embed ../ui/embed --out dist/embed --name cardroom && node scripts/embed-titles.mjs && node scripts/openblog-component.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"

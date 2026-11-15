@@ -1,12 +1,12 @@
 <!--
-  The card room on any page: a blog post, a WordPress site, plain HTML. Shows a game (Palace, Spades,
+  The parlor on any page: a blog post, a WordPress site, plain HTML. Shows a game (Palace, Spades,
   or both) with a button to play right there against the computer, a button to challenge the site's
-  owner, and a link into the card room for family tables.
+  owner, and a link into the parlor for family tables.
 
-  A practice game runs inside the page in a frame. Challenges and family tables open the card room in
+  A practice game runs inside the page in a frame. Challenges and family tables open the parlor in
   a new tab, because browsers don't let a game in a frame on someone else's site keep you signed in.
 
-  `server` is the card room's address (required). `game` is "palace", "spades" or "" for both.
+  `server` is the parlor's address (required). `game` is "palace", "spades" or "" for both.
   `challenge` is a challenge link's code; `who` is the name to show on that button.
 -->
 <script>
@@ -52,7 +52,7 @@
 </style>
 <card-room server game="" challenge="" who="">
   <div class="box">
-    <p zb-if={!base} class="missing">This card room needs its address: add server="https://…" to the tag.</p>
+    <p zb-if={!base} class="missing">This parlor needs its address: add server="https://…" to the tag.</p>
     <div zb-else-if={playing}>
       <div class="bar">
         <span>{info().emoji} {info().name}</span>
@@ -71,7 +71,7 @@
       <div class="actions">
         <button type="button" class="primary" onclick={() => { playing = true }}>Play here against the computer</button>
         <button zb-if={challenge} type="button" class="secondary" onclick={() => openTab({ challenge, game: picked })}>Challenge {who || "me"} to {info().name}</button>
-        <a class="link" style="color: #e8c46a" href={url({ game: picked })} target="_blank" rel="noopener">Open the card room for family tables ↗</a>
+        <a class="link" style="color: #e8c46a" href={url({ game: picked })} target="_blank" rel="noopener">Open the parlor for family tables ↗</a>
       </div>
     </div>
   </div>

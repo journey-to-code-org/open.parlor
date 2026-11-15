@@ -1,15 +1,15 @@
 import { PALACE_PRESETS, type PalaceRules } from "@journey-to-code/palace";
 import { isBoardGame, isKitGame, isSportGame, kitGame } from "@journey-to-code/games";
 import type { RulePreset } from "@journey-to-code/rules";
-import TextField from "@spades/ui/zubra-ui/text-field.zb";
+import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { useState } from "react";
 import { Choice } from "./RulesEditor";
 import { OpponentSettings } from "./TableSettings";
 import { loadKitRules, loadKitSeats, loadLastPreset, loadName, loadPalaceRules, loadPalaceSeats, saveKitSeats, saveName, savePalaceSeats, starterPresets, type GameId } from "./storage";
 
 /**
- * The card room inside someone's page (the <card-room> embed frames `?embed=1`): just enough to deal
- * a practice game. Anything that needs signing in (family tables, challenges) opens the card room
+ * The parlor inside someone's page (the <card-room> embed frames `?embed=1`): just enough to deal
+ * a practice game. Anything that needs signing in (family tables, challenges) opens the parlor
  * in its own tab, where the browser keeps you signed in.
  */
 export function EmbedHome({ game, onPractice }: { game: GameId; onPractice: (name: string, rules: unknown, seats: number) => void }) {
@@ -47,7 +47,7 @@ export function EmbedHome({ game, onPractice }: { game: GameId; onPractice: (nam
         <p className="fine">
           You'll play against the computer right here.{" "}
           <a href={`${location.origin}${location.pathname}?game=${game}`} target="_blank" rel="noopener">
-            Family tables are in the card room ↗
+            Family tables are in the parlor ↗
           </a>
         </p>
       )}

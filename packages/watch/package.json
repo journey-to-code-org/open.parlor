@@ -1,5 +1,5 @@
 {
-  "name": "@cardroom/watch",
+  "name": "@open-parlor/watch",
   "version": "0.1.0",
   "private": true,
   "description": "Watch a game: the tables playing now, and tables of computer players to learn from. Solid, on Zubra components.",

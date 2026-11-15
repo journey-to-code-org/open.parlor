@@ -1,4 +1,4 @@
-// The Zubra components this app uses. `npm run zubra` compiles the card room's shared components
+// The Zubra components this app uses. `npm run zubra` compiles the parlor's shared components
 // (packages/ui/src: our own, and the ones copied from zubra-ui) into custom elements in ../../zubra;
 // importing one defines its tag, and Angular templates use the tags as they are
 // (CUSTOM_ELEMENTS_SCHEMA): properties in with [prop], events out with (event), and

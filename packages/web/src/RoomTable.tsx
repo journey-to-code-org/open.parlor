@@ -2,7 +2,7 @@ import { openRoom, RoomError, type ChatMessage, type Room } from "@journey-to-co
 import { TableChat, type ChatProps } from "./Chat";
 import type { RoomDoc } from "@journey-to-code/rooms/server";
 import { cleanSettings, partnerOf, personaFor, pickPersonas, seatsOf, teamOf, type Seat, type SeatView, type TableSettings } from "@journey-to-code/rules";
-import TextField from "@spades/ui/zubra-ui/text-field.zb";
+import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { applyDeck, deckAtTable, prefersOwnDeck, savedDeck, type TableDeck } from "@journey-to-code/decks";
 import { TableDeckPicker } from "./TableDeck";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -47,7 +47,7 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
   const [hidden, setHidden] = useState<number[]>([]);
   // Someone without a seat watches. At a table of computer players they look over one seat's
   // shoulder and see its hand. At a table with people they see the table from one seat's side and
-  // nobody's hand (the server's watch view), if the card room's host lets people watch.
+  // nobody's hand (the server's watch view), if the parlor's host lets people watch.
   const [watchSeat, setWatchSeat] = useState(0);
   const overShoulder = mySeat === null && !!doc?.watchable;
   const fromTheSide = mySeat === null && !!doc?.started && !doc.watchable;
@@ -154,7 +154,7 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
     );
   }
   if (!doc) return <main className="setup lobby"><p>Finding the table…</p></main>;
-  // The card room's host closed this table (the admin app): nothing more can happen here.
+  // The parlor's host closed this table (the admin app): nothing more can happen here.
   if (doc.closed) {
     return (
       <main className="setup lobby">
@@ -366,7 +366,7 @@ function Lobby(props: {
         </div>
         <h1>{doc.label ?? `${about.name} · Table ${room.id}`}</h1>
         <p>
-          {doc.open && !doc.started ? "An open table: anyone in the card room can take a seat, and it deals as soon as every seat is taken. " : ""}
+          {doc.open && !doc.started ? "An open table: anyone in the parlor can take a seat, and it deals as soon as every seat is taken. " : ""}
           {doc.started ? "This game has started." : doc.locked ? (mySeat !== null ? "Your tournament match. Deal when you're ready; the game waits for whoever's turn it is." : "A tournament match. The seats are set.") : game === "palace" ? "First one out wins. Fill empty seats with bots." : partners ? "Partners sit across from each other." : `${about.blurb}. Fill empty seats with bots.`}
           {info?.rules ? ` ${info.rules}.` : ""}
         </p>

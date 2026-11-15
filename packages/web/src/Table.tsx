@@ -1,9 +1,9 @@
 import { type TableSettings, cardId, cardPower, effectiveSuit, passingSeats, sameCard, teamOf, type Bid, type Card, type GameState, type HandRecord, type Seat, type SeatView, type Team } from "@journey-to-code/rules";
-import BidPad from "@spades/ui/bid-pad.zb";
-import HandSummary from "@spades/ui/hand-summary.zb";
-import PlayingCard from "@spades/ui/playing-card.zb";
-import ScoreBoard from "@spades/ui/score-board.zb";
-import SeatBadge from "@spades/ui/seat-badge.zb";
+import BidPad from "@open-parlor/ui/bid-pad.zb";
+import HandSummary from "@open-parlor/ui/hand-summary.zb";
+import PlayingCard from "@open-parlor/ui/playing-card.zb";
+import ScoreBoard from "@open-parlor/ui/score-board.zb";
+import SeatBadge from "@open-parlor/ui/seat-badge.zb";
 import { useEffect, useRef, useState } from "react";
 import { Confetti } from "./Confetti";
 import { collect, lift, motionScale, rectOf, useCardFlip, useFlash } from "./motion";
