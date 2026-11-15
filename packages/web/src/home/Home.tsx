@@ -1,12 +1,12 @@
 // The open.parlor's start page: the Vue game chooser, mounted inside the React app.
-import { isBoardGame, isSportGame, KIT_GAMES } from "@journey-to-code/games";
+import { ARCADE_GAMES, isArcadeGame, isBoardGame, isSportGame, KIT_GAMES, type ArcadeGameId } from "@journey-to-code/games";
 import { createApp, h, reactive } from "vue";
 import { useEffect, useRef, useState } from "react";
 import { bugs } from "../bugReport";
 import { openGameRequest } from "../GameRequest";
 import { arranged, refreshCatalogue } from "../catalogue";
 import { categoryOf, GAME_CATEGORIES } from "../categories";
-import { GAME_LIST } from "../GamePicker";
+import { EVERY_GAME } from "../GamePicker";
 import { lobby, whoIsThere, type OpenTable } from "../lobbyApi";
 import { loadMyHouses, loadName, type GameId } from "../storage";
 import GameChooser from "./GameChooser.vue";
@@ -120,16 +120,24 @@ const DICE: Record<string, number[]> = {
   yacht: [5, 5, 5],
 };
 
+/** An arcade game's tile shows a little screen: a ship at the bottom, what it is up against, and what is coming at it. */
+type MiniScreen = { ship: [x: number, y: number]; foes: [x: number, y: number][]; bullets: [x: number, y: number][] };
+const SCREENS: Record<string, MiniScreen> = {
+  // A row of drones, a fan of bullets on its way down, and a gap to fly through.
+  skyfire: { ship: [50, 82], foes: [[22, 18], [50, 12], [78, 18]], bullets: [[30, 44], [44, 52], [62, 40], [72, 58], [18, 64]] },
+};
+const EMPTY_SCREEN: MiniScreen = { ship: [50, 82], foes: [], bullets: [] };
+
 const SEATS: Record<string, { seats: [number, number]; teams: boolean }> = {
   spades: { seats: [4, 4], teams: true },
   palace: { seats: [2, 6], teams: false },
-  ...Object.fromEntries(KIT_GAMES.map((g) => [g.id, { seats: [g.seats.min, g.seats.max] as [number, number], teams: g.teams }])),
+  ...Object.fromEntries([...KIT_GAMES, ...ARCADE_GAMES].map((g) => [g.id, { seats: [g.seats.min, g.seats.max] as [number, number], teams: g.teams }])),
 };
 
 /** An open table as the front page shows it: one line. */
 const brief = (t: OpenTable) => ({ id: t.id, game: t.game, who: whoIsThere(t), free: t.free });
 
-export function Home({ last, onPick, onOpenHouse, onLobby }: { last: GameId | null; onPick: (game: GameId) => void; onOpenHouse: (slug: string) => void; onLobby: () => void }) {
+export function Home({ last, onPick, onOpenHouse, onLobby }: { last: GameId | null; onPick: (game: GameId | ArcadeGameId) => void; onOpenHouse: (slug: string) => void; onLobby: () => void }) {
   const el = useRef<HTMLDivElement>(null);
   const [catalogue, setCatalogue] = useState(0);
   const handlers = useRef({ onPick, onOpenHouse, onLobby });
@@ -137,14 +145,14 @@ export function Home({ last, onPick, onOpenHouse, onLobby }: { last: GameId | nu
 
   useEffect(() => {
     // The games the parlor's host offers, in their order (every game, where there's no server).
-    const games = () => arranged(GAME_LIST).map((g) => ({ ...g, category: categoryOf(g.id), ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: isBoardGame(g.id) && !DICE[g.id] ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
+    const games = () => arranged(EVERY_GAME).map((g) => ({ ...g, category: categoryOf(g.id), screen: isArcadeGame(g.id) ? (SCREENS[g.id] ?? EMPTY_SCREEN) : undefined, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: isBoardGame(g.id) && !DICE[g.id] ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
     const props = reactive({
       games: games(),
       categories: GAME_CATEGORIES,
       houses: loadMyHouses(),
       last,
       name: loadName(),
-      onPick: (id: string) => handlers.current.onPick(id as GameId),
+      onPick: (id: string) => handlers.current.onPick(id as GameId | ArcadeGameId),
       onHouse: (slug: string) => handlers.current.onOpenHouse(slug),
       // Tables waiting for players, kept fresh while the page is in front.
       open: [] as ReturnType<typeof brief>[],

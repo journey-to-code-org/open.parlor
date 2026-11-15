@@ -1,0 +1,387 @@
+// The arcade screen's drawing: any ArcadeView, on a canvas. The view says what things are and where
+// (a "ship", a "bullet", a "foe:drone", in the field's own units); this file decides what each looks
+// like. It also keeps what is only for show and never part of the game: the stars going by, the
+// sparks and rings of an explosion, the words that float up from a pickup, the shake of a hit. Those
+// come from the view's events, one tick's worth at a time.
+import type { ArcadeEvent, ArcadeView } from "@journey-to-code/games";
+import { blip, crash, notes } from "./sounds";
+
+const TONES: Record<string, string> = {
+  blue: "#4cc9ff", red: "#ff5a6e", green: "#5ee6a0", gold: "#ffd166", pink: "#ff6ad5", orange: "#ff9f43",
+  purple: "#b08cff", teal: "#3fe0d0", grey: "#b9c4d6", crimson: "#ff3355", white: "#ffffff",
+};
+const toneOf = (tone?: string) => (tone && TONES[tone]) || "#ffffff";
+const FONT = "'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
+
+type Shape = [number, number][];
+const SHIP: Shape = [[0, -1.15], [0.28, -0.3], [0.95, 0.55], [0.4, 0.5], [0.22, 0.9], [-0.22, 0.9], [-0.4, 0.5], [-0.95, 0.55], [-0.28, -0.3]];
+const DRONE: Shape = [[0, 1], [0.9, -0.1], [0.5, -0.8], [-0.5, -0.8], [-0.9, -0.1]];
+const DART: Shape = [[1.2, 0], [-0.7, 0.75], [-0.3, 0], [-0.7, -0.75]];
+const HEX: Shape = Array.from({ length: 6 }, (_, i) => [Math.cos((i * Math.PI) / 3), Math.sin((i * Math.PI) / 3)]);
+const STAR: Shape = Array.from({ length: 16 }, (_, i) => {
+  const r = i % 2 ? 0.55 : 1;
+  return [Math.cos((i * Math.PI) / 8) * r, Math.sin((i * Math.PI) / 8) * r];
+});
+const BOSS: Shape = [[0, 1], [0.5, 0.55], [1.25, 0.35], [1.05, -0.35], [0.5, -0.5], [0.3, -0.95], [-0.3, -0.95], [-0.5, -0.5], [-1.05, -0.35], [-1.25, 0.35], [-0.5, 0.55]];
+const CARRIER: Shape = [[-1.15, -0.5], [1.15, -0.5], [1.3, 0.1], [0.7, 0.75], [-0.7, 0.75], [-1.3, 0.1]];
+
+interface Spark { x: number; y: number; vx: number; vy: number; life: number; max: number; colour: string; size: number }
+interface Ring { x: number; y: number; r: number; grow: number; life: number; max: number; colour: string }
+interface Word { x: number; y: number; text: string; life: number; max: number; big: boolean; colour: string }
+
+export interface ArcadeScreen {
+  /** Fit the canvas to its box, keeping the field's shape. */
+  resize(): void;
+  /** One tick's events: sparks, shakes and (unless `quiet`) sounds. `me` is the seat whose guns are heard. */
+  hear(events: readonly ArcadeEvent[], quiet: boolean, me?: number): void;
+  /** Move the sparks on by a tick. */
+  settle(): void;
+  draw(view: ArcadeView, frame: number): void;
+  /** Clear what is left over from the last game. */
+  reset(): void;
+}
+
+export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: number; height: number }): ArcadeScreen {
+  const ctx = canvas.getContext("2d")!;
+  const FW = field.width;
+  const FH = field.height;
+  const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const stars = Array.from({ length: 110 }, (_, i) => ({ x: Math.random() * FW, y: Math.random() * FH, z: 1 + (i % 3) }));
+  let sparks: Spark[] = [];
+  let rings: Ring[] = [];
+  let words: Word[] = [];
+  let shake = 0;
+  let flash = 0;
+  let streak = 0;
+  let scale = 1;
+  let dpr = 1;
+
+  function burst(x: number, y: number, n: number, colour: string, speed: number, life: number) {
+    if (sparks.length > 900) return;
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const v = speed * (0.3 + Math.random());
+      sparks.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life, max: life, colour, size: 30 + Math.random() * 50 });
+    }
+  }
+  const ring = (x: number, y: number, r: number, grow: number, life: number, colour: string) => rings.push({ x, y, r, grow, life, max: life, colour });
+
+  // Glowing dots are drawn once and stamped: hundreds of bullets a frame have to be cheap.
+  const stamps = new Map<string, HTMLCanvasElement>();
+  function stamp(colour: string, hollow: boolean) {
+    const key = colour + (hollow ? "h" : "");
+    let c = stamps.get(key);
+    if (c) return c;
+    c = document.createElement("canvas");
+    c.width = c.height = 64;
+    const g = c.getContext("2d")!;
+    const grad = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+    grad.addColorStop(0, "#ffffff");
+    grad.addColorStop(hollow ? 0.22 : 0.34, "#ffffff");
+    grad.addColorStop(hollow ? 0.3 : 0.44, colour);
+    grad.addColorStop(0.62, `${colour}aa`);
+    grad.addColorStop(1, `${colour}00`);
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+    stamps.set(key, c);
+    return c;
+  }
+
+  function path(shape: Shape, x: number, y: number, r: number, turn = 0) {
+    const c = Math.cos(turn);
+    const s = Math.sin(turn);
+    ctx.beginPath();
+    shape.forEach(([px, py], i) => {
+      const qx = x + (px * c - py * s) * r;
+      const qy = y + (px * s + py * c) * r;
+      if (i) ctx.lineTo(qx, qy);
+      else ctx.moveTo(qx, qy);
+    });
+    ctx.closePath();
+  }
+  /** A dark body with a glowing outline in the thing's colour. */
+  function solid(shape: Shape, x: number, y: number, r: number, colour: string, turn = 0) {
+    const alpha = ctx.globalAlpha;
+    path(shape, x, y, r, turn);
+    ctx.fillStyle = "#0b1020";
+    ctx.fill();
+    ctx.lineWidth = Math.max(1.5, r * 0.11);
+    ctx.strokeStyle = colour;
+    ctx.shadowColor = colour;
+    ctx.shadowBlur = r * 0.5;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = alpha * 0.28;
+    ctx.fillStyle = colour;
+    ctx.fill();
+    ctx.globalAlpha = alpha;
+  }
+
+  return {
+    resize() {
+      const box = canvas.parentElement?.getBoundingClientRect();
+      if (!box || !box.width || !box.height) return;
+      const w = Math.min(box.width, (box.height * FW) / FH);
+      const h = (w * FH) / FW;
+      dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      canvas.width = Math.max(1, Math.round(w * dpr));
+      canvas.height = Math.max(1, Math.round(h * dpr));
+      scale = canvas.width / FW;
+    },
+    reset() {
+      sparks = [];
+      rings = [];
+      words = [];
+      shake = flash = streak = 0;
+    },
+    hear(events, quiet, me = 0) {
+      for (const e of events) {
+        switch (e.kind) {
+          case "boom":
+            burst(e.x, e.y, 9, "#ffb347", 70, 22);
+            ring(e.x, e.y, 80, 26, 12, "#ffd9a0");
+            if (!quiet) crash(0.16, 0.07);
+            break;
+          case "big-boom":
+            burst(e.x, e.y, 26, "#ff8a3d", 110, 34);
+            ring(e.x, e.y, 120, 46, 18, "#fff0c8");
+            shake = Math.max(shake, 10);
+            if (!quiet) crash(0.4, 0.14);
+            break;
+          case "boss-down":
+            burst(e.x, e.y, 90, "#ffd166", 170, 60);
+            burst(e.x, e.y, 60, "#ff5a6e", 120, 70);
+            ring(e.x, e.y, 200, 90, 40, "#ffffff");
+            shake = 34;
+            flash = 1;
+            if (!quiet) {
+              crash(1.4, 0.25);
+              blip(110, 1.2, "sawtooth", 0.08, -70);
+            }
+            break;
+          case "down":
+            burst(e.x, e.y, 40, "#9fe3ff", 120, 40);
+            ring(e.x, e.y, 100, 60, 22, "#9fe3ff");
+            shake = 20;
+            flash = 0.5;
+            if (e.seat === me) streak = 0;
+            if (!quiet) {
+              crash(0.7, 0.2);
+              blip(300, 0.6, "sawtooth", 0.08, -250);
+            }
+            break;
+          case "bomb":
+            ring(e.x, e.y, 200, 170, 50, "#ffffff");
+            flash = 0.7;
+            shake = 14;
+            if (!quiet) {
+              crash(1.0, 0.2);
+              blip(80, 0.9, "sine", 0.15, 300);
+            }
+            break;
+          case "fizz":
+            if (sparks.length < 700) sparks.push({ x: e.x, y: e.y, vx: 0, vy: -8, life: 14, max: 14, colour: "#bfe9ff", size: 55 });
+            break;
+          case "hit":
+            if (sparks.length < 700) burst(e.x, e.y, 1, "#ffffff", 40, 8);
+            break;
+          case "graze":
+            burst(e.x, e.y, 2, "#ffffff", 50, 10);
+            if (!quiet && e.seat === me) blip(1900, 0.03, "square", 0.012);
+            break;
+          case "medal":
+            streak++;
+            if (!quiet) blip(660 + Math.min(12, streak) * 70, 0.09, "triangle", 0.06);
+            break;
+          case "medal-lost":
+            streak = 0;
+            if (!quiet) blip(220, 0.3, "sawtooth", 0.05, -120);
+            break;
+          case "power":
+          case "bomb-up":
+            if (!quiet) notes([520, 780], 70, 0.1);
+            break;
+          case "extend":
+            if (!quiet) notes([523, 659, 784, 1046]);
+            break;
+          case "boss":
+            if (!quiet) {
+              blip(140, 0.5, "sawtooth", 0.08);
+              setTimeout(() => blip(140, 0.5, "sawtooth", 0.08), 600);
+            }
+            break;
+          case "dive":
+            if (!quiet) blip(900, 0.18, "sawtooth", 0.025, -600);
+            break;
+          case "shoot":
+            if (!quiet && e.seat === me) blip(1250, 0.03, "square", 0.008, -500);
+            break;
+        }
+        if (e.text && words.length < 40 && e.kind !== "boom") {
+          const big = e.kind === "perfect" || e.kind === "extend" || e.kind === "medal-lost";
+          words.push({ x: e.x, y: e.y, text: e.text, life: big ? 110 : 46, max: big ? 110 : 46, big, colour: e.kind === "medal" ? "#ffd166" : e.kind === "medal-lost" ? "#ff8a8a" : "#ffffff" });
+        }
+      }
+    },
+    settle() {
+      sparks = sparks.filter((p) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vx *= 0.94;
+        p.vy *= 0.94;
+        return --p.life > 0;
+      });
+      rings = rings.filter((r) => {
+        r.r += r.grow;
+        return --r.life > 0;
+      });
+      words = words.filter((w) => --w.life > 0);
+      shake *= 0.86;
+      flash *= 0.86;
+    },
+    draw(view, frame) {
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalAlpha = 1;
+      const sky = ctx.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, "#05060f");
+      sky.addColorStop(0.6, "#0a1024");
+      sky.addColorStop(1, "#141a3a");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+      const sx = reduced ? 0 : (Math.random() - 0.5) * shake * dpr;
+      const sy = reduced ? 0 : (Math.random() - 0.5) * shake * dpr;
+      ctx.setTransform(scale, 0, 0, scale, sx, sy);
+
+      for (const st of stars) {
+        ctx.globalAlpha = 0.25 + st.z * 0.2;
+        ctx.fillStyle = st.z === 3 ? "#cfe6ff" : "#8fa3d6";
+        const size = 8 + st.z * 7;
+        ctx.fillRect(st.x, (st.y + (reduced ? 0 : frame * st.z * 9)) % FH, size, size * (1 + st.z));
+      }
+      ctx.globalAlpha = 1;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      for (const t of view.things) {
+        const colour = toneOf(t.tone);
+        if (t.kind === "bullet") {
+          const r = t.r * 2.1;
+          ctx.drawImage(stamp(colour, false), t.x - r, t.y - r, r * 2, r * 2);
+        } else if (t.kind === "shot") {
+          ctx.globalAlpha = 0.85;
+          ctx.fillStyle = colour;
+          ctx.fillRect(t.x - 22, t.y - 60, 44, 230);
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(t.x - 9, t.y - 60, 18, 170);
+          ctx.globalAlpha = 1;
+        } else if (t.kind === "ship") {
+          if (t.ghost && frame % 6 < 3) ctx.globalAlpha = 0.35;
+          ctx.fillStyle = frame % 4 < 2 ? "#ffd166" : "#ff8a3d";
+          path([[-0.16, 0.9], [0.16, 0.9], [0, 1.25 + (frame % 5) * 0.09]], t.x, t.y, t.r);
+          ctx.fill();
+          solid(SHIP, t.x, t.y, t.r, colour);
+          // The only part that can be hit.
+          ctx.fillStyle = "#ffffff";
+          ctx.shadowColor = "#ffffff";
+          ctx.shadowBlur = 14 * dpr;
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, (t.core ?? 40) * (1.5 + 0.25 * Math.sin(frame / 5)), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.globalAlpha = 1;
+        } else if (t.kind === "blast") {
+          ctx.globalAlpha = Math.max(0, 0.5 - t.r / 20000);
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 260;
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        } else if (t.kind.startsWith("drop:")) {
+          const bob = reduced ? 0 : Math.sin(frame / 8 + t.id) * 20;
+          ctx.drawImage(stamp(colour, true), t.x - 260, t.y - 260 + bob, 520, 520);
+          ctx.fillStyle = "#0b1020";
+          ctx.font = `700 190px ${FONT}`;
+          ctx.fillText(t.kind === "drop:medal" ? "★" : t.kind === "drop:power" ? "P" : t.kind === "drop:bomb" ? "B" : "?", t.x, t.y + bob + 8);
+        } else if (t.kind.startsWith("foe:")) {
+          const kind = t.kind.slice(4);
+          if (kind === "drone") solid(DRONE, t.x, t.y, t.r, colour);
+          else if (kind === "dart") solid(DART, t.x, t.y, t.r, colour, t.angle === undefined ? Math.PI / 2 : (t.angle / 18000) * Math.PI);
+          else if (kind === "gunship") {
+            solid(HEX, t.x, t.y, t.r, colour, Math.PI / 6);
+            solid(HEX, t.x, t.y, t.r * 0.45, colour);
+          } else if (kind === "spinner") {
+            solid(STAR, t.x, t.y, t.r, colour, frame / 14);
+            solid(HEX, t.x, t.y, t.r * 0.35, "#ffffff");
+          } else if (kind === "carrier") {
+            solid(CARRIER, t.x, t.y, t.r, colour);
+            solid(HEX, t.x - t.r * 0.55, t.y, t.r * 0.22, "#ff9f43");
+            solid(HEX, t.x + t.r * 0.55, t.y, t.r * 0.22, "#ff9f43");
+          } else if (kind === "boss") {
+            solid(BOSS, t.x, t.y, t.r, colour);
+            solid(STAR, t.x, t.y, t.r * 0.38, "#ffd166", -frame / 20);
+          } else solid(HEX, t.x, t.y, t.r, colour); // a kind this screen hasn't been taught yet
+          if (t.health !== undefined && kind !== "boss" && t.health < 1000) {
+            ctx.fillStyle = "rgba(255,255,255,0.18)";
+            ctx.fillRect(t.x - t.r, t.y - t.r - 110, t.r * 2, 36);
+            ctx.fillStyle = colour;
+            ctx.fillRect(t.x - t.r, t.y - t.r - 110, (t.r * 2 * t.health) / 1000, 36);
+          }
+        } else {
+          const r = t.r * 1.6;
+          ctx.drawImage(stamp(colour, false), t.x - r, t.y - r, r * 2, r * 2);
+        }
+      }
+
+      for (const r of rings) {
+        ctx.globalAlpha = r.life / r.max;
+        ctx.strokeStyle = r.colour;
+        ctx.lineWidth = 40 + 60 * (r.life / r.max);
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      for (const p of sparks) {
+        ctx.globalAlpha = p.life / p.max;
+        ctx.fillStyle = p.colour;
+        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+      }
+      for (const w of words) {
+        ctx.globalAlpha = Math.min(1, (w.life / w.max) * 2);
+        ctx.fillStyle = w.colour;
+        ctx.font = `700 ${w.big ? 330 : 190}px ${FONT}`;
+        ctx.fillText(w.text, Math.max(900, Math.min(FW - 900, w.x)), w.y - (w.max - w.life) * 9);
+      }
+      ctx.globalAlpha = 1;
+
+      if (view.banner && !view.over) {
+        ctx.fillStyle = view.banner === "Warning" && frame % 30 < 15 ? "#ff5a6e" : "#ffffff";
+        ctx.font = `700 560px ${FONT}`;
+        ctx.globalAlpha = 0.9;
+        ctx.fillText(view.banner.toUpperCase(), FW / 2, FH * 0.38);
+        ctx.globalAlpha = 1;
+      }
+      if (view.boss) {
+        ctx.fillStyle = "rgba(255,255,255,0.14)";
+        ctx.fillRect(500, 330, FW - 1000, 90);
+        ctx.fillStyle = "#ff3355";
+        ctx.fillRect(500, 330, ((FW - 1000) * view.boss.health) / 1000, 90);
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        for (const mark of [1 / 3, 2 / 3]) ctx.fillRect(500 + (FW - 1000) * mark - 8, 310, 16, 130);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `600 170px ${FONT}`;
+        ctx.textAlign = "left";
+        ctx.fillText(view.boss.name.toUpperCase(), 500, 540);
+      }
+      if (flash > 0.01) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = `rgba(255,255,255,${reduced ? flash * 0.2 : flash * 0.6})`;
+        ctx.fillRect(0, 0, W, H);
+      }
+    },
+  };
+}
