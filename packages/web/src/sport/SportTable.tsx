@@ -641,7 +641,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
                   +
                 </button>
                 <button type="button" className="primary sport-go" onClick={() => void shoot()}>
-                  Putt
+                  {shown.game === "bowling" ? "Roll" : "Putt"}
                 </button>
               </div>
             </div>

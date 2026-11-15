@@ -104,7 +104,7 @@ export function paintCourse(table: SportView["table"], width: number, height: nu
   const fall = Math.hypot(SHADOW[0], SHADOW[1]) || 1;
   const b: GroundBrush = { ctx: out.ctx, px, light: [SHADOW[0] / fall, SHADOW[1] / fall], sink: k > 0 ? rise / k : 0 };
   const frame = look.frame;
-  const rand = scatter(Math.round(table.look.frame.w * 3 + world.walls.length * 7 + table.world.pockets[0]!.x));
+  const rand = scatter(Math.round(table.look.frame.w * 3 + world.walls.length * 7 + (table.world.pockets[0]?.x ?? 0)));
   // A device pixel's worth of blur is nothing on a dense screen: blurs are given in CSS pixels.
   const blur = (cssPixels: number) => cssPixels * dpr;
 

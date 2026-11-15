@@ -94,6 +94,9 @@ const YOU_VERBS: Record<string, string> = {
   rolls: "roll",
   scores: "score",
   scratches: "scratch",
+  bowls: "bowl",
+  knocks: "knock",
+  misses: "miss",
 };
 
 export const named = (text: string, names: string[]) =>

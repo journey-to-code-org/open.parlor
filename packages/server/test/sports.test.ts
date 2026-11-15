@@ -285,4 +285,32 @@ describe("table sports in the parlor", () => {
     expect(after.scores[1]).toEqual(before.scores[1]);
     expect(after.card!.rows[1]).toEqual(before.card!.rows[1]);
   }, 60_000);
+
+  it("plays a game of bowling to the end, a frame at a time, from nothing but each seat's view", async () => {
+    const { phone } = setup();
+    const grammi = phone();
+    const id = (await grammi("/rooms", { options: { game: "bowling", rules: { id: "bowling-five" }, seats: 2 } })).body.id;
+    await grammi(`/rooms/${id}/sit`, { seat: 0, name: "brokennil" });
+    await grammi(`/rooms/${id}/bot`, { seat: 1, name: "Hank" });
+    await grammi(`/rooms/${id}/start`, {});
+    for (let n = 0; n < 40; n++) {
+      const v = (await viewOf(grammi, id, 0))!;
+      if (v.over) break;
+      if (!v.shoot) {
+        await sleep(15);
+        continue;
+      }
+      expect(v.table.world.bodies.filter((b) => b.id.startsWith("pin-")).length).toBeGreaterThan(0);
+      expect((await grammi(`/rooms/${id}/act`, { move: { type: "shot", body: v.shoot.body, angle: 26940, power: 850 } })).status).toBe(200);
+    }
+    // A short wait for the computer's last ball, then the game is over and counted.
+    let end = (await viewOf(grammi, id, 0))!;
+    for (let n = 0; n < 200 && !end.over; n++) {
+      await sleep(15);
+      end = (await viewOf(grammi, id, 0))!;
+    }
+    expect(end.over!.winners.length).toBeGreaterThan(0);
+    expect(end.card!.columns).toHaveLength(5);
+    expect((await grammi(`/rooms/${id}`)).body.summary).toMatchObject({ game: "bowling", over: true, seats: 2 });
+  }, 60_000);
 });
