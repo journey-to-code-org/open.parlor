@@ -22,12 +22,14 @@
     "modern-screenshot": "^4.7.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "three": "^0.187.0",
     "vue": "^3.5.45"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.187.0",
     "@vitejs/plugin-react": "^6.3.0",
     "@zubra/compiler": "^5.15.0",
     "@zubra/unplugin": "^5.15.0",

@@ -1640,6 +1640,14 @@ button.die:focus-visible { outline: 3px solid #ffd76a; outline-offset: 3px; }
 .die.owner-1 { background: linear-gradient(145deg, #5a2a22, #37140f); }
 .die.owner-1 .die-face i.pip { background: #fffdf6; }
 .die.owner-1 .die-face b { color: #fffdf6; }
+/* A die drawn in 3-D (dice3d.ts): the canvas is the die, and the box behind it steps out of the way. */
+.die.d3 { background: none; box-shadow: none; overflow: visible; }
+.die.d3.owner-1 { background: none; }
+.die-3d { position: absolute; inset: -20%; width: 140%; height: 140%; pointer-events: none; filter: drop-shadow(0 calc(var(--die) * 0.07) calc(var(--die) * 0.08) rgba(0, 0, 0, 0.45)); }
+.track .die-3d { inset: -30%; width: 160%; height: 160%; }
+.die.d3.held { box-shadow: none; }
+.die.d3.held .die-3d { filter: drop-shadow(0 0 max(2px, calc(var(--die) * 0.045)) var(--gold)) drop-shadow(0 calc(var(--die) * 0.1) calc(var(--die) * 0.1) rgba(0, 0, 0, 0.45)); }
+.die.d3.tumbling, .die.d3.tumbling:nth-child(even) { animation: none; }
 /* Thrown: each die hops and spins a little differently, and comes down square. */
 .die.tumbling { animation: die-tumble 640ms cubic-bezier(0.3, 0.6, 0.4, 1); animation-delay: calc(var(--i) * -18ms); }
 .die.tumbling:nth-child(even) { animation-name: die-tumble-back; }
