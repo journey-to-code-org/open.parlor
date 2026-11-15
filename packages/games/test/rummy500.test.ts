@@ -101,7 +101,9 @@ describe("Rummy 500", () => {
     let s = rummy500.apply(t, 0, { type: "take", card: t.pile[1]!.id });
     s = rummy500.apply(s, 0, { type: "meld", cards: idsOf(s, 0, "4♠ 5♠ 6♠") });
     expect(s.mustUse).not.toBeNull();
-    expect(rummy500.view(s, 0).choices?.options.map((o) => o.label)).toEqual(["Put them back"]);
+    // Putting back now lifts the meld too, and the button says so.
+    expect(rummy500.view(s, 0).choices?.options.map((o) => o.label)).toEqual(["Take the turn back"]);
+    expect(() => rummy500.apply(s, 0, { type: "discard", cards: idsOf(s, 0, "9♦") })).toThrow("take the turn back");
     const back = rummy500.apply(s, 0, { type: "putback" });
     expect(back.melds).toEqual([]);
     expect(names(back.hands[0]!).sort()).toEqual(["4♠", "5♠", "6♠", "9♣", "9♦"].sort());
@@ -183,5 +185,24 @@ describe("Rummy 500", () => {
       }
     }
     expect(checked).toBeGreaterThan(500);
+  });
+
+  it("once the pile card is melded there's nothing left to put back", () => {
+    const start = table();
+    let s = rummy500.apply(start, 0, { type: "take", card: start.pile[1]!.id });
+    s = rummy500.apply(s, 0, { type: "meld", cards: idsOf(s, 0, "9♦ 9♣ 9♥") });
+    expect(s.mustUse).toBeNull();
+    expect(rummy500.view(s, 0).choices).toBeNull();
+    expect(() => rummy500.apply(s, 0, { type: "putback" })).toThrow("nothing to put back");
+  });
+
+  it("a table saved in the old dead end says so, and can discard and play on", () => {
+    // How the bug left it: a card owed from the pile, and no way back.
+    const s = table({ phase: "meld", hands: [cards("4♠ Q♦ K♥"), cards("2♣")] });
+    const stuck = { ...s, mustUse: s.hands[0]![1]!.id, undo: null };
+    expect(rummy500.view(stuck, 0).pick?.prompt).toBe("Pick cards to meld, or one to discard.");
+    const on = rummy500.apply(stuck, 0, { type: "discard", cards: [stuck.hands[0]![1]!.id] });
+    expect(on.turn).toBe(1);
+    expect(on.mustUse).toBeNull();
   });
 });
