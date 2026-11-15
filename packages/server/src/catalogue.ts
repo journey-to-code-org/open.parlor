@@ -3,9 +3,20 @@
 //
 //   settings/catalogue   server only: the order, the games switched off, the watching switch
 //
+// The arcade games are in it too. No table is ever opened for one (they are played in the browser,
+// against the game itself), but the host places them among the rest and can switch them off.
+//
 // A game the host has never placed (one added to the parlor since) comes after the ones they
 // have, switched on. Switching a game off stops new tables of it; tables already going carry on.
-import { GAMES, isGameId, type GameId } from "./games.js";
+import { ARCADE_GAMES, type ArcadeGameId } from "@journey-to-code/games";
+import { GAMES as TABLE_GAMES, type GameId } from "./games.js";
+
+/** Everything the parlor offers: the games tables are opened for, then the arcade. */
+const GAMES: { id: GameId | ArcadeGameId; name: string; emoji: string; seats: [number, number]; teams: boolean }[] = [
+  ...TABLE_GAMES,
+  ...ARCADE_GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, seats: [g.seats.min, g.seats.max] as [number, number], teams: g.teams })),
+];
+const isOffered = (id: unknown): id is GameId | ArcadeGameId => GAMES.some((g) => g.id === id);
 
 interface Sync {
   write(collection: string, key: string, fields: Record<string, unknown>): Promise<unknown>;
@@ -19,7 +30,7 @@ interface Saved {
 }
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-cache" } });
-const ids = (value: unknown): GameId[] => [...new Set(Array.isArray(value) ? value.filter(isGameId) : [])];
+const ids = (value: unknown): (GameId | ArcadeGameId)[] => [...new Set(Array.isArray(value) ? value.filter(isOffered) : [])];
 
 export function createCatalogue(sync: Sync, { mount = "/catalogue" } = {}) {
   const docs = sync.documents();

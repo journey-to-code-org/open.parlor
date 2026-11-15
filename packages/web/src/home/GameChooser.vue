@@ -23,6 +23,8 @@ export interface ChooserGame {
   fan: Record<string, unknown>[];
   /** A board game shows a little board instead of cards. */
   board?: { cols: number; cells: ({ glyph: string; tone: string; shade?: string } | null)[]; shade?: string };
+  /** An arcade game shows a little screen: a ship, what it is up against, and what is coming at it (in a 100 × 100 box). */
+  screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][] };
   /** A dice game shows a few dice: the face each one shows. */
   dice?: number[];
   /** A table sport shows a little table from above: its surface, a hole, a ball or two (in a 100 × 100 box). */
@@ -107,7 +109,7 @@ function surprise() {
 }
 /** Where each face's pips sit in a die's three-by-three (0 is the top left). */
 const PIPS: Record<number, number[]> = { 1: [4], 2: [2, 6], 3: [2, 4, 6], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
-const seatsLabel = (g: ChooserGame) => (g.teams ? "4 players · partners" : g.seats[0] === g.seats[1] ? `${g.seats[0]} players` : `${g.seats[0]}–${g.seats[1]} players`);
+const seatsLabel = (g: ChooserGame) => (g.screen ? (g.seats[1] === 1 ? "1 player" : `1–${g.seats[1]} pilots`) : g.teams ? "4 players · partners" : g.seats[0] === g.seats[1] ? `${g.seats[0]} players` : `${g.seats[0]}–${g.seats[1]} players`);
 const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spades, Palace, Hearts and more, with the family."));
 </script>
 
@@ -167,7 +169,16 @@ const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spa
       <ul class="grid" :aria-label="shelf.name || 'Games'">
         <li v-for="g in shelf.games" :key="g.id">
           <button type="button" class="tile" :class="{ last: g.id === last }" :aria-label="`${g.name}: ${g.blurb}, ${seatsLabel(g)}`" @click="emit('pick', g.id)">
-            <span v-if="g.dice" class="mini-dice" aria-hidden="true">
+            <span v-if="g.screen" class="mini-screen" aria-hidden="true">
+              <svg viewBox="0 0 100 100">
+                <rect class="glass" x="3" y="3" width="94" height="94" rx="14" />
+                <path v-for="(f, i) in g.screen.foes" :key="`f${i}`" class="foe" :d="`M${f[0]} ${f[1] + 8} l8 -9 l-4 -6 h-8 l-4 6 z`" />
+                <circle v-for="(b, i) in g.screen.bullets" :key="`b${i}`" class="shell" :cx="b[0]" :cy="b[1]" r="3.4" />
+                <path class="beam" :d="`M${g.screen.ship[0] - 3} ${g.screen.ship[1] - 26} v-14 M${g.screen.ship[0] + 3} ${g.screen.ship[1] - 26} v-14`" />
+                <path class="craft" :d="`M${g.screen.ship[0]} ${g.screen.ship[1] - 13} l4 9 l9 9 l-8 0 l-2 4 h-6 l-2 -4 l-8 0 l9 -9 z`" />
+              </svg>
+            </span>
+            <span v-else-if="g.dice" class="mini-dice" aria-hidden="true">
               <span v-for="(face, i) in g.dice" :key="i" class="mini-die" :style="{ '--i': i }">
                 <i v-for="n in 9" :key="n" :class="{ pip: PIPS[face]?.includes(n - 1) }" />
               </span>
@@ -358,15 +369,29 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .mini-table .ball { fill: #fdfdf8; stroke: rgba(0, 0, 0, 0.45); stroke-width: 1.2; }
 .mini-table .ball.tone-red { fill: #e0453a; } .mini-table .ball.tone-blue { fill: #3d7fe6; } .mini-table .ball.tone-gold { fill: #f2c230; } .mini-table .ball.tone-black { fill: #2a2622; }
 .tile:hover .mini-table, .tile:focus-visible .mini-table { rotate: 0deg; scale: 1.06; }
+/* An arcade game's tile: a little screen, dark against the felt, where the fan would be. */
+.mini-screen {
+  position: absolute; right: calc(var(--tile-card) * 0.3); top: 50%; translate: 0 -50%; rotate: 5deg;
+  width: calc(var(--tile-card) * 1.5); aspect-ratio: 1; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.4));
+  transition: rotate 220ms var(--ease-back, ease-out), scale 220ms var(--ease-back, ease-out);
+}
+.mini-screen svg { display: block; width: 100%; height: 100%; }
+.mini-screen .glass { fill: #0a1024; stroke: #4cc9ff; stroke-width: 2; }
+.mini-screen .foe { fill: rgba(255, 90, 110, 0.3); stroke: #ff5a6e; stroke-width: 1.6; stroke-linejoin: round; }
+.mini-screen .shell { fill: #fff; stroke: #ff6ad5; stroke-width: 2.4; }
+.mini-screen .beam { stroke: #9fe3ff; stroke-width: 2; stroke-linecap: round; }
+.mini-screen .craft { fill: rgba(76, 201, 255, 0.35); stroke: #4cc9ff; stroke-width: 1.8; stroke-linejoin: round; }
+.tile:hover .mini-screen, .tile:focus-visible .mini-screen { rotate: 0deg; scale: 1.06; }
 @media (max-width: 560px) {
   .tile { padding-right: clamp(14px, 1.8vw, 22px); padding-top: calc(var(--tile-card) * 1.2); }
   .fan { top: 14px; right: 14px; translate: none; --tile-card: 34px; }
   .mini-board { top: 12px; right: 14px; translate: none; --tile-card: 32px; }
   .mini-table { top: 12px; right: 14px; translate: none; --tile-card: 32px; }
   .mini-dice { top: 12px; right: 14px; translate: none; --tile-card: 32px; }
+  .mini-screen { top: 12px; right: 14px; translate: none; --tile-card: 32px; }
   .emoji { display: none; }
 }
-@media (prefers-reduced-motion: reduce) { .tile, .fan-card, .mini-board, .mini-table, .mini-die { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .tile, .fan-card, .mini-board, .mini-table, .mini-screen, .mini-die { transition: none; } }
 .none, .fine { text-align: center; color: #b9d0c2; margin: 0; }
 .links { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem 1.5rem; }
 .design { color: var(--gold); font-weight: 600; text-underline-offset: 3px; }

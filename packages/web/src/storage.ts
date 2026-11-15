@@ -1,6 +1,6 @@
 import { familyTable, renamedPreset, builtInPresets, cleanSettings, DEFAULT_SETTINGS, type RulePreset, type TableSettings } from "@journey-to-code/rules";
 import { familyPalace, normalizePalaceRules, type PalaceRules } from "@journey-to-code/palace";
-import { isKitGame, kitGame, type KitGameId } from "@journey-to-code/games";
+import { arcadeGame, isKitGame, kitGame, type ArcadeGameId, type KitGameId } from "@journey-to-code/games";
 
 const NAME_KEY = "spades:name";
 const PRESETS_KEY = "spades:presets";
@@ -134,4 +134,36 @@ export function savePlace(what: string, place: Place | null) {
     } catch {
       /* ignore */
     }
+}
+
+// ---- Arcade games ----------------------------------------------------------------------------
+// Played in this browser against the game itself, so what's kept is small: the rules last flown,
+// how many computer wingmen, whether the guns fire by themselves, and the best score for each
+// set of rules and crew.
+
+export type ArcadeRules = { id: string; name: string } & Record<string, unknown>;
+export const loadArcadeRules = (game: ArcadeGameId): ArcadeRules => arcadeGame(game)!.normalize(read<unknown>(`cardroom:${game}:last`, arcadeGame(game)!.presets[0]));
+export const saveArcadeRules = (game: ArcadeGameId, rules: ArcadeRules) => write(`cardroom:${game}:last`, rules);
+export const loadArcadeCrew = (game: ArcadeGameId): number => {
+  const { min, max } = arcadeGame(game)!.seats;
+  const n = read<number>(`cardroom:${game}:crew`, min);
+  return Number.isInteger(n) && n >= min && n <= max ? n : min;
+};
+export const saveArcadeCrew = (game: ArcadeGameId, crew: number) => write(`cardroom:${game}:crew`, crew);
+export const loadAutofire = () => read<boolean>("cardroom:arcade:autofire", true) !== false;
+export const saveAutofire = (on: boolean) => write("cardroom:arcade:autofire", on);
+/** The rules a score was made under, as far as they change the game: two presets with the same numbers share a best. */
+const bestKey = (game: ArcadeGameId, rules: ArcadeRules, crew: number) => {
+  const { id: _id, name: _name, ...numbers } = rules;
+  return `cardroom:${game}:best:${crew}:${JSON.stringify(Object.entries(numbers).sort(([a], [b]) => a.localeCompare(b)))}`;
+};
+export const loadArcadeBest = (game: ArcadeGameId, rules: ArcadeRules, crew: number): number => {
+  const n = read<number>(bestKey(game, rules, crew), 0);
+  return typeof n === "number" && Number.isFinite(n) && n > 0 ? n : 0;
+};
+/** Keep a score if it beats the best. Resolves to whether it did. */
+export function saveArcadeBest(game: ArcadeGameId, rules: ArcadeRules, crew: number, score: number): boolean {
+  if (score <= loadArcadeBest(game, rules, crew)) return false;
+  write(bestKey(game, rules, crew), score);
+  return true;
 }

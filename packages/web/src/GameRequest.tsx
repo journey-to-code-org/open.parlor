@@ -7,12 +7,12 @@ import { createRequestFlow } from "@journey-to-code/relay-ui";
 import { RequestSheet, type RequestCopy, type TextFieldProps } from "@journey-to-code/relay-ui/react";
 import { relay, sheetClasses } from "./bugReport";
 import { arranged } from "./catalogue";
-import { GAME_LIST } from "./GamePicker";
+import { EVERY_GAME } from "./GamePicker";
 
 /** A game's name with only its letters and digits, so "Gin rummy" finds "Gin Rummy". */
 const plainName = (name: string) => name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
 
-const requests = createRequestFlow(relay, { findExisting: (name) => arranged(GAME_LIST).find((g) => plainName(g.name) === plainName(name)) });
+const requests = createRequestFlow(relay, { findExisting: (name) => arranged(EVERY_GAME).find((g) => plainName(g.name) === plainName(name)) });
 
 /** Open the sheet from anywhere (the front page's footer). */
 export const openGameRequest = () => requests.open();

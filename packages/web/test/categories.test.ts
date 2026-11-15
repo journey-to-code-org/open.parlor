@@ -1,4 +1,4 @@
-import { KIT_GAMES } from "@journey-to-code/games";
+import { ALL_GAMES } from "@journey-to-code/games";
 import { describe, expect, it } from "vitest";
 import { categoryOf, GAME_CATEGORIES } from "../src/categories";
 
@@ -14,10 +14,11 @@ describe("categoryOf", () => {
     expect(categoryOf("yacht")).toBe("dice");
     expect(categoryOf("minigolf")).toBe("sports");
     expect(categoryOf("bowling")).toBe("sports");
+    expect(categoryOf("skyfire")).toBe("arcade");
   });
 
-  it("gives every game on the kit a category the front page has a shelf for", () => {
+  it("gives every game a category the front page has a shelf for", () => {
     const shelves = new Set(GAME_CATEGORIES.map((c) => c.id));
-    for (const game of KIT_GAMES) expect(shelves.has(categoryOf(game.id)), game.id).toBe(true);
+    for (const game of ALL_GAMES) expect(shelves.has(categoryOf(game.id)), game.id).toBe(true);
   });
 });

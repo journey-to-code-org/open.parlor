@@ -16,7 +16,9 @@ import { PalaceSetup } from "./palace/PalaceSetup";
 import { Setup } from "./Setup";
 // The front page is a Vue island: loaded only when it's shown, so table links don't fetch Vue.
 const Home = lazy(() => import("./home/Home").then((m) => ({ default: m.Home })));
-import { isKitGame, type KitGameId } from "@journey-to-code/games";
+import { isArcadeGame, isKitGame, type ArcadeGameId, type KitGameId } from "@journey-to-code/games";
+import { ArcadeSetup } from "./arcade/ArcadeSetup";
+import { ArcadeTable } from "./arcade/ArcadeTable";
 import { KitSetup } from "./kit/KitSetup";
 import { CourseEditor } from "./golf/CourseEditor";
 import { onCourse } from "./golf/CoursePicker";
@@ -25,7 +27,7 @@ import { onLane } from "./golf/LanePicker";
 import { fiveFrames, nineHoles } from "@journey-to-code/games";
 import { LocalKit } from "./kit/LocalKit";
 import { TournamentPage } from "./TournamentPage";
-import { loadGame, loadLastGame, loadName, loadSameRules, loadTableSettings, rememberHouse, saveGame, type GameId } from "./storage";
+import { loadGame, loadLastGame, loadName, loadSameRules, loadTableSettings, rememberHouse, saveGame, type ArcadeRules, type GameId } from "./storage";
 
 type Screen =
   | { kind: "home" }
@@ -34,6 +36,7 @@ type Screen =
   | { kind: "local"; name: string; preset: RulePreset; seed: number }
   | { kind: "local-palace"; name: string; rules: PalaceRules; seats: number; seed: number }
   | { kind: "local-kit"; game: KitGameId; name: string; rules: unknown; seats: number; seed: number; /** Leaving goes back to the course (or lane) editor, at this one. */ back?: string }
+  | { kind: "arcade"; game: ArcadeGameId; rules: ArcadeRules; seats: number; seed: number; autofire: boolean }
   | { kind: "golf"; id: string }
   | { kind: "lane"; id: string }
   | { kind: "room"; id: string; house: string | null }
@@ -61,9 +64,12 @@ function fromUrl(): Screen {
   return q.get("game") || q.get("embed") === "1" ? { kind: "setup" } : { kind: "home" };
 }
 
-const gameInUrl = (): GameId | null => {
-  const asked = new URLSearchParams(location.search).get("game");
-  return asked === "palace" || asked === "spades" || isKitGame(asked) ? (asked as GameId) : null;
+const gameInUrl = (): GameId | ArcadeGameId | null => {
+  const q = new URLSearchParams(location.search);
+  const asked = q.get("game");
+  if (asked === "palace" || asked === "spades" || isKitGame(asked)) return asked as GameId;
+  // An arcade game is played on the parlor's own pages, not inside the blog embed.
+  return isArcadeGame(asked) && q.get("embed") !== "1" ? asked : null;
 };
 
 function go(params: Record<string, string | null>) {
@@ -76,9 +82,10 @@ function go(params: Record<string, string | null>) {
 export function App() {
   const [screen, setScreen] = useState<Screen>(fromUrl);
   const embedded = new URLSearchParams(location.search).get("embed") === "1";
-  const [game, setGame] = useState<GameId>(() => gameInUrl() ?? loadGame());
-  const pickGame = (g: GameId) => {
-    saveGame(g);
+  const [game, setGame] = useState<GameId | ArcadeGameId>(() => gameInUrl() ?? loadGame());
+  const pickGame = (g: GameId | ArcadeGameId) => {
+    // The game to come back to is a table game: an arcade game is a visit.
+    if (!isArcadeGame(g)) saveGame(g);
     setGame(g);
     go(embedded ? { embed: "1", game: g } : { game: g });
     setScreen({ kind: "setup" });
@@ -88,9 +95,9 @@ export function App() {
   // A bug report says which screen and game it came from.
   useEffect(() => {
     const practice = screen.kind === "local" || screen.kind === "local-palace" || screen.kind === "local-kit";
-    const itsGame = screen.kind === "local" ? "spades" : screen.kind === "local-palace" ? "palace" : screen.kind === "local-kit" ? screen.game : screen.kind === "setup" ? game : undefined;
+    const itsGame = screen.kind === "local" ? "spades" : screen.kind === "local-palace" ? "palace" : screen.kind === "local-kit" || screen.kind === "arcade" ? screen.game : screen.kind === "setup" ? game : undefined;
     setBugContext({
-      screen: practice ? "practice table" : screen.kind === "room" ? "table" : `${screen.kind}${embedded ? " (embedded)" : ""}`,
+      screen: screen.kind === "arcade" ? "arcade" : practice ? "practice table" : screen.kind === "room" ? "table" : `${screen.kind}${embedded ? " (embedded)" : ""}`,
       game: itsGame,
       table: screen.kind === "room" ? screen.id : undefined,
     });
@@ -153,7 +160,7 @@ export function App() {
   };
 
   // Inside the <card-room> embed on someone's page: practice only.
-  if (embedded && screen.kind === "setup") {
+  if (embedded && screen.kind === "setup" && !isArcadeGame(game)) {
     return (
       <EmbedHome
         game={game}
@@ -222,6 +229,10 @@ export function App() {
   }
   if (screen.kind === "tournament") {
     return <TournamentPage key={screen.id} slug={screen.slug} id={screen.id} onOpenTable={(id) => openTable(id, screen.slug)} onBack={() => openHouse(screen.slug)} />;
+  }
+  if (screen.kind === "arcade") return <ArcadeTable key={screen.seed} {...screen} onLeave={() => setScreen({ kind: "setup" })} />;
+  if (isArcadeGame(game)) {
+    return <ArcadeSetup key={game} game={game} onHome={home} onPlay={(rules, seats, autofire) => setScreen({ kind: "arcade", game, rules, seats, autofire, seed: Math.floor(Math.random() * 2 ** 31) })} />;
   }
   if (isKitGame(game)) {
     return (

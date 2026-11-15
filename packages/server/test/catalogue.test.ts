@@ -48,6 +48,16 @@ describe("the catalogue", () => {
     expect(body.watching).toBe(true);
   });
 
+  it("lists the arcade games too, for the host to place or switch off", async () => {
+    const { phone, admin } = setup();
+    const listed = (await phone()("/catalogue")).body.games.find((g: { id: string }) => g.id === "skyfire");
+    expect(listed).toMatchObject({ name: "Skyfire", seats: [1, 4], teams: false, on: true });
+    expect((await admin("/games", { order: ["skyfire", "spades"], off: ["skyfire"] })).status).toBe(200);
+    const { games } = (await phone()("/catalogue")).body;
+    expect(names(games).slice(0, 2)).toEqual(["skyfire", "spades"]);
+    expect(games[0].on).toBe(false);
+  });
+
   it("puts games in the host's order, with any they haven't placed after", async () => {
     const { phone, admin } = setup();
     expect((await admin("/games", { order: ["palace", "euchre", "nonsense", "palace"] })).status).toBe(200);
