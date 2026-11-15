@@ -20,6 +20,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # The web app imports the Mini Golf course package from its build.
+      - run: npm run build -w @open-parlor/courses
       - run: npm run build -w @open-parlor/web
         env:
           BASE_PATH: /${{ github.event.repository.name }}/

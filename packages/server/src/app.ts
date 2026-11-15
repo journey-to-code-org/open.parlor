@@ -7,6 +7,7 @@ import { createCatalogue } from "./catalogue.js";
 import { createChallenges } from "./challenges.js";
 import { createSpectate } from "./spectate.js";
 import type { Backups } from "./backup.js";
+import { createCourses } from "./courses.js";
 import { createDesigns } from "./designs.js";
 import { BLOCKED_MESSAGE, createModeration } from "./moderation.js";
 import { createHouses } from "./houses.js";
@@ -110,14 +111,18 @@ export function createCardRoom(
 
   // With `bots`, a computer player's heavy think (a search, a simulation) happens in a worker thread
   // and the rooms wait for the answer; without, every think is a call to the game's bot, as ever.
-  const bots = options.bots ? createBots(options.bots) : null;
+  const bots = options.bots ? createBots({ ...options.bots, courseFor: (id) => courses.courseNow(id) }) : null;
   const rooms = createRooms(bots ? { ...tableRoom, think: bots.think } : tableRoom, {
     log: options.log,
     botDelay: options.botDelay,
     // A game the host has switched off takes no new tables.
     // Whether people's tables can be watched is the host's call.
     spectators: () => catalogue.watching(),
-    allow: async (given) => ((await catalogue.isOn(gameOfOptions(given))) ? null : `${gameName(gameOfOptions(given))} is switched off in this parlor.`),
+    allow: async (given) =>
+      (await catalogue.isOn(gameOfOptions(given)))
+        ? // A Mini Golf course people made has to be one we have, and still up.
+          await courses.refuse((given as { rules?: { course?: unknown } } | null)?.rules?.course)
+        : `${gameName(gameOfOptions(given))} is switched off in this parlor.`,
     onStart: ({ id, state, room }) => {
       speak(id, talk.greet(state, castOf(room)));
       lobby.started(id);
@@ -135,6 +140,8 @@ export function createCardRoom(
     // Someone spoke to the table: an answer is never dropped for being close to other talk.
     onSay: ({ id, message, room }) => void answer(id, message, room).catch((e) => console.error("talk", e)),
   });
+  // Mini Golf courses people make, and every version of them where the game finds it.
+  const courses = createCourses(rooms.sync, { blockedWords: options.lobby?.blockedNames });
   const push = createPush(rooms.sync, options.push);
   const ai = createAi(options.ai);
   const catalogue = createCatalogue(rooms.sync);
@@ -143,7 +150,7 @@ export function createCardRoom(
   const challenges = createChallenges(rooms, push, { gameOn: catalogue.isOn });
   const lobby = createLobby(rooms, { push, gameOn: catalogue.isOn, ...options.lobby });
   const spectate = createSpectate(rooms, catalogue, options.spectate);
-  const moderation = createModeration(rooms, designs, { token: options.adminToken, houses, catalogue, backups: options.backups, bots: bots ? () => bots.stats() : undefined });
+  const moderation = createModeration(rooms, designs, { token: options.adminToken, houses, catalogue, backups: options.backups, bots: bots ? () => bots.stats() : undefined, courses });
   // "Report a problem": a player's report becomes an issue on GitHub.
   // With the parlor's own AI key, a report or request can be tidied before it's sent.
   const bugs = createBugs(rooms, { ...(ai.shared ? { tidy: (input) => ai.tidy(input) } : {}), ...options.bugs });
@@ -173,7 +180,7 @@ export function createCardRoom(
   }
 
   /** Everything a blocked player may not do: sit, move, talk, make houses, challenges or designs. Reading is left alone. */
-  const ACTS = ["/rooms", "/houses", "/challenges", "/lobby", "/designs", "/push", "/spectate", "/bugs"];
+  const ACTS = ["/rooms", "/houses", "/challenges", "/lobby", "/designs", "/courses", "/push", "/spectate", "/bugs"];
   const under = (pathname: string, mounts: string[]) => mounts.some((m) => pathname === m || pathname.startsWith(`${m}/`));
   async function refusal(request: Request): Promise<Response | null> {
     if (request.method === "GET" || request.method === "HEAD" || !under(new URL(request.url).pathname, ACTS)) return null;
@@ -181,13 +188,15 @@ export function createCardRoom(
   }
   /** The routes that aren't the rooms kit's own. */
   const ours = async (request: Request) =>
-    (await refusal(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await designs.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await spectate.fetch(request)) ?? (await challenges.fetch(request)) ?? (await lobby.fetch(request)) ?? (await houses.fetch(request));
+    (await refusal(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await designs.fetch(request)) ?? (await courses.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await spectate.fetch(request)) ?? (await challenges.fetch(request)) ?? (await lobby.fetch(request)) ?? (await houses.fetch(request));
 
   return {
     rooms,
     houses,
     lobby,
     designs,
+    /** Mini Golf courses people make. */
+    courses,
     moderation,
     catalogue,
     bugs,
@@ -206,7 +215,7 @@ export function createCardRoom(
         res.writeHead(response.status, Object.fromEntries(response.headers));
         return response.arrayBuffer().then((body) => (res.end(Buffer.from(body)), true));
       };
-      if (under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/moderation", "/catalogue", "/spectate", "/bugs"])) {
+      if (under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/spectate", "/bugs"])) {
         const chunks: Buffer[] = [];
         let size = 0;
         for await (const chunk of req) {

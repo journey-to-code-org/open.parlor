@@ -1,0 +1,28 @@
+{
+  "name": "@open-parlor/courses",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mini Golf courses people make: a hole painted on a grid, checked, and turned into a hole the game plays.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@journey-to-code/games": "^0.1.0",
+    "@journey-to-code/physics": "^0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

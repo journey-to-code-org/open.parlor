@@ -217,6 +217,53 @@
           }
         </section>
 
+        <!-- Golf courses -->
+        <section data-tab="courses">
+          @if (courses().length) {
+            <auto-grid min="15rem" gap="1rem">
+              @for (c of courses(); track c.id) {
+                <content-card [heading]="c.course.name">
+                  <div slot="media" class="course-plan">
+                    @let first = firstHole(c);
+                    <div class="plan" [style.--cols]="first.cols" [style.--rows]="first.rows" role="img" [attr.aria-label]="'The first hole, ' + first.name">
+                      @for (square of plan(first); track $index) {
+                        <span [class]="square"></span>
+                      }
+                    </div>
+                  </div>
+                  <span class="by">by {{ c.author }} · {{ when(c.updated) }}</span>
+                  <span class="by">{{ c.course.holes.length }} {{ c.course.holes.length === 1 ? "hole" : "holes" }}: {{ c.course.holes.map(h => h.name).join(", ") }}</span>
+                  <cluster-layout gap="0.4rem" class="tags">
+                    @if (c.hidden) {
+                      <status-badge variant="danger" [dot]="true">Hidden</status-badge>
+                    } @else {
+                      <status-badge variant="success" [dot]="true">In Mini Golf</status-badge>
+                    }
+                    @if (c.blocked) {
+                      <status-badge variant="warning">Maker is blocked</status-badge>
+                    }
+                  </cluster-layout>
+                  @if (c.hidden) {
+                    <p class="reason">{{ c.hidden }}</p>
+                  }
+                  <div slot="footer">
+                    @if (c.hidden) {
+                      <action-button variant="outline" size="sm" (click)="restoreCourse(c)">Put back in Mini Golf</action-button>
+                    } @else {
+                      <action-button variant="destructive" size="sm" (click)="askHideCourse(c)">Hide from Mini Golf</action-button>
+                    }
+                  </div>
+                </content-card>
+              }
+            </auto-grid>
+          } @else {
+            <empty-state heading="No shared golf courses yet">
+              Mini Golf courses people make and share show up here, so you can take one down if you need to.
+              <action-button slot="actions" variant="outline" href="../?golf=new" target="_blank">Open the course editor</action-button>
+            </empty-state>
+          }
+        </section>
+
         <!-- Card designs -->
         <section data-tab="designs">
           @if (designs().length) {

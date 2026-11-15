@@ -331,6 +331,14 @@ of every screen (at a table on a phone: under ⚙︎) opens a short form: what w
 and two switches, one for a picture of the screen and one for the browser's details. The server
 then opens an issue on GitHub for them and tells them its number.
 
+This is [open.relay](https://github.com/journey-to-code-org/open.relay) set up for the parlor:
+`@journey-to-code/relay` files the issues and enforces the limits, and `@journey-to-code/relay-ui`
+draws the sheets, dressed in the parlor's own styles and zubra-ui's switch and text field. What's
+left here is the glue: [`bugs.ts`](packages/server/src/bugs.ts) on the server (where it keeps its
+records, who is asking, how a table is described) and [`bugReport.ts`](packages/web/src/bugReport.ts),
+[`ReportProblem.tsx`](packages/web/src/ReportProblem.tsx) and [`GameRequest.tsx`](packages/web/src/GameRequest.tsx)
+on the page.
+
 To turn it on, make a [fine-grained token](https://github.com/settings/personal-access-tokens/new)
 for this repository only, with **Issues: Read and write** and nothing else, and set it as
 `CARDROOM_GITHUB_TOKEN`. Issues are opened in the name of the token's account, labelled `bug` and
@@ -365,7 +373,7 @@ ten minutes, and the parlor 200 a day (counted against the key's daily ceiling t
 
 ## Packages
 
-The game engine and the rooms live in their own repositories and come in from npm: [open.games](https://github.com/journey-to-code-org/open.games) (the `@journey-to-code/games`, `rules`, `palace`, `physics` and `decks` packages) and [open.rooms](https://github.com/journey-to-code-org/open.rooms) (`@journey-to-code/rooms`). This repository is the app built from them. Paths such as [`packages/games/src/...`](https://github.com/journey-to-code-org/open.games/tree/main/packages/games/src/...) in the sections below are in open.games.
+The game engine and the rooms live in their own repositories and come in from npm: [open.games](https://github.com/journey-to-code-org/open.games) (the `@journey-to-code/games`, `rules`, `palace`, `physics` and `decks` packages) and [open.rooms](https://github.com/journey-to-code-org/open.rooms) (`@journey-to-code/rooms`); reporting a problem and asking for a game come from [open.relay](https://github.com/journey-to-code-org/open.relay) (`@journey-to-code/relay` and `relay-ui`). This repository is the app built from them. Paths such as [`packages/games/src/...`](https://github.com/journey-to-code-org/open.games/tree/main/packages/games/src/...) in the sections below are in open.games.
 
 | Package | |
 | --- | --- |
@@ -375,8 +383,9 @@ The game engine and the rooms live in their own repositories and come in from np
 | [`packages/server`](packages/server) | The server: every game's rooms, houses, challenges, tournaments, the lobby, the sync log and the web app |
 | [`packages/web`](packages/web) | The app (React, with the game chooser in Vue): the card table, the board table and the canvas table for table sports, setup screens, houses, practice |
 | [`packages/designer`](packages/designer) | The card designer (Svelte): draw a deck, keep it or share it, play with it |
+| [`packages/courses`](packages/courses) | Mini Golf courses people make: a hole painted on a grid, checked, and turned into a hole the game plays |
 | [`packages/watch`](packages/watch) | The watch page (Solid): the tables playing now, and tables of computer players to learn from |
-| [`packages/admin`](packages/admin) | The admin app (Angular): the host moderates tables, players and shared designs |
+| [`packages/admin`](packages/admin) | The admin app (Angular): the host moderates tables, players, shared designs and shared golf courses |
 | [`packages/conformance`](packages/conformance) | One fixture of the components in every framework, and one set of browser tests run against them all |
 | [`packages/ui`](packages/ui) | Components in Zubra: our own (cards, seats), the ones copied from zubra-ui, and the `<card-room>` embed |
 
@@ -474,6 +483,37 @@ A design is data, never CSS or markup from a page: colours and choices from fixe
 again on the server ([`packages/decks`](https://github.com/journey-to-code-org/open.games/tree/main/packages/decks)). The designer won't save a deck you couldn't play with
 (inks too faint for the paper, two suits in the same ink).
 
+## Making a Mini Golf course
+
+Mini Golf's setup screen has a **Course** list (the Back Garden, everyone's shared courses and your
+own) and **Make your own course**, which opens the course editor (`/?golf=new`).
+
+A hole is painted on a grid, up to 13 squares across and 17 down, one piece a square: green, a
+brick wall, sand, water, a slope (it runs downhill the way its arrow points), a toadstool bumper,
+the tee and the cup. Tap or drag; a drag fills every square it crosses. Beside the grid the hole is
+drawn exactly as the table will draw it. A course has up to nine holes, each with a name, a par (it
+follows a suggestion worked out from the route to the cup until you set your own) and a tip shown
+at the tee. **Play it against the computer** plays the course as it is, saved or not.
+
+A hole saves only if it can be played: one tee, one cup, and a way between them a ball can roll
+without crossing water, a wall or a bumper. So the computer players can get round every course
+too. Garden shut in by the course becomes a wall rather than a hole in the green.
+
+**Saved, or shared.** A saved course is yours alone; share it and it's in everyone's course list.
+Courses are kept on the server like card designs. "Yours alone" means unlisted: a table isn't asked
+who opened it, so someone given a private course's id could play it. Crude words in course and
+hole names and tips are covered, as in chat.
+
+**Changing a course.** Each save that changes the holes is a new version. A table plays the version
+it started on to the end, even across a restart; new tables get the latest. Deleting a course, or
+the host hiding it, stops new tables on it, and tables already playing it finish.
+
+How it fits together: the game finds a course by its id in `COURSES` (in open.games), and builds a
+hole from a description with `hole()`. [`packages/courses`](packages/courses) turns a painted grid into such a
+description and puts the course in `COURSES` wherever the game runs: the server, its bot worker
+threads (a think on a custom course carries the course with it), and the browser for practice games
+(and the practice table's Web Worker, the same way).
+
 ## Watching a game
 
 The watch page lives at `/watch/` (there's a link on the parlor's front page).
@@ -505,6 +545,7 @@ server has an admin token (see **Settings**); sign in with that token.
 | **Houses** | Every house and its members. Rename a house (its invite link stays the same), remove a member, hand it to a new owner, or delete it. |
 | **Games** | Which games the parlor offers and in what order: the front page follows. Switching a game off stops new tables of it everywhere (tables already going carry on). Also the switch for whether tables with players can be watched (the table, never a hand). |
 | **Card designs** | Every shared deck. Hiding one takes it out of the gallery; its maker keeps it and sees your reason. |
+| **Golf courses** | Every shared Mini Golf course, with a plan of its first hole. Hiding one takes it out of Mini Golf's course list and stops new tables on it (tables already playing it finish); its maker keeps it and sees your reason. |
 | **Activity** | Everything done from the admin app, newest first. |
 
 Players are browsers, not accounts: a player is a cookie, and a name is whatever they typed when
@@ -595,7 +636,7 @@ docker run -p 8787:8787 -v spades:/data cardroom
 | `CARDROOM_AI_MODEL` | The model for that key. Default: `claude-haiku-5-5` or `gpt-5.6-luna`. |
 | `CARDROOM_AI_DAILY` | The most lines a day on that key, everyone together. Default 3000. |
 | `CARDROOM_GITHUB_TOKEN` | Optional: turns on **Report a problem**. A GitHub token that may open issues on the repository below; keep it secret. |
-| `CARDROOM_GITHUB_REPO` | Where reports are filed, as `owner/name`. Default `mnichols08/card-room`. |
+| `CARDROOM_GITHUB_REPO` | Where reports are filed, as `owner/name`. Default `journey-to-code-org/open.parlor`. |
 | `CARDROOM_BLOCKED_NAMES` | Optional: more words that names and chat at open tables may not contain, comma-separated |
 | `CARDROOM_ADMIN_TOKEN` | Turns on the admin app at `/admin/`: the token its host signs in with. Make it long and keep it secret (`openssl rand -hex 24`) |
 | `CARDROOM_BOT_DELAY` | Fixed thinking time for computer players, in milliseconds (handy for testing) |

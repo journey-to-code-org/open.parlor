@@ -6,6 +6,7 @@
 // there can be no worker (an old browser, a page whose security policy forbids them, a worker file
 // that won't load) every think simply happens on the page, as it always did.
 import type { KitGameId, ThinkBudget } from "@journey-to-code/games";
+import { coursesFor } from "../golf/coursesApi";
 import { botMove, quickMove, type BotJob } from "./botMove";
 
 /** What a game that thinks by the clock is told it may take, and how long before the table gives up on it. */
@@ -92,7 +93,9 @@ export function thinkElsewhere(job: BotJob): Promise<Move> | null {
       }
     }, THINK_CEILING_MS);
     waiting.set(id, { job, resolve, reject, ceiling });
-    to.postMessage({ id, job });
+    // A course people made goes with the think: the worker's copy of the game only knows the built-in ones.
+    const courses = coursesFor(job.state);
+    to.postMessage({ id, job: courses.length ? { ...job, courses } : job });
   });
 }
 

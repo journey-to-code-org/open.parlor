@@ -8,10 +8,10 @@ import { CUSTOM_ELEMENTS_SCHEMA, ChangeDetectionStrategy, Component, computed, e
 import { FormsModule } from "@angular/forms";
 import { deckStyle, type CardDesign } from "@journey-to-code/decks";
 import { ZubraModel } from "@zubra/runtime/angular";
-import { Api, ApiError, type Catalogue, type CatalogueGame, type ChatLine, type House, type HouseMember, type LogEntry, type Overview, type Player, type SharedDesign, type Table, type TableStatus } from "./api";
+import { Api, ApiError, type Catalogue, type CatalogueGame, type ChatLine, type House, type HouseMember, type LogEntry, type Overview, type Player, type SharedCourse, type SharedDesign, type Table, type TableStatus } from "./api";
 import "./zubra";
 
-type Section = "overview" | "tables" | "players" | "houses" | "games" | "designs" | "activity";
+type Section = "overview" | "tables" | "players" | "houses" | "games" | "designs" | "courses" | "activity";
 
 /** A question before something that can't be taken back, with room for a reason. */
 interface Confirm {
@@ -56,6 +56,7 @@ export class App implements OnDestroy {
     { value: "houses", label: "Houses" },
     { value: "games", label: "Games" },
     { value: "designs", label: "Card designs" },
+    { value: "courses", label: "Golf courses" },
     { value: "activity", label: "Activity" },
   ];
 
@@ -63,6 +64,7 @@ export class App implements OnDestroy {
   protected readonly tables = signal<Table[]>([]);
   protected readonly players = signal<Player[]>([]);
   protected readonly designs = signal<SharedDesign[]>([]);
+  protected readonly courses = signal<SharedCourse[]>([]);
   protected readonly log = signal<LogEntry[]>([]);
   protected readonly houses = signal<House[]>([]);
   protected readonly catalogue = signal<Catalogue | null>(null);
@@ -226,6 +228,7 @@ export class App implements OnDestroy {
     this.tables.set([]);
     this.players.set([]);
     this.designs.set([]);
+    this.courses.set([]);
     this.houses.set([]);
     this.catalogue.set(null);
     this.log.set([]);
@@ -236,7 +239,8 @@ export class App implements OnDestroy {
 
   protected async refresh(quiet = false): Promise<void> {
     try {
-      const [overview, tables, players, designs, log, houses, catalogue] = await Promise.all([this.api.overview(), this.api.tables(), this.api.players(), this.api.designs(), this.api.log(), this.api.houses(), this.api.games()]);
+      const [overview, tables, players, designs, log, houses, catalogue, courses] = await Promise.all([this.api.overview(), this.api.tables(), this.api.players(), this.api.designs(), this.api.log(), this.api.houses(), this.api.games(), this.api.courses()]);
+      this.courses.set(courses);
       this.houses.set(houses);
       if (!this.savingGames()) this.catalogue.set(catalogue);
       this.overview.set(overview);
@@ -481,6 +485,43 @@ export class App implements OnDestroy {
     try {
       await this.api.restoreDesign(design.id);
       this.toast(`“${design.design.name}” is back in the gallery.`, "success");
+    } catch (error) {
+      this.toast(this.message(error), "danger");
+    }
+    await this.refresh(true);
+  }
+
+  // ---------- Golf courses ----------
+
+  /** A course's first hole: every saved course has one. */
+  protected firstHole(course: SharedCourse): SharedCourse["course"]["holes"][number] {
+    return course.course.holes[0] ?? { name: "", par: 0, cols: 1, rows: 1, cells: "." };
+  }
+
+  /** A hole as a little plan: one class a square, by the piece painted there. */
+  protected plan(hole: SharedCourse["course"]["holes"][number]): string[] {
+    const PIECE: Record<string, string> = { ".": "garden", g: "green", "#": "wall", s: "sand", w: "water", "^": "slope", v: "slope", "<": "slope", ">": "slope", o: "bumper", t: "tee", c: "cup" };
+    return [...hole.cells].map((p) => PIECE[p] ?? "garden");
+  }
+
+  protected askHideCourse(course: SharedCourse): void {
+    this.ask({
+      title: `Hide “${course.course.name}”?`,
+      body: `It comes out of Mini Golf's course list, so nobody can open a new table on it; tables already playing it finish. ${course.author} keeps it and sees your reason. You can put it back later.`,
+      reasonLabel: "Reason",
+      reasonHelp: `${course.author} sees this.`,
+      action: "Hide course",
+      run: async (reason) => {
+        await this.api.hideCourse(course.id, reason);
+        return `Hid “${course.course.name}”.`;
+      },
+    });
+  }
+
+  protected async restoreCourse(course: SharedCourse): Promise<void> {
+    try {
+      await this.api.restoreCourse(course.id);
+      this.toast(`“${course.course.name}” is back in Mini Golf.`, "success");
     } catch (error) {
       this.toast(this.message(error), "danger");
     }

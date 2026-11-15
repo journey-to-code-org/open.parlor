@@ -2,7 +2,8 @@
 import { isBoardGame, isSportGame, KIT_GAMES } from "@journey-to-code/games";
 import { createApp, h, reactive } from "vue";
 import { useEffect, useRef, useState } from "react";
-import { bugs, openGameRequest } from "../bugReport";
+import { bugs } from "../bugReport";
+import { openGameRequest } from "../GameRequest";
 import { arranged, refreshCatalogue } from "../catalogue";
 import { GAME_LIST } from "../GamePicker";
 import { lobby, whoIsThere, type OpenTable } from "../lobbyApi";
