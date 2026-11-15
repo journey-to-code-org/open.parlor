@@ -221,6 +221,15 @@ for it”: a game's name and an optional note become an issue labelled `enhancem
 `game request`. Asking for a game that already has an open request adds a comment to it instead, so
 an issue's comments count how many want it. Requests share the reports' limits.
 
+**Tidied before it's sent.** When the card room has its own AI key (`CARDROOM_AI_KEY`, see **Bot
+talk from a model**), the form's button says **Next**: the player's words come back as a short title
+and a concise report (for a request, the game's proper name and a short note). The player sees it
+before anything is sent, and can change any of it, put their own words back, go back, or look at
+**See exactly what's sent**. A tidied report keeps the player's own words too, folded away under
+“The player's own words”, and says it was tidied. The model is told to keep every fact and add
+none. If it fails, the player is told and their own words go. One browser can ask for 8 tidy-ups in
+ten minutes, and the card room 200 a day (counted against the key's daily ceiling too).
+
 ## Packages
 
 | Package | |
@@ -750,7 +759,8 @@ a bot's name, gets an answer too.
 **Settings**). Then the bots at every table talk through it, in a house or not, and a house's
 owner or admins only add their family notes, switch it off, or connect the house's own account
 in its place. That account pays for everyone, so it has ceilings: 3000 lines a day in all
-(`CARDROOM_AI_DAILY`), 600 for one house and 60 for a table outside a house. The key lives only in
+(`CARDROOM_AI_DAILY`), 600 for one house and 60 for a table outside a house. The same key also
+tidies bug reports and game requests before players send them (see **Report a problem**). The key lives only in
 the server's settings: it's never stored in the database or sent to a page.
 
 Card Room connects with an API key from the provider's developer console; signing in with a Claude

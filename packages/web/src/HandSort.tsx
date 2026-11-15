@@ -13,11 +13,27 @@ export interface Held<C> {
   key: string;
 }
 
-interface Options {
+/**
+ * Somewhere off the hand a card can be dragged to (the pile, to play it). While a card is over it the
+ * target gets `data-drop-over`; letting go there calls `onDrop` instead of moving the card in the hand.
+ */
+export interface HandDrop<C> {
+  /** The element to drop on, looked up when a drag starts; null when nothing can be dropped now. */
+  target: () => HTMLElement | null;
+  /** Whether this card may go there at all (a card that can't be played still drags within the hand). */
+  accepts?: (card: C) => boolean;
+  onDrop: (card: C) => void;
+}
+
+interface Options<C> {
   /** The orders on offer. Spades already deals by suit, so it leaves "game" out. */
   groups?: readonly SortGroup[];
   fallback?: HandSort;
+  drop?: HandDrop<C>;
 }
+
+/** How far around a drop target still counts as on it: a finger covers the card it's carrying. */
+const DROP_MARGIN = 24;
 
 const GROUPS: readonly SortGroup[] = ["game", "suit", "rank"];
 const HOLD_MS = 240;
@@ -27,7 +43,7 @@ const SLOP = 7;
  * The hand in the player's order. `game` names the saved choice ("spades", "palace", "hearts"…),
  * `idOf` a card, and `keyOf` reads its suit and rank for sorting.
  */
-export function useHandOrder<C>(game: string, cards: readonly C[], idOf: (card: C) => string, keyOf: (card: C) => SortKey, options: Options = {}) {
+export function useHandOrder<C>(game: string, cards: readonly C[], idOf: (card: C) => string, keyOf: (card: C) => SortKey, options: Options<C> = {}) {
   const groups = options.groups ?? GROUPS;
   const fallback = options.fallback ?? { group: groups[0]!, dir: "high" as const };
   const [sort, setSort] = useState(() => loadHandSort(game, fallback, groups));
@@ -59,6 +75,10 @@ export function useHandOrder<C>(game: string, cards: readonly C[], idOf: (card: 
   // ---- Dragging --------------------------------------------------------------------------------
   const order = useRef<string[]>([]);
   order.current = held.map((h) => h.key);
+  const heldNow = useRef(held);
+  heldNow.current = held;
+  const dropNow = useRef(options.drop);
+  dropNow.current = options.drop;
   const el = useRef<HTMLElement | null>(null);
   const drag = useRef<{ stop: (commit: boolean) => void } | null>(null);
   const draggedAt = useRef(0);
@@ -94,6 +114,14 @@ export function useHandOrder<C>(game: string, cards: readonly C[], idOf: (card: 
     const touch = e.pointerType === "touch";
     const scrolls = "scrolls" in hand.dataset;
     const { clientX: x0, clientY: y0, pointerId } = e;
+    // Can this card leave the hand for somewhere (the pile)? Then it follows the finger up as well.
+    // Not from a hand so big it scrolls sideways: the scroll box would clip a card lifted out of it
+    // (its cards can still be tapped).
+    const dropping = dropNow.current;
+    const picked = heldNow.current[from]?.card;
+    const zone = !scrolls && dropping && picked !== undefined && (dropping.accepts?.(picked) ?? true) ? dropping.target() : null;
+    let over = false;
+    let lastY = y0;
     const rects = all.map((c) => c.getBoundingClientRect());
     const strip = (rects[all.length - 1]!.left - rects[0]!.left) / (all.length - 1) || rects[0]!.width;
     const scroll0 = hand.scrollLeft;
@@ -105,6 +133,7 @@ export function useHandOrder<C>(game: string, cards: readonly C[], idOf: (card: 
       live = true;
       card.dataset.dragging = "";
       hand.dataset.rearranging = "";
+      if (zone) hand.dataset.lifting = "";
       if (touch && loadFeedbackSettings().vibrate && typeof navigator.vibrate === "function") navigator.vibrate(8);
       place();
     };
@@ -112,8 +141,19 @@ export function useHandOrder<C>(game: string, cards: readonly C[], idOf: (card: 
 
     const place = () => {
       const dx = lastX - x0 + (hand.scrollLeft - scroll0);
-      to = Math.max(0, Math.min(all.length - 1, Math.round(from + dx / strip)));
-      card.style.translate = `${dx}px calc(var(--card-h) * -0.16)`;
+      if (zone) {
+        const box = zone.getBoundingClientRect();
+        const now = lastX >= box.left - DROP_MARGIN && lastX <= box.right + DROP_MARGIN && lastY >= box.top - DROP_MARGIN && lastY <= box.bottom + DROP_MARGIN;
+        if (now !== over) {
+          over = now;
+          if (over) zone.dataset.dropOver = "";
+          else delete zone.dataset.dropOver;
+        }
+      }
+      // Over the drop target, the rest of the hand stays put: the card is leaving, not moving along.
+      to = over ? from : Math.max(0, Math.min(all.length - 1, Math.round(from + dx / strip)));
+      const dy = zone ? Math.min(0, lastY - y0) : 0;
+      card.style.translate = `${dx}px calc(${dy}px + var(--card-h) * -0.16)`;
       all.forEach((c, i) => {
         if (c === card) return;
         const shift = i > from && i <= to ? -strip : i < from && i >= to ? strip : 0;
@@ -136,6 +176,7 @@ export function useHandOrder<C>(game: string, cards: readonly C[], idOf: (card: 
         begin();
       }
       lastX = ev.clientX;
+      lastY = ev.clientY;
       // Near an edge of a scrolling hand, bring more of it into reach.
       const box = hand.getBoundingClientRect();
       if (scrolls && ev.clientX > box.right - 36) hand.scrollLeft += 10;
@@ -156,9 +197,23 @@ export function useHandOrder<C>(game: string, cards: readonly C[], idOf: (card: 
       drag.current = null;
       if (!live) return;
       draggedAt.current = performance.now();
+      if (zone) delete zone.dataset.dropOver;
       const was = card.getBoundingClientRect();
       delete card.dataset.dragging;
       delete hand.dataset.rearranging;
+      delete hand.dataset.lifting;
+      if (keep && over && picked !== undefined) {
+        // Let go on the target: the card stays where it was dropped, so it goes to the pile from there.
+        // If the move is refused, it slides back into the hand.
+        all.forEach((c) => c !== card && (c.style.translate = ""));
+        dropping!.onDrop(picked);
+        setTimeout(() => {
+          if (!card.isConnected || !card.style.translate) return;
+          card.style.translate = "";
+          if (!reducedMotion()) card.animate([{ translate: `${was.left - card.getBoundingClientRect().left}px ${was.top - card.getBoundingClientRect().top}px` }, { translate: "0 0" }], { duration: 200, easing: EASE_OUT });
+        }, 700);
+        return;
+      }
       all.forEach((c) => (c.style.translate = ""));
       if (keep && to !== from) commit(moveCard(order.current, from, to), all);
       // The card settles from where it was let go into its place.

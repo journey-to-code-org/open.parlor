@@ -25,13 +25,23 @@ export interface PalaceRules {
   pickUpAnytime: boolean;
   /** Face-up cards go down one at a time, even when you have more than one of a rank. */
   upOneAtATime: boolean;
+  /**
+   * When you go again (after a 10, a 2 you play on, or a burn), you don't draw back up until the card
+   * you lay on top of it: the draw comes at the end of your turn, not in the middle of it.
+   */
+  drawAfterAgain: boolean;
 }
 
 /**
  * What a setting meant before it existed. Rules saved whole before a setting was added (a table's
  * rules, which its moves replay against) keep these meanings.
  */
-export const BEFORE_SETTINGS: Pick<PalaceRules, "choose" | "twoAgain" | "upOneAtATime"> = { choose: false, twoAgain: false, upOneAtATime: false };
+export const BEFORE_SETTINGS: Pick<PalaceRules, "choose" | "twoAgain" | "upOneAtATime" | "drawAfterAgain"> = {
+  choose: false,
+  twoAgain: false,
+  upOneAtATime: false,
+  drawAfterAgain: false,
+};
 
 export const familyPalace: PalaceRules = {
   id: "family-palace",
@@ -47,6 +57,7 @@ export const familyPalace: PalaceRules = {
   swap: false,
   pickUpAnytime: true,
   upOneAtATime: true,
+  drawAfterAgain: true,
 };
 
 export const classicPalace: PalaceRules = {
@@ -59,6 +70,7 @@ export const classicPalace: PalaceRules = {
   pickUpAnytime: false,
   twoAgain: false,
   upOneAtATime: false,
+  drawAfterAgain: false,
 };
 
 export const quickPalace: PalaceRules = {
@@ -87,7 +99,7 @@ export function validatePalaceRules(r: PalaceRules): string[] {
   if (!r.name?.trim()) problems.push("Give the rules a name.");
   if (!Number.isInteger(r.handSize) || r.handSize < 1 || r.handSize > 5) problems.push("Hand size must be 1 to 5.");
   if (!Number.isInteger(r.tableCards) || r.tableCards < 1 || r.tableCards > 4) problems.push("Table cards must be 1 to 4.");
-  for (const key of ["twoResets", "twoAgain", "tenBurns", "fourBurns", "sevenLower", "choose", "swap", "pickUpAnytime", "upOneAtATime"] as const) {
+  for (const key of ["twoResets", "twoAgain", "tenBurns", "fourBurns", "sevenLower", "choose", "swap", "pickUpAnytime", "upOneAtATime", "drawAfterAgain"] as const) {
     if (typeof r[key] !== "boolean") problems.push(`${key} must be on or off.`);
   }
   return problems;
@@ -106,6 +118,7 @@ export function describePalace(r: PalaceRules): string[] {
     r.sevenLower ? "After a 7, the next card must be 7 or lower." : null,
     r.swap && !r.choose ? "Before play, swap any hand cards with your face-up cards." : null,
     r.pickUpAnytime ? "Can't play? Pick up the whole pile. You can also pick it up on purpose, even when you could play." : "Can't play? Pick up the whole pile.",
+    r.drawAfterAgain ? "When you go again, draw back up only after the card you play on top." : null,
     `Hand empty and deck gone: play your face-up cards${r.upOneAtATime ? " one at a time" : ""}, then flip face-down ones blind.`,
     "First out wins. The last one holding cards is the loser.",
   ].filter((x): x is string => x !== null);
