@@ -9,6 +9,14 @@ export function PalaceRulesFields({ rules, onChange }: { rules: PalaceRules; onC
       {rules.twoResets && <Toggle label="After a 2, play again" description="Lay another card on top of your 2 before the next player goes." checked={rules.twoAgain} onChange={(v) => onChange({ twoAgain: v })} />}
       <Toggle label="10 burns" description="A 10 goes on anything and burns the pile. You go again." checked={rules.tenBurns} onChange={(v) => onChange({ tenBurns: v })} />
       <Toggle label="Four of a kind burns" description="Four of the same rank on top burns the pile. You go again." checked={rules.fourBurns} onChange={(v) => onChange({ fourBurns: v })} />
+      {(rules.tenBurns || rules.fourBurns || (rules.twoResets && rules.twoAgain)) && (
+        <Toggle
+          label="Draw after you go again"
+          description="After a 10, a 2 or a burn, play your next card before drawing back up."
+          checked={rules.drawAfterAgain}
+          onChange={(v) => onChange({ drawAfterAgain: v })}
+        />
+      )}
       <Toggle label="7 means lower" description="After a 7, the next card must be 7 or lower." checked={rules.sevenLower} onChange={(v) => onChange({ sevenLower: v })} />
       <Toggle
         label="Pick your face-up cards"

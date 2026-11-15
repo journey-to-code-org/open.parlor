@@ -314,6 +314,49 @@ describe("Grammi's house rules: 2s and face-up cards", () => {
     expect(t.turn).toBe(1);
   });
 
+  it("after a 10 or a 2, you don't draw until you've played on top of it", () => {
+    const deck = () => [c("Q♣"), c("8♣"), c("7♣")] as never[];
+    // A 10 burns; the hand stays short while the same player goes again, then draws back up.
+    let s = playingWith(familyPalace, { hand: ["10♥", "5♠", "6♠"], up: [] });
+    s.deck = deck();
+    s = applyPalace(s, { type: "play", seat: 0, cards: ["10♥"] });
+    expect(s.turn).toBe(0);
+    expect(s.players[0]!.hand.map(cardId)).toEqual(["5♠", "6♠"]);
+    expect(s.deck).toHaveLength(3);
+    s = applyPalace(s, { type: "play", seat: 0, cards: ["5♠"] });
+    expect(s.turn).toBe(1);
+    expect(s.players[0]!.hand).toHaveLength(3);
+
+    // The same after a 2.
+    let t = playingWith(familyPalace, { hand: ["2♥", "5♠", "6♠"], up: [] });
+    t.deck = deck();
+    t = applyPalace(t, { type: "play", seat: 0, cards: ["2♥"] });
+    expect(t.players[0]!.hand).toHaveLength(2);
+    t = applyPalace(t, { type: "play", seat: 0, cards: ["6♠"] });
+    expect(t.players[0]!.hand).toHaveLength(3);
+
+    // Picking up on top of a 2 ends the turn, and the held draw tops the hand up.
+    let u = playingWith(familyPalace, { hand: ["2♥", "5♠"], up: [] });
+    u.deck = deck();
+    u.pile = [];
+    u = applyPalace(u, { type: "play", seat: 0, cards: ["2♥"] });
+    u = applyPalace(u, { type: "pickup", seat: 0 });
+    expect(u.players[0]!.hand).toHaveLength(3);
+    expect(u.turn).toBe(1);
+
+    // Nothing left in hand: draw now, or there'd be nothing to go again with.
+    let e = playingWith(familyPalace, { hand: ["10♥"], up: ["K♠"] });
+    e.deck = deck();
+    e = applyPalace(e, { type: "play", seat: 0, cards: ["10♥"] });
+    expect(e.players[0]!.hand).toHaveLength(3);
+
+    // Without the house rule, you draw straight away.
+    let o = playingWith({ ...familyPalace, drawAfterAgain: false }, { hand: ["10♥", "5♠", "6♠"], up: [] });
+    o.deck = deck();
+    o = applyPalace(o, { type: "play", seat: 0, cards: ["10♥"] });
+    expect(o.players[0]!.hand).toHaveLength(3);
+  });
+
   it("face-up cards go down one at a time, and the bots know it", () => {
     const s = playingWith(familyPalace, { hand: [], up: ["J♠", "J♥", "J♦"] });
     expect(() => applyPalace(s, { type: "play", seat: 0, cards: ["J♠", "J♥"] })).toThrow("one at a time");
@@ -326,10 +369,11 @@ describe("Grammi's house rules: 2s and face-up cards", () => {
   });
 
   it("rules saved before these settings keep their old meaning; the built-in family rules get the new ones", () => {
-    const { twoAgain, upOneAtATime, ...older } = familyPalace;
+    const { twoAgain, upOneAtATime, drawAfterAgain, ...older } = familyPalace;
     void twoAgain;
     void upOneAtATime;
-    expect(normalizePalaceRules({ ...older, id: "my-rules" })).toMatchObject({ twoAgain: false, upOneAtATime: false });
-    expect(normalizePalaceRules({ ...older })).toMatchObject({ twoAgain: true, upOneAtATime: true });
+    void drawAfterAgain;
+    expect(normalizePalaceRules({ ...older, id: "my-rules" })).toMatchObject({ twoAgain: false, upOneAtATime: false, drawAfterAgain: false });
+    expect(normalizePalaceRules({ ...older })).toMatchObject({ twoAgain: true, upOneAtATime: true, drawAfterAgain: true });
   });
 });
