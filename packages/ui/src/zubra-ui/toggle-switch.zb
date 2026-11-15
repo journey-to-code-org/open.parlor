@@ -1,4 +1,6 @@
-<!-- Copied from zubra-ui (0d2fdd0) components/toggle-switch.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (0d2fdd0) components/toggle-switch.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit.
+     The parts are named switch-*: component styles sit in a layer, so any page class called .track or
+     .text (Backgammon's board is a .track) would otherwise win over them and bend the switch out of shape. -->
 <!--
   An on/off switch with a label and a description. A form control (submits "on" when checked).
   @fires checkedchange - It was switched; `detail` is the new state.
@@ -11,19 +13,21 @@
 <style>
   :host { display: block; }
   button { display: flex; align-items: center; gap: 0.9rem; width: 100%; padding: 0.75rem 0.9rem; border: 1px solid var(--border, #dde); border-radius: calc(var(--radius, 0.625rem) * 1.28); background: var(--card, #fff); color: inherit; font: inherit; text-align: left; cursor: pointer; }
-  .track { flex: none; width: 2.6rem; height: 1.5rem; border-radius: 999px; background: var(--border, #ccd); position: relative; transition: background var(--duration-normal, 200ms); }
-  .track::after { content: ""; position: absolute; top: 0.2rem; left: 0.2rem; width: 1.1rem; height: 1.1rem; border-radius: 50%; background: white; box-shadow: 0 1px 2px #0003; transition: transform var(--duration-normal, 200ms); }
-  [aria-checked=true] .track { background: var(--primary, #36c); }
-  [aria-checked=true] .track::after { transform: translateX(1.1rem); }
-  .text { display: grid; flex: 1; }
+  button:focus-visible { outline: 2px solid var(--ring, var(--primary, #36c)); outline-offset: 2px; }
+  .switch-track { display: block; box-sizing: border-box; flex: none; width: 2.6rem; height: 1.5rem; padding: 0; border-radius: 999px; background: var(--switch-off, var(--border, #ccd)); box-shadow: inset 0 0 0 1px var(--switch-edge, #0002); position: relative; transition: background var(--duration-normal, 200ms); }
+  .switch-track::after { content: ""; position: absolute; top: 0.2rem; left: 0.2rem; width: 1.1rem; height: 1.1rem; border-radius: 50%; background: white; box-shadow: 0 1px 2px #0003; transition: transform var(--duration-normal, 200ms); }
+  [aria-checked=true] .switch-track { background: var(--primary, #36c); }
+  [aria-checked=true] .switch-track::after { transform: translateX(1.1rem); }
+  .switch-text { display: grid; flex: 1; min-width: 0; }
   small { color: var(--muted-foreground, #667); }
-  .extra { font-weight: 700; white-space: nowrap; }
+  .switch-extra { font-weight: 700; white-space: nowrap; }
+  .switch-extra:empty { display: none; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; animation-iteration-count: 1 !important; } }
 </style>
 <toggle-switch form-associated checked:model={false} label="" description="" extra="">
   <button type="button" role="switch" aria-checked={checked ? "true" : "false"} onclick={toggle}>
-    <span class="track"></span>
-    <span class="text"><span class="label">{label}</span><small>{description}</small></span>
-    <span class="extra">{extra}</span>
+    <span class="switch-track"></span>
+    <span class="switch-text"><span class="switch-label">{label}</span><small>{description}</small></span>
+    <span class="switch-extra">{extra}</span>
   </button>
 </toggle-switch>
