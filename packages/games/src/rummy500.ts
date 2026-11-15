@@ -65,7 +65,9 @@ export interface Rummy500State {
    * the game for you: putting it back also lifts anything melded since.
    */
   mustUse: string | null;
-  undo: { pile: KCard[]; hand: KCard[]; melds: TableMeld[] } | null;
+  /** How to put a pile take back: the pile, hand and melds as they were before it. Kept until
+   *  the owed card is melded, so melding other cards first doesn't strand the player. */
+  undo: { pile: KCard[]; hand: KCard[]; melds?: TableMeld[] } | null;
   /** A pile card put back this turn: it isn't taken again until the turn is over. */
   declined: string | null;
   scores: number[];
@@ -177,10 +179,13 @@ function apply(state: Rummy500State, seat: number, move: Move): Rummy500State {
       const at = move.card ? s.pile.findIndex((c) => c.id === move.card) : s.pile.length - 1;
       if (at < 0) throw new GameError("That card isn't in the pile.");
       if (s.pile[at]!.id === s.declined) throw new GameError("You put that one back this turn: draw from the stock, or take another.");
+      const deep = at < s.pile.length - 1;
+      // A card you'd be bound to meld has to be one you can meld (issue #136).
+      if ((deep || s.rules.topMustMeld) && !useFor(s, [...hand(), ...s.pile.slice(at)], s.pile[at]!))
+        throw new GameError(`You can't meld the ${name(s.pile[at]!)} or lay it off yet, so you can't take it from the pile.`);
       s.undo = { pile: [...s.pile], hand: [...hand()], melds: clone(s.melds) };
       const taken = s.pile.slice(at);
       s.pile = s.pile.slice(0, at);
-      const deep = at < s.undo.pile.length - 1;
       s.mustUse = deep || s.rules.topMustMeld ? taken[0]!.id : null;
       s.hands[seat] = sortHand([...hand(), ...taken]);
       s.phase = "meld";
@@ -192,7 +197,7 @@ function apply(state: Rummy500State, seat: number, move: Move): Rummy500State {
       s.declined = s.undo.pile[s.pile.length]?.id ?? null;
       s.pile = s.undo.pile;
       s.hands[seat] = s.undo.hand;
-      s.melds = s.undo.melds ?? s.melds; // (a turn begun before melds were kept)
+      if (s.undo.melds) s.melds = s.undo.melds;
       s.undo = null;
       s.mustUse = null;
       s.phase = "draw";
@@ -211,7 +216,7 @@ function apply(state: Rummy500State, seat: number, move: Move): Rummy500State {
       else s.melds.push({ kind: where.kind, owner: seat, cards: placed });
       s.hands[seat] = hand().filter((c) => !ids.includes(c.id));
       if (s.mustUse && ids.includes(s.mustUse)) s.mustUse = null;
-      // Still owing the pile card: keep the way back, or it could fit nowhere with no way out.
+      // Until the owed card is down, keep the way back: it now undoes these melds too.
       if (!s.mustUse) s.undo = null;
       s.narration = where.onto >= 0 ? `${who(seat)} laid off on ${meldLabel(s.melds[where.onto]!)}` : `${who(seat)} melded ${meldLabel(s.melds.at(-1)!)}`;
       if (!hand().length) scoreHand(s, seat);
@@ -223,6 +228,7 @@ function apply(state: Rummy500State, seat: number, move: Move): Rummy500State {
       if (ids.length !== 1) throw new GameError("Pick one card to discard.");
       const card = hand().find((c) => c.id === ids[0]);
       if (!card) throw new GameError("You don't have that card.");
+      // A table saved stuck (a card owed, no way to put it back) can discard and play on: see owedCard.
       if (owedCard(s)) {
         const owed = hand().find((c) => c.id === s.mustUse);
         throw new GameError(`You took the ${owed ? name(owed) : "card"} from the pile: meld it this turn, or ${meldedSince(s) ? "take the turn back" : "put the cards back"}.`);
@@ -392,10 +398,10 @@ function bot(s: Rummy500State, seat: number, style: PlayStyle): Move | null {
   }
   // A card owed from the pile comes first.
   if (owedCard(s)) {
-    const owed = hand.find((c) => c.id === s.mustUse)!;
-    const use = useFor(s, hand, owed);
+    const owed = hand.find((c) => c.id === s.mustUse);
+    const use = owed && useFor(s, hand, owed);
     if (use) return { type: "meld", cards: use.map((c) => c.id) };
-    return { type: "putback" };
+    if (s.undo) return { type: "putback" };
   }
   // Meld what we can, keeping a card to discard unless the meld takes the whole hand.
   const best = meldsIn(hand).sort((a, b) => b.length - a.length)[0];

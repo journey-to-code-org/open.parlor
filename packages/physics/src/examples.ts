@@ -85,3 +85,34 @@ export const GOLF_HOLE: World = {
     { id: "pond", shape: { points: [[0, 11000], [3500, 11000], [3500, 14000], [0, 14000]] }, out: true },
   ],
 };
+
+/**
+ * A second mini golf hole, for the three things the first one hasn't got. The green is 1.2 m by
+ * 3 m with the tee at the bottom. Across the middle runs a ledge: the top half is a terrace, and a
+ * ball can roll down off it but not back up. The only way up is the pipe, whose mouth is on the
+ * left of the lower half; it takes a ball at any speed up to 3 m/s and, a quarter of a second
+ * later, rolls it out onto the terrace, a putt away from the cup. A toadstool by the cup is a
+ * bumper: it knocks away anything that touches it.
+ */
+export const GARDEN_HOLE: World = {
+  bounds: { x: -500, y: -500, w: 13000, h: 31000 },
+  tickRate: 120,
+  maxTicks: 3600,
+  friction: 5000,
+  restSpeed: 100,
+  restitution: 0.9,
+  wallRestitution: 0.6,
+  maxShotSpeed: 40000,
+  bodies: [
+    { id: "ball", x: 6000, y: 27000, r: 213 },
+    { id: "toadstool", x: 8200, y: 6000, r: 400, fixed: true, kick: 9000 },
+  ],
+  walls: [
+    { id: "edge", closed: true, points: [[0, 0], [12000, 0], [12000, 30000], [0, 30000]] },
+    // Listed left to right, so the terrace (smaller y) is on its left: down is free, up is shut.
+    { id: "ledge", oneWay: true, points: [[0, 15000], [12000, 15000]] },
+  ],
+  pockets: [{ id: "cup", x: 6000, y: 5000, r: 540, maxSpeed: 15000 }],
+  regions: [],
+  tunnels: [{ id: "pipe", x: 2000, y: 20000, r: 500, maxSpeed: 30000, to: [3000, 12000], angle: 31500, speed: 6000, ticks: 30 }],
+};

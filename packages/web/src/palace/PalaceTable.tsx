@@ -11,6 +11,7 @@ import { lift, motionScale, useCardFlip, useFlash } from "../motion";
 import { usePalaceFx } from "./PalaceFx";
 import { HandSortBar, useHandOrder } from "../HandSort";
 import { cardKey } from "../handOrder";
+import { SoundButton } from "../SoundButton";
 
 type PCard = Extract<Card, { kind: "pip" }>;
 const WORD: Record<number, [string, string]> = { 11: ["jack", "jacks"], 12: ["queen", "queens"], 13: ["king", "kings"], 14: ["ace", "aces"] };
@@ -96,10 +97,33 @@ function Opponent(props: { seat: number; area: Area; name: string; up: Card[]; d
   );
 }
 
+/** Above your hand while a set is picked: play them, take the whole set, or let go. */
+function PickedBar(props: { rank: number; count: number; of: string[]; onPlay: () => void; onAll: (ids: string[]) => void; onClear: () => void }) {
+  const more = props.count < props.of.length;
+  const many = (WORD[props.rank] ?? [String(props.rank), `${props.rank}s`])[1];
+  return (
+    <div className="play-picked" role="group" aria-label="Cards picked to play">
+      <button type="button" className="primary" onClick={props.onPlay}>
+        Play {cardsInWords(props.rank, props.count)}
+      </button>
+      {more && (
+        <button type="button" className="secondary" onClick={() => props.onAll(props.of)}>
+          All {props.of.length}
+        </button>
+      )}
+      <button type="button" className="link" onClick={props.onClear}>
+        Clear
+      </button>
+      <small>{more ? `Tap more ${many} to add them, then tap the pile or drag one onto it.` : "Tap the pile or drag one onto it to play them."}</small>
+    </div>
+  );
+}
+
 /** Palace at the table: the pile, everyone's face-up cards, your hand. Works for a practice game or a family table. */
 export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat, settings, watching }: PalaceTableProps) {
   const [error, setError] = useState<string | null>(null);
-  const [choosing, setChoosing] = useState<{ rank: number; ids: string[] } | null>(null);
+  /** Cards picked to play together: one rank, tapped one by one in the hand (or face-up). */
+  const [picked, setPicked] = useState<string[]>([]);
   const [swapFrom, setSwapFrom] = useState<string | null>(null);
   const [faceUp, setFaceUp] = useState<string[]>([]);
   const [soundOn, setSoundOn] = useState(() => loadFeedbackSettings().sound);
@@ -110,6 +134,7 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
   const myTurn = view.phase === "playing" && view.turn === me && !watching;
   /** How many cards to pick for face-up, in the family deal; 0 once they're down. */
   const toChoose = can?.choose ?? 0;
+  const choosingUp = view.phase === "swapping" && toChoose > 0 && !mine.ready;
   const others = Array.from({ length: view.seats - 1 }, (_, i) => (me + 1 + i) % view.seats);
   const spots = seatAround(others);
   const top = view.pile[view.pile.length - 1] ?? null;
@@ -118,7 +143,16 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
   const departed = useCardFlip(root, scale);
   const fx = usePalaceFx(view, me, departed, scale, root);
   const breathe = useFlash(myTurn, 700, false) && myTurn;
-  const holding = useHandOrder("palace", view.hand, cardId, cardKey);
+  const pileRef = useRef<HTMLDivElement>(null);
+  const myTableRef = useRef<HTMLDivElement>(null);
+  const holding = useHandOrder("palace", view.hand, cardId, cardKey, {
+    // Drag a card out of your hand: onto the pile to play it, or onto your table to lay it face-up.
+    drop: {
+      target: () => (choosingUp ? myTableRef.current : myTurn && can?.source === "hand" ? pileRef.current : null),
+      accepts: (card) => (choosingUp ? true : !!can?.ranks.includes(card.rank)),
+      onDrop: (card) => dropped(card as PCard),
+    },
+  });
   const last = view.last;
   /** Where a card on the pile came from, if it was just played: someone's seat, or your own table. */
   const pileFrom = (c: Card) => {
@@ -154,10 +188,10 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
     const t = setTimeout(() => setError(null), 2500);
     return () => clearTimeout(t);
   }, [error]);
-  useEffect(() => setChoosing(null), [view.turn, view.phase]);
+  useEffect(() => setPicked([]), [view.turn, view.phase, lastKey]);
 
   const send = async (move: PalaceMove) => {
-    setChoosing(null);
+    setPicked([]);
     const putBack = move.type === "play" ? lift(root.current, move.cards) : () => {};
     const refused = await act(move);
     if (refused) {
@@ -167,7 +201,36 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
     }
   };
 
-  /** Tap a card in hand (or face-up, once the hand is gone): play it, or ask how many when you hold more. */
+  /** The cards of this rank where you're playing from. */
+  const sameRank = (rank: number, from: "hand" | "up") => (from === "hand" ? view.hand : (mine.up as PCard[])).filter((c) => c.rank === rank).map(cardId);
+  const pickedRank = picked.length ? ([...view.hand, ...(mine.up as PCard[])].find((c) => cardId(c) === picked[0])?.rank ?? null) : null;
+
+  /** Play what's picked (or just this card): the pile was tapped, or a card was dropped on it. */
+  function playPicked(extra?: PCard) {
+    const ids = extra && !picked.includes(cardId(extra)) ? (pickedRank === extra.rank ? [...picked, cardId(extra)] : [cardId(extra)]) : picked;
+    if (ids.length) void send({ type: "play", cards: ids });
+  }
+
+  /** A card let go of somewhere off the hand: the pile (play it) or, while choosing, your table. */
+  function dropped(card: PCard) {
+    if (choosingUp) {
+      const id = cardId(card);
+      setFaceUp((now) => (now.includes(id) || now.length >= toChoose ? now : [...now, id]));
+      return;
+    }
+    if (!myTurn || can?.source !== "hand") return;
+    if (!can.ranks.includes(card.rank)) {
+      setError(view.rules.sevenLower && top?.rank === 7 ? "After a 7, play 7 or lower." : "That's lower than the pile.");
+      play("nope");
+      return;
+    }
+    playPicked(card);
+  }
+
+  /**
+   * Tap a card in hand (or face-up, once the hand is gone). The only one of its rank plays at once;
+   * one of a set is picked, and more of the same rank can be tapped to go with it before playing.
+   */
   function tap(card: PCard, from: "hand" | "up") {
     if (view.phase === "swapping" && toChoose && from === "hand") {
       const id = cardId(card);
@@ -189,11 +252,16 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
       play("nope");
       return;
     }
-    const pool = from === "hand" ? view.hand : mine.up;
-    const same = pool.filter((c) => c.rank === card.rank).map(cardId);
-    // Face-up cards go down one at a time under that house rule: no "how many?" question.
-    if (same.length === 1 || (from === "up" && view.rules.upOneAtATime)) void send({ type: "play", cards: same.slice(0, 1) });
-    else setChoosing({ rank: card.rank, ids: same });
+    const id = cardId(card);
+    const same = sameRank(card.rank, from);
+    // The only one of its rank, or face-up cards that go down one at a time: no picking, it's played.
+    if (same.length === 1 || (from === "up" && view.rules.upOneAtATime)) {
+      void send({ type: "play", cards: [id] });
+      return;
+    }
+    if (picked.includes(id)) setPicked(picked.filter((x) => x !== id));
+    else if (pickedRank === card.rank) setPicked([...picked, id]);
+    else setPicked([id]);
   }
 
   function toggleSound() {
@@ -223,9 +291,7 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
         <strong>🏰 {view.rules.name}</strong>
         <span className="bar-buttons">
         {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} />}
-        <button type="button" className="sound-toggle inline" onClick={toggleSound} aria-pressed={soundOn} aria-label={soundOn ? "Turn sounds off" : "Turn sounds on"}>
-          {soundOn ? "🔊" : "🔇"}
-        </button>
+        <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>
       </header>
       {banner}
@@ -261,7 +327,15 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
               {view.deck > 0 ? <PlayingCard back size="table" style={{ "--depth": Math.min(6, Math.ceil(view.deck / 8)) } as React.CSSProperties} /> : <div className="empty-slot">No deck</div>}
               <small>{view.deck} to draw</small>
             </div>
-            <div className="pile">
+            <div
+              className={`pile${picked.length ? " ready" : ""}`}
+              ref={pileRef}
+              role={picked.length ? "button" : undefined}
+              tabIndex={picked.length ? 0 : undefined}
+              aria-label={picked.length && pickedRank !== null ? `Play ${cardsInWords(pickedRank, picked.length)} on the pile` : undefined}
+              onClick={() => picked.length && playPicked()}
+              onKeyDown={(e) => picked.length && (e.key === "Enter" || e.key === " ") && (e.preventDefault(), playPicked())}
+            >
               {view.pile.length ? (
                 <div className="pile-stack">
                   {view.pile.slice(-3).map((c, i, list) => (
@@ -309,7 +383,7 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
               </div>
             )}
 
-            {myTurn && can?.pickUp && !choosing && (
+            {myTurn && can?.pickUp && !picked.length && (
               <div className="felt-actions">
                 <button type="button" className={can.ranks.length ? "secondary" : "primary"} onClick={() => void send({ type: "pickup" })}>
                   {can.ranks.length ? (
@@ -323,27 +397,11 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
               </div>
             )}
 
-            {choosing && (
-              <div className="felt-actions">
-                <p>You have {cardsInWords(choosing.rank, choosing.ids.length)}.</p>
-                <div className="row-actions">
-                  <button type="button" className="primary" onClick={() => void send({ type: "play", cards: choosing.ids })}>
-                    Play all {choosing.ids.length}
-                  </button>
-                  <button type="button" className="secondary" onClick={() => void send({ type: "play", cards: choosing.ids.slice(0, 1) })}>
-                    Just one
-                  </button>
-                  <button type="button" className="link" onClick={() => setChoosing(null)}>
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
         <div className="mine-on-table" data-seat={me}>
-          <div className="my-table" aria-label="Your table cards">
+          <div className={`my-table${choosingUp ? " drop-up" : ""}`} ref={myTableRef} aria-label="Your table cards">
             {Array.from({ length: Math.max(mine.up.length, mine.down) }, (_, i) => {
               const up = mine.up[i] as PCard | undefined;
               const flippable = myTurn && can?.flip && i < mine.down;
@@ -368,6 +426,7 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
                         data-flip={cardId(up)}
                         playable={(view.phase === "swapping" && !!swapFrom) || (myTurn && can?.source === "up")}
                         dim={myTurn && can?.source === "up" && !can.ranks.includes(up.rank)}
+                        selected={picked.includes(cardId(up))}
                         onPick={() => tap(up, "up")}
                       />
                     </div>
@@ -381,7 +440,18 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
 
       <section className="me">
         {chat && <TableChat {...chat} />}
-        <HandSortBar {...holding.bar} />
+        {picked.length > 0 && pickedRank !== null ? (
+          <PickedBar
+            rank={pickedRank}
+            count={picked.length}
+            of={sameRank(pickedRank, can?.source === "up" ? "up" : "hand")}
+            onPlay={() => playPicked()}
+            onAll={(ids) => setPicked(ids)}
+            onClear={() => setPicked([])}
+          />
+        ) : (
+          <HandSortBar {...holding.bar} />
+        )}
         <div
           {...holding.hand}
           className={`hand sortable ${breathe ? "breathe" : ""}`}
@@ -398,7 +468,7 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
               card={card}
               playable={(view.phase === "swapping" && (view.rules.swap || toChoose > 0) && !mine.ready) || (myTurn && can?.source === "hand")}
               dim={myTurn && can?.source === "hand" && !can.ranks.includes(card.rank)}
-              selected={swapFrom === cardId(card) || faceUp.includes(cardId(card)) || (choosing?.ids.includes(cardId(card)) ?? false)}
+              selected={swapFrom === cardId(card) || faceUp.includes(cardId(card)) || picked.includes(cardId(card))}
               onPick={() => tap(card as PCard, "hand")}
             />
           ))}

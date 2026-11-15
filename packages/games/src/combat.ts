@@ -11,6 +11,7 @@
 // its bow goes, turn it, pick it back up, or have them all placed for you, then say you're ready.
 // All the other player ever sees of that is "placing" or "ready".
 import type { PlayStyle } from "@spades/rules";
+import { settleMatch, withOffers } from "./offers.js";
 import { cellAt, cellName, colOf, rowOf, type BoardGame, type BoardGrid, type BoardPiece, type BoardReserve, type BoardView } from "./board.js";
 import { careless, clone, GameError, markReady, nextHandChoices, nextRandom, pickRandom, thinkFor, who, type BaseRules, type Choice } from "./table.js";
 
@@ -92,6 +93,8 @@ export interface CombatState {
   turn: number;
   roundWinner: number | null;
   wins: number[];
+  /** Games drawn by agreement (the only way one is drawn). Missing in a game from before there were offers. */
+  draws?: number;
   phase: "placing" | "shooting" | "scored" | "finished";
   /** After a game of a match: who has moved on. */
   ready: boolean[];
@@ -470,7 +473,8 @@ function apply(state: CombatState, seat: number, move: CombatMove): CombatState 
   return s;
 }
 
-const winners = (s: Pick<CombatState, "wins">) => [s.wins[0]! >= s.wins[1]! ? 0 : 1];
+/** Both seats when the match is level, which only a game drawn by agreement can leave it. */
+const winners = (s: Pick<CombatState, "wins">) => (s.wins[0] === s.wins[1] ? [0, 1] : [s.wins[0]! > s.wins[1]! ? 0 : 1]);
 
 // ---- What a seat sees ---------------------------------------------------------------------------
 
@@ -569,7 +573,7 @@ function render(k: Seen): BoardView {
   const sunkKinds = k.known.filter((x) => x.sunk).map((x) => x.ship.kind);
   const theirKinds = [...FLEETS[rules.fleet]];
   for (const kind of sunkKinds) theirKinds.splice(theirKinds.indexOf(kind), 1);
-  const scoreTitle = k.roundWinner === null ? "" : `${who(k.roundWinner)} wins game ${k.round}`;
+  const scoreTitle = k.roundWinner === null ? (done ? `Game ${k.round} is a draw` : "") : `${who(k.roundWinner)} wins game ${k.round}`;
   const w = winners(k);
   return {
     ...common,
@@ -581,7 +585,7 @@ function render(k: Seen): BoardView {
     info: [...info, ...(rules.salvo && myTurn ? [`Shots marked: ${k.aims.length} of ${due}`] : [])],
     narration: k.narration ?? (myTurn ? (rules.salvo ? `You shoot first: mark ${due} squares, then fire` : "You shoot first: tap a square") : null),
     result: many && done ? { key: `game-${k.round}`, title: scoreTitle, sides: [[0], [1]], rows: [{ label: "Wins", values: k.wins.map(String), tone: "total" }] } : null,
-    over: over ? { winners: w, title: `${who(w[0]!)} wins${many ? ` ${k.wins[w[0]!]} to ${k.wins[other(w[0]!)]}` : ""}!` } : null,
+    over: over ? { winners: w, title: w.length > 1 ? "It's a draw!" : `${who(w[0]!)} wins${many ? ` ${k.wins[w[0]!]} to ${k.wins[other(w[0]!)]}` : ""}!` } : null,
   };
 }
 
@@ -767,7 +771,7 @@ function fleetWords(fleet: FleetId): string {
   return listed([...counts].map(([kind, count]) => `${count === 1 ? "a" : NUMBER[count]} ${shipName(kind).toLowerCase()}${count === 1 ? "" : "s"} (${SHIPS[kind]!.size})`));
 }
 
-export const combat: BoardGame<CombatRules, CombatState, CombatMove> = {
+const rules: BoardGame<CombatRules, CombatState, CombatMove> = {
   id: "combat",
   name: "Combat",
   emoji: "🚢",
@@ -821,11 +825,29 @@ export const combat: BoardGame<CombatRules, CombatState, CombatMove> = {
       over,
       hand: s.round,
       // Only the match score: how many ships each side has left isn't everyone's to know.
-      scoreLine: `${s.wins[0]} to ${s.wins[1]}`,
-      order: over ? [w[0]!, other(w[0]!)] : null,
+      scoreLine: `${s.wins[0]} to ${s.wins[1]}${s.draws ? ` · ${s.draws} drawn` : ""}`,
+      // A drawn match lists whoever shot second in the last game first, as the other board games do.
+      order: over ? (w.length > 1 ? [other(s.first), s.first] : [w[0]!, other(w[0]!)]) : null,
       winners: over ? w : null,
       teams: false,
       seats: s.seats,
     };
   },
 };
+
+/**
+ * Combat, with resigning and draw offers (see offers.ts). No taking back: a shot tells you where a
+ * ship is or isn't, and that can't be un-known. `takeBack` is left out, so no earlier position is
+ * ever kept.
+ */
+export const combat = withOffers<CombatRules, CombatState, CombatMove>(rules, {
+  live: (s) => s.phase === "placing" || s.phase === "shooting",
+  settle: settleMatch,
+  // Only what this seat knows: the hits it has scored against the hits it has taken.
+  standing(s, seat) {
+    if (s.phase !== "shooting") return null;
+    const k = seen(s, seat);
+    const taken = k.mine.flatMap((ship) => cellsOf(s.rules.size, ship)).filter((cell) => k.incoming[cell]).length;
+    return k.out.filter((o) => o === "hit").length - taken;
+  },
+});

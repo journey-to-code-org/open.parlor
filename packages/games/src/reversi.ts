@@ -7,6 +7,7 @@
 // Dark always goes first. A table can play one game or a short match; in a match the players take
 // turns playing dark.
 import type { PlayStyle } from "@spades/rules";
+import { settleMatch, withOffers } from "./offers.js";
 import { cellName, DIRECTIONS, type BoardGame, type BoardGrid, type BoardPiece, type BoardView } from "./board.js";
 import { careless, clone, GameError, markReady, nextHandChoices, nextRandom, pickRandom, thinkFor, who, type BaseRules } from "./table.js";
 
@@ -254,8 +255,10 @@ function view(s: ReversiState, seat: number): BoardView {
   const [a, b] = discs;
   const scoreTitle = s.roundWinner === null ? `Game ${s.round} is a draw` : `${who(s.roundWinner)} wins game ${s.round}`;
   const title = () => {
-    if (w.length > 1) return many ? "It's a draw!" : `It's a draw: ${a} all!`;
+    // (A game that was agreed drawn or resigned didn't end on the count, so the count isn't quoted.)
+    if (w.length > 1) return many || a !== b ? "It's a draw!" : `It's a draw: ${a} all!`;
     const tally = many ? s.wins : discs;
+    if (tally[w[0]!]! <= tally[other(w[0]!)]!) return `${who(w[0]!)} wins!`;
     return `${who(w[0]!)} wins ${tally[w[0]!]} to ${tally[other(w[0]!)]}!`;
   };
   return {
@@ -570,7 +573,7 @@ function normalize(rules: unknown): ReversiRules {
   };
 }
 
-export const reversi: BoardGame<ReversiRules, ReversiState, ReversiMove> = {
+const rules: BoardGame<ReversiRules, ReversiState, ReversiMove> = {
   id: "reversi",
   name: "Reversi",
   emoji: "⚫",
@@ -601,6 +604,8 @@ export const reversi: BoardGame<ReversiRules, ReversiState, ReversiMove> = {
   apply,
   view,
   bot,
+  // A search: off the table's main thread (see TableGame.heavy).
+  heavy: (s, seat) => s.phase === "playing" && s.turn === seat,
   thinkingTime: (s) => thinkFor(Math.min(s.phase === "playing" ? legalMoves(s.cells, s.rules.size, s.turn).length : 0, 6), s.last === null ? 0.7 : 1),
   summary(s) {
     const over = s.phase === "finished";
@@ -620,3 +625,14 @@ export const reversi: BoardGame<ReversiRules, ReversiState, ReversiMove> = {
     };
   },
 };
+
+/** Reversi, with resigning, draw offers and taking a move back (see offers.ts). */
+export const reversi = withOffers<ReversiRules, ReversiState, ReversiMove>(rules, {
+  takeBack: true,
+  settle: settleMatch,
+  // Discs on the board. (Early on that says little, but a computer player that is behind on discs late is behind.)
+  standing(s, seat) {
+    const discs = discCount(s.cells);
+    return discs[seat]! - discs[other(seat)]!;
+  },
+});

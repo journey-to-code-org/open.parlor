@@ -85,6 +85,19 @@ export function createDesigns(sync: Sync, { mount = "/designs", tables, now = ()
     return problems.length ? problems : design;
   }
 
+  /**
+   * The deck a design id stands for, as a table or a house keeps it: one of the card room's own
+   * ("starter:<name>"), the player's own, or one in the gallery. Nobody shows everyone a deck its
+   * maker kept private.
+   */
+  async function deckFor(wanted: unknown, player: string | null): Promise<TableDeck | undefined> {
+    const starter = STARTERS.find((s) => wanted === `starter:${s.name}`);
+    if (starter) return { id: `starter:${starter.name}`, author: "Card Room", design: starter };
+    const design = typeof wanted === "string" ? await get(wanted) : undefined;
+    const usable = design && !design.deleted && (design.owner === player || (design.shared && !design.hidden));
+    return usable ? { id: design.id, author: design.author, design: design.design } : undefined;
+  }
+
   async function handle(request: Request, path: string): Promise<Response> {
     const parts = path.split("/").filter(Boolean);
     const method = request.method;
@@ -127,15 +140,7 @@ export function createDesigns(sync: Sync, { mount = "/designs", tables, now = ()
         await tables.setDeck(table, null);
         return json({ deck: null });
       }
-      let deck: TableDeck | undefined;
-      const starter = STARTERS.find((s) => wanted === `starter:${s.name}`);
-      if (starter) deck = { id: `starter:${starter.name}`, author: "Card Room", design: starter };
-      else {
-        const design = typeof wanted === "string" ? await get(wanted) : undefined;
-        // Yours, or one in the gallery: a table never shows everyone a deck its maker kept private.
-        const usable = design && !design.deleted && (design.owner === player || (design.shared && !design.hidden));
-        if (usable) deck = { id: design.id, author: design.author, design: design.design };
-      }
+      const deck = await deckFor(wanted, player);
       if (!deck) return json({ error: "That deck isn't in the gallery any more. Pick another." }, 404);
       // The table keeps its own copy: changing, deleting or hiding the design later doesn't change
       // the cards in the middle of someone's game.
@@ -183,6 +188,8 @@ export function createDesigns(sync: Sync, { mount = "/designs", tables, now = ()
   }
 
   return {
+    /** The deck a design id stands for, for someone who may use it (a table's deck, a house's). */
+    deckFor,
     /** Every design that hasn't been deleted, for server code (moderation). Holds player ids: never send these to a page as they are. */
     all,
     /** Take a design out of the gallery, with a reason its maker sees (moderation). */

@@ -297,8 +297,8 @@ describe("a match", () => {
 
 describe("rules from anywhere", () => {
   it("come out as rules", () => {
-    expect(t.normalize({ id: "x", name: "Mine", size: 7, games: 4, first: "me", hints: "no" })).toEqual({ id: "x", name: "Mine", size: 8, first: "random", hints: true, games: 1 });
-    expect(t.normalize({ ...bigReversi, hints: false, games: 5, first: "seat2" })).toEqual({ ...bigReversi, hints: false, games: 5, first: "seat2" });
+    expect(t.normalize({ id: "x", name: "Mine", size: 7, games: 4, first: "me", hints: "no" })).toEqual({ id: "x", name: "Mine", size: 8, first: "random", hints: true, games: 1, offers: "all" });
+    expect(t.normalize({ ...bigReversi, hints: false, games: 5, first: "seat2" })).toEqual({ ...bigReversi, hints: false, games: 5, first: "seat2", offers: "all" });
     expect(t.presets.map((p) => [p.name, p.size])).toEqual([["Classic 8×8", 8], ["Small 6×6", 6], ["Big 10×10", 10]]);
     expect(t.describe(t.normalize({ ...classicReversi, games: 3, first: "seat2" })).join(" ")).toMatch(/second seat is dark.*match is 3 games/);
     // The name people know it by elsewhere is somebody's trademark.

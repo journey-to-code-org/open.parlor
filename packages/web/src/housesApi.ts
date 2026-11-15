@@ -1,3 +1,4 @@
+import type { TableDeck } from "@cardroom/decks";
 import type { PalaceRules } from "@cardroom/palace";
 import type { RulePreset, TableSettings } from "@spades/rules";
 import type { GameId } from "./storage";
@@ -27,6 +28,8 @@ export interface House {
   tournaments: TournamentBrief[];
   /** House rules for the kit games (Hearts, Euchre…), by game. */
   kitRules: Record<string, { presets: KitRules[]; default: string }>;
+  /** The cards the house's tables start with, or null for the card room's own. */
+  deck: TableDeck | null;
   /** The house's AI connection for bot talk: its settings for an owner or admin, on or off for a member, null when there's none. */
   ai: HouseAiSettings | { on: boolean } | null;
   /** The card room has an AI account of its own (set by whoever runs it) that houses may use. */
@@ -146,6 +149,8 @@ export const houses = {
   setRole: (slug: string, member: string, role: "admin" | "member") => call<House>(at(slug, "role"), { member, role }),
   remove: (slug: string, member: string) => call<House>(at(slug, "remove"), { member }),
   newLink: (slug: string) => call<House>(at(slug, "new-link"), {}),
+  /** The deck the house's tables start with: a design's id, "starter:<name>", or null for the card room's own. */
+  setDeck: (slug: string, design: string | null) => call<House>(at(slug, "deck"), { design }),
   /** Connect or change the house's AI (the key and model are tried before they're saved), or { disconnect: true }. */
   saveAi: (slug: string, change: { provider?: AiProvider | "server"; key?: string; model?: string; context?: string; on?: boolean; disconnect?: boolean }) => call<House>(at(slug, "ai"), change),
   /** The models an account can use (with the pasted key, or the saved one), and one to start with. */

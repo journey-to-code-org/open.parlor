@@ -358,10 +358,10 @@ h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; }
   background: rgba(0, 0, 0, 0.25);
   font-size: 1.1rem;
 }
-/* The button and the sheet can both be dragged (useDragPlace.ts): once moved they float where they
-   were left, above the table and below the open chat. */
-.chat-toggle { touch-action: none; cursor: grab; }
-.chat-toggle.moved { z-index: 14; background: rgba(0, 0, 0, 0.45); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
+/* The chat button and sheet, the sound switch and the settings button can all be dragged
+   (useDragPlace.ts): once moved they float where they were left, above the table and below the open chat. */
+.movable { touch-action: none; cursor: grab; }
+.movable.moved { z-index: 14; background: rgba(0, 0, 0, 0.45); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
 .me { position: relative; }
 .me .chat-toggle { top: 10px; left: 10px; }
 .lobby { position: relative; }
@@ -867,11 +867,16 @@ button.grid-cell { padding: 0; border: 0; background: none; cursor: pointer; bor
 @media (min-width: 1024px) { .mine-on-table .card-grid.table { --trick-w: calc(var(--card-w) * 0.62); --trick-h: calc(var(--trick-w) * var(--card-ratio)); } }
 /* The discard pile spread out (Rummy 500): every card shows a strip; tap one to take it and all above. */
 .pile-spread-area { display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: min(100%, 560px); }
-.pile-spread { display: flex; flex-wrap: wrap; justify-content: center; row-gap: 6px; padding-left: calc(var(--trick-w) * 0.62); }
-.spread-card { display: block; line-height: 0; margin-left: calc(var(--trick-w) * -0.62); padding: 0; border: 0; background: none; }
+/* The spread pile keeps one footprint however long it gets: rows pack their cards tighter (down to
+   a corner's width) rather than wrapping, so a long pile never pushes the melds off the table. */
+.pile-spread { --spread-w: min(560px, 92vw); display: flex; flex-direction: column; align-items: center; max-width: var(--spread-w); }
+.pile-spread.dense { --trick-w: calc(var(--card-w) * 0.72); --trick-h: calc(var(--trick-w) * var(--card-ratio, 1.4)); }
+.pile-spread-row { display: flex; justify-content: center; --step: max(var(--trick-w) * 0.62, var(--trick-w) - (var(--spread-w) - var(--trick-w)) / max(1, var(--k) - 1)); padding-left: var(--step); }
+.pile-spread-row + .pile-spread-row { margin-top: calc(var(--trick-h) * -0.5); }
+.spread-card { display: block; line-height: 0; margin-left: calc(var(--step, var(--trick-w) * 0.62) * -1); padding: 0; border: 0; background: none; }
 button.spread-card { cursor: pointer; animation: none; }
 @media (hover: hover) { button.spread-card:hover { translate: 0 -8px; z-index: 2; } }
-@media (max-width: 599px) { .pile-spread { padding-left: calc(var(--trick-w) * 0.74); } .spread-card { margin-left: calc(var(--trick-w) * -0.74); } }
+@media (max-width: 599px) { .pile-spread-row { --step: max(var(--trick-w) * 0.74, var(--trick-w) - (var(--spread-w) - var(--trick-w)) / max(1, var(--k) - 1)); } }
 
 /* Solitaire (Klondike, FreeCell): the felt is all yours. Columns line up under the top row. */
 .kit-felt.solo { grid-template-columns: minmax(0, 1fr); grid-template-areas: "center"; }
@@ -1035,13 +1040,53 @@ button.cross-pile.can::after {
 /* The felt is as tall as what's on it, so a table too tall for the screen scrolls instead of sliding under your seat. */
 .board-felt { flex: 1 0 auto; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 10px 8px 12px; }
 .board .status { position: static; }
+/* Offers at a board (board/Offers.tsx): the ⚑ in the bar and its menu, and the banner by the board. */
+/* (The menu hangs from the bar, not from its button, so on a phone it has the screen's width to open into.) */
+.offers-menu { display: inline-flex; }
+.offers-toggle { font-size: 1.05rem; }
+.offers-toggle[aria-expanded="true"] { background: rgba(0, 0, 0, 0.45); }
+.offers-pop {
+  position: absolute; top: calc(100% + 6px); right: max(8px, env(safe-area-inset-right)); z-index: 30; display: flex; flex-direction: column; gap: 2px;
+  width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box; padding: 6px; border-radius: 12px;
+  background: var(--cream); color: var(--ink); box-shadow: var(--elev-2); text-align: left;
+}
+.offers-pop [role="menuitem"] {
+  display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 12px; border: 0; border-radius: 8px;
+  background: none; color: var(--ink); font: inherit; font-size: 1rem; text-align: left; cursor: pointer;
+}
+.offers-pop [role="menuitem"] span { width: 1.4em; text-align: center; }
+.offers-pop [role="menuitem"]:hover, .offers-pop [role="menuitem"]:focus-visible { background: rgba(31, 77, 58, 0.12); }
+.offers-pop [role="menuitem"].danger { color: var(--red); border-top: 1px solid rgba(0, 0, 0, 0.12); border-radius: 0 0 8px 8px; margin-top: 2px; }
+.offers-pop button:focus-visible, .offer-banner button:focus-visible { outline: 3px solid #ffd76a; outline-offset: 1px; }
+.offers-pop.confirm { gap: 6px; padding: 14px; width: 19em; }
+.offers-pop.confirm strong { font-family: inherit; font-size: 1.05rem; text-align: left; }
+/* Over the chat bubbles while it is open: it is the thing being read. */
+.table.kit .kit-bar:has(.offers-pop) { z-index: 20; }
+.offers-pop.confirm span { color: var(--muted); font-size: 0.9rem; }
+.offers-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.offers-pop.confirm .offers-row { margin-top: 6px; justify-content: flex-end; flex-wrap: nowrap; }
+.offers-pop.confirm button { min-height: 44px; padding: 8px 14px; white-space: nowrap; border-radius: 999px; font: inherit; font-weight: 700; cursor: pointer; }
+.offers-pop.confirm .secondary { background: none; border: 1.5px solid var(--felt); color: var(--felt); }
+.offers-pop.confirm .danger { background: var(--red); border: 1.5px solid var(--red); color: #fff; }
+.offer-banner {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 26em; padding: 8px 14px; border-radius: 12px;
+  background: rgba(0, 0, 0, 0.28); color: var(--cream); text-align: center; text-wrap: balance;
+}
+.offer-banner.asks { padding: 12px 16px; background: var(--cream); color: var(--ink); box-shadow: var(--elev-2); }
+.offer-banner p { margin: 0; font-size: 0.95rem; }
+.offer-banner.asks p { font-size: 1.05rem; font-weight: 700; }
+.offer-banner button { min-height: 44px; min-width: 6.5em; }
+.offer-banner .secondary { color: var(--felt); }
+/* Where the board leaves little room under it (a laptop), the question and its answers share a line. */
+@media (min-width: 1024px) { .offer-banner.asks { flex-direction: row; gap: 14px; max-width: none; padding: 8px 10px 8px 16px; } }
+.offer-note { margin: 0; color: var(--cream); opacity: 0.8; font-size: 0.85rem; text-align: center; }
 .board-others { display: flex; justify-content: center; flex-wrap: wrap; gap: clamp(10px, 4vw, 48px); }
 .board-others .opp { gap: 4px; }
 .boards { width: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 14px; }
 .board-wrap {
   --board-max: 620px;
   width: min(100%, var(--board-max), max(220px, calc((100dvh - 330px) * var(--cols) / var(--rows))));
-  display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "title" "grid";
+  display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "title" "grid" "aim";
 }
 /* A second board (your own fleet beside the one you're shooting at) is drawn smaller. */
 .board-wrap.side { --board-max: 300px; }
@@ -1058,7 +1103,7 @@ button.cross-pile.can::after {
   .boards.many .board-wrap.side .coords { font-size: 0.5rem; }
   .boards.many ~ .center-info { flex: 1 1 0; min-width: 0; align-self: center; }
 }
-.board-wrap.with-coords { grid-template-columns: 1.3em minmax(0, 1fr); grid-template-areas: "title title" "rows grid" ". cols"; }
+.board-wrap.with-coords { grid-template-columns: 1.3em minmax(0, 1fr); grid-template-areas: "title title" "rows grid" ". cols" "aim aim"; }
 .board-title { grid-area: title; margin: 0 0 4px; text-align: center; font-size: var(--ui-m); color: var(--gold); }
 .coords { color: #cfe2d6; font-size: 0.68rem; line-height: 1; user-select: none; }
 .coords.cols { grid-area: cols; display: grid; grid-template-columns: repeat(var(--cols), 1fr); text-align: center; padding-top: 3px; }
@@ -1120,16 +1165,88 @@ button.cross-pile.can::after {
 .board-blocks .block.closed { background: rgba(230, 223, 208, 0.82); }
 .board-blocks .block.active { box-shadow: inset 0 0 0 max(3px, 0.8cqw) var(--gold); }
 
-/* Pieces on the lines' crossings instead of in the squares (Go, Gomoku played with stones). */
-.board-grid.points { background: #e3c07a; }
+/* Pieces on the lines' crossings instead of in the squares (Go, Gomoku played with stones): a
+   wooden board, its lines drawn once over the whole of it (an SVG, so each is exactly a pixel wide
+   on whole pixels), and the cells as invisible buttons, one centred on each crossing. The board is
+   made a whole number of pixels to a crossing where the browser can do the sum, so the lines are
+   evenly spaced and every stone sits square on its crossing. */
+.board-grid.points {
+  --line: rgba(46, 33, 14, 0.82); border-radius: 4px; justify-self: center; width: 100%;
+  background:
+    repeating-linear-gradient(92deg, rgba(120, 78, 20, 0.07) 0 2px, transparent 2px 7px, rgba(255, 240, 200, 0.06) 7px 9px, transparent 9px 16px),
+    linear-gradient(135deg, #e8c47c, #dcb264 55%, #d3a655);
+  box-shadow: var(--elev-2), inset 0 0 0 1px rgba(70, 45, 10, 0.35);
+}
+@supports (width: round(down, 100%, 1px)) {
+  .board-grid.points { width: round(down, 100%, calc(var(--cols) * 1px)); }
+  .board-wrap:has(.board-grid.points) .coords.cols { justify-self: center; width: round(down, 100%, calc(var(--cols) * 1px)); }
+}
 .board-grid.points .cell { border: 0; }
-.board-grid.points .cell::before { content: ""; position: absolute; inset: calc(50% - 0.5px) 0 auto 0; height: 1px; background: var(--line); }
-.board-grid.points .cell::after { content: ""; position: absolute; inset: 0 auto 0 calc(50% - 0.5px); width: 1px; background: var(--line); }
-.board-grid.points .cell.col-first::before { left: 50%; }
-.board-grid.points .cell.col-last::before { right: 50%; }
-.board-grid.points .cell.row-first::after { top: 50%; }
-.board-grid.points .cell.row-last::after { bottom: 50%; }
+.board-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.board-lines line { stroke: var(--line); stroke-width: 1px; vector-effect: non-scaling-stroke; shape-rendering: crispEdges; }
+.board-lines circle { fill: var(--line); }
+/* The star points are drawn with the lines, and what marks a square has no place on a crossing. */
+.board-grid.points .cell.shade-spot::before { content: none; }
+.board-grid.points .cell.mark-last { box-shadow: none; }
+.board-grid.points .cell.can:hover { background: none; }
+.board-grid.points .cell:focus-visible { outline-offset: -2px; border-radius: 50%; }
 .board-grid.points .piece { position: relative; z-index: 1; }
+
+/* Stones: slate and shell, a little light on the top left, a little shadow underneath. */
+.piece.kind-stone {
+  width: calc(100% - 2px); aspect-ratio: 1; border-radius: 50%; color: transparent; text-shadow: none; overflow: hidden;
+  background: var(--stone); box-shadow: 0 max(1px, 0.25cqw) max(1px, 0.4cqw) rgba(30, 18, 0, 0.5);
+}
+.piece.kind-stone.tone-dark, .piece.kind-stone.tone-light { color: transparent; text-shadow: none; }
+/* Under the board are the Pass button, the count's two buttons and the arrows for a stone being placed: leave them the room. */
+.board-go .board-wrap { width: min(100%, var(--board-max), max(220px, calc((100dvh - 420px) * var(--cols) / var(--rows)))); }
+/* On a wide screen what is under the board goes beside it instead, and the board has the height. */
+@media (min-width: 900px) {
+  .board-go .board-felt { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: 28px; }
+  .board-go .board-others { width: 100%; }
+  .board-go .boards { width: auto; flex: none; }
+  .board-go .board-wrap { width: min(var(--board-max), max(260px, calc((100dvh - 330px) * var(--cols) / var(--rows)))); }
+  .board-go .center-info { flex: none; width: 280px; text-align: center; text-wrap: balance; }
+}
+.piece.kind-stone.tone-dark { --stone: radial-gradient(circle at 34% 28%, #7b7b80 0%, #37373a 26%, #121214 72%); }
+.piece.kind-stone.tone-light { --stone: radial-gradient(circle at 34% 28%, #ffffff 0%, #f6f3ec 42%, #d2ccbd 100%); box-shadow: 0 max(1px, 0.25cqw) max(1px, 0.4cqw) rgba(30, 18, 0, 0.5), inset 0 0 0 0.5px rgba(60, 50, 30, 0.45); }
+.board-seat .piece.kind-stone.small, .board-reserve .piece.kind-stone.small { width: 1.25em; height: 1.25em; min-width: 0; padding: 0; border-radius: 50%; background: var(--stone); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35); }
+/* The last stone played wears a ring in the other colour. */
+.board-grid.points .cell.mark-last .piece.kind-stone::after { content: ""; position: absolute; inset: 27%; border-radius: 50%; border: max(1.5px, 0.35cqw) solid #fffdf8; }
+.board-grid.points .cell.mark-last .piece.kind-stone.tone-light::after { border-color: #1d1a16; }
+/* A crossing that can't be played this turn (a ko): a small open square. */
+.board-grid.points .cell.mark-barred::after { content: ""; position: absolute; width: 36%; aspect-ratio: 1; box-sizing: border-box; border: max(1.5px, 0.3cqw) solid rgba(46, 33, 14, 0.9); background: rgba(255, 253, 248, 0.35); }
+/* Counting: a point that is somebody's is washed in their colour and wears a small square of it;
+   a dead stone is the faded one with the other side's square on top. */
+.board-grid.points .cell.claim-dark { background: rgba(20, 14, 4, 0.2); }
+.board-grid.points .cell.claim-light { background: rgba(255, 253, 248, 0.42); }
+.board-grid.points .cell.mark-claimed::after { content: ""; position: absolute; z-index: 2; width: 30%; aspect-ratio: 1; border-radius: 12%; }
+.board-grid.points .cell.claim-dark::after { background: #1d1a16; box-shadow: 0 0 0 1px rgba(255, 253, 248, 0.55); }
+.board-grid.points .cell.claim-light::after { background: #fffdf8; box-shadow: 0 0 0 1px rgba(29, 26, 22, 0.7); }
+.board-grid.points .piece.kind-stone.faded { opacity: 0.45; box-shadow: none; }
+/* With a mouse, the crossing under the pointer shows the stone that would go there. */
+@media (hover: hover) {
+  .board-grid.points[class*="plays-"] .cell.can:not(:has(.piece)):hover::before { content: ""; position: absolute; width: calc(100% - 2px); aspect-ratio: 1; border-radius: 50%; }
+  .board-grid.points.plays-dark .cell.can:not(:has(.piece)):hover::before { background: rgba(18, 18, 20, 0.4); }
+  .board-grid.points.plays-light .cell.can:not(:has(.piece)):hover::before { background: rgba(255, 253, 248, 0.65); }
+}
+/* A stone shown before it is put down: see-through, with gold lines along its row and column so it
+   can be found under a finger. */
+.board-grid.points .piece.kind-stone.ghost { opacity: 0.72; animation: none; box-shadow: 0 0 0 2px var(--gold), 0 0 0 3px rgba(29, 26, 22, 0.6); }
+.board-grid.points .cell.aim-row { background-image: linear-gradient(#b8860b, #b8860b); background-size: 100% 3px; background-position: center; background-repeat: no-repeat; }
+.board-grid.points .cell.aim-col { background-image: linear-gradient(#b8860b, #b8860b); background-size: 3px 100%; background-position: center; background-repeat: no-repeat; }
+.board-grid.points .cell.aim-row.aim-col { background-image: linear-gradient(#b8860b, #b8860b), linear-gradient(#b8860b, #b8860b); background-size: 100% 3px, 3px 100%; }
+.board-aim { grid-area: aim; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
+.board-aim .aim-arrows { display: inline-flex; gap: 4px; }
+.board-aim .aim-arrows button { width: 44px; height: 44px; padding: 0; border-radius: 10px; border: 1.5px solid rgba(255, 253, 248, 0.6); background: rgba(0, 0, 0, 0.28); color: var(--cream); font: inherit; font-size: 1.2rem; font-weight: 700; cursor: pointer; touch-action: manipulation; }
+.board-aim .primary, .board-aim .secondary { min-height: 44px; padding: 8px 16px; touch-action: manipulation; }
+.board-aim .primary:disabled { opacity: 0.55; }
+.board-aim .secondary { min-width: 44px; padding: 8px 12px; }
+/* A device that would rather not see the coordinates round a board of crossings. */
+html[data-coords="off"] .board-wrap:has(.board-grid.points) .coords { display: none; }
+html[data-coords="off"] .board-wrap.with-coords:has(.board-grid.points) { grid-template-columns: 0 minmax(0, 1fr); }
+/* A button that asked first: the question, then yes and no. */
+.kit-choices.asking p { font-weight: 700; max-width: 24em; text-wrap: balance; }
 
 .piece { display: inline-grid; place-items: center; line-height: 1; font-weight: 800; font-family: system-ui, -apple-system, "Segoe UI Symbol", "Noto Sans Symbols 2", sans-serif; }
 .piece.tone-red { color: #b3261e; }
@@ -1267,22 +1384,403 @@ html[data-motion="off"] .board-grid .cell.mark-must::before { animation: none; }
 }
 .board-checkers .board-grid .piece.kind-king { box-shadow: 0 max(2px, 0.5cqw) 0 rgba(0, 0, 0, 0.5), 0 max(4px, 1cqw) 0 rgba(0, 0, 0, 0.3), inset 0 0 0 max(2px, 0.6cqw) #e8c46a; }
 .board-checkers .piece.small { border-radius: 50%; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4); font-size: 0.7em; }
+/* Chess. The pieces are the card room's own set (board/pieces.tsx): solid shapes with an outline,
+   cream for White and near-black for Black, the same weight on every phone. */
+.piece.art { width: 100%; height: 100%; background: none; text-shadow: none; --fill: #fbf6ea; --edge: #2b2520; --detail: #2b2520; }
+.piece.art.tone-dark { --fill: #35302b; --edge: #15120f; --detail: #e9dfcb; }
+.piece-art { display: block; width: 100%; height: 100%; overflow: visible; }
+.piece-art .edge { fill: var(--edge); stroke: var(--edge); }
+.piece-art .fill { fill: var(--fill); }
+.piece-art .detail { stroke: var(--detail); }
+.piece-art .detail-dots { fill: var(--detail); }
+.board-grid .piece.art { filter: drop-shadow(0 max(1px, 0.35cqw) max(1px, 0.3cqw) rgba(0, 0, 0, 0.35)); }
+/* A dark piece on a dark square keeps a pale rim, so its shape still reads. */
+.board-grid .cell.shade-dark .piece.art.tone-dark .edge { stroke: #0d0b09; }
+.board-seat .piece.small.art, .board-reserve .piece.small.art { width: 1.5em; height: 1.5em; min-width: 0; padding: 0.1em; box-sizing: border-box; background: #cdb48c; }
+.board-reserve .reserve-piece:has(.piece.art) { padding: 2px 4px; gap: 1px; }
+.board-reserve .reserve-piece:has(.piece.art) .piece.small { background: none; width: 1.35em; height: 1.35em; padding: 0; }
+.board-reserve .reserve-piece:has(.piece.art) { background: #cdb48c; color: var(--ink); font-weight: 700; }
+/* The board: no lines between the squares, and room under it for the moves, the clocks and what has been taken. */
+.board-chess .board-grid { --line-w: 0px; border-radius: 6px; }
+.board-chess .board-wrap { width: min(100%, var(--board-max), max(220px, calc((100dvh - 350px) * var(--cols) / var(--rows)))); }
+.board-chess .board-grid .cell.shade-light { background: #ecdcb9; }
+.board-chess .board-grid .cell.shade-dark { background: #a57a50; }
+.board-chess .board-grid .cell.mark-from, .board-chess .board-grid .cell.mark-last { background-image: linear-gradient(rgba(240, 200, 70, 0.5), rgba(240, 200, 70, 0.5)); box-shadow: none; }
+.board-chess .board-grid .cell.mark-threat { box-shadow: none; background-image: radial-gradient(circle, rgba(215, 40, 30, 0.95) 20%, rgba(215, 40, 30, 0.55) 55%, rgba(215, 40, 30, 0) 78%); }
+.board-chess .board-grid .cell.picked { background: #e6c65a; }
+.board-chess .board-felt { gap: 8px; }
+.board-chess .board-others .opp, .board-chess .me { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 12px; }
+.board-chess .me { display: flex; }
+.board-chess .me-badge { margin-bottom: 0; }
+.board-chess .kit-seat { flex-direction: row; align-items: center; gap: 8px; }
+
+/* A clock of the game's own at a seat (board/SeatClock.tsx). */
+.seat-clock {
+  padding: 2px 9px; border-radius: 8px; background: rgba(0, 0, 0, 0.45); color: #d9e6dd; border: 1px solid rgba(251, 246, 236, 0.25);
+  font-size: var(--ui-l, 1rem); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.35; white-space: nowrap; min-width: 3.4em; text-align: center;
+}
+.seat-clock.running { background: var(--cream); color: var(--ink); border-color: var(--gold); }
+.seat-clock.low.running { background: #b3261e; color: #fff; border-color: #fff; }
+.seat-clock.low:not(.running) { color: #ffb4ab; }
+
+/* The moves so far (board/Record.tsx): steps, the list, and a copy of the lot. */
+.board-record { width: min(100%, 620px); display: flex; align-items: center; gap: 6px; font-size: var(--ui-s); }
+.board-record button { font: inherit; cursor: pointer; }
+.record-steps { display: flex; gap: 2px; flex: none; }
+.record-steps button { width: 2.1em; height: 2.1em; padding: 0; border-radius: 8px; border: 1px solid rgba(251, 246, 236, 0.3); background: rgba(0, 0, 0, 0.3); color: var(--cream); line-height: 1; }
+.record-steps button:disabled { opacity: 0.35; cursor: default; }
+.record-moves {
+  flex: 1 1 0; min-width: 0; margin: 0; padding: 3px 6px; list-style: none; display: flex; align-items: center; gap: 1px;
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; white-space: nowrap; position: relative;
+  background: rgba(0, 0, 0, 0.28); border-radius: 8px; min-height: 2.1em; box-sizing: border-box;
+}
+.record-moves li { display: inline-flex; align-items: center; flex: none; }
+.record-moves .record-turn { color: #a9c4b4; padding-left: 6px; font-variant-numeric: tabular-nums; }
+.record-moves .record-none { color: #a9c4b4; padding: 0 4px; }
+.record-moves button { border: 0; background: none; color: var(--cream); padding: 3px 5px; border-radius: 6px; font-weight: 600; }
+.record-moves button.current { background: var(--gold); color: var(--ink); }
+@media (hover: hover) { .record-moves button:hover:not(.current) { background: rgba(251, 246, 236, 0.18); } }
+.record-copy { flex: none; padding: 0 9px; height: 2.1em; border-radius: 8px; border: 1px solid rgba(251, 246, 236, 0.3); background: rgba(0, 0, 0, 0.3); color: var(--cream); white-space: nowrap; }
+.board-record button:focus-visible { outline: 3px solid #8ab4ff; outline-offset: 1px; }
+/* Looking back at an earlier position: the board says so, and takes no moves. */
+.looking-back .board-grid { outline: 3px dashed var(--gold); outline-offset: 2px; }
+.looking-back .board-grid .cell { cursor: default; }
+.board .status .link { padding: 0; font: inherit; cursor: pointer; }
+/* After the end, with the sheet put away to look over the game. */
+.board-over-bar { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 12px max(10px, env(safe-area-inset-bottom)); background: rgba(0, 0, 0, 0.35); color: var(--cream); font-weight: 700; }
+.board-over-bar .primary { padding: 6px 14px; }
+
+/* A move that asks which piece (a promotion): a column of choices on the board, from the square it lands on. */
+.chooser-shade { position: absolute; inset: 0; z-index: 7; background: rgba(20, 16, 12, 0.45); }
+.cell-chooser { position: absolute; z-index: 8; display: flex; flex-direction: column; background: #d8c19a; border-radius: max(6px, 1.4cqw); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55); overflow: hidden; }
+.cell-chooser.up { flex-direction: column-reverse; }
+.cell-chooser button { flex: 1 1 0; min-height: 0; display: grid; place-items: center; padding: 0; border: 0; background: none; cursor: pointer; }
+.cell-chooser button:first-child { background: rgba(232, 196, 106, 0.45); }
+.cell-chooser button:focus-visible { outline: 3px solid #0b57d0; outline-offset: -3px; }
+@media (hover: hover) { .cell-chooser button:hover { background: rgba(232, 196, 106, 0.75); } }
+.cell-chooser .piece.small { width: 86%; height: auto; aspect-ratio: 1; }
+/* ---- A track of points (Backgammon) ---------------------------------------------------------------
+   Two rows of six points either side of the bar, a tray at the end, the dice on the board and the
+   cube beside the trays. Everything is sized from one unit, a point's width (`--u`); a checker is a
+   little less, and a stack of five just fits a point's length. On a phone held upright the board is
+   laid on its side (`.tall`): the rows become columns and a point is a strip as tall as a thumb. */
+.track-wrap {
+  --board-max: 880px; display: block; container-type: inline-size;
+  width: min(100%, var(--board-max), max(300px, calc((100dvh - 360px) * 14.64 / 11.64)));
+}
+.track {
+  --u: calc(100cqw / 14.64); --d: calc(var(--u) * 0.9); --len: calc(var(--u) * 4.75); --pad: calc(var(--u) * 0.06);
+  --step: min(var(--d), calc((var(--len) - var(--d) - 2 * var(--pad)) / 4));
+  --surface: #c9a36b; --wood: #5b3a22; --tray: #3d2717;
+  position: relative; display: grid; box-sizing: border-box; user-select: none; -webkit-user-select: none;
+  grid-template-columns: repeat(6, var(--u)) calc(var(--u) * 1.1) repeat(6, var(--u)) calc(var(--u) * 1.3);
+  grid-template-rows: var(--len) calc(var(--u) * 1.3) var(--len);
+  padding: calc(var(--u) * 0.42) calc(var(--u) * 0.12);
+  background: var(--wood); border-radius: 10px; box-shadow: var(--elev-2); color: var(--ink);
+}
+/* The strip between the rows: playing surface, with the bar and the rail running through it. */
+.track-mid { grid-row: 2; grid-column: 1 / 14; background: var(--surface); position: relative; display: grid; pointer-events: none; }
+.track::before { content: ""; grid-row: 2; grid-column: 7; background: var(--wood); z-index: 1; }
+.track .spot { position: relative; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 0; background: var(--surface); font: inherit; color: inherit; -webkit-tap-highlight-color: transparent; }
+.track:not(.tall) .spot { grid-column: calc(var(--along) + 1); }
+.track:not(.tall) .spot.far { grid-row: 1; }
+.track:not(.tall) .spot.near { grid-row: 3; }
+.track .spot.bar { background: var(--wood); }
+.track .spot.home { background: var(--tray); box-shadow: inset 0 0 0 max(1px, calc(var(--u) * 0.05)) var(--wood), inset 0 2px 6px rgba(0, 0, 0, 0.5); }
+/* A point: a long triangle from the edge towards the middle, in two colours turn about. */
+.track .spot.point::before { content: ""; position: absolute; inset: 0 5%; background: #7a2e23; clip-path: polygon(0 0, 100% 0, 50% 94%); }
+.track .spot.point.shade-b::before { background: #efe0bb; }
+.track:not(.tall) .spot.point.near::before { clip-path: polygon(0 100%, 100% 100%, 50% 6%); }
+.track .point-no { position: absolute; left: 0; right: 0; text-align: center; font-size: clamp(8px, calc(var(--u) * 0.26), 13px); line-height: 1; color: #e7d3ad; opacity: 0.85; pointer-events: none; }
+.track:not(.tall) .spot.far .point-no { top: calc(var(--u) * -0.34); }
+.track:not(.tall) .spot.near .point-no { bottom: calc(var(--u) * -0.34); }
+/* Checkers: stacked from the edge inwards, `--k` up the stack. */
+.track .checker {
+  position: absolute; z-index: 2; box-sizing: border-box; width: var(--d); height: var(--d); border-radius: 50%;
+  display: grid; place-items: center; font-size: calc(var(--d) * 0.44); font-weight: 800; line-height: 1; pointer-events: none;
+}
+.track .checker.tone-light { background: radial-gradient(circle at 50% 36%, #fffaf0, #e4d3b0 72%); color: #5b3a22; box-shadow: inset 0 0 0 calc(var(--d) * 0.08) rgba(128, 96, 52, 0.38), 0 1px 2px rgba(0, 0, 0, 0.55); }
+.track .checker.tone-dark { background: radial-gradient(circle at 50% 36%, #51463d, #1f1a16 70%); color: #f0d48a; box-shadow: inset 0 0 0 calc(var(--d) * 0.08) rgba(255, 255, 255, 0.13), 0 1px 2px rgba(0, 0, 0, 0.55); }
+.track:not(.tall) .spot .checker { left: calc(50% - var(--d) / 2); }
+.track:not(.tall) .spot.far .checker { top: calc(var(--pad) + var(--k) * var(--step)); }
+.track:not(.tall) .spot.near .checker { bottom: calc(var(--pad) + var(--k) * var(--step)); }
+/* On the bar they stand from the middle outwards. */
+.track:not(.tall) .spot.bar.far .checker { top: auto; bottom: calc(var(--pad) + var(--k) * var(--step)); }
+.track:not(.tall) .spot.bar.near .checker { bottom: auto; top: calc(var(--pad) + var(--k) * var(--step)); }
+/* Borne off: fifteen checkers on their edges in the tray. */
+.track .spot.home .checker { border-radius: 2px; font-size: 0; }
+.track:not(.tall) .spot.home .checker { width: 76%; left: 12%; height: calc(var(--len) / 18); }
+.track:not(.tall) .spot.home.far .checker { top: calc(var(--u) * 0.1 + var(--k) * var(--len) / 16.6); }
+.track:not(.tall) .spot.home.near .checker { bottom: calc(var(--u) * 0.1 + var(--k) * var(--len) / 16.6); }
+.track .home-count { position: absolute; z-index: 3; font-size: clamp(9px, calc(var(--u) * 0.3), 14px); font-weight: 700; color: #e7d3ad; pointer-events: none; }
+.track:not(.tall) .spot.home .home-count { left: 0; right: 0; text-align: center; }
+.track:not(.tall) .spot.home.far .home-count { top: calc(var(--u) * -0.36); }
+.track:not(.tall) .spot.home.near .home-count { bottom: calc(var(--u) * -0.36); }
+/* What can be done: a checker that can move has a gold edge, the one picked up a bright one, and the places it can go are lit. */
+.track .spot.can { cursor: pointer; }
+.track .spot.source { cursor: grab; touch-action: none; }
+.track .spot.source .checker.top { box-shadow: inset 0 0 0 calc(var(--d) * 0.08) rgba(128, 96, 52, 0.3), 0 0 0 max(2px, calc(var(--d) * 0.06)) rgba(255, 226, 122, 0.85), 0 1px 2px rgba(0, 0, 0, 0.55); }
+.track .spot.picked .checker.top { scale: 1.08; box-shadow: 0 0 0 max(3px, calc(var(--d) * 0.1)) #ffe27a, 0 5px 9px rgba(0, 0, 0, 0.55); }
+.track .spot.target::after { content: ""; position: absolute; inset: 2px; z-index: 1; border-radius: 6px; background: rgba(255, 226, 122, 0.34); box-shadow: inset 0 0 0 2px #ffe27a; }
+@media (hover: hover) { .track .spot.target:hover::after { background: rgba(255, 226, 122, 0.55); } }
+.track .spot.mark-last .checker.top { outline: max(2px, calc(var(--d) * 0.06)) solid rgba(255, 244, 214, 0.95); outline-offset: 1px; }
+.track .spot.point.mark-from { background-image: linear-gradient(rgba(255, 244, 214, 0.3), rgba(255, 244, 214, 0.3)); }
+.track .spot.mark-must .checker.top { outline: max(2px, calc(var(--d) * 0.08)) solid #ffe27a; outline-offset: 2px; }
+/* The bar itself glows while a checker has to come in. (Not the checker: a piece that slides has its animations finished for it, and one that never ends can't be.) */
+.track .spot.mark-must { box-shadow: inset 0 0 0 3px #ffe27a; }
+@media (prefers-reduced-motion: no-preference) { .track .spot.mark-must { animation: track-must 1.4s ease-in-out infinite; } }
+html[data-motion="off"] .track .spot.mark-must { animation: none; }
+@keyframes track-must { 50% { box-shadow: inset 0 0 0 3px rgba(255, 226, 122, 0.2); } }
+.track .spot:focus-visible { outline: 3px solid #8ab4ff; outline-offset: -3px; z-index: 4; }
+.track .spot.dragging { z-index: 6; cursor: grabbing; }
+.track .spot.dragging .checker.top { scale: 1.14; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.45)); }
+/* The dice lie in the strip between the rows: the other player's on the left half, yours on the right. */
+.track .dice { --die: calc(var(--u) * 0.98); padding: 0; gap: 0; display: grid; grid-template-columns: calc(var(--u) * 6) calc(var(--u) * 1.1) calc(var(--u) * 6); align-items: center; justify-content: start; }
+.track .dice-half { display: flex; justify-content: center; align-items: center; gap: calc(var(--die) * 0.16); }
+.track .dice-half:nth-child(2) { grid-column: 3; }
+/* The cube: beside the trays, in the middle until somebody owns it. */
+.track .cube {
+  grid-row: 2; grid-column: 14; place-self: center; z-index: 5; width: calc(var(--u) * 0.98); aspect-ratio: 1; box-sizing: border-box; border-radius: 16%;
+  display: grid; place-items: center; font-family: Georgia, "Times New Roman", serif; font-weight: 700; font-size: calc(var(--u) * 0.5); line-height: 1;
+  background: linear-gradient(145deg, #fffdf6, #eadfc8); color: #7a2e23; box-shadow: inset 0 0 0 max(1px, calc(var(--u) * 0.04)) rgba(122, 46, 35, 0.5), 0 2px 5px rgba(0, 0, 0, 0.5);
+  transition: translate 320ms var(--ease-back), opacity 200ms;
+}
+.track:not(.tall) .cube.side-near { translate: 0 calc(var(--u) * 0.8); }
+.track:not(.tall) .cube.side-far { translate: 0 calc(var(--u) * -0.8); }
+.track .cube.offered { box-shadow: 0 0 0 max(3px, calc(var(--u) * 0.08)) #ffe27a, 0 4px 9px rgba(0, 0, 0, 0.55); }
+@media (prefers-reduced-motion: no-preference) { .track .cube.offered { animation: cube-offer 900ms ease-in-out infinite; } }
+html[data-motion="off"] .track .cube { animation: none; transition: none; }
+@keyframes cube-offer { 50% { rotate: 8deg; scale: 1.08; } }
+.track .cube.dead { opacity: 0.4; }
+
+/* Laid on its side for a phone held upright: the far row is the left column and the near row the
+   right, your home board at the bottom right, the trays along the bottom. A unit is a row's height. */
+.track-wrap.tall { width: min(100%, 480px); }
+.track.tall {
+  --u: clamp(30px, calc((100dvh - 318px) / 14.3), 48px); --mid: calc(var(--u) * 1.12); --edge: 17px;
+  --len: calc((100cqw - var(--mid) - 2 * var(--edge)) / 2); --d: calc(var(--u) - 3px); --pad: 3px;
+  grid-template-columns: var(--len) var(--mid) var(--len);
+  grid-template-rows: repeat(6, var(--u)) calc(var(--u) * 1.1) repeat(6, var(--u)) calc(var(--u) * 1.2);
+  padding: 4px var(--edge);
+}
+.track.tall .track-mid { grid-column: 2; grid-row: 1 / 14; }
+.track.tall::before { grid-column: 2; grid-row: 7; }
+.track.tall::after { content: ""; grid-column: 2; grid-row: 14; background: var(--wood); }
+.track.tall .spot { grid-row: calc(var(--along) + 1); }
+.track.tall .spot.far { grid-column: 1; }
+.track.tall .spot.near { grid-column: 3; }
+.track.tall .spot.point::before { inset: 5% 0; clip-path: polygon(0 0, 0 100%, 94% 50%); }
+.track.tall .spot.point.near::before { clip-path: polygon(100% 0, 100% 100%, 6% 50%); }
+.track.tall .point-no { top: calc(50% - 0.5em); left: auto; right: auto; width: var(--edge); font-size: 10px; }
+.track.tall .spot.far .point-no { left: calc(-1 * var(--edge)); }
+.track.tall .spot.near .point-no { right: calc(-1 * var(--edge)); }
+.track.tall .spot .checker { top: calc(50% - var(--d) / 2); }
+.track.tall .spot.far .checker { left: calc(var(--pad) + var(--k) * var(--step)); }
+.track.tall .spot.near .checker { right: calc(var(--pad) + var(--k) * var(--step)); }
+.track.tall .spot.bar.far .checker { left: auto; right: calc(var(--pad) + var(--k) * var(--step)); }
+.track.tall .spot.bar.near .checker { right: auto; left: calc(var(--pad) + var(--k) * var(--step)); }
+.track.tall .spot.home .checker { height: 72%; top: 14%; width: calc(var(--len) / 18); }
+.track.tall .spot.home.far .checker { left: calc(4px + var(--k) * var(--len) / 16.6); }
+.track.tall .spot.home.near .checker { right: calc(4px + var(--k) * var(--len) / 16.6); }
+.track.tall .spot.home .home-count { top: calc(50% - 0.5em); width: var(--edge); text-align: center; font-size: 10px; }
+.track.tall .spot.home.far .home-count { left: calc(-1 * var(--edge)); }
+.track.tall .spot.home.near .home-count { right: calc(-1 * var(--edge)); }
+.track.tall .dice { --die: calc(var(--mid) - 9px); grid-template-columns: none; grid-template-rows: calc(var(--u) * 6) calc(var(--u) * 1.1) calc(var(--u) * 6); justify-content: center; justify-items: center; }
+.track.tall .dice-half { flex-direction: column; }
+.track.tall .dice-half:nth-child(2) { grid-column: auto; grid-row: 3; }
+.track.tall .cube { grid-column: 2; grid-row: 14; width: calc(var(--mid) - 8px); font-size: calc(var(--mid) * 0.46); }
+.track.tall .cube.side-near { translate: calc(var(--mid) * 0.9) 0; }
+.track.tall .cube.side-far { translate: calc(var(--mid) * -0.9) 0; }
+/* Backgammon's table: the seats keep to a line each, so the board has the height. */
+.board-backgammon .board-felt { gap: 8px; }
+.board-backgammon .center-info { gap: 4px; }
+/* On a phone the other player takes one line, and "your turn" sits beside the buttons, so the roll button is on the screen without scrolling. */
+@media (max-width: 640px) and (orientation: portrait) {
+  .board-backgammon .board-felt { padding-top: 6px; gap: 6px; }
+  .board-backgammon .board-others .kit-seat { flex-direction: row; align-items: baseline; gap: 8px; padding: 0.2em 0.9em; }
+  .board-backgammon .center-info { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 10px; }
+  .board-backgammon .center-info .kit-info, .board-backgammon .center-info .narration { width: 100%; }
+  .board-backgammon .center-info .status:empty { display: none; }
+  .board-backgammon .center-info .status { width: auto; }
+  .board-backgammon .kit-choices { flex: 0 1 auto; }
+}
+/* On a wide screen the board has the whole height, and the other player, what happened and the buttons stand beside it. */
+@media (min-width: 900px) and (min-aspect-ratio: 5/4) {
+  .board-backgammon .board-felt { display: grid; grid-template-columns: minmax(0, auto) minmax(220px, 300px); grid-template-rows: auto 1fr; grid-template-areas: "boards others" "boards info"; justify-content: center; align-items: start; column-gap: 28px; padding-top: 16px; }
+  .board-backgammon .boards { grid-area: boards; width: auto; }
+  .board-backgammon .board-others { grid-area: others; }
+  .board-backgammon .center-info { grid-area: info; align-self: center; gap: 10px; }
+  .board-backgammon .track-wrap { width: min(calc(100vw - 370px), var(--board-max), max(300px, calc((100dvh - 190px) * 14.64 / 11.64))); }
+}
+.board-backgammon .piece.kind-checker.small { border-radius: 50%; font-size: 0; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4); }
+.board-backgammon .piece.kind-checker.small.tone-light { background: radial-gradient(circle at 50% 36%, #fffaf0, #e4d3b0 72%); }
+.board-backgammon .piece.kind-checker.small.tone-dark { background: radial-gradient(circle at 50% 36%, #51463d, #1f1a16 70%); }
+/* ---- Dice, and a score sheet, on the board table (Yacht…) ------------------------------------------
+   The dice sit in a row, as big as a phone's width allows. A held die sits up out of the row with a
+   gold edge and a tag, so what's kept is plain without colour; dice left over from the last turn are dim. */
+.dice { --die: clamp(46px, 14.5vw, 72px); display: flex; justify-content: center; gap: calc(var(--die) * 0.2); padding: calc(var(--die) * 0.34) 4px calc(var(--die) * 0.1); }
+.die {
+  position: relative; flex: none; width: var(--die); height: var(--die); padding: 0; border: 0; border-radius: 18%;
+  background: linear-gradient(145deg, #fffdf6, #eadfc8); color: var(--ink); font: inherit;
+  box-shadow: inset 0 calc(var(--die) * -0.06) 0 rgba(0, 0, 0, 0.14), inset 0 0 0 1px rgba(0, 0, 0, 0.12), 0 calc(var(--die) * 0.06) calc(var(--die) * 0.1) rgba(0, 0, 0, 0.4);
+  transition: translate 160ms var(--ease-back), box-shadow 160ms, opacity 200ms;
+}
+button.die { cursor: pointer; touch-action: manipulation; }
+button.die:focus-visible { outline: 3px solid #ffd76a; outline-offset: 3px; }
+@media (hover: hover) { button.die:not(.held):hover { translate: 0 -6%; } }
+.die-face { position: absolute; inset: 14%; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); place-items: center; }
+.die-face i.pip { width: 72%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #4a4038, #17130f 70%); }
+.die-face b { grid-area: 1 / 1 / -1 / -1; font-size: calc(var(--die) * 0.5); font-family: Georgia, "Times New Roman", serif; }
+/* Not rolled yet: an empty face. */
+.die.unrolled { background: rgba(255, 253, 246, 0.16); box-shadow: inset 0 0 0 2px rgba(255, 253, 246, 0.35); }
+.die.held { translate: 0 -26%; box-shadow: inset 0 calc(var(--die) * -0.06) 0 rgba(0, 0, 0, 0.14), 0 0 0 max(3px, calc(var(--die) * 0.06)) var(--gold), 0 calc(var(--die) * 0.14) calc(var(--die) * 0.16) rgba(0, 0, 0, 0.45); }
+.die-tag { position: absolute; left: 50%; top: 100%; translate: -50% calc(var(--die) * 0.1); font-size: max(0.62rem, calc(var(--die) * 0.2)); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gold); white-space: nowrap; }
+.die.used { opacity: 0.45; }
+/* A second player's dice (backgammon) are the dark ones. */
+.die.owner-1 { background: linear-gradient(145deg, #5a2a22, #37140f); }
+.die.owner-1 .die-face i.pip { background: #fffdf6; }
+.die.owner-1 .die-face b { color: #fffdf6; }
+/* Thrown: each die hops and spins a little differently, and comes down square. */
+.die.tumbling { animation: die-tumble 640ms cubic-bezier(0.3, 0.6, 0.4, 1); animation-delay: calc(var(--i) * -18ms); }
+.die.tumbling:nth-child(even) { animation-name: die-tumble-back; }
+@keyframes die-tumble {
+  0% { translate: 0 0; rotate: 0deg; }
+  25% { translate: -8% -46%; rotate: -150deg; }
+  50% { translate: 6% -8%; rotate: -290deg; }
+  72% { translate: -3% -22%; rotate: -345deg; }
+  100% { translate: 0 0; rotate: -360deg; }
+}
+@keyframes die-tumble-back {
+  0% { translate: 0 0; rotate: 0deg; }
+  22% { translate: 9% -38%; rotate: 130deg; }
+  48% { translate: -5% -6%; rotate: 280deg; }
+  74% { translate: 3% -18%; rotate: 340deg; }
+  100% { translate: 0 0; rotate: 360deg; }
+}
+@media (prefers-reduced-motion: reduce) { .die, .die.tumbling { animation: none; transition: none; } }
+html[data-motion="off"] .die, html[data-motion="off"] .die.tumbling { animation: none; transition: none; }
+
+/* The sheet is a pad of paper on the felt: boxes down the page, a column a player. Your own column
+   stays beside the names of the boxes; the others scroll sideways behind them when there are many. */
+.board-felt.with-sheet { gap: 12px; }
+.board-main { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.score-sheet {
+  /* In rem, not em: the cells that use them are set in several sizes, and the columns that stay put have to agree. */
+  --label-w: 9rem; --mine-w: 3.8rem; --col-w: 3.4rem; --paper: #fbf6ec; --rule: #e0d5c0;
+  max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; border-radius: 12px; background: var(--paper); color: var(--ink);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35); font-size: 0.95rem;
+}
+.score-sheet table { border-collapse: separate; border-spacing: 0; }
+.score-sheet table.whole { table-layout: fixed; width: calc(var(--label-w) + var(--mine-w) + var(--others, 0) * var(--col-w)); }
+.score-sheet col { width: var(--col-w); }
+.score-sheet col.boxes { width: var(--label-w); }
+.score-sheet col.mine { width: var(--mine-w); }
+.sheet-head { position: sticky; left: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 7px 10px 5px; }
+.sheet-head strong { font-family: Georgia, "Times New Roman", serif; font-size: 1.1rem; color: var(--felt); }
+.sheet-head .link { padding: 0; font-size: 0.85rem; color: var(--felt); }
+.score-sheet th, .score-sheet td { height: 2.1em; padding: 0 6px; border-bottom: 1px solid var(--rule); text-align: center; white-space: nowrap; background: var(--paper); font-variant-numeric: tabular-nums; }
+.score-sheet tbody th, .score-sheet tfoot th, .score-sheet thead td { position: sticky; left: 0; z-index: 2; box-sizing: border-box; padding-left: 10px; text-align: left; font-weight: 600; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; }
+.score-sheet tbody th small { display: block; font-size: 0.68em; font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.score-sheet thead th { padding: 0 3px; font-size: 0.85em; color: var(--muted); border-bottom: 2px solid var(--ink); }
+.score-sheet thead th span { display: block; overflow: hidden; text-overflow: ellipsis; }
+.score-sheet thead td { border-bottom: 2px solid var(--ink); }
+.score-sheet td { box-sizing: border-box; color: #3a342c; }
+/* Your own column: wider, darker, and it stays put. */
+.score-sheet .mine { position: sticky; left: var(--label-w); z-index: 1; background: #f3e9d2; color: var(--ink); font-weight: 700; box-shadow: 1px 0 0 var(--rule), -1px 0 0 var(--rule); }
+.score-sheet thead th.mine { color: var(--felt); }
+.score-sheet td.last { background-image: linear-gradient(rgba(232, 196, 106, 0.55), rgba(232, 196, 106, 0.55)); }
+/* Lines nobody fills in (a bonus): worked out, so written smaller and lighter. */
+.score-sheet tr.worked th, .score-sheet tr.worked td { font-size: 0.82em; font-style: italic; color: var(--muted); background: #f1e8d6; height: 2em; }
+.score-sheet tr.worked td.mine { background: #eadfc6; }
+.score-sheet tfoot tr:first-child th, .score-sheet tfoot tr:first-child td { border-top: 2px solid var(--ink); border-bottom: 0; font-family: Georgia, "Times New Roman", serif; font-size: 1.15em; font-weight: 700; height: 2em; }
+/* A box you can score in now: a button the width of the cell, showing what it would give. */
+.score-sheet td:has(.pick) { padding: 2px; }
+.score-sheet .pick {
+  display: block; width: 100%; min-width: 2.6em; height: 1.7em; padding: 0 4px; border: 2px dashed #b08a2e; border-radius: 8px; cursor: pointer; touch-action: manipulation;
+  background: #fff6d8; color: #6b4d00; font: inherit; font-weight: 700;
+}
+.score-sheet .pick.nothing { border-color: #b9ad97; background: transparent; color: #8a8072; font-weight: 500; }
+.score-sheet .pick:focus-visible { outline: 3px solid #0b57d0; outline-offset: 1px; }
+@media (hover: hover) { .score-sheet .pick:hover { background: var(--gold); border-style: solid; color: var(--ink); } }
+/* A full table: the other players' columns are as narrow as a score. */
+.score-sheet.crowded { --col-w: 2.9rem; }
+.score-sheet.crowded thead th:not(.mine) { font-size: 0.75em; }
+@media (max-width: 640px) {
+  .score-sheet { --label-w: 8.1rem; --mine-w: 3.5rem; font-size: 0.9rem; }
+  .score-sheet.crowded { --col-w: 2.7rem; }
+  .score-sheet tbody th small { display: none; }
+}
+/* On a phone: your own sheet, folded in two like the paper one, with boxes big enough for a thumb. */
+.score-sheet.folded { width: 100%; max-width: 440px; box-sizing: border-box; overflow: hidden; }
+.sheet-halves { display: grid; grid-template-columns: 1fr 1fr; align-items: start; border-top: 2px solid var(--ink); }
+.sheet-halves table { width: 100%; table-layout: fixed; }
+.sheet-halves table + table { border-left: 2px solid var(--rule); }
+.score-sheet.folded th, .score-sheet.folded td { height: 2.25em; }
+.score-sheet.folded tr.worked th, .score-sheet.folded tr.worked td { height: 2.74em; }
+.score-sheet.folded .pick { height: 1.85em; }
+.score-sheet.folded tbody th { position: static; padding-left: 8px; }
+.score-sheet.folded td.mine { position: static; width: 3.4rem; box-shadow: -1px 0 0 var(--rule); }
+.sheet-total { display: flex; align-items: baseline; justify-content: flex-end; gap: 10px; margin: 0; padding: 4px 12px 6px; border-top: 2px solid var(--ink); }
+.sheet-total strong { font-family: Georgia, "Times New Roman", serif; font-size: 1.25rem; }
+/* Where there's room the sheet stands beside the dice instead of under them. */
+@media (min-width: 900px) {
+  .board-felt.with-sheet { flex-direction: row; justify-content: center; align-items: flex-start; gap: clamp(20px, 4vw, 56px); padding-top: 18px; }
+  .board-felt.with-sheet .board-main { flex: 0 1 520px; gap: 16px; padding-top: 10px; }
+  .board-felt.with-sheet .score-sheet { flex: none; font-size: 1rem; --label-w: 11.5rem; --mine-w: 4.2rem; }
+  .board-felt.with-sheet .dice { --die: 76px; }
+  /* The end of the game is announced under the dice, beside the sheet and not over it. */
+  .board-felt.with-sheet ~ .sheet.board-over { left: calc(50% - 190px); width: min(400px, 44vw); }
+}
+
 /* ---- The table sports' shared table (Mini Golf…) -----------------------------------------------
-   A canvas in the middle that takes all the room there is: the table screen fits the hole inside
-   it and centres it. The other players sit above, the aim controls and your seat below. */
-.sport-felt { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 8px 8px 10px; min-height: 0; }
+   A canvas that takes all the room there is: the table screen fits the hole inside it, turned on
+   its side if that shows it bigger. On a phone the scores are a row of chips over the canvas, the
+   hole's sign stands on the canvas itself, and the aim controls are below. On a wide screen the
+   sign, the scores and the controls go down the left-hand side and the canvas has the rest. */
+.sport-felt { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 6px 6px 8px; min-height: 0; }
 .sport .status { position: static; }
-.sport-top { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.sport-name { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: var(--ui-l); color: var(--gold); text-align: center; }
-.sport-others { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px clamp(8px, 3vw, 32px); }
-.sport-seat { padding: 3px 10px; gap: 0; }
-.sport-seat strong { font-size: var(--ui-m); }
-.sport-seat span { font-size: calc(var(--ui-s) * 0.9); color: #cfe2d6; }
-.sport-seat.done { opacity: 0.75; }
-.sport-seat.row { align-items: center; gap: 10px; }
-.sport-dot { flex: none; width: 0.8em; height: 0.8em; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.5); box-shadow: inset -1px -2px 2px rgba(0, 0, 0, 0.25); }
-/* The stage is the whole area you can pull on, not just the ball: a thumb can start anywhere. */
-.sport-stage { position: relative; flex: 1; min-height: 220px; border-radius: 12px; outline-offset: 2px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.sport-course { flex: 1; text-align: center; font-family: Georgia, "Times New Roman", serif; font-size: var(--ui-m); color: var(--gold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sport-dot { flex: none; width: 0.9em; height: 0.9em; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.55); box-shadow: inset -1px -2px 2px rgba(0, 0, 0, 0.3), inset 1px 1px 1px rgba(255, 255, 255, 0.55); }
+
+/* The scores: a painted wooden tag for each player. */
+.sport-panel { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 6px; }
+.sport-player {
+  display: flex; align-items: center; gap: 5px; min-width: 0; padding: 3px 5px 3px 7px;
+  border-radius: 9px; border: 2px solid #4a2c12; color: #2a1a0a; font-size: var(--ui-s); line-height: 1.15;
+  background: linear-gradient(#f3ddb0, #dfc089);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+.sport-player.is-up { border-color: #ffe27a; background: linear-gradient(#fff3c4, #f2d98a); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 0 0 2px rgba(0, 0, 0, 0.45), 0 2px 0 2px rgba(0, 0, 0, 0.35); }
+.sport-player.is-in { background: linear-gradient(#d9d2bf, #c2b89f); }
+.sport-player-name { max-width: 7.5ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.sport-player.is-me .sport-player-name { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+.sport-player-in { color: #1c6b3a; font-weight: 900; }
+.sport-player-here { min-width: 1.5em; padding: 0 3px; border-radius: 6px; text-align: center; background: rgba(74, 44, 18, 0.16); font-variant-numeric: tabular-nums; }
+.sport-player-total { min-width: 1.6em; padding: 0 4px; border-radius: 6px; text-align: center; background: #4a2c12; color: #fff3c4; font-variant-numeric: tabular-nums; }
+
+/* The hole's sign: a chunky board on the course, a little askew. */
+.sport-sign { position: absolute; left: 6px; top: 6px; z-index: 1; max-width: calc(100% - 12px); pointer-events: none; display: flex; align-items: flex-start; gap: 8px; }
+.sport-sign-board {
+  display: flex; align-items: center; gap: 7px; padding: 4px 11px 4px 5px; transform: rotate(-1.6deg); transform-origin: left center;
+  border: 2px solid #3a1e0a; border-radius: 10px; color: #fff6d8;
+  background: repeating-linear-gradient(178deg, rgba(255, 255, 255, 0.05) 0 3px, rgba(0, 0, 0, 0.06) 3px 7px), linear-gradient(#b5651f, #8a4513);
+  box-shadow: inset 0 2px 0 rgba(255, 220, 160, 0.45), inset 0 -3px 0 rgba(40, 14, 0, 0.35), 0 3px 0 #2a1406, 0 6px 8px rgba(0, 0, 0, 0.4);
+  font-family: ui-rounded, "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+}
+.sport-sign-number {
+  flex: none; min-width: 1.5em; height: 1.5em; padding: 0 0.2em; display: grid; place-items: center; border-radius: 50%;
+  font-size: 1.45rem; font-weight: 900; line-height: 1; color: #5a2c06;
+  background: radial-gradient(circle at 35% 30%, #fff7c2, #ffd23c 60%, #e2a50f); border: 2px solid #3a1e0a;
+  box-shadow: inset 0 -2px 0 rgba(120, 70, 0, 0.4); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.sport-sign-words { display: flex; flex-direction: column; min-width: 0; line-height: 1.05; text-shadow: 0 1px 0 #3a1e0a, 0 2px 2px rgba(0, 0, 0, 0.4); }
+.sport-sign-words strong { font-size: 1rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sport-sign-words em { font-style: normal; font-size: 0.82rem; font-weight: 800; color: #ffd23c; letter-spacing: 0.02em; text-transform: uppercase; }
+.sport-sign-facts { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.sport-sign-facts li:not(.sr-only) { padding: 2px 8px; border-radius: 999px; background: rgba(12, 30, 16, 0.72); color: #f3ecd6; font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+
+.sport-view { position: relative; flex: 1; min-height: 220px; display: flex; }
+.sport-stage { position: relative; flex: 1; min-height: 220px; border-radius: 12px; overflow: hidden; outline-offset: 2px; box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.35), 0 2px 10px rgba(0, 0, 0, 0.35); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .sport-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .sport-stage.can { cursor: grab; }
 .sport-stage.pulling { cursor: grabbing; }
@@ -1290,9 +1788,14 @@ html[data-motion="off"] .board-grid .cell.mark-must::before { animation: none; }
 .sport-skip { position: absolute; right: 6px; bottom: 6px; padding: 8px 14px; border: 0; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: var(--cream); font: inherit; font-weight: 600; font-size: var(--ui-s); cursor: pointer; }
 .sport-skip:hover, .sport-skip:focus-visible { background: rgba(0, 0, 0, 0.75); }
 /* While you pull: how hard, as a bar up the side that fills and reddens. */
-.sport-meter { position: absolute; left: 6px; top: 12%; bottom: 12%; width: 12px; border-radius: 999px; background: rgba(0, 0, 0, 0.45); border: 2px solid rgba(255, 255, 255, 0.6); overflow: hidden; display: flex; align-items: flex-end; pointer-events: none; }
-.sport-meter span { display: block; width: 100%; border-radius: 999px; }
+/* The power gauge while pulling: a brass tube up the right-hand side that fills from the bottom. */
+.sport-meter { position: absolute; right: 8px; top: 16%; bottom: 16%; width: 16px; border-radius: 999px; background: linear-gradient(90deg, #1b1712, #3a332b 45%, #1b1712); border: 2px solid #f1e3b4; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55), 0 3px 8px rgba(0, 0, 0, 0.5); overflow: hidden; display: flex; align-items: flex-end; pointer-events: none; }
+.sport-meter span { display: block; width: 100%; border-radius: 999px; box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.4), inset -3px 0 0 rgba(0, 0, 0, 0.25); }
 .sport .center-info { gap: 4px; }
+/* The words under the table keep room for two lines whatever they say, so the table above doesn't
+   change size (and have to be painted again) every time someone putts. */
+.sport .narration { min-height: 2.5em; max-height: 3.75em; line-height: 1.25; margin: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.sport .status { min-height: 2.5em; display: flex; align-items: center; justify-content: center; }
 .sport-controls { display: flex; flex-direction: column; gap: 6px; width: min(100%, 420px); }
 .sport-controls.idle { visibility: hidden; }
 .sport-row { display: flex; align-items: center; gap: 6px; }
@@ -1315,8 +1818,29 @@ html[data-motion="off"] .board-grid .cell.mark-must::before { animation: none; }
 .sport-card .sum { font-weight: 700; font-family: Georgia, serif; }
 .sport .bubble.top { top: 130px; }
 .sport .bubble.bottom { bottom: 110px; }
-/* A wide screen has room to spare: keep the table from sprawling. */
-@media (min-width: 900px) { .sport-stage { min-height: 320px; } }
+.sport-me { padding-top: 0; padding-bottom: max(6px, env(safe-area-inset-bottom)); background: none; min-height: 0; }
+.sport-me:not(:has(.chat-toggle, .chat)) { display: none; }
+
+@media (min-width: 900px) {
+  /* Side by side: everything to read and press on the left, the table on the right. */
+  .sport-felt { display: grid; grid-template-columns: minmax(230px, 280px) 1fr; grid-template-rows: auto auto 1fr; gap: 12px 14px; padding: 12px; }
+  /* The sign comes off the table and heads the column. */
+  .sport-view { display: contents; }
+  .sport-stage { grid-column: 2; grid-row: 1 / -1; min-height: 320px; }
+  .sport-sign { position: static; grid-column: 1; grid-row: 1; flex-direction: column; max-width: none; }
+  .sport-sign-number { font-size: 2rem; }
+  .sport-sign-words strong { font-size: 1.25rem; white-space: normal; }
+  .sport-sign-words em { font-size: 1rem; }
+  .sport-panel { grid-column: 1; grid-row: 2; flex-direction: column; flex-wrap: nowrap; justify-content: flex-start; gap: 6px; }
+  .sport-player { padding: 6px 8px 6px 10px; font-size: var(--ui-m); }
+  .sport-player-name { flex: 1; max-width: none; }
+  .sport-felt .center-info { grid-column: 1; grid-row: 3; align-self: end; align-items: stretch; text-align: center; }
+}
+@media (min-width: 1024px) {
+  /* No oval card table here: the hole is its own table. */
+  .sport .felt { margin: 0; border-radius: 0; background: none; box-shadow: none; }
+  .sport .me { margin-top: 0; }
+}
 
 /* ---------- Turn clock: the time left on a seat, at an online table with a turn timer ---------- */
 .turn-clock {
@@ -1367,8 +1891,15 @@ html[data-motion="off"] .board-grid .cell.mark-must::before { animation: none; }
 .report-form { display: flex; flex-direction: column; gap: 12px; }
 .report-words { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
 .report-words small { font-weight: 400; color: var(--muted); }
-.report-words textarea { font: inherit; font-weight: 400; padding: 10px 12px; border-radius: 10px; border: 1px solid #c9bfa8; background: #fffdf7; color: var(--ink); resize: vertical; min-height: 4.5em; }
-.report-words textarea:focus-visible { outline: 2px solid var(--felt); outline-offset: 1px; }
+.report-words textarea, .report-words input { font: inherit; font-weight: 400; padding: 10px 12px; border-radius: 10px; border: 1px solid #c9bfa8; background: #fffdf7; color: var(--ink); }
+.report-words textarea { resize: vertical; min-height: 4.5em; }
+.report-words textarea:focus-visible, .report-words input:focus-visible { outline: 2px solid var(--felt); outline-offset: 1px; }
+/* Looking over a tidied report: what happened to it, and the way back to the player's own words. */
+.sheet.report-sheet .tidy-note { color: var(--ink); background: rgba(31, 77, 58, 0.08); border-radius: 10px; padding: 10px 12px; margin: 0; }
+.tidy-choices { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: -6px; }
+.sheet.report-sheet .tidy-choices .link { color: var(--felt); }
+.tidy-choices .link:disabled { opacity: 0.45; text-decoration: none; cursor: default; }
+.report-details dd.pre { white-space: pre-wrap; }
 .report-choice { display: flex; flex-direction: column; gap: 8px; }
 .report-shot { display: block; max-width: 100%; max-height: 180px; margin: 0 auto; border-radius: 8px; border: 1px solid #c9bfa8; object-fit: contain; }
 .report-details { font-size: 0.85rem; color: var(--muted); }
@@ -1412,8 +1943,24 @@ html[data-motion="off"] .board-grid .cell.mark-must::before { animation: none; }
    scrolls sideways keeps its scroll, and a card is picked up by holding it. */
 .hand.sortable:not([data-scrolls]) { touch-action: pan-y; }
 .hand[data-rearranging] > playing-card { transition: translate 140ms var(--ease-out); }
+/* A card on its way out of the hand (to the pile) mustn't be clipped by the hand's scroll box. */
+.hand[data-lifting] { overflow: visible; }
 .hand[data-rearranging] > playing-card[data-dragging] { transition: none; z-index: 3; cursor: grabbing; filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.35)); }
 html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: none; }
 /* Palace has no badge row above the hand: keep the bar clear of the chat button. */
 .palace .me:has(.chat-toggle) > .hand-sort { padding-left: 52px; }
 @media (max-width: 380px) { .hand-sort { gap: 4px; } .hand-sort button { padding: 0 0.65em; } }
+
+/* ---- Palace: picking a set in your hand, and dragging a card onto the pile ---- */
+.play-picked { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 10px; margin: 0 0 6px; position: relative; z-index: 2; }
+.play-picked .primary, .play-picked .secondary { padding: 8px 16px; font-size: 0.98rem; }
+.play-picked .secondary { color: var(--cream); }
+.play-picked small { width: 100%; text-align: center; color: #cfe2d6; font-size: var(--ui-s); }
+.palace .me:has(.chat-toggle) > .play-picked { padding-left: 52px; }
+.pile.ready { cursor: pointer; border-radius: 12px; outline: 2px dashed rgba(232, 196, 106, 0.7); outline-offset: 6px; }
+.pile.ready:focus-visible { outline-style: solid; outline-color: var(--gold); }
+.pile[data-drop-over], .my-table[data-drop-over] { border-radius: 12px; outline: 3px solid var(--gold); outline-offset: 6px; background: rgba(232, 196, 106, 0.12); }
+.my-table.drop-up { border-radius: 12px; outline: 2px dashed rgba(232, 196, 106, 0.5); outline-offset: 6px; min-height: var(--trick-h); min-width: calc(var(--trick-w) * 3); }
+@media (prefers-reduced-motion: no-preference) {
+  .pile[data-drop-over], .my-table[data-drop-over] { transition: background 120ms var(--ease-out), outline-color 120ms var(--ease-out); }
+}

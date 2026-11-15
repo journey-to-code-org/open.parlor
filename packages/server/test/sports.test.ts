@@ -2,10 +2,12 @@
 // table with house rules, putted to the end by a person (from nothing but what their view shows)
 // against a computer player, the leaderboard, private views, the turn timer and a restart.
 import { PHYSICS_VERSION, simulate } from "@cardroom/physics";
-import { angleTo, sameRest, worldBefore, type SportView } from "@cardroom/games";
+import { angleTo, miniGolf, newMiniGolf, nineHoles, nineTogether, sameRest, worldBefore, type SportView } from "@cardroom/games";
+import { validateWorld } from "@cardroom/physics";
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCardRoom } from "../src/app.js";
+import { watchView } from "../src/games.js";
 import { warmSports } from "../src/kit.js";
 
 const BASE = "http://test";
@@ -103,7 +105,8 @@ describe("table sports in the card room", () => {
     const first = (await viewOf(grammi, id, 0))!;
     expect(first).toMatchObject({ game: "minigolf", seats: 2, me: 0, phase: "playing" });
     expect(first.table.name).toBe("Hole 1: Welcome Mat");
-    expect(first.table.world.bodies).toEqual([{ id: "ball-0", x: 5000, y: 13500, r: 240 }]);
+    // Nobody has putted: the one ball on the table is on the tee, and belongs to whoever has the honour.
+    expect(first.table.world.bodies).toEqual([{ id: `ball-${first.turn}`, x: 5200, y: 11700, r: 240 }]);
     // The server refuses what the rules refuse, and says why.
     const wrong = await grammi(`/rooms/${id}/act`, { move: { type: "shot", body: "ball-1", angle: 27000, power: 500 } });
     expect(wrong.status).not.toBe(200);
@@ -144,6 +147,81 @@ describe("table sports in the card room", () => {
     expect((await viewOf(rick, id, 1))!.last).toMatchObject({ seat: 1, shot: { power: 200 } });
     // A stranger's phone gets nobody's view.
     expect(await viewOf(phone(), id, 0)).toBeUndefined();
+  });
+
+  it("in turn, both seats are sent the same table with every ball on it, and balls knock into each other", async () => {
+    const { phone } = setup();
+    const grammi = phone();
+    const rick = phone();
+    const id = (await grammi("/rooms", { options: { game: "minigolf", rules: { id: "minigolf-quick" }, seats: 2 } })).body.id;
+    await grammi(`/rooms/${id}/sit`, { seat: 0, name: "brokennil" });
+    await rick(`/rooms/${id}/sit`, { seat: 1, name: "Rick" });
+    await grammi(`/rooms/${id}/start`, {});
+    const sends = [grammi, rick];
+    const first = (await viewOf(grammi, id, 0))!.turn!;
+    // The first putt stops half way up; the second, up the same line and harder, runs into it.
+    expect((await sends[first]!(`/rooms/${id}/act`, { move: { type: "shot", body: `ball-${first}`, angle: 27000, power: 300 } })).status).toBe(200);
+    const [a, b] = [(await viewOf(grammi, id, 0))!, (await viewOf(rick, id, 1))!];
+    expect(a.table).toEqual(b.table);
+    expect(a.table.world.bodies.map((x) => x.id)).toEqual(["ball-0", "ball-1"]);
+    expect(a.table.ghosts).toEqual([]);
+    const lay = a.table.world.bodies.find((x) => x.id === `ball-${first}`)!;
+    expect((await sends[1 - first]!(`/rooms/${id}/act`, { move: { type: "shot", body: `ball-${1 - first}`, angle: 27000, power: 450 } })).status).toBe(200);
+    for (const [send, seat] of [[grammi, 0], [rick, 1]] as const) {
+      const v = (await viewOf(send, id, seat))!;
+      const played = simulate(worldBefore(v)!, v.last!.shot);
+      expect(played.events.some((e) => e.type === "hit")).toBe(true);
+      expect(sameRest(played.world, v.last!.rest)).toBe(true);
+      // The ball that was hit is now somewhere else, for both of them.
+      const now = [...v.table.world.bodies, ...v.table.ghosts].find((x) => x.id === `ball-${first}`)!;
+      expect(now.y).toBeLessThan(lay.y);
+    }
+  });
+
+  it("someone watching is shown a whole table: every ball has a place, and the last shot replays", async () => {
+    const { app, phone } = setup();
+    const visitor = phone();
+    const made = await visitor("/spectate", { game: "minigolf", pace: "instant" });
+    expect(made.status).toBe(201);
+    const id = made.body.id as string;
+    const watching = async () => (await app.rooms.sync.documents()).get("views", `${id}/watch`)?.view as SportView | undefined;
+    let shots = 0;
+    for (let i = 0; i < 400 && shots < 12; i++) {
+      const v = await watching();
+      if (v?.last && v.last.n > shots) {
+        shots = v.last.n;
+        expect(validateWorld(v.table.world)).toEqual([]);
+        expect(v.table.world.bodies.every((b) => typeof b.id === "string" && Number.isInteger(b.x) && Number.isInteger(b.y))).toBe(true);
+        expect(sameRest(simulate(worldBefore(v)!, v.last.shot).world, v.last.rest)).toBe(true);
+        // Nobody's aim, nobody's buttons.
+        expect(v.shoot).toBeNull();
+        expect(v.choices).toBeNull();
+      }
+      await sleep(3);
+    }
+    expect(shots).toBeGreaterThan(3);
+  });
+
+  it("a watcher's view is whole whichever way the table plays", () => {
+    for (const rules of [nineHoles, nineTogether]) {
+      let s = newMiniGolf(rules, 3, 5);
+      const shoot = (seat: number, angle: number, power: number) => (s = miniGolf.apply(s, seat, { type: "shot", body: `ball-${seat}`, angle, power }));
+      const order = rules.order === "turns" ? [s.turn!, (s.turn! + 1) % 3] : [2, 0];
+      shoot(order[0]!, 26700, 300);
+      shoot(order[1]!, 27300, 420);
+      const seats = [0, 1, 2].map((seat) => miniGolf.view(s, seat));
+      const v = watchView("minigolf", seats) as SportView;
+      expect(validateWorld(v.table.world), rules.id).toEqual([]);
+      expect(v.table).toEqual(seats[0]!.table);
+      expect(v.last).toEqual(seats[0]!.last);
+      expect([v.shoot, v.choices, v.me]).toEqual([null, null, 0]);
+      // Every ball that has left the tee is on it, as a body or a ghost; and what everyone sees alike is kept.
+      const drawn = [...v.table.world.bodies, ...v.table.ghosts].map((b) => b.id);
+      for (const seat of order) expect(drawn).toContain(`ball-${seat}`);
+      expect(v.scores).toEqual(seats[1]!.scores);
+      expect(v.card).toEqual(seats[2]!.card);
+      if (v.last) expect(sameRest(simulate(worldBefore(v)!, v.last.shot).world, v.last.rest)).toBe(true);
+    }
   });
 
   it("the turn timer putts for someone who has walked away, in turn and all at once", async () => {

@@ -54,6 +54,9 @@
               <stat-card label="Blocked" [value]="o.blocked" period="players you've blocked"></stat-card>
               <stat-card label="Houses" [value]="o.houses" period="family groups"></stat-card>
               <stat-card label="Shared designs" [value]="o.designs.shared" [period]="o.designs.hidden ? o.designs.hidden + ' hidden by you' : 'card decks in the gallery'"></stat-card>
+              @if (o.bots; as b) {
+                <stat-card label="Bot thinks" [value]="b.thinks" [period]="b.workers + (b.workers === 1 ? ' worker' : ' workers') + ', ' + (b.queued + b.running) + ' thinking now · ' + b.averageMs + ' ms usual, ' + b.worstMs + ' ms worst · ' + b.abandoned + ' given up on'"></stat-card>
+              }
             </auto-grid>
             <h2>Latest activity</h2>
             @if (log().length) {
@@ -68,6 +71,20 @@
               </ul>
             } @else {
               <p class="quiet">Nothing yet. Whatever you do here (closing a table, blocking a player, hiding a design) is written down under Activity.</p>
+            }
+            <h2>Backups</h2>
+            @if (o.backups; as b) {
+              <p class="quiet" data-backups>
+                @if (b.latest; as latest) {
+                  The last copy of the card room's database was made {{ when(latest.at) }} ({{ size(latest.size) }}).
+                } @else {
+                  No copy of the card room's database has been made yet.
+                }
+                The server makes one every {{ b.hours }} hours and keeps the newest {{ b.keep }}, on the same disk as the database.
+              </p>
+              <action-button variant="outline" [loading]="savingBackup()" (click)="downloadBackup()">Download a copy now</action-button>
+            } @else {
+              <p class="quiet" data-backups>Nothing is being backed up: this card room keeps its tables in memory, or backups are switched off.</p>
             }
           }
         </section>

@@ -14,7 +14,17 @@
 //
 // The engine lists exactly what is legal, so the table never has to know a game's rules, and the
 // server still refuses anything else.
-import type { BaseRules, BoardGameId, Choices, GameOver, RoundResult, Scores, TableGame } from "./table.js";
+//
+// Two more things can be on the table beside the grids, or instead of them: `dice` (five dice and a
+// scorecard need no board at all, so `grids` may be empty) and a score `sheet` whose cells can be
+// chosen. Dice are thrown by the engine from its seeded random source, like a deal; a view only
+// ever says what each die shows.
+//
+// A grid is usually a field of squares, but it can also be a `track`: places that pieces travel
+// along one after another, each holding a stack of them (backgammon's points, bar and trays). The
+// cells are still cells, so tapping and picking up work exactly as they do anywhere else. A
+// doubling `cube` is one more thing that can be on the table.
+import type { BaseRules, BoardGameId, Choices, GameOver, RoundResult, Scores, ScoreSheet, TableGame } from "./table.js";
 
 /** The colours a piece or a cell mark can take; the table decides what each looks like. */
 export type BoardTone = "light" | "dark" | "red" | "blue" | "gold" | "green";
@@ -43,6 +53,38 @@ export interface BoardPiece {
    * the table joins them into one shape, and picking up any cell of it picks up the whole piece.
    */
   span?: string;
+  /**
+   * A stack: this many identical pieces on the one cell (backgammon's checkers on a point, stones in
+   * a pit). Left out for a piece on its own.
+   */
+  count?: number;
+  /**
+   * With `count`: an id for each piece in the stack, from the bottom up, so the table can follow the
+   * one that moves from stack to stack. (`id` is for a piece that is alone on its cell.)
+   */
+  ids?: string[];
+}
+
+/**
+ * A grid whose cells are places on a track and not squares of a field: pieces travel along it, any
+ * number can share a place (`count` on the piece), and some cells are places beside the track. It
+ * says what the board is, never how it is drawn; `rows` and `cols` still give a plain picture of it
+ * (backgammon is two rows of twelve points with the bar between and a tray at the end), and that is
+ * all a table that knows nothing about tracks needs.
+ */
+export interface BoardTrack {
+  /** What the places are: "points" are backgammon's long triangles. */
+  kind: "points";
+  /**
+   * The cells of the track in the order the first seat's pieces travel them, from the farthest from
+   * home to the last. The second seat travels them the other way. A table counts the places from
+   * whichever end the viewer is heading for ("your 6 point").
+   */
+  path: number[];
+  /** Where each seat's pieces wait once they've been knocked off the track, until they come back on: a cell per seat. */
+  bar?: number[];
+  /** Where each seat's pieces go when they have finished (borne off): a cell per seat. */
+  home?: number[];
 }
 
 /** How a cell is shaded, when it isn't plain: the two colours of a chessboard, water, a marked spot. */
@@ -63,7 +105,11 @@ export type CellMark =
   /** A place you could move to, in a game that points them out. Only ever sent to the seat that can. */
   | "hint"
   /** Has to move: a piece that must capture in checkers. */
-  | "must";
+  | "must"
+  /** Can't be played on just now, though it is empty: the ko point in Go. */
+  | "barred"
+  /** Counted as a side's own at the end: territory in Go. The mark says whose (`owner`). */
+  | "claimed";
 
 export interface BoardGrid {
   /** Names this grid in a move when a view has more than one: "board", "mine", "theirs". */
@@ -78,6 +124,8 @@ export interface BoardGrid {
   cells: (BoardPiece | null)[];
   /** Cell colours: "checker" for a chessboard, or a shade for every cell. Plain when left out. */
   shade?: "checker" | CellShade[];
+  /** The cells are places along a track, each holding a stack (backgammon): see `BoardTrack`. */
+  track?: BoardTrack;
   /** Pieces sit where the lines cross instead of in the squares (Go, Gomoku). */
   points?: boolean;
   /** The board stands on its edge, and a piece put in a column falls to where it lands (a drop game's rack). */
@@ -104,13 +152,16 @@ export interface BoardGrid {
       closed?: boolean;
     }[];
   };
-  marks?: { cell: number; mark: CellMark }[];
+  /** `owner` is the seat a "claimed" cell belongs to. */
+  marks?: { cell: number; mark: CellMark; owner?: number }[];
   /**
    * Draw the board turned half way round, so the last row is at the top and this seat's own pieces
    * are nearest them (the second player in checkers or chess). Only the drawing turns: cells keep
-   * their numbers and their names.
+   * their numbers and their names. "rows" turns it over instead of round: the last row is at the top
+   * but left stays left, so both players of a track game run the same way across the screen and each
+   * has their home on the same hand (backgammon).
    */
-  flip?: boolean;
+  flip?: boolean | "rows";
   /**
    * Cells you can tap now. Tapping one sends { type, cell } (plus `grid` when the view has more
    * than one). With `by: "col"` the whole column is the target and the move is { type, col }
@@ -123,8 +174,25 @@ export interface BoardGrid {
    * `held` is a source that is already in hand (a checkers piece in the middle of a run of jumps):
    * the table shows it picked up without being asked. `suggest` is a source the table picks up
    * for you while you hold nothing else (the next ship to place), so one tap puts it down.
+   * With `quick`, a source that has only one place to go is played by tapping it (a table setting
+   * in backgammon); the table still shows where it went.
    */
-  select?: { type: string; sources: { from: number | string; to: number[] }[]; held?: number | string; suggest?: number | string } | null;
+  select?: {
+    type: string;
+    sources: { from: number | string; to: number[] }[];
+    held?: number | string;
+    suggest?: number | string;
+    /**
+     * Moves that need one more thing said (what a pawn becomes on the far row): putting `from` down
+     * on `to` asks which of `options`, in a small chooser on that cell, the first being the usual
+     * one, and sends { type, from, to, [key]: the chosen piece's kind }.
+     */
+    choose?: { from: number | string; to: number; key: string; options: BoardPiece[] }[];
+    /** Don't point out where a picked-up piece can go: the table lets it be put down anywhere and the engine says no. */
+    quiet?: boolean;
+    /** One tap moves (a table setting): a piece with one place to go is played by tapping it. */
+    quick?: boolean;
+  } | null;
 }
 
 /** Pieces off the board, per side: captured pieces, stones or discs left, ships still to place. */
@@ -133,6 +201,53 @@ export interface BoardReserve {
   /** "Captured", "Left to place". */
   label: string;
   pieces: { piece: BoardPiece; count: number }[];
+}
+
+/** One die on the table. `value` is null before it has been rolled. */
+export interface BoardDie {
+  /** The same die keeps the same id from throw to throw. */
+  id: number;
+  value: number | null;
+  /** Kept back from the next throw. */
+  held?: boolean;
+  /** Played already, or left over from the turn before: drawn dimmed. */
+  used?: boolean;
+  /** Whose die it is, when the dice on the table aren't all one player's. */
+  owner?: number | null;
+}
+
+/**
+ * The dice a seat sees. `roll` goes up by one with every throw, so the table knows to tumble them
+ * (the dice that aren't `held` are the ones that were thrown). `tap`, when set, makes each listed
+ * die a button that sends `{ type, die: id }` (hold or release a die).
+ */
+export interface BoardDice {
+  dice: BoardDie[];
+  roll: number;
+  /** How many faces a die has: six when left out. */
+  sides?: number;
+  tap?: { type: string; dice: number[] } | null;
+  /**
+   * Dice only one seat can see (everyone rolling at once, each with their own): whose they are.
+   * Left out for dice the whole table sees. Like a private grid, they are only ever sent to that
+   * seat, and someone watching is shown none.
+   */
+  owner?: number;
+}
+
+/**
+ * A doubling cube: what the game is being played for, and who may turn it next. The table decides
+ * where it sits (in the middle while it is nobody's, on its owner's side after).
+ */
+export interface BoardCube {
+  /** What the game is worth now: 1 until it has been turned, then 2, 4, 8… */
+  value: number;
+  /** Whose side it is on (only they may double next), or null while it is in the middle. */
+  owner: number | null;
+  /** A double on offer, waiting to be taken or dropped: who offered it. `value` is still the old one. */
+  offered: number | null;
+  /** Out of play for this game (the Crawford game of a match): nobody may double. */
+  dead: boolean;
 }
 
 export interface BoardSeat {
@@ -146,6 +261,67 @@ export interface BoardSeat {
   out?: boolean;
   /** A small badge: "Check", "Goes first". */
   badge?: string;
+  /**
+   * This seat's clock, in a game that has one of its own (a chess clock): the time it had left
+   * when the last move was made, and whether it is the one running down now. The table counts
+   * the running one down from the time of that move.
+   */
+  clock?: { ms: number; running: boolean };
+}
+
+/** One piece going from a cell to another in a recorded move. Null for off the board: taken (`to`), or put on (`from`). */
+export interface BoardChange {
+  /** The piece's `id`. */
+  id: string;
+  from: number | null;
+  to: number | null;
+  /** The piece as it was before the move, when it left the board or changed (a pawn that was promoted). */
+  was?: BoardPiece;
+}
+
+/** A move in the game's record, in the game's own notation, with enough to put the board back as it was before it. */
+export interface BoardRecordMove {
+  /** "Nf3", "exd5", "O-O". */
+  label: string;
+  by: number;
+  /** The number it is written under: "1." for both White's first move and Black's. */
+  turn: number;
+  /** What moved, in the order it happened; the piece that made the move is last. */
+  changes: BoardChange[];
+  /** A cell left in danger by it: the king it checks. */
+  threat?: number;
+}
+
+/**
+ * The game so far, move by move, for a game that keeps a record (Chess): the table lists it, and
+ * steps back and forward through it on the first grid by undoing `changes`.
+ */
+export interface BoardRecord {
+  moves: BoardRecordMove[];
+  /** The whole record as text to copy: a PGN. Seats are named {0}, {1} as everywhere. */
+  export?: { label: string; text: string };
+}
+
+/** What a player can do besides move: give the game up, or ask the other player for something. */
+export type OfferKind = "resign" | "draw" | "takeback";
+
+/**
+ * Offers at a two-player board (see offers.ts): what is open, and what this seat may do about it.
+ * It is data, the same for every game, and the table says it in its own words. The moves are
+ * always the same four, and `offerMoves` lists the ones a view allows.
+ */
+export interface BoardOffers {
+  /** What this seat may send now: { type: "resign" }, or { type: "offer", offer: "draw" | "takeback" }. */
+  can: OfferKind[];
+  /** The offer waiting for an answer, and who made it. Everyone at the table sees this. */
+  open: { kind: "draw" | "takeback"; by: number } | null;
+  /** It is this seat's to answer, with { type: "accept" } or { type: "decline" }. */
+  answer: boolean;
+  /**
+   * The last thing that happened with an offer, until play has moved on past it. "lapsed" is an
+   * offer that was played through instead of answered.
+   */
+  last: { kind: OfferKind; by: number; outcome: "offered" | "accepted" | "declined" | "lapsed" } | null;
 }
 
 export interface BoardView {
@@ -156,9 +332,15 @@ export interface BoardView {
   phase: string;
   /** Whose move it is, or null when everyone may move (both placing their ships, say). */
   turn: number | null;
-  /** The boards, the main one first. A second is drawn smaller beside or under it. */
+  /** The boards, the main one first. A second is drawn smaller beside or under it. None for a game of dice and a sheet. */
   grids: BoardGrid[];
   reserves: BoardReserve[];
+  /** The dice on the table, for a game that has them. */
+  dice?: BoardDice | null;
+  /** The doubling cube, for a game that has one in play (backgammon). */
+  cube?: BoardCube | null;
+  /** A score sheet, for a game that is scored on one (Yacht's scorecard). */
+  sheet?: ScoreSheet | null;
   /** Buttons: "Pass", "Offer a draw", a promotion, "Next game". */
   choices: Choices | null;
   players: BoardSeat[];
@@ -171,6 +353,10 @@ export interface BoardView {
   result: RoundResult | null;
   /** `winners` is every seat when it's a draw. */
   over: GameOver | null;
+  /** Resigning, draw offers and taking moves back, in a game that has them. */
+  offers?: BoardOffers;
+  /** The moves so far in notation, in a game that keeps a record. */
+  record?: BoardRecord;
 }
 
 /** A board game: an engine whose seats see a `BoardView`. */
@@ -222,8 +408,32 @@ export function lineThrough(rows: number, cols: number, cell: number, need: numb
 }
 
 /**
+ * A grid's cells as they stood after the first `count` moves of the record, worked back from how
+ * they stand now by undoing the moves since. Pieces keep their ids, so a table can slide them back.
+ */
+export function cellsAfter(cells: readonly (BoardPiece | null)[], record: BoardRecord, count: number): (BoardPiece | null)[] {
+  const out = cells.slice();
+  for (let i = record.moves.length - 1; i >= Math.max(0, count); i--) {
+    const changes = record.moves[i]!.changes;
+    // Everything that moved is lifted before anything is put back: in a castling move one piece
+    // may have landed where the other stood.
+    const lifted = new Map<string, BoardPiece>();
+    for (const c of changes) {
+      if (c.to === null || out[c.to]?.id !== c.id) continue;
+      lifted.set(c.id, out[c.to]!);
+      out[c.to] = null;
+    }
+    for (const c of changes) {
+      const piece = c.was ?? lifted.get(c.id);
+      if (c.from !== null && piece) out[c.from] = piece;
+    }
+  }
+  return out;
+}
+
+/**
  * Everything a seat can send from a view, as moves: every tappable cell, every piece and each
- * place it can go, every button. The table sends exactly these, and the shared tests check an
+ * place it can go, every cell of the sheet it can choose, every die it can tap, every button. The table sends exactly these, and the shared tests check an
  * engine accepts each one it offers.
  */
 export function movesOffered(view: BoardView): Record<string, unknown>[] {
@@ -235,8 +445,17 @@ export function movesOffered(view: BoardView): Record<string, unknown>[] {
       if (g.tap.by === "col") for (const col of new Set(g.tap.cells.map((c) => colOf(g.cols, c)))) out.push({ type: g.tap.type, col, ...grid });
       else for (const cell of g.tap.cells) out.push({ type: g.tap.type, cell, ...grid });
     }
-    for (const s of g.select?.sources ?? []) for (const to of s.to) out.push({ type: g.select!.type, from: s.from, to, ...grid });
+    for (const s of g.select?.sources ?? []) {
+      for (const to of s.to) {
+        // A move that asks a question first is one move for each answer.
+        const ask = g.select!.choose?.find((c) => c.from === s.from && c.to === to);
+        if (ask) for (const option of ask.options) out.push({ type: g.select!.type, from: s.from, to, [ask.key]: option.kind, ...grid });
+        else out.push({ type: g.select!.type, from: s.from, to, ...grid });
+      }
+    }
   }
+  for (const c of view.sheet?.pick?.cells ?? []) out.push({ type: view.sheet!.pick!.type, cell: view.sheet!.columns[c.column]?.id });
+  for (const die of view.dice?.tap?.dice ?? []) out.push({ type: view.dice!.tap!.type, die });
   for (const o of view.choices?.options ?? []) out.push(o.move);
   return out;
 }

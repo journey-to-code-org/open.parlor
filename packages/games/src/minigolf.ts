@@ -2,16 +2,24 @@
 // kit. Putt the ball into the cup in as few strokes as you can, hole after hole; the lowest total
 // wins.
 //
-// Each player has a ball of their own colour, and **balls never touch each other**, whichever way
-// a table plays. Every shot is simulated on a hole with only the striker's ball on it, and the
-// other balls are drawn as ghosts. That is a choice, and it is the same in both ways of playing:
-//  - everyone starts from the same tee, so the second ball would start on top of the first one if
-//    that hadn't gone far;
-//  - nobody can knock someone else's ball into the pond, and no rule is needed for whose stroke
-//    that was;
-//  - a shot's result depends on nothing but the striker's own ball, so "everyone at once" is the
-//    same game as "in turn", a computer player can think without guessing what others will do, and
-//    a replay doesn't depend on the order two people happened to putt in.
+// Each player has a ball of their own colour. Whether balls touch depends on how the table plays.
+//
+// *In turn*, every ball that is out on the hole is on the table for every shot, and balls knock
+// into each other as they would on a real green. What a family would expect then happens:
+//  - a ball that is knocked stays where it comes to rest, and its owner plays it from there;
+//  - a ball knocked into the cup is holed for its owner, at the strokes they had already taken
+//    (a house rule, `knockIn`: turned off, it is put back where it lay);
+//  - a ball knocked into the water or off the course goes back where it lay, at no cost to anyone:
+//    only the player who struck pays for where their own ball ends up.
+// Everyone starts from the same tee, so a ball still lying on it (a timid putt, or one sent back
+// from the water) is lifted while the next player tees off and put back afterwards: it is drawn
+// faintly and can't be hit. The same goes for any ball lying on top of the one being struck, which
+// only a ball put back can be. Nothing else is ever lifted. A table can also turn all of this off
+// (`collide`), and balls then pass through each other as they do when everyone plays at once.
+//
+// *Everyone at once*, balls can't collide, because there is no one table: each player plays the
+// hole at their own pace, and one may be holing out while another is still on the tee. Each shot
+// is simulated with only the striker's ball, and the other balls are drawn as faint ghosts.
 //
 // Who putts when is a house rule. *In turn*: everyone tees off in order (the honour moves round
 // one seat a hole), and after that whoever is furthest from the cup plays next, as on a real
@@ -31,10 +39,10 @@
 // just come out differently. Making history immune to that needs the room to keep a snapshot of
 // the state beside the move log, which is on the roadmap for the rooms kit and not something an
 // engine can do from inside `apply`.
-import { PHYSICS_VERSION, simulate, type Point, type Shape } from "@cardroom/physics";
+import { PHYSICS_VERSION, simulate, type Point, type Shape, type World } from "@cardroom/physics";
 import type { PlayStyle } from "@spades/rules";
-import { BALL_RADIUS, courseOf, COURSES, holeWorld, type GolfHole } from "./minigolfcourse.js";
-import { angleTo, restOf, type ShotMove, type SportBody, type SportCard, type SportGame, type SportShot, type SportTone, type SportView } from "./sport.js";
+import { BALL_RADIUS, courseOf, COURSES, holeWorld, type GolfHole, type PlacedBall } from "./minigolfcourse.js";
+import { angleTo, restOf, type ShotMove, type SportBody, type SportCard, type SportGame, type SportGhost, type SportShot, type SportTone, type SportView } from "./sport.js";
 import { careless, clone, GameError, markReady, nextHandChoices, nextRandom, rankSeats, thinkFor, who, type BaseRules, type RoundResult } from "./table.js";
 
 export interface MiniGolfRules extends BaseRules {
@@ -48,12 +56,16 @@ export interface MiniGolfRules extends BaseRules {
   limit: number;
   /** Strokes added for a ball in the water or off the course. It is played again from where it was struck. */
   penalty: number;
+  /** In turn: balls knock into each other. (Everyone at once, they never do.) */
+  collide: boolean;
+  /** A ball knocked into the cup by someone else's counts as holed. Off: it is put back where it lay. */
+  knockIn: boolean;
 }
 
-export const nineHoles: MiniGolfRules = { id: "minigolf-nine", name: "Nine holes, in turn", course: "back-garden", holes: 9, order: "turns", limit: 6, penalty: 1 };
-export const nineTogether: MiniGolfRules = { id: "minigolf-together", name: "Nine holes, all at once", course: "back-garden", holes: 9, order: "together", limit: 6, penalty: 1 };
-export const quickThree: MiniGolfRules = { id: "minigolf-quick", name: "Quick three, in turn", course: "back-garden", holes: 3, order: "turns", limit: 6, penalty: 1 };
-export const quickTogether: MiniGolfRules = { id: "minigolf-quick-together", name: "Quick three, all at once", course: "back-garden", holes: 3, order: "together", limit: 6, penalty: 1 };
+export const nineHoles: MiniGolfRules = { id: "minigolf-nine", name: "Nine holes, in turn", course: "back-garden", holes: 9, order: "turns", limit: 6, penalty: 1, collide: true, knockIn: true };
+export const nineTogether: MiniGolfRules = { id: "minigolf-together", name: "Nine holes, all at once", course: "back-garden", holes: 9, order: "together", limit: 6, penalty: 1, collide: true, knockIn: true };
+export const quickThree: MiniGolfRules = { id: "minigolf-quick", name: "Quick three, in turn", course: "back-garden", holes: 3, order: "turns", limit: 6, penalty: 1, collide: true, knockIn: true };
+export const quickTogether: MiniGolfRules = { id: "minigolf-quick-together", name: "Quick three, all at once", course: "back-garden", holes: 3, order: "together", limit: 6, penalty: 1, collide: true, knockIn: true };
 const PRESETS = [nineHoles, nineTogether, quickThree, quickTogether];
 
 /** The gentlest and hardest a ball may be struck. A putt of nothing would be a stroke that moves nothing. */
@@ -100,7 +112,43 @@ export type MiniGolfMove = ShotMove | { type: "next" };
 const holesOf = (s: { rules: MiniGolfRules }): GolfHole[] => courseOf(s.rules.course).holes.slice(0, s.rules.holes);
 const holeOf = (s: Pick<MiniGolfState, "rules" | "hole">): GolfHole => holesOf(s)[s.hole]!;
 export const ballId = (seat: number) => `ball-${seat}`;
+const seatOfBall = (id: string) => (id.startsWith("ball-") ? Number(id.slice(5)) : -1);
 const cupOf = (h: GolfHole) => h.world.pockets[0]!;
+/** Whether this table's balls knock into each other: in turn, unless the house says no. */
+export const ballsCollide = (rules: MiniGolfRules) => rules.order === "turns" && rules.collide;
+
+/** A ball lying this close to the tee (centre to centre) is lifted while someone tees off. */
+export const TEE_CLEAR = 3 * BALL_RADIUS;
+
+/**
+ * The balls on the hole for a shot by `striker` (or, with nobody to play, as they lie), in seat
+ * order, and the seats whose balls are lifted out of the way for it.
+ *
+ * Where balls collide that is every ball that has left the tee, with the ones that are in or
+ * picked up marked as out of play, so the list is the same list for everyone at the table.
+ * Where they don't, it is the striker's ball alone.
+ */
+function onTheTable(s: MiniGolfState, striker: number | null): { balls: PlacedBall[]; lifted: number[] } {
+  const mark = (seat: number): PlacedBall => {
+    const b = s.balls[seat]!;
+    return { id: ballId(seat), x: b.x, y: b.y, ...(b.done ? { pocketed: b.done === "holed" ? "cup" : "pickup" } : {}) };
+  };
+  if (!ballsCollide(s.rules)) return { balls: striker === null ? [] : [mark(striker)], lifted: [] };
+  const mine = striker === null ? null : s.balls[striker]!;
+  const balls: PlacedBall[] = [];
+  const lifted: number[] = [];
+  s.balls.forEach((b, seat) => {
+    if (seat === striker || b.done) return void balls.push(mark(seat));
+    // Not yet teed off: still in its owner's hand.
+    if (!b.teed) return;
+    if (mine) {
+      const reach = mine.teed ? 2 * BALL_RADIUS : TEE_CLEAR;
+      if ((b.x - mine.x) * (b.x - mine.x) + (b.y - mine.y) * (b.y - mine.y) < reach * reach) return void lifted.push(seat);
+    }
+    balls.push(mark(seat));
+  });
+  return { balls, lifted };
+}
 
 function startHole(s: MiniGolfState, hole: number) {
   const h = holesOf(s)[hole]!;
@@ -187,9 +235,9 @@ function apply(state: MiniGolfState, seat: number, move: MiniGolfMove): MiniGolf
   const h = holeOf(s);
   const mine = s.balls[seat]!;
   const shot = { body: ballId(seat), angle: move.angle, power: move.power };
-  const before = holeWorld(h, { id: shot.body, x: mine.x, y: mine.y });
+  const before = holeWorld(h, onTheTable(s, seat).balls);
   const played = simulate(before, shot);
-  const at = played.world.bodies[0]!;
+  const at = played.world.bodies.find((b) => b.id === shot.body)!;
   s.shots += 1;
   s.lasts[seat] = { n: s.shots, seat, shot, from: before.bodies, rest: restOf(played.world), ticks: played.ticks, physics: PHYSICS_VERSION };
   mine.strokes += 1;
@@ -209,7 +257,7 @@ function apply(state: MiniGolfState, seat: number, move: MiniGolfMove): MiniGolf
   } else {
     mine.x = at.x;
     mine.y = at.y;
-    const lipped = played.events.some((e) => e.type === "skip");
+    const lipped = played.events.some((e) => e.type === "skip" && e.body === shot.body);
     s.narration = lipped ? `${who(seat)} runs it over the cup: too fast to drop` : `${who(seat)} putts`;
   }
   if (!mine.done && mine.strokes >= s.rules.limit) {
@@ -217,6 +265,28 @@ function apply(state: MiniGolfState, seat: number, move: MiniGolfMove): MiniGolf
     s.narration = `${who(seat)} picks up after ${s.rules.limit} and writes down ${s.rules.limit + 1}`;
   }
   if (mine.done) s.card[seat]![s.hole] = mine.done === "holed" ? Math.min(mine.strokes, s.rules.limit + 1) : s.rules.limit + 1;
+
+  // The other balls on the table: wherever the shot left them, by the rules at the top of this file.
+  const said: string[] = [];
+  for (const body of played.world.bodies) {
+    const other = seatOfBall(body.id);
+    const ball = s.balls[other];
+    if (other === seat || !ball || ball.done) continue;
+    if (body.pocketed !== undefined && s.rules.knockIn) {
+      ball.done = "holed";
+      ball.x = body.x;
+      ball.y = body.y;
+      s.card[other]![s.hole] = Math.min(ball.strokes, s.rules.limit + 1);
+      said.push(`${who(other)}'s ball is knocked into the cup: in, in ${ball.strokes}`);
+    } else if (body.pocketed !== undefined) said.push(`${who(other)}'s ball is knocked into the cup, and goes back where it was`);
+    else if (body.out !== undefined) said.push(`${who(other)}'s ball is knocked ${body.out === "bounds" ? "off the course" : "into the water"}, and goes back where it was`);
+    else if (body.x !== ball.x || body.y !== ball.y) {
+      ball.x = body.x;
+      ball.y = body.y;
+      said.push(`${who(other)}'s ball is knocked away`);
+    }
+  }
+  if (said.length) s.narration = `${s.narration}. ${said.join(". ")}`;
 
   if (s.balls.every((b) => b.done)) {
     s.turn = null;
@@ -278,6 +348,13 @@ function view(s: MiniGolfState, seat: number): SportView {
   const last = together ? s.lasts[seat]! : s.lasts.reduce<SportShot | null>((a, b) => (b && (!a || b.n > a.n) ? b : a), null);
   const winners = s.phase === "finished" ? winnersOf(s) : [];
   const onTee = playing && s.balls.every((b) => !b.teed);
+  // Where balls collide the table is one table: every seat is shown it as the player whose shot
+  // it is will find it (so all the seats' views agree, and so does someone watching). Where they
+  // don't, each seat has the hole to itself: its own ball, with a ball that is in or picked up
+  // marked as out of play, and everyone else's drawn as ghosts once they have left the tee.
+  const on = ballsCollide(s.rules) ? onTheTable(s, playing ? s.turn : null) : onTheTable(s, seat);
+  const ghost = (i: number): SportGhost => ({ ...lookOf(i), x: s.balls[i]!.x, y: s.balls[i]!.y, r: BALL_RADIUS });
+  const ghosts = ballsCollide(s.rules) ? on.lifted.map(ghost) : s.balls.flatMap((b, i) => (i !== seat && b.teed && !b.done ? [ghost(i)] : []));
   return {
     game: "minigolf",
     seats: s.seats,
@@ -288,12 +365,10 @@ function view(s: MiniGolfState, seat: number): SportView {
     table: {
       key: `${s.rules.course}/${h.id}`,
       name: `Hole ${s.hole + 1}: ${h.name}`,
-      // A ball that was picked up is off the green; one that is in sits in the cup.
-      world: holeWorld(h, { id: ballId(seat), x: mine.x, y: mine.y, ...(mine.done ? { pocketed: mine.done === "holed" ? "cup" : "pickup" } : {}) }),
+      world: holeWorld(h, on.balls),
       look: h.look,
-      bodies: s.balls.map((_, i) => lookOf(i)),
-      // The other balls that are out on the green. Those still on the tee would all sit under yours.
-      ghosts: s.balls.flatMap((b, i) => (i !== seat && b.teed && !b.done ? [{ ...lookOf(i), x: b.x, y: b.y, r: BALL_RADIUS }] : [])),
+      bodies: [...h.fixtures, ...s.balls.map((_, i) => lookOf(i))],
+      ghosts,
     },
     shoot: canShoot ? { body: ballId(seat), minPower: MIN_POWER, maxPower: MAX_POWER } : null,
     last,
@@ -319,7 +394,12 @@ function view(s: MiniGolfState, seat: number): SportView {
 // then a closer look round the best of them) and keeps the one that holes out, or failing that the
 // one that stops nearest the cup. "Nearest" is measured along the green, round the walls and the
 // water (a ball a short way from the cup on the wrong side of a fence is not close), from a map of
-// distances worked out once for each hole.
+// distances worked out once for each hole. The map knows a ledge can only be come down, and that
+// a tunnel's mouth is as near the cup as the place it comes out.
+//
+// Where balls collide, the putts it tries are played with the other balls on the table, so one in
+// the way is something to go round and one beside the cup is something to bounce off. It would
+// rather not knock an opponent's ball in for them.
 //
 // That finds the putt a perfect player would make. What makes a persona is how well it then hits
 // it: the aim and the strength are both nudged off by an amount that grows as skill drops, and a
@@ -332,6 +412,8 @@ interface Field {
   rows: number;
   /** Distance to the cup along the green from each cell, in world units; Infinity where no ball can be. */
   dist: Float64Array;
+  /** The pieces of the hole's ledges. */
+  ledges: [Point, Point][];
 }
 const CELL = 200;
 const FAR = 1e9;
@@ -373,12 +455,16 @@ export function greenDistances(h: GolfHole): Field {
   // more through sand than over grass.
   const cost = new Float64Array(cols * rows);
   const clear = (BALL_RADIUS - 40) * (BALL_RADIUS - 40);
-  const pieces: [Point, Point][] = h.world.walls.flatMap((w) => w.points.slice(0, w.closed ? w.points.length : -1).map((p, i): [Point, Point] => [p, w.points[(i + 1) % w.points.length]!]));
+  const piecesOf = (oneWay: boolean): [Point, Point][] => h.world.walls.filter((w) => (w.oneWay === true) === oneWay).flatMap((w) => w.points.slice(0, w.closed ? w.points.length : -1).map((p, i): [Point, Point] => [p, w.points[(i + 1) % w.points.length]!]));
+  const pieces = piecesOf(false);
+  const ledges = piecesOf(true);
+  const at = (cell: number): Point => [f.x + ((cell % cols) + 0.5) * CELL, f.y + (Math.floor(cell / cols) + 0.5) * CELL];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const x = f.x + (c + 0.5) * CELL;
       const y = f.y + (r + 0.5) * CELL;
       if (pieces.some(([a, b]) => toSegment(x, y, a, b) < clear)) continue;
+      if (h.world.bodies.some((b) => (x - b.x) * (x - b.x) + (y - b.y) * (y - b.y) < (b.r + BALL_RADIUS - 40) * (b.r + BALL_RADIUS - 40))) continue;
       if (h.world.regions.some((g) => g.out && inShape(g.shape, x, y))) continue;
       cost[r * cols + c] = h.world.regions.some((g) => g.friction !== undefined && g.friction > h.world.friction && inShape(g.shape, x, y)) ? 3 : 1;
     }
@@ -413,12 +499,22 @@ export function greenDistances(h: GolfHole): Field {
     return top;
   };
   const cup = cupOf(h);
-  const start = Math.floor((cup.y - f.y) / CELL) * cols + Math.floor((cup.x - f.x) / CELL);
+  const cellAt = (x: number, y: number) => Math.floor((y - f.y) / CELL) * cols + Math.floor((x - f.x) / CELL);
+  const start = cellAt(cup.x, cup.y);
   dist[start] = 0;
   push(0, start);
+  const tunnels = (h.world.tunnels ?? []).map((t) => ({ mouth: cellAt(t.x, t.y), out: cellAt(t.to[0], t.to[1]) }));
   while (heap.length) {
     const [d, cell] = pop();
     if (d > dist[cell]!) continue;
+    // A tunnel's mouth is a step away from where it comes out (a mouth in a rock face is in a
+    // cell no ball can rest in, which is fine: the way to it is found from there).
+    for (const t of tunnels) {
+      if (t.out === cell && d + CELL < dist[t.mouth]!) {
+        dist[t.mouth] = d + CELL;
+        push(d + CELL, t.mouth);
+      }
+    }
     const r = Math.floor(cell / cols);
     const c = cell % cols;
     for (let dr = -1; dr <= 1; dr++) {
@@ -426,6 +522,9 @@ export function greenDistances(h: GolfHole): Field {
         if ((!dr && !dc) || r + dr < 0 || r + dr >= rows || c + dc < 0 || c + dc >= cols) continue;
         const next = (r + dr) * cols + c + dc;
         if (!cost[next]) continue;
+        // The search runs backwards, from the cup out: a ball would roll from `next` to here, and
+        // it can't if that is up a ledge.
+        if (ledges.length && upLedge(ledges, at(next), at(cell))) continue;
         const nd = d + (dr && dc ? 1.4142 : 1) * CELL * cost[next]!;
         if (nd < dist[next]!) {
           dist[next] = nd;
@@ -434,9 +533,26 @@ export function greenDistances(h: GolfHole): Field {
       }
     }
   }
-  const field = { x: f.x, y: f.y, cols, rows, dist };
+  const field = { x: f.x, y: f.y, cols, rows, dist, ledges };
   fields.set(h.id, field);
   return field;
+}
+
+/** Whether going straight from one point to another crosses a ledge from its shut side. */
+function upLedge(ledges: [Point, Point][], from: Point, to: Point): boolean {
+  for (const [a, b] of ledges) {
+    const ex = b[0] - a[0];
+    const ey = b[1] - a[1];
+    // Which side of the ledge's line each end is on: positive is its right, the shut side.
+    const s1 = (from[0] - a[0]) * -ey + (from[1] - a[1]) * ex;
+    const s2 = (to[0] - a[0]) * -ey + (to[1] - a[1]) * ex;
+    if (s1 <= 0 || s2 > 0) continue;
+    // And whether the crossing falls between the ledge's ends.
+    const t = s1 / (s1 - s2);
+    const along = (from[0] + (to[0] - from[0]) * t - a[0]) * ex + (from[1] + (to[1] - from[1]) * t - a[1]) * ey;
+    if (along >= 0 && along <= ex * ex + ey * ey) return true;
+  }
+  return false;
 }
 
 /** How far a ball lying here is from the cup, along the green. */
@@ -449,6 +565,8 @@ export function distanceToCup(h: GolfHole, x: number, y: number): number {
   for (let dr = -1; dr <= 1; dr++) {
     for (let dc = -1; dc <= 1; dc++) {
       if (r + dr < 0 || r + dr >= f.rows || c + dc < 0 || c + dc >= f.cols) continue;
+      // A ball lying under a ledge is not as near as the cell on top of it.
+      if ((dr || dc) && f.ledges.length && upLedge(f.ledges, [x, y], [f.x + (c + dc + 0.5) * CELL, f.y + (r + dr + 0.5) * CELL])) continue;
       const d = f.dist[(r + dr) * f.cols + c + dc]! + (dr || dc ? CELL : 0);
       if (d < best) best = d;
     }
@@ -461,12 +579,15 @@ const clampPower = (power: number) => Math.min(MAX_POWER, Math.max(MIN_POWER, Ma
 
 /** A putt tried in the head: lower is better; anything under zero is in the cup. */
 const HOLED = -1e6;
-function tryPutt(h: GolfHole, x: number, y: number, angle: number, power: number, penalty: number): number {
-  const at = simulate(holeWorld(h, { id: "ball", x, y }), { body: "ball", angle, power }).world.bodies[0]!;
-  if (at.pocketed !== undefined) return HOLED;
+function tryPutt(h: GolfHole, x: number, y: number, angle: number, power: number, penalty: number, others: PlacedBall[]): number {
+  const bodies = simulate(holeWorld(h, [{ id: "ball", x, y }, ...others]), { body: "ball", angle, power }).world.bodies;
+  const at = bodies.find((b) => b.id === "ball")!;
+  // Holing someone else's ball for them is worth avoiding, but not at the price of a worse lie.
+  const gift = others.length && bodies.some((b) => b.id !== "ball" && b.pocketed === "cup") ? 600 : 0;
+  if (at.pocketed !== undefined) return HOLED + gift;
   // In the water: as bad as staying put and throwing strokes away.
-  if (at.out !== undefined) return distanceToCup(h, x, y) + 3000 * (1 + penalty);
-  return distanceToCup(h, at.x, at.y);
+  if (at.out !== undefined) return distanceToCup(h, x, y) + 3000 * (1 + penalty) + gift;
+  return distanceToCup(h, at.x, at.y) + gift;
 }
 
 export interface Putt {
@@ -483,15 +604,16 @@ const thoughts = new Map<string, Putt>();
 /**
  * The best putt from here that a search can find: what a player with a perfect stroke would hit.
  * The work is bounded (at most 286 simulated putts) and remembered, since a table asks more than once.
+ * `others` are the balls lying on the hole that this one can knock into.
  */
-export function bestPutt(h: GolfHole, x: number, y: number, penalty = 1): Putt {
-  const key = `${h.id}/${x}/${y}/${penalty}`;
+export function bestPutt(h: GolfHole, x: number, y: number, penalty = 1, others: PlacedBall[] = []): Putt {
+  const key = `${h.id}/${x}/${y}/${penalty}${others.map((o) => `/${o.id}:${o.x}:${o.y}`).join("")}`;
   const known = thoughts.get(key);
   if (known) return known;
   let tried = 0;
   const score = (angle: number, power: number) => {
     tried++;
-    return tryPutt(h, x, y, angle, power, penalty);
+    return tryPutt(h, x, y, angle, power, penalty, others);
   };
   const cup = cupOf(h);
   const base = angleTo({ x, y }, cup);
@@ -552,7 +674,9 @@ function bot(s: MiniGolfState, seat: number, style: PlayStyle, rand: () => numbe
   if (s.phase === "holed") return s.ready[seat] ? null : { type: "next" };
   const ball = s.balls[seat];
   if (s.phase !== "playing" || !ball || ball.done || (s.turn !== null && s.turn !== seat)) return null;
-  const ideal = bestPutt(holeOf(s), ball.x, ball.y, s.rules.penalty);
+  // The balls it could hit: the ones on the table for its shot that are still in play.
+  const others = onTheTable(s, seat).balls.filter((b) => b.id !== ballId(seat) && b.pocketed === undefined);
+  const ideal = bestPutt(holeOf(s), ball.x, ball.y, s.rules.penalty, others);
   const skill = Math.min(1, Math.max(0, style.skill ?? 1));
   const slip = careless(style, rand) ? 2 : 1;
   // Three dice make a bell: mostly near the middle, now and then out at the edge.
@@ -581,6 +705,8 @@ function normalize(rules: unknown): MiniGolfRules {
     order: r.order === "together" ? "together" : "turns",
     limit: whole(r.limit, 3, 12, 6),
     penalty: whole(r.penalty, 0, 3, 1),
+    collide: r.collide !== false,
+    knockIn: r.knockIn !== false,
   };
 }
 
@@ -588,7 +714,7 @@ export const miniGolf: SportGame<MiniGolfRules, MiniGolfState, MiniGolfMove> = {
   id: "minigolf",
   name: "Mini Golf",
   emoji: "⛳",
-  blurb: "Nine holes of putting, in turn or all at once",
+  blurb: "Nine holes round the garden, in turn or all at once",
   tagline: "Pull back, let go, and hope for a hole in one. Fewest strokes round the course wins.",
   seats: { min: 1, max: 6, default: 2 },
   teams: false,
@@ -596,7 +722,9 @@ export const miniGolf: SportGame<MiniGolfRules, MiniGolfState, MiniGolfMove> = {
   fields: [
     ...(COURSES.length > 1 ? [{ key: "course" as const, label: "Course", kind: "choice" as const, options: COURSES.map((c): [string, string] => [c.id, c.name]) }] : []),
     { key: "holes", label: "Holes to play", kind: "choice", options: [[3, "The first three (a quick game)"], [9, "All nine"]] },
-    { key: "order", label: "Who putts when", kind: "choice", hint: "Balls never knock into each other either way.", options: [["turns", "In turn: furthest from the cup plays next"], ["together", "Everyone at once, at their own pace"]] },
+    { key: "order", label: "Who putts when", kind: "choice", hint: "All at once, each player has the hole to themselves, so balls can't knock into each other.", options: [["turns", "In turn: furthest from the cup plays next"], ["together", "Everyone at once, at their own pace (balls pass through each other)"]] },
+    { key: "collide", label: "Balls knock into each other", kind: "toggle", hint: "In turn only. A ball that is knocked is played from where it stops; knocked into the water, it goes back where it was at no cost." },
+    { key: "knockIn", label: "A ball knocked into the cup counts", kind: "toggle", hint: "It is in, at the strokes its owner had taken. Off: it is put back where it was." },
     { key: "limit", label: "Most strokes on a hole", kind: "number", min: 3, max: 12, hint: "Not in by then? Pick up and write down one more." },
     { key: "penalty", label: "Strokes for a ball in the water", kind: "choice", options: [[0, "None: just play it again"], [1, "One"], [2, "Two"]] },
   ],
@@ -612,7 +740,11 @@ export const miniGolf: SportGame<MiniGolfRules, MiniGolfState, MiniGolfMove> = {
       `${r.holes >= course.holes.length ? `All ${course.holes.length} holes` : `The first ${r.holes} holes`} of ${course.name}. Putt your ball into the cup in as few strokes as you can; the lowest total wins, and a tie is shared.`,
       "To putt, pull back from the ball and let go: the further you pull, the harder it goes. A ball going too fast skips over the cup.",
       r.order === "turns" ? "Everyone tees off in turn. After that, whoever is furthest from the cup plays next." : "Everyone plays at once, each at their own pace. The table moves on when all are in.",
-      "Each player has a ball of their own, and balls pass through each other: nobody can knock yours away.",
+      r.order !== "turns"
+        ? "Each player has the hole to themselves: the other balls are shown faintly and pass straight through yours. Nobody can knock yours away."
+        : !r.collide
+          ? "Each player has a ball of their own, and balls pass through each other: nobody can knock yours away."
+          : `Balls knock into each other. A ball that is knocked is played from where it stops${r.knockIn ? "; knocked into the cup, it is in for its owner with no extra stroke" : "; knocked into the cup, it is put back where it was"}; knocked into the water, it goes back where it was at no cost. A ball still on the tee is lifted while the next player tees off.`,
       `A ball in the water is played again from where it was struck${r.penalty ? `, with ${r.penalty === 1 ? "a penalty stroke" : `${r.penalty} penalty strokes`}` : ", with no penalty"}.`,
       `Not in after ${r.limit} strokes? Pick up and write down ${r.limit + 1}.`,
     ];
@@ -621,6 +753,8 @@ export const miniGolf: SportGame<MiniGolfRules, MiniGolfState, MiniGolfMove> = {
   apply,
   view,
   bot,
+  // Hundreds of putts are simulated to choose one: off the table's main thread (see TableGame.heavy).
+  heavy: (s, seat) => s.phase === "playing" && !!s.balls[seat] && !s.balls[seat]!.done && (s.turn === null || s.turn === seat),
   thinkingTime(s, seat) {
     if (s.phase !== "playing") return 500;
     // In turn, a player watches the last putt stop before stepping up; all at once, only their own.

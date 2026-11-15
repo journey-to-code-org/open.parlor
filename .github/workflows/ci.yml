@@ -37,3 +37,10 @@ jobs:
           curl -fs localhost:8790/designs | grep -q '"designs"'
           # Without CARDROOM_ADMIN_TOKEN, moderation is off.
           test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8790/moderation/overview)" = 503
+      # Computer players think in worker threads. The built server has to find its worker file, and
+      # a bot has to get its moves out of a worker: Checkers and Mini Golf, played over HTTP.
+      - name: Smoke test the bot workers
+        run: |
+          PORT=8791 CARDROOM_DB=:memory: CARDROOM_BOT_DELAY=50 node packages/server/dist/index.js &
+          for i in $(seq 1 20); do curl -fs localhost:8791/healthz && break; sleep 0.5; done
+          node packages/server/scripts/smoke-bots.mjs http://localhost:8791

@@ -108,6 +108,10 @@ export interface Overview {
   blocked: number;
   houses: number;
   designs: { total: number; shared: number; hidden: number };
+  /** Copies of the database: the newest, how many there are, and the server's settings. Null when it keeps nothing on disk or backups are off. */
+  backups: { latest: { name: string; size: number; at: number } | null; kept: number; keep: number; hours: number } | null;
+  /** The computer players' thinking in worker threads; null when the server thinks on its main thread. */
+  bots?: { workers: number; queued: number; running: number; thinks: number; averageMs: number; worstMs: number; abandoned: number } | null;
 }
 
 export interface LogEntry {
@@ -152,6 +156,19 @@ export class Api {
   }
 
   overview = () => this.send<Overview>("/overview");
+
+  /** A copy of the card room's database, made now: its file name and bytes. */
+  async backup(): Promise<{ name: string; file: Blob }> {
+    let response: Response;
+    try {
+      response = await fetch(`${BASE}/backup`, { headers: { authorization: `Bearer ${this.token()}` }, credentials: "omit", cache: "no-store" });
+    } catch {
+      throw new ApiError("Couldn't reach the card room. Check your connection and try again.", 0);
+    }
+    if (!response.ok) throw new ApiError(((await response.json().catch(() => null)) as { error?: string } | null)?.error ?? `The card room answered ${response.status}.`, response.status);
+    const name = /filename="([^"]+)"/.exec(response.headers.get("content-disposition") ?? "")?.[1] ?? "cardroom-backup.db";
+    return { name, file: await response.blob() };
+  }
   tables = () => this.send<{ tables: Table[] }>("/tables").then((r) => r.tables);
   table = (id: string) => this.send<{ table: Table; chat: ChatLine[] }>(`/tables/${id}`);
   players = () => this.send<{ players: Player[] }>("/players").then((r) => r.players);

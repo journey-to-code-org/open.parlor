@@ -403,8 +403,8 @@ describe("how a game ends", () => {
 
 describe("house rules", () => {
   it("come out as rules whatever goes in", () => {
-    expect(c.normalize({ id: "x", name: "Ours", size: 9, crowning: "fly", opens: "red", quiet: 500, games: 4, most: true, forced: false })).toEqual({ ...americanCheckers, id: "x", name: "Ours", forced: false, most: false, quiet: 100 });
-    expect(c.normalize({ id: "checkers-international", games: 3 })).toEqual({ ...internationalCheckers, games: 3 });
+    expect(c.normalize({ id: "x", name: "Ours", size: 9, crowning: "fly", opens: "red", quiet: 500, games: 4, most: true, forced: false })).toEqual({ ...americanCheckers, id: "x", name: "Ours", forced: false, most: false, quiet: 100, offers: "all" });
+    expect(c.normalize({ id: "checkers-international", games: 3 })).toEqual({ ...internationalCheckers, games: 3, offers: "all" });
     expect(c.validate({ ...americanCheckers, forced: false, most: true })).toHaveLength(1);
     for (const p of c.presets) expect(c.validate(p)).toEqual([]);
   });
