@@ -404,6 +404,8 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
           <div className={`my-table${choosingUp ? " drop-up" : ""}`} ref={myTableRef} aria-label="Your table cards">
             {Array.from({ length: Math.max(mine.up.length, mine.down) }, (_, i) => {
               const up = mine.up[i] as PCard | undefined;
+              // While choosing, the cards picked so far (tapped or dragged) sit on the face-down ones.
+              const chosen = choosingUp ? (view.hand as PCard[]).find((c) => cardId(c) === faceUp[i]) : undefined;
               const flippable = myTurn && can?.flip && i < mine.down;
               return (
                 <div key={i} className="table-slot">
@@ -416,6 +418,16 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
                       ) : (
                         <PlayingCard back size="table" />
                       )}
+                    </div>
+                  )}
+                  {chosen && !up && (
+                    <div className="up-card">
+                      <PlayingCard
+                        size="table"
+                        card={chosen}
+                        playable
+                        onPick={() => setFaceUp((now) => now.filter((x) => x !== cardId(chosen)))}
+                      />
                     </div>
                   )}
                   {up && (
