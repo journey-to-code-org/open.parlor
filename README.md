@@ -506,8 +506,15 @@ at the tee. **Play it against the computer** plays the course as it is, saved or
 
 A hole saves only if it can be played: one tee, one cup, and a way between them a ball can roll
 without crossing water, a wall or a bumper or climbing a step (a tunnel counts as a way through).
-Every tunnel needs its molehill and the other way round. So the computer players can get round every course
-too. Garden shut in by the course becomes a wall rather than a hole in the green.
+Every tunnel needs its molehill and the other way round. Garden shut in by the course becomes a
+wall rather than a hole in the green.
+
+**Playtested.** A route on the grid isn't enough (slopes pull, sand stops a ball, a bridge is
+narrow), so as you paint, the computer plays each hole in the background: six tries putting like a
+decent player, and one with perfect aim. Each hole gets a verdict (easy, fair, hard, very hard) with
+the par it plays to, and **Watch the computer play it** replays a typical try on the preview. A hole
+the decent player never gets in is one people won't either: it can't be saved until it's easier.
+The server checks that a perfect putt can hole every hole of a course it's sent.
 
 **Saved, or shared.** A saved course is yours alone; share it and it's in everyone's course list.
 Courses are kept on the server like card designs. "Yours alone" means unlisted: a table isn't asked
@@ -555,7 +562,9 @@ the table's own drawing. **Bowl on it against the computer** plays a quick five 
 or not.
 
 A lane saves only if it can be bowled: the computer's own search, with the bumpers down, has to
-find a ball from the foul line that knocks a pin down. Lanes are kept, shared, versioned and
+find a ball from the foul line that knocks a pin down. As you paint, the computer bowls first balls
+at it like a decent player, says how many pins they knock down on average, and **Watch a ball**
+replays one. Lanes are kept, shared, versioned and
 moderated exactly as courses are: the server keeps both in one place, each saying which it is. The
 game finds a lane by its id in `LANES` (open.games 0.1.3 and later); [`packages/courses`](packages/courses)
 puts it there wherever the game runs, as it does for courses.

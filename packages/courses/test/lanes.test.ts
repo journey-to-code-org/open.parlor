@@ -1,7 +1,7 @@
 import { bowling, laneWorld, LANES, newBowling, scoreOf, type BowlingMove } from "@journey-to-code/games";
 import { validateWorld } from "@journey-to-code/physics";
 import { describe, expect, it } from "vitest";
-import { buildLane, courseId, hasMap, LANE_COLS, LANE_ROWS, laneProblems, mapProblems, normalizeLane, normalizeMap, registerLane, registerMap, starterLane, unregisterLane, unregisterMap, type CustomLane } from "../src/index.js";
+import { buildLane, courseId, hasMap, playtestLane, LANE_COLS, LANE_ROWS, laneProblems, mapProblems, normalizeLane, normalizeMap, registerLane, registerMap, starterLane, unregisterLane, unregisterMap, type CustomLane } from "../src/index.js";
 
 /** A lane drawn as rows of pieces (10 across), the rows not given open lane. */
 const drawn = (name: string, rows: Record<number, string>): CustomLane => {
@@ -72,4 +72,16 @@ describe("lanes people make", () => {
     unregisterLane("plain");
     expect(LANES.map((l) => l.id)).toEqual(["plain"]);
   }, 60_000);
+});
+
+describe("playtesting a lane", () => {
+  it("rates the plain lane easy, and a crate lane harder, with a ball to show", () => {
+    const plain = playtestLane(starterLane());
+    expect(plain.rating).toBe("easy");
+    expect(plain.best).toBe(10);
+    expect(plain.shown?.shot.body).toBe("ball");
+    const hard = playtestLane(crates);
+    expect(hard.firstBall).toBeLessThan(plain.firstBall);
+    expect(LANES.map((l) => l.id)).toEqual(["plain"]);
+  }, 30_000);
 });

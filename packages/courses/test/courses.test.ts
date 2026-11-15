@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   CELL,
   buildHole,
+  canBeHoled,
+  playtestHole,
   courseId,
   courseProblems,
   holeProblems,
@@ -179,5 +181,33 @@ describe("courses people make", () => {
       unregisterCourse(id);
     }
     expect(COURSES.some((c) => c.id === id)).toBe(false);
+  }, 60_000);
+});
+
+describe("playtesting a hole", () => {
+  const zigzag = drawn("Zigzag", ["...........", ".tgggggggg.", ".########g.", ".ggggggggg.", ".g########.", ".ggggggggg.", ".########g.", ".cgggggggg.", "..........."]);
+
+  it("finds a simple hole easy, and says what par it plays to", () => {
+    const t = playtestHole(starterHole(1));
+    expect(t).toMatchObject({ rating: "easy", possible: true, holed: 6, tries: 6, par: 2 });
+    expect(t.shown.holed).toBe(true);
+    expect(t.shown.shots.length).toBe(t.shown.strokes);
+    // A try can be played back: each shot carries the bodies as they stood and the shot itself.
+    expect(t.shown.shots[0]!.from.some((b) => b.id.startsWith("ball"))).toBe(true);
+  }, 30_000);
+
+  it("calls a hole only perfect aim can hole unplayable, and shows the perfect try", () => {
+    const t = playtestHole(zigzag);
+    expect(t.possible).toBe(true);
+    expect(t.holed).toBe(0);
+    expect(t.rating).toBe("unplayable");
+    expect(t.shown.holed).toBe(true);
+    expect(canBeHoled(zigzag)).toBe(true);
+  }, 60_000);
+
+  it("gives the same answer every time, and leaves nothing behind in the game's courses", () => {
+    const before = COURSES.length;
+    expect(playtestHole(corner)).toEqual(playtestHole(corner));
+    expect(COURSES.length).toBe(before);
   }, 60_000);
 });

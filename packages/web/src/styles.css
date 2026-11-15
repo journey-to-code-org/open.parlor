@@ -2050,6 +2050,19 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .golf-course-pick { display: flex; flex-direction: column; gap: 4px; }
 .golf-course-pick .rule-actions { flex-wrap: wrap; gap: 4px 16px; }
 
+/* A playtest's verdict, under the preview in the course and lane editors. */
+.golf-verdict { display: grid; gap: 0.5rem; padding: 0.75rem 0.9rem; border-radius: 12px; background: rgba(255, 255, 255, 0.07); border-left: 4px solid rgba(255, 255, 255, 0.3); }
+.golf-verdict p { margin: 0; }
+.golf-verdict button { justify-self: start; }
+.golf-verdict.rated-easy, .golf-verdict.rated-fair { border-left-color: #7fc46b; }
+.golf-verdict.rated-hard { border-left-color: #e9c46a; }
+.golf-verdict.rated-very-hard { border-left-color: #f08a4b; }
+.golf-verdict.rated-unplayable { border-left-color: #e05a4f; }
+.golf-rated { position: absolute; top: -6px; right: -6px; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 0.65rem; color: #fff; background: #4f8f3f; }
+.golf-rated.rated-hard { background: #c79a2e; }
+.golf-rated.rated-very-hard { background: #d06a2c; }
+.golf-rated.rated-unplayable { background: #c0392b; }
+
 /* ---- Bowling: the score sheet, the call-outs, the controls ---- */
 .bowl-sheet { display: grid; gap: 3px; overflow-x: auto; padding-bottom: 2px; font-variant-numeric: tabular-nums; }
 .bowl-row { display: grid; grid-template-columns: minmax(2.6rem, 4.5rem) repeat(var(--frames, 10), minmax(1.45rem, 1fr)) minmax(2rem, auto); align-items: stretch; gap: 2px; border-radius: 8px; padding: 2px; }

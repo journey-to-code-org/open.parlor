@@ -13,7 +13,7 @@
 //
 // A private course isn't listed for anyone but its maker; the game id is hard to guess, but a table
 // isn't asked who opened it, so private means unlisted rather than locked.
-import { courseId, isCustomMap, isMapKind, mapProblems, normalizeMap, registerMap, type CustomCourse, type CustomLane, type CustomMap, type MapKind } from "@open-parlor/courses";
+import { canBeHoled, courseId, isCustomMap, isMapKind, mapProblems, normalizeMap, registerMap, type CustomCourse, type CustomLane, type CustomMap, type MapKind } from "@open-parlor/courses";
 import { cleanName } from "@journey-to-code/decks";
 import { newPlayerId, playerCookie, playerOf } from "@journey-to-code/rooms/server";
 import { maskText } from "./names.js";
@@ -70,7 +70,15 @@ export function checkedMap(kind: MapKind, given: unknown, blockedWords: string[]
     clean = { name: maskText(course.name, blockedWords), holes: course.holes.map((h) => ({ ...h, name: maskText(h.name, blockedWords), tip: maskText(h.tip, blockedWords) })) };
   }
   const problems = mapProblems(kind, clean);
-  return problems.length ? problems : clean;
+  if (problems.length) return problems;
+  // The grid can say there's a way through when the ball can't take it (a slope too steep, a bridge
+  // too narrow): the computer, putting perfectly, has to get each hole in. (A lane's own check is
+  // already a computer bowling at it.)
+  if (kind === "minigolf") {
+    const stuck = (clean as CustomCourse).holes.filter((h) => !canBeHoled(h));
+    if (stuck.length) return stuck.map((h) => `On ${h.name}, the ball can't be got into the cup: open up the way to it.`);
+  }
+  return clean;
 }
 /** A Mini Golf course from a page, checked (see checkedMap). */
 export const checkedCourse = (given: unknown, blockedWords: string[] = []) => checkedMap("minigolf", given, blockedWords) as CustomCourse | string[];

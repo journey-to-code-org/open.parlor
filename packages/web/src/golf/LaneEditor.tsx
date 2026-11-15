@@ -3,12 +3,15 @@
 // the computer, and save it, for yourself or shared. Shared lanes are in everyone's Lane list in
 // Bowling's setup. Kept on the server with the Mini Golf courses (see server/src/courses.ts).
 import { bowling, LANES, newBowling, tenFrames, type SportView } from "@journey-to-code/games";
-import { buildLane, LANE_LIMITS, LANE_PIECES, laneProblems, starterLane, type CustomLane, type LanePiece } from "@open-parlor/courses";
+import { buildLane, LANE_LIMITS, LANE_PIECES, starterLane, type CustomLane, type LanePiece, type LaneTest } from "@open-parlor/courses";
 import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadName } from "../storage";
 import { learnLane, lanes, type SavedLane } from "./coursesApi";
 import { TablePreview } from "./HolePreview";
+import { usePlaytests } from "./usePlaytest";
+
+const RATED: Record<LaneTest["rating"], string> = { easy: "Easy", fair: "Fair", hard: "Hard", "very hard": "Very hard", unplayable: "Can't be bowled" };
 
 const PALETTE: { piece: LanePiece; glyph: string }[] = [
   { piece: "#", glyph: "" },
@@ -76,8 +79,7 @@ export function LaneEditor({
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(id !== "new");
-  // Whether a ball gets through is a search: worked out once painting stops for a moment.
-  const [problems, setProblems] = useState<string[] | null>(null);
+  const [replay, setReplay] = useState<boolean>(false);
   const history = useRef<CustomLane[]>([]);
   const [canUndo, setCanUndo] = useState(false);
   const painting = useRef<[number, number] | null>(null);
@@ -112,11 +114,11 @@ export function LaneEditor({
     if (!loading) saveDraft(saved?.id ?? id, lane, shared);
   }, [lane, shared, saved, id, loading]);
 
-  useEffect(() => {
-    setProblems(null);
-    const wait = setTimeout(() => setProblems(laneProblems(lane)), 350);
-    return () => clearTimeout(wait);
-  }, [lane.cells]);
+  // The computer bowls at it, off the page's thread, once painting stops for a moment.
+  const open = lane.cells.includes(".");
+  const [test] = usePlaytests<LaneTest>("bowling", [open ? lane : null]);
+  useEffect(() => setReplay(false), [lane.cells]);
+  const problems: string[] | null = !open ? ["Leave some open lane for the ball to roll on."] : !test ? null : test.rating === "unplayable" ? ["No ball from the foul line gets to the pins. Leave a way through, or something that turns the ball towards them."] : [];
 
   const table = useMemo(() => previewOf(lane), [lane.cells]);
   const unsaved = !saved || JSON.stringify(saved.course) !== JSON.stringify(lane) || saved.shared !== shared;
@@ -250,7 +252,33 @@ export function LaneEditor({
         </section>
 
         <section className="golf-look" aria-label="The lane, as it plays">
-          <TablePreview table={table} label={`${lane.name} as the table draws it`} className="hole-preview lane-preview" />
+          <TablePreview
+            table={table}
+            label={`${lane.name} as the table draws it`}
+            className="hole-preview lane-preview"
+            replay={replay && test?.shown ? [test.shown] : null}
+            onReplayEnd={() => setReplay(false)}
+          />
+          {open && (
+            <div className={`golf-verdict${test ? ` rated-${test.rating.replace(" ", "-")}` : ""}`} aria-live="polite">
+              {!test ? (
+                <p>The computer is bowling at it…</p>
+              ) : test.rating === "unplayable" ? (
+                <p>
+                  <strong>Can't be bowled.</strong> Even a perfect ball doesn't reach a pin.
+                </p>
+              ) : (
+                <p>
+                  <strong>{RATED[test.rating]}.</strong> Bowling like a decent player, the computer knocks down about {test.firstBall} pins with a first ball; its best ball knocks down {test.best}.
+                </p>
+              )}
+              {test?.shown && (
+                <button type="button" className="secondary" disabled={replay} onClick={() => setReplay(true)}>
+                  {replay ? "Watching…" : "Watch a ball"}
+                </button>
+              )}
+            </div>
+          )}
         </section>
       </div>
 
@@ -259,7 +287,7 @@ export function LaneEditor({
           <input type="checkbox" checked={shared} onChange={(e) => setShared(e.target.checked)} />
           Share it: everyone can pick it in Bowling
         </label>
-        {problems === null ? <p className="fine">Rolling a few balls down it…</p> : problems.length > 0 && <p className="fine">Before it can be bowled: {problems[0]}</p>}
+        {problems === null ? <p className="fine">The computer is bowling at it…</p> : problems.length > 0 && <p className="fine">Before it can be bowled: {problems[0]}</p>}
         <div className="rule-actions">
           <button type="button" className="primary" disabled={busy || !ready || !lane.name.trim() || !unsaved} onClick={() => void save()}>
             {saved ? (unsaved ? "Save changes" : "Saved") : "Save the lane"}
