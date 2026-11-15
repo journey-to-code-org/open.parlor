@@ -2,7 +2,7 @@
 // the end by a person against a computer player, with dice thrown by the server; the leaderboard;
 // a tournament match, where a win is a win whatever it was won for; and what someone watching is
 // shown: the board, the dice and the cube, and nothing to press.
-import { movesOffered, type BoardView } from "@cardroom/games";
+import { movesOffered, type BoardView } from "@journey-to-code/games";
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCardRoom } from "../src/app.js";

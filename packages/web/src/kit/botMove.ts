@@ -1,8 +1,8 @@
 // A computer player's move in a practice game, as a plain function of a plain job: the page calls it
 // for a quick think, and the bot worker (bot.worker.ts) calls the very same function for a heavy one
 // (see `TableGame.heavy`), so it doesn't matter which thread is asked.
-import { QUICK_BUDGET, QUICK_STYLE, kitGame, type KitGameId, type ThinkBudget } from "@cardroom/games";
-import { personaFor, styleFor, type Skill } from "@spades/rules";
+import { QUICK_BUDGET, QUICK_STYLE, kitGame, type KitGameId, type ThinkBudget } from "@journey-to-code/games";
+import { personaFor, styleFor, type Skill } from "@journey-to-code/rules";
 
 /** One think: everything the move depends on. It crosses to the worker by structured clone, so it's plain data. */
 export interface BotJob {

@@ -1,5 +1,5 @@
-import type { PalaceRules } from "@cardroom/palace";
-import type { RulePreset } from "@spades/rules";
+import type { PalaceRules } from "@journey-to-code/palace";
+import type { RulePreset } from "@journey-to-code/rules";
 import type { GameId } from "./storage";
 
 export interface OfferedGame {

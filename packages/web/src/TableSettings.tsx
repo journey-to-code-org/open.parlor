@@ -1,4 +1,4 @@
-import { PACES, SKILLS, TURN_TIMERS, type TableSettings } from "@spades/rules";
+import { PACES, SKILLS, TURN_TIMERS, type TableSettings } from "@journey-to-code/rules";
 import { createContext, useContext, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Choice } from "./RulesEditor";

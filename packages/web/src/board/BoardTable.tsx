@@ -23,8 +23,8 @@
 // crossings are closer together than a finger is wide, so there a stone takes two taps: the first
 // shows it (and it can be nudged with the arrows under the board), the second, or "Play", puts it
 // down. When that happens is this device's choice (⚙︎: see `Placing` in display.ts).
-import { cellName, cellsAfter, colOf, kitGame, rowOf, type BoardGrid, type BoardPiece, type BoardReserve, type BoardView, type Choice } from "@cardroom/games";
-import { type TableSettings } from "@spades/rules";
+import { cellName, cellsAfter, colOf, kitGame, rowOf, type BoardGrid, type BoardPiece, type BoardReserve, type BoardView, type Choice } from "@journey-to-code/games";
+import { type TableSettings } from "@journey-to-code/rules";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Bubble, TableChat, useBubbles, type ChatProps } from "../Chat";
 import { Confetti } from "../Confetti";

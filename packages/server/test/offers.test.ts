@@ -3,7 +3,7 @@
 // tournament bracket, a computer player answers, a watcher sees what happened and can't act, a
 // tournament match has no taking back, and neither the turn timer nor a game's own clock is put
 // off by an offer. On a fake clock.
-import { SHOT_CLOCK_MS, type BoardView } from "@cardroom/games";
+import { SHOT_CLOCK_MS, type BoardView } from "@journey-to-code/games";
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createCardRoom } from "../src/app.js";

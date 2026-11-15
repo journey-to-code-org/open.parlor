@@ -5,7 +5,7 @@
 // Each game is played by computer players at full skill; every think is done twice, here and in a
 // worker (same dice, so the same move), and timed both ways. The difference is the trip: the state
 // copied there, the move copied back, and the wait for the worker's reply.
-import { kitGame } from "@cardroom/games";
+import { kitGame } from "@journey-to-code/games";
 import { builtFile, createBotPool } from "../dist/botpool.js";
 import { quick, think } from "../dist/brain.js";
 

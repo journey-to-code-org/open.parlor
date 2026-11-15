@@ -2,7 +2,7 @@
 // what a watcher sees, a tournament match, and the chess clock kept by the server (the increment,
 // an offer made while it runs, a restart in the middle of a game, a flag falling, and a computer
 // player held to it like anyone). On a fake clock.
-import { type BoardView } from "@cardroom/games";
+import { type BoardView } from "@journey-to-code/games";
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createCardRoom } from "../src/app.js";

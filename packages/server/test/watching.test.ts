@@ -1,6 +1,6 @@
 // Watching a table with people at it: the watch view shows the table as every seat sees it, and
 // nobody's hand, in every game.
-import { KIT_GAMES } from "@cardroom/games";
+import { KIT_GAMES } from "@journey-to-code/games";
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCardRoom } from "../src/app.js";
@@ -112,7 +112,7 @@ describe("watching a table with people at it", () => {
 // from both seats, so the watch view has to leave those grids out rather than compare them.
 describe("watching Combat", () => {
   it("shows nobody's fleet, even where the two fleets share a square", async () => {
-    const { kitGame } = await import("@cardroom/games");
+    const { kitGame } = await import("@journey-to-code/games");
     const { watchView } = await import("../src/games.js");
     const combat = kitGame("combat")! as unknown as { presets: unknown[]; newGame(rules: unknown, seats: number, seed: number): unknown; apply(s: unknown, seat: number, move: unknown): unknown; view(s: unknown, seat: number): { grids: { id: string; cells: unknown[] }[] } };
     let overlapped = 0;
@@ -131,7 +131,7 @@ describe("watching Combat", () => {
   });
 
   it("leaves a card game's grids alone: Golf's cards in front of each player are for everyone", async () => {
-    const { kitGame } = await import("@cardroom/games");
+    const { kitGame } = await import("@journey-to-code/games");
     const { watchView } = await import("../src/games.js");
     const golf = kitGame("golf")! as unknown as { presets: unknown[]; newGame(rules: unknown, seats: number, seed: number): unknown; view(s: unknown, seat: number): { grids?: unknown[] } };
     const s = golf.newGame(golf.presets[0], 3, 7);
@@ -145,7 +145,7 @@ describe("watching Combat", () => {
 // The watch view has to be a table that can be drawn all the same.
 describe("watching a table sport", () => {
   it("gives the watcher a whole table and the last shot, and nothing to strike", async () => {
-    const { SPORT_GAMES } = await import("@cardroom/games");
+    const { SPORT_GAMES } = await import("@journey-to-code/games");
     const { watchView } = await import("../src/games.js");
     type Body = { id: string; x: number; y: number } | null;
     type Sport = { shoot: { body: string; minPower: number } | null; choices: unknown; table: { world: { bodies: Body[] }; bodies: unknown[] }; last: { from: Body[]; rest: Body[] } | null };

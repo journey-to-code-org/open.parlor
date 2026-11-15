@@ -1,9 +1,9 @@
 // A table sport in the card room, through the same doors as the card and board games: a house
 // table with house rules, putted to the end by a person (from nothing but what their view shows)
 // against a computer player, the leaderboard, private views, the turn timer and a restart.
-import { PHYSICS_VERSION, simulate } from "@cardroom/physics";
-import { angleTo, miniGolf, newMiniGolf, nineHoles, nineTogether, sameRest, worldBefore, type SportView } from "@cardroom/games";
-import { validateWorld } from "@cardroom/physics";
+import { PHYSICS_VERSION, simulate } from "@journey-to-code/physics";
+import { angleTo, miniGolf, newMiniGolf, nineHoles, nineTogether, sameRest, worldBefore, type SportView } from "@journey-to-code/games";
+import { validateWorld } from "@journey-to-code/physics";
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCardRoom } from "../src/app.js";

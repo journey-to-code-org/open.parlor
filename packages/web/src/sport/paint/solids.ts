@@ -5,7 +5,7 @@
 //
 // Positions are in the camera's frame and in world units (see projection.ts); what is drawn is in
 // CSS pixels, so a line a pixel wide is a pixel wide whatever the size of the screen.
-import type { Point } from "@cardroom/physics";
+import type { Point } from "@journey-to-code/physics";
 import { turning, type Ctx } from "./geometry";
 import type { Land } from "./terrain";
 import { textured, type Texture } from "./textures";

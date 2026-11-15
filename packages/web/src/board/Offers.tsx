@@ -2,7 +2,7 @@
 // The view says what is open and what this seat may do; this draws it, once, for every board game:
 // a small menu in the bar for the things a player rarely does, and a banner by the board when there
 // is an offer to answer or one of yours waiting for an answer.
-import type { BoardOffers, OfferKind, OfferMove } from "@cardroom/games";
+import type { BoardOffers, OfferKind, OfferMove } from "@journey-to-code/games";
 import { useEffect, useRef, useState } from "react";
 import { play } from "../feedback/sounds";
 

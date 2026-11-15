@@ -1,7 +1,7 @@
 // A board game in the card room, through the same doors as the card games: a house table with
 // house rules played to the end by a person (from nothing but what their view offers) against a
 // computer player, the leaderboard, a challenge, and a tournament match that names a champion.
-import { movesOffered, type BoardView } from "@cardroom/games";
+import { movesOffered, type BoardView } from "@journey-to-code/games";
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCardRoom } from "../src/app.js";

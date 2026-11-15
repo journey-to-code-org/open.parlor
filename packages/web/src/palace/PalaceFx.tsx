@@ -1,8 +1,8 @@
 // Palace's big moments, drawn over the table: the pile burning up (a 10, or four of a kind), and the
 // pile flying to whoever picks it up. The game has already moved on underneath; these are copies
 // of the cards that just left, where they were, animated away. They never take a tap.
-import type { PalaceView } from "@cardroom/palace";
-import { cardId, type Card } from "@spades/rules";
+import type { PalaceView } from "@journey-to-code/palace";
+import { cardId, type Card } from "@journey-to-code/rules";
 import PlayingCard from "@spades/ui/playing-card.zb";
 import { useLayoutEffect, useRef, useState, type MutableRefObject, type RefObject } from "react";
 import { EASE_BACK, EASE_IN, EASE_OUT, rectOf, reducedMotion, type Seen } from "../motion";

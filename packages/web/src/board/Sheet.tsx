@@ -7,7 +7,7 @@
 //
 // A cell you can choose is a button showing what it would score, and says so: "Full house: would
 // score 25". Choosing it is the move.
-import type { ScoreSheet, SheetRow } from "@cardroom/games";
+import type { ScoreSheet, SheetRow } from "@journey-to-code/games";
 import { useEffect, useRef, useState } from "react";
 import { play } from "../feedback/sounds";
 

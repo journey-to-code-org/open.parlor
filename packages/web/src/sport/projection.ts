@@ -12,7 +12,7 @@
 // A table that fits the screen better on its side is turned before it is looked at: the camera
 // always looks up the screen, and it is the world that turns under it. "The camera's frame" below
 // means the world after that turn: x to the right, y towards the camera, z up.
-import type { Point } from "@cardroom/physics";
+import type { Point } from "@journey-to-code/physics";
 
 export interface Projection {
   /** CSS pixels to one unit of the world. */

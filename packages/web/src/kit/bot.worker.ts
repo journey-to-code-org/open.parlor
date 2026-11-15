@@ -1,7 +1,7 @@
 // The practice table's bot worker: a Web Worker that thinks for the computer players, so a search or
 // a simulation doesn't freeze the page while it runs (see botThinker.ts). The engines are plain
 // TypeScript with no page in them, so they run here as they are.
-import { kitGame, type KitGameId } from "@cardroom/games";
+import { kitGame, type KitGameId } from "@journey-to-code/games";
 import { botMove, type BotJob } from "./botMove";
 
 type Asked = { id: number; job: BotJob } | { warm: KitGameId };

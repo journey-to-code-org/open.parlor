@@ -2,7 +2,7 @@
 // the end against a computer player over HTTP, and nothing the server sends them (their own view,
 // the room anyone can read) says where the other fleet is until the game is over. Then two people:
 // each is sent their own grid and never the other's.
-import { movesOffered, type BoardView } from "@cardroom/games";
+import { movesOffered, type BoardView } from "@journey-to-code/games";
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCardRoom } from "../src/app.js";

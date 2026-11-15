@@ -1,7 +1,7 @@
 // Yacht in the card room: dice thrown by the server, a table played to the end by a person against
 // a computer player, what someone watching is shown (the dice and sheets that are public, never a
 // seat's own dice when everyone rolls at once), and the turn timer playing for someone who has gone.
-import { movesOffered, type BoardView } from "@cardroom/games";
+import { movesOffered, type BoardView } from "@journey-to-code/games";
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCardRoom } from "../src/app.js";
@@ -174,7 +174,7 @@ describe("watching Yacht", () => {
   });
 
   it("never matches two seats' private dice up, even when they show the same faces", async () => {
-    const { kitGame } = await import("@cardroom/games");
+    const { kitGame } = await import("@journey-to-code/games");
     const yacht = kitGame("yacht")! as unknown as { normalize(r: unknown): unknown; newGame(rules: unknown, seats: number, seed: number): { hands: { dice: number[]; rolls: number; throws: number }[] }; view(s: unknown, seat: number): BoardView };
     const s = yacht.newGame(yacht.normalize({ order: "together" }), 2, 3);
     // Both seats have rolled the very same dice: compared part by part, the two views would agree.

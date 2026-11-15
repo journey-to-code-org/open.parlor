@@ -1,6 +1,6 @@
-import { PALACE_PRESETS, type PalaceRules } from "@cardroom/palace";
-import { isBoardGame, isKitGame, isSportGame, kitGame } from "@cardroom/games";
-import type { RulePreset } from "@spades/rules";
+import { PALACE_PRESETS, type PalaceRules } from "@journey-to-code/palace";
+import { isBoardGame, isKitGame, isSportGame, kitGame } from "@journey-to-code/games";
+import type { RulePreset } from "@journey-to-code/rules";
 import TextField from "@spades/ui/zubra-ui/text-field.zb";
 import { useState } from "react";
 import { Choice } from "./RulesEditor";

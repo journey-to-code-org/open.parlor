@@ -11,7 +11,7 @@
     "typecheck": "svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
-    "@cardroom/decks": "*",
+    "@journey-to-code/decks": "^0.1.0",
     "@zubra/runtime": "^5.15.0",
     "svelte": "^5.57.0"
   },

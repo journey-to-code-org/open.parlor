@@ -7,7 +7,7 @@
 // and weigh about the same. A piece is a few simple shapes joined into one outline, plus a line or
 // two of detail (a bishop's cut, a knight's eye) in the other colour.
 import { createContext, useContext } from "react";
-import type { BoardGameId, BoardPiece } from "@cardroom/games";
+import type { BoardGameId, BoardPiece } from "@journey-to-code/games";
 
 interface Shape {
   /** Closed outlines, filled. */

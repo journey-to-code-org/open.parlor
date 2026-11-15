@@ -7,8 +7,8 @@ import {
   type KCard,
   type KitView,
   type Meld,
-} from "@cardroom/games";
-import { type TableSettings } from "@spades/rules";
+} from "@journey-to-code/games";
+import { type TableSettings } from "@journey-to-code/rules";
 import PlayingCard from "@spades/ui/playing-card.zb";
 import { useEffect, useRef, useState } from "react";
 import { Bubble, TableChat, useBubbles, type ChatProps } from "../Chat";

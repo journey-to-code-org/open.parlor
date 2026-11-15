@@ -1,4 +1,4 @@
-import type { Bid, HandRecord } from "@spades/rules";
+import type { Bid, HandRecord } from "@journey-to-code/rules";
 import { describe, expect, it } from "vitest";
 import { leaderboard, type FinishedGame } from "../src/leaderboard.js";
 

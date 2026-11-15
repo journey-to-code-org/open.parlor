@@ -361,19 +361,18 @@ ten minutes, and the card room 200 a day (counted against the key's daily ceilin
 
 ## Packages
 
+The game engine and the rooms live in their own repositories and come in from npm: [open.games](https://github.com/journey-to-code-org/open.games) (the `@journey-to-code/games`, `rules`, `palace`, `physics` and `decks` packages) and [open.rooms](https://github.com/journey-to-code-org/open.rooms) (`@journey-to-code/rooms`). This repository is the app built from them. Paths such as `packages/games/src/...` in the sections below are in open.games.
+
 | Package | |
 | --- | --- |
-| [`packages/games`](packages/games) | The game kit and the fifty-four games built on it: `table.ts` (the `TableGame` engine contract every game shares), `kit.ts` (the card kit: `CardGame`, cards, decks, `KitView`), `board.ts` (the board kit: `BoardGame`, grids, pieces, dice, `BoardView`) and `sport.ts` (the table-sports kit: `SportGame`, shots, `SportView`) |
-| [`packages/rules`](packages/rules) | Spades rules engine, bots, and the personas who play every game |
-| [`packages/palace`](packages/palace) | Palace rules engine: house-rule presets, seat views, bots and table talk |
-| [`packages/physics`](packages/physics) | A small deterministic 2D physics core for the table sports: the same shot gives the same table on the server and in every browser, which is how Mini Golf's server decides a putt and every browser animates it |
-| [`packages/rooms`](packages/rooms) | Turn-based rooms over `@zubra/sync`: seats, server-decided moves, private views, bots |
+| [`@journey-to-code/games`](https://github.com/journey-to-code-org/open.games/tree/main/packages/games) | The game kit and the fifty-four games built on it: the `TableGame` engine contract, the card, board and table-sport kits, and the games |
+| [`@journey-to-code/rules`](https://github.com/journey-to-code-org/open.games/tree/main/packages/rules), [`palace`](https://github.com/journey-to-code-org/open.games/tree/main/packages/palace), [`physics`](https://github.com/journey-to-code-org/open.games/tree/main/packages/physics), [`decks`](https://github.com/journey-to-code-org/open.games/tree/main/packages/decks) | Spades and the computer players' personas, Palace, the deterministic physics for the table sports, and card designs |
+| [`@journey-to-code/rooms`](https://github.com/journey-to-code-org/open.rooms) | Turn-based rooms over `@zubra/sync`: seats, server-decided moves, private views, bots |
 | [`packages/server`](packages/server) | The server: every game's rooms, houses, challenges, tournaments, the lobby, the sync log and the web app |
 | [`packages/web`](packages/web) | The app (React, with the game chooser in Vue): the card table, the board table and the canvas table for table sports, setup screens, houses, practice |
 | [`packages/designer`](packages/designer) | The card designer (Svelte): draw a deck, keep it or share it, play with it |
 | [`packages/watch`](packages/watch) | The watch page (Solid): the tables playing now, and tables of computer players to learn from |
 | [`packages/admin`](packages/admin) | The admin app (Angular): the host moderates tables, players and shared designs |
-| [`packages/decks`](packages/decks) | Card designs: what a deck looks like, checked, and turned into the CSS variables the cards read |
 | [`packages/conformance`](packages/conformance) | One fixture of the components in every framework, and one set of browser tests run against them all |
 | [`packages/ui`](packages/ui) | Components in Zubra: our own (cards, seats), the ones copied from zubra-ui, and the `<card-room>` embed |
 

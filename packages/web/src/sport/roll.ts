@@ -7,8 +7,8 @@
 // time it failed would be the time someone wants to know. If it ever does fail (a browser running
 // an older build against a newer server, say), nothing breaks: the table screen shows the
 // server's table when the roll ends, whatever the roll did.
-import { sameRest, worldBefore, type SportShot, type SportView } from "@cardroom/games";
-import { PHYSICS_VERSION, result, start, step, type Point, type Run, type Shape, type SimEvent, type World } from "@cardroom/physics";
+import { sameRest, worldBefore, type SportShot, type SportView } from "@journey-to-code/games";
+import { PHYSICS_VERSION, result, start, step, type Point, type Run, type Shape, type SimEvent, type World } from "@journey-to-code/physics";
 
 export interface Roll {
   /** The view this shot leads to: shown once the roll is over. */

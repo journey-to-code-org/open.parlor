@@ -1,9 +1,9 @@
 // A kit game in this browser: you in seat 0 and computer players from the roster, who play in
 // their own styles, at the table's speed, and chat a little.
-import { GameError, kitGame, kitGreet, reactToKit, type KitGameId, type KitRemark } from "@cardroom/games";
-import { palaceReplyTo } from "@cardroom/palace";
-import type { ChatMessage } from "@spades/rooms/client";
-import { mulberry32, paceDelay, personaFor, pickPersonas, styleFor } from "@spades/rules";
+import { GameError, kitGame, kitGreet, reactToKit, type KitGameId, type KitRemark } from "@journey-to-code/games";
+import { palaceReplyTo } from "@journey-to-code/palace";
+import type { ChatMessage } from "@journey-to-code/rooms/client";
+import { mulberry32, paceDelay, personaFor, pickPersonas, styleFor } from "@journey-to-code/rules";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadTableSettings, saveTableSettings } from "../storage";
 import { TableTime } from "../board/SeatClock";

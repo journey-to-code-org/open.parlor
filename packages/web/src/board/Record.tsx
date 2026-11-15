@@ -2,7 +2,7 @@
 // view keeps a record. It can be stepped through, back to the start and forward again, while the
 // game is on and after it ends: the board table draws the position looked at, and offers no move
 // from it. The whole record can be copied as text (a PGN).
-import type { BoardRecord } from "@cardroom/games";
+import type { BoardRecord } from "@journey-to-code/games";
 import { useEffect, useRef, useState } from "react";
 import { named } from "../kit/KitTable";
 

@@ -1,6 +1,6 @@
 // The few sums that painting on the ground needs: paths, polygons pushed in or out, and which way
 // an edge looks. These work on the map of a table (see course.ts); what stands up is in solids.ts.
-import type { Point, Shape } from "@cardroom/physics";
+import type { Point, Shape } from "@journey-to-code/physics";
 
 export type Ctx = CanvasRenderingContext2D;
 

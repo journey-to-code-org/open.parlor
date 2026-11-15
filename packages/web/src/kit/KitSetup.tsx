@@ -1,6 +1,6 @@
 // The setup screen for any kit game: your name, house rules, how many players, then a family table
 // or practice against the computer.
-import { kitGame, type KitGameId } from "@cardroom/games";
+import { kitGame, type KitGameId } from "@journey-to-code/games";
 import SelectField from "@spades/ui/zubra-ui/select-field.zb";
 import TextField from "@spades/ui/zubra-ui/text-field.zb";
 import { useMemo, useState } from "react";

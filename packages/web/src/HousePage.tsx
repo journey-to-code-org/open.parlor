@@ -1,15 +1,15 @@
-import { validatePreset, type RulePreset } from "@spades/rules";
+import { validatePreset, type RulePreset } from "@journey-to-code/rules";
 import TextField from "@spades/ui/zubra-ui/text-field.zb";
 import { HouseAiBlock } from "./HouseAi";
 import { HouseDeckPicker } from "./TableDeck";
 import { useCallback, useEffect, useState } from "react";
-import { validatePalaceRules, type PalaceRules } from "@cardroom/palace";
+import { validatePalaceRules, type PalaceRules } from "@journey-to-code/palace";
 import { GamePicker } from "./GamePicker";
 import { HouseError, houses, inviteLink, type House, type HouseTable, type PalaceStandings, type Standings } from "./housesApi";
 import { PalaceRulesFields, palaceSummary } from "./palace/PalaceRules";
 import { NotifyButton } from "./NotifyButton";
 import { NewTournament } from "./TournamentPage";
-import { isKitGame } from "@cardroom/games";
+import { isKitGame } from "@journey-to-code/games";
 import { GAME_LIST } from "./GamePicker";
 import { KitHouseRules, KitStartTable } from "./kit/KitHouse";
 import { describe, RulesFields } from "./RulesEditor";

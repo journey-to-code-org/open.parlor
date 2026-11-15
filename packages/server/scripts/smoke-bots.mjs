@@ -7,7 +7,7 @@
 // person's side from nothing but their view, and reads /healthz/bots to see that the bot's moves
 // were thought out in a worker (and none on the main thread, and none given up on). CI runs it
 // against `node dist/index.js`, which is where a worker file that can't be found would show.
-import { kitGame, movesOffered } from "@cardroom/games";
+import { kitGame, movesOffered } from "@journey-to-code/games";
 
 const origin = (process.argv[2] ?? "http://localhost:8787").replace(/\/$/, "");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

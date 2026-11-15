@@ -1,6 +1,6 @@
 // The server's moderation endpoints (packages/server/src/moderation.ts). Every request carries the
 // admin token; the server never sends a player's cookie, only a reference to pick them out by.
-import type { CardDesign } from "@cardroom/decks";
+import type { CardDesign } from "@journey-to-code/decks";
 
 export type TableStatus = "open" | "playing" | "finished" | "closed";
 

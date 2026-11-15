@@ -4,7 +4,7 @@
   `{ kind: "fruit", fruit: "cherry" | "lemon" | "pear" | "grape" | null, face: 0–9 | "hop" | "turn" | "plus2" | "salad" | "salad4" }`.
   Sizes come from the page: --card-w / --card-h for the hand, --trick-w / --trick-h for size="table".
   Everything inside scales with the card itself (container units), so one design serves every size.
-  A deck's look comes from the page too: the --deck-* variables (`deckVars` in @cardroom/decks) set
+  A deck's look comes from the page too: the --deck-* variables (`deckVars` in @journey-to-code/decks) set
   the back's pattern, frame and emblem, the paper, each suit's ink, the lettering and the corners.
   Without them it's the card room's own deck.
   @prop {{ kind: "pip", suit: "spades" | "hearts" | "diamonds" | "clubs", rank: number, id?: string } | { kind: "joker", size: "big" | "little", id?: string } | { kind: "fruit", fruit: "cherry" | "lemon" | "pear" | "grape" | null, face: number | "hop" | "turn" | "plus2" | "salad" | "salad4", id?: string }} card - The card to draw.

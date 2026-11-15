@@ -6,7 +6,7 @@
 //
 // Mark a card's wrapper with data-flip="<card id>". A card that's new gets data-from="<selector>"
 // to come in from somewhere (a seat, the deck); without it, a new card just appears.
-import type { Pace } from "@spades/rules";
+import type { Pace } from "@journey-to-code/rules";
 import { motionSetting } from "./display";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 

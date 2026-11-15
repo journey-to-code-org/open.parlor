@@ -11,7 +11,7 @@
 //   moderation/bans   server only: one field per blocked player's reference
 //   moderation/log    server only: what the admin did, one field per action
 import { createHash, timingSafeEqual } from "node:crypto";
-import { playerOf, type ChatMessage, type RoomDoc } from "@spades/rooms/server";
+import { playerOf, type ChatMessage, type RoomDoc } from "@journey-to-code/rooms/server";
 import type { Catalogue } from "./catalogue.js";
 import type { Backups } from "./backup.js";
 import type { Designs } from "./designs.js";

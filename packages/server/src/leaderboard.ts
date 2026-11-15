@@ -1,5 +1,5 @@
 // A house's leaderboard, worked out from its finished games. Pure: games in, standings out.
-import type { HandRecord, Team } from "@spades/rules";
+import type { HandRecord, Team } from "@journey-to-code/rules";
 
 /** Who sat where in one finished game. A seat is a house member, a guest, or a bot. */
 export interface FinishedGame {

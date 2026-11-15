@@ -180,7 +180,7 @@ describe("table settings", () => {
 describe("Palace rules saved before the 2s and face-up settings", () => {
   it("a table's saved rules keep the old meaning; a house's copy of the family rules gets the new ones", async () => {
     const { palaceRulesFrom } = await import("../src/palace.js");
-    const { familyPalace, normalizePalaceRules } = await import("@cardroom/palace");
+    const { familyPalace, normalizePalaceRules } = await import("@journey-to-code/palace");
     const { twoAgain, upOneAtATime, ...savedYesterday } = familyPalace;
     void twoAgain;
     void upOneAtATime;

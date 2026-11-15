@@ -15,8 +15,8 @@ import {
   type RulePreset,
   type Seat,
   type SeatView,
-} from "@spades/rules";
-import type { RoomDefinition } from "@spades/rooms/server";
+} from "@journey-to-code/rules";
+import type { RoomDefinition } from "@journey-to-code/rooms/server";
 
 /** A move as a player sends it: an action without the seat, which the server knows from the cookie. */
 export type Move = Action extends infer A ? (A extends { seat: Seat } ? Omit<A, "seat"> : never) : never;

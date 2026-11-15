@@ -7,8 +7,8 @@
 // Everything here is in the camera's frame (see projection.ts): the world is turned first, once,
 // and from then on "towards the camera" is simply +y. Nothing above this file has to think about
 // which way a table has been turned.
-import type { SportGround, SportLook, SportSurface, SportView } from "@cardroom/games";
-import type { Point, Shape, World } from "@cardroom/physics";
+import type { SportGround, SportLook, SportSurface, SportView } from "@journey-to-code/games";
+import type { Point, Shape, World } from "@journey-to-code/physics";
 import { toCamera } from "../projection";
 
 /** How far a surface lies below what it is set in, when a view gives it no level of its own. */

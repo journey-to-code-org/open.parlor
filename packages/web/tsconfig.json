@@ -11,24 +11,9 @@
     ],
     "noEmit": true,
     "paths": {
-      "@spades/rules": [
-        "../rules/src/index.ts"
-      ],
-      "@cardroom/games": [
-        "../games/src/index.ts"
-      ],
-      "@cardroom/physics": [
-        "../physics/src/index.ts"
-      ],
       "@spades/ui/*": [
         "./.zubra/types/__/ui/src/*",
         "../ui/src/*"
-      ],
-      "@spades/rooms/*": [
-        "../rooms/src/*"
-      ],
-      "@cardroom/decks": [
-        "../decks/src/index.ts"
       ]
     },
     "types": [

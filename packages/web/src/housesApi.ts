@@ -1,6 +1,6 @@
-import type { TableDeck } from "@cardroom/decks";
-import type { PalaceRules } from "@cardroom/palace";
-import type { RulePreset, TableSettings } from "@spades/rules";
+import type { TableDeck } from "@journey-to-code/decks";
+import type { PalaceRules } from "@journey-to-code/palace";
+import type { RulePreset, TableSettings } from "@journey-to-code/rules";
 import type { GameId } from "./storage";
 
 export interface HouseTable {

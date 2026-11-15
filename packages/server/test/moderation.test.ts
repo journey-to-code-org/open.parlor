@@ -1,7 +1,7 @@
 // Moderation and card designs: the admin sees tables and people (never anyone's cookie), closes
 // tables, removes players and chat, blocks players and hides designs; makers keep designs for
 // themselves or share them with everyone.
-import { CLASSIC, STARTERS } from "@cardroom/decks";
+import { CLASSIC, STARTERS } from "@journey-to-code/decks";
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCardRoom } from "../src/app.js";

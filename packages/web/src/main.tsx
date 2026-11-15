@@ -7,7 +7,7 @@ import { registerServiceWorker } from "./notifications";
 import { GameRequest } from "./GameRequest";
 import { ReportProblem, useReports } from "./ReportProblem";
 import { applyDisplay } from "./display";
-import { DECK_KEY, applyDeck, savedDeck } from "@cardroom/decks";
+import { DECK_KEY, applyDeck, savedDeck } from "@journey-to-code/decks";
 import "./styles.css";
 
 watchForErrors();

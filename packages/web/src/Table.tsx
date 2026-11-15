@@ -1,4 +1,4 @@
-import { type TableSettings, cardId, cardPower, effectiveSuit, passingSeats, sameCard, teamOf, type Bid, type Card, type GameState, type HandRecord, type Seat, type SeatView, type Team } from "@spades/rules";
+import { type TableSettings, cardId, cardPower, effectiveSuit, passingSeats, sameCard, teamOf, type Bid, type Card, type GameState, type HandRecord, type Seat, type SeatView, type Team } from "@journey-to-code/rules";
 import BidPad from "@spades/ui/bid-pad.zb";
 import HandSummary from "@spades/ui/hand-summary.zb";
 import PlayingCard from "@spades/ui/playing-card.zb";

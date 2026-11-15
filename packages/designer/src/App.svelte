@@ -8,7 +8,7 @@
   They're custom elements, so Svelte sets their properties and listens to their events directly.
 -->
 <script lang="ts">
-  import { BACK_PATTERNS, CLASSIC, CORNERS, EMBLEMS, FACE_FONTS, STARTERS, deckStyle, normalizeDesign, prefersOwnDeck, saveDeck, savedDeck, setPrefersOwnDeck, validateDesign, type CardDesign } from "@cardroom/decks";
+  import { BACK_PATTERNS, CLASSIC, CORNERS, EMBLEMS, FACE_FONTS, STARTERS, deckStyle, normalizeDesign, prefersOwnDeck, saveDeck, savedDeck, setPrefersOwnDeck, validateDesign, type CardDesign } from "@journey-to-code/decks";
   import { onMount } from "svelte";
   import ColorPick from "./lib/ColorPick.svelte";
   import DeckPreview from "./lib/DeckPreview.svelte";
