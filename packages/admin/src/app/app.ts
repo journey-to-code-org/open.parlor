@@ -56,7 +56,7 @@ export class App implements OnDestroy {
     { value: "houses", label: "Houses" },
     { value: "games", label: "Games" },
     { value: "designs", label: "Card designs" },
-    { value: "courses", label: "Golf courses" },
+    { value: "courses", label: "Courses & lanes" },
     { value: "activity", label: "Activity" },
   ];
 
@@ -491,15 +491,28 @@ export class App implements OnDestroy {
     await this.refresh(true);
   }
 
-  // ---------- Golf courses ----------
+  // ---------- Golf courses and bowling lanes ----------
 
-  /** A course's first hole: every saved course has one. */
-  protected firstHole(course: SharedCourse): SharedCourse["course"]["holes"][number] {
-    return course.course.holes[0] ?? { name: "", par: 0, cols: 1, rows: 1, cells: "." };
+  /** What to draw for a course: its first hole (every saved course has one); a lane is its own grid. */
+  protected firstHole(course: SharedCourse): { name: string; cols: number; rows: number; cells: string } {
+    const c = course.course;
+    if (course.kind === "bowling") return { name: c.name, cols: c.cols ?? 1, rows: c.rows ?? 1, cells: c.cells ?? "." };
+    return c.holes?.[0] ?? { name: "", cols: 1, rows: 1, cells: "." };
   }
 
-  /** A hole as a little plan: one class a square, by the piece painted there. */
-  protected plan(hole: SharedCourse["course"]["holes"][number]): string[] {
+  /** What a course or lane has, in a line. */
+  protected holesLine(course: SharedCourse): string {
+    const holes = course.course.holes ?? [];
+    if (course.kind === "bowling") return "A bowling lane";
+    return `${holes.length} ${holes.length === 1 ? "hole" : "holes"}: ${holes.map((h) => h.name).join(", ")}`;
+  }
+
+  /** A hole (or a lane) as a little plan: one class a square, by the piece painted there. */
+  protected plan(hole: { cells: string }, kind: SharedCourse["kind"] = "minigolf"): string[] {
+    if (kind === "bowling") {
+      const LANE: Record<string, string> = { ".": "lane", "#": "crate", s: "sand", w: "water", "^": "lane-slope", v: "lane-slope", "<": "lane-slope", ">": "lane-slope", o: "bumper" };
+      return [...hole.cells].map((p) => LANE[p] ?? "lane");
+    }
     const PIECE: Record<string, string> = { ".": "garden", g: "green", "#": "wall", s: "sand", w: "water", "^": "slope", v: "slope", "<": "slope", ">": "slope", o: "bumper", t: "tee", c: "cup", h: "high", "1": "mouth", "2": "mouth", "3": "mouth", x: "molehill", y: "molehill", z: "molehill" };
     return [...hole.cells].map((p) => PIECE[p] ?? "garden");
   }
@@ -507,10 +520,10 @@ export class App implements OnDestroy {
   protected askHideCourse(course: SharedCourse): void {
     this.ask({
       title: `Hide “${course.course.name}”?`,
-      body: `It comes out of Mini Golf's course list, so nobody can open a new table on it; tables already playing it finish. ${course.author} keeps it and sees your reason. You can put it back later.`,
+      body: `It comes out of ${course.kind === "bowling" ? "Bowling's lane" : "Mini Golf's course"} list, so nobody can open a new table on it; tables already playing it finish. ${course.author} keeps it and sees your reason. You can put it back later.`,
       reasonLabel: "Reason",
       reasonHelp: `${course.author} sees this.`,
-      action: "Hide course",
+      action: course.kind === "bowling" ? "Hide lane" : "Hide course",
       run: async (reason) => {
         await this.api.hideCourse(course.id, reason);
         return `Hid “${course.course.name}”.`;
@@ -521,7 +534,7 @@ export class App implements OnDestroy {
   protected async restoreCourse(course: SharedCourse): Promise<void> {
     try {
       await this.api.restoreCourse(course.id);
-      this.toast(`“${course.course.name}” is back in Mini Golf.`, "success");
+      this.toast(`“${course.course.name}” is back in ${course.kind === "bowling" ? "Bowling" : "Mini Golf"}.`, "success");
     } catch (error) {
       this.toast(this.message(error), "danger");
     }

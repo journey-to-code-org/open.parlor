@@ -120,8 +120,9 @@ export function createCardRoom(
     spectators: () => catalogue.watching(),
     allow: async (given) =>
       (await catalogue.isOn(gameOfOptions(given)))
-        ? // A Mini Golf course people made has to be one we have, and still up.
-          await courses.refuse((given as { rules?: { course?: unknown } } | null)?.rules?.course)
+        ? // A Mini Golf course or bowling lane people made has to be one we have, and still up.
+          ((await courses.refuse((given as { rules?: { course?: unknown } } | null)?.rules?.course)) ??
+          (await courses.refuse((given as { rules?: { lane?: unknown } } | null)?.rules?.lane, "bowling")))
         : `${gameName(gameOfOptions(given))} is switched off in this parlor.`,
     onStart: ({ id, state, room }) => {
       speak(id, talk.greet(state, castOf(room)));

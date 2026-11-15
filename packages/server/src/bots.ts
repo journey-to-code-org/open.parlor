@@ -8,7 +8,7 @@
 // milliseconds or more, and is worth the trip.
 import { availableParallelism } from "node:os";
 import { isKitGame, type KitGameId, type ThinkBudget } from "@journey-to-code/games";
-import { isCustomCourse, type CustomCourse } from "@open-parlor/courses";
+import { isCustomMap, type CustomMap, type MapKind } from "@open-parlor/courses";
 import type { Thinking } from "@journey-to-code/rooms/server";
 import { builtFile, createBotPool, type BotPoolStats } from "./botpool.js";
 import { quick, think, type ThinkJob } from "./brain.js";
@@ -27,7 +27,7 @@ export interface BotOptions {
   /** The brain module the workers import, if not the parlor's own (for tests: it must give the same answers as brain.ts). */
   brain?: URL | string;
   /** The holes of a Mini Golf course people made, by its game id: handed to a worker with a think on it. */
-  courseFor?: (id: string) => CustomCourse | undefined;
+  courseFor?: (id: string) => { kind: MapKind; map: CustomMap } | undefined;
 }
 
 export interface BotStats extends BotPoolStats {
@@ -74,12 +74,13 @@ export function createBots(options: BotOptions = {}) {
         if (move !== null) light += 1;
         return move;
       }
-      // A course people made: the worker's copy of the game doesn't know it, so it goes with the job.
-      const course = (state as { rules?: { course?: unknown } }).rules?.course;
-      if (isCustomCourse(course)) {
-        const holes = options.courseFor?.(course);
-        if (holes) job.courses = [{ id: course, course: holes }];
-      }
+      // A course or a lane people made: the worker's copy of the game doesn't know it, so it goes with the job.
+      const rules = (state as { rules?: { course?: unknown; lane?: unknown } }).rules;
+      const made = [rules?.course, rules?.lane].filter(isCustomMap).flatMap((id) => {
+        const found = options.courseFor?.(id);
+        return found ? [{ id, kind: found.kind, course: found.map }] : [];
+      });
+      if (made.length) job.courses = made;
       return pool.think(job, thinking);
     },
     /** Resolves when the workers have started (thinks asked for sooner just wait). */

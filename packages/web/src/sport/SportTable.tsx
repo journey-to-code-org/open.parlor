@@ -560,7 +560,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
   const status = error ? (
     <span className="error">{error}</span>
   ) : shooter !== null ? (
-    shooter === me ? "There it goes…" : `${names[shooter] ?? "Someone"} putts…`
+    shooter === me ? "There it goes…" : `${names[shooter] ?? "Someone"} ${shown.game === "bowling" ? "bowls" : "putts"}…`
   ) : shown.over || shown.result ? null : canShoot ? (
     <span className="mine">{shown.seats > 1 ? "Your shot" : "Pull back and let go"}</span>
   ) : sending ? (

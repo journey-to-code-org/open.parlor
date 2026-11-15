@@ -4,7 +4,7 @@
 // anything between calls that changes an answer, so it doesn't matter which thread is asked.
 import { QUICK_BUDGET, isKitGame, type KitGameId, type ThinkBudget } from "@journey-to-code/games";
 import { mulberry32, type TableSettings } from "@journey-to-code/rules";
-import { hasCourse, registerCourse, type CustomCourse } from "@open-parlor/courses";
+import { hasMap, registerMap, type CustomMap, type MapKind } from "@open-parlor/courses";
 import { gameOfState, tableRoom } from "./games.js";
 import { kitBot, warmSports } from "./kit.js";
 
@@ -25,15 +25,15 @@ export interface ThinkJob {
    */
   seed?: number;
   /**
-   * Mini Golf courses people made that the state is played on (see courses.ts). A worker thread has
-   * its own copy of the game, which knows only the built-in courses until it's handed these.
+   * Mini Golf courses and bowling lanes people made that the state is played on (see courses.ts). A
+   * worker thread has its own copy of the game, which knows only the built-in ones until it's handed these.
    */
-  courses?: { id: string; course: CustomCourse }[];
+  courses?: { id: string; kind?: MapKind; course: CustomMap }[];
 }
 
 /** Put the job's courses where this thread's copy of the game finds them. */
 function learn(job: ThinkJob) {
-  for (const { id, course } of job.courses ?? []) if (!hasCourse(id)) registerCourse(course, id);
+  for (const { id, kind = "minigolf", course } of job.courses ?? []) if (!hasMap(kind, id)) registerMap(kind, course, id);
 }
 
 type KitState = { game: KitGameId } & Record<string, unknown>;

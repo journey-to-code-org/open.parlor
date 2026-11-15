@@ -24,6 +24,7 @@ import {
 import { OpponentSettings } from "../TableSettings";
 import { KitRulesFields, KitRulesSheet } from "./KitRules";
 import { CoursePicker, onCourse } from "../golf/CoursePicker";
+import { LanePicker, onLane } from "../golf/LanePicker";
 
 type Rules = { id: string; name: string } & Record<string, unknown>;
 
@@ -38,6 +39,8 @@ interface Props {
   onOpenHouse: (slug: string) => void;
   /** Mini Golf: open the course editor, at a course or "new". */
   onEditCourse?: (id: string) => void;
+  /** Bowling: open the lane editor, at a lane or "new". */
+  onEditLane?: (id: string) => void;
 }
 
 export function KitSetup({
@@ -48,6 +51,7 @@ export function KitSetup({
   onFindPlayers,
   onOpenHouse,
   onEditCourse,
+  onEditLane,
 }: Props) {
   const game = kitGame(id)!;
   // A solitaire: no name to give, nobody to find, no computer players to tune. Rules, then Deal.
@@ -141,11 +145,12 @@ export function KitSetup({
             options={options.map((p) => ({ value: p.id, label: p.name }))}
             onValueChange={(e: CustomEvent<string>) => {
               const next = all.find((p) => p.id === e.detail);
-              // Mini Golf's course is picked on its own: other rules don't change it.
-              if (next) setRules(id === "minigolf" ? onCourse(next, String(rules.course ?? next.course)) : next);
+              // Mini Golf's course and Bowling's lane are picked on their own: other rules don't change them.
+              if (next) setRules(id === "minigolf" ? onCourse(next, String(rules.course ?? next.course)) : id === "bowling" ? onLane(next, String(rules.lane ?? "plain")) : next);
             }}
           />
           {id === "minigolf" && onEditCourse && <CoursePicker rules={rules} onChange={setRules} onEdit={onEditCourse} />}
+          {id === "bowling" && onEditLane && <LanePicker rules={rules} onChange={setRules} onEdit={onEditLane} />}
           {game.teams ? (
             <p className="fine">
               Four players: you and your partner across the table against the
