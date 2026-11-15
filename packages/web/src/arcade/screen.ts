@@ -11,6 +11,8 @@ const TONES: Record<string, string> = {
   purple: "#b08cff", teal: "#3fe0d0", grey: "#b9c4d6", crimson: "#ff3355", white: "#ffffff",
 };
 const toneOf = (tone?: string) => (tone && TONES[tone]) || "#ffffff";
+/** Whose something is, by seat: the same colours the games give their seats. */
+const TONES_BY_SEAT = ["blue", "red", "green", "gold"];
 const FONT = "'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
 
 type Shape = [number, number][];
@@ -28,6 +30,18 @@ const CARRIER: Shape = [[-1.15, -0.5], [1.15, -0.5], [1.3, 0.1], [0.7, 0.75], [-
 interface Spark { x: number; y: number; vx: number; vy: number; life: number; max: number; colour: string; size: number }
 interface Ring { x: number; y: number; r: number; grow: number; life: number; max: number; colour: string }
 interface Word { x: number; y: number; text: string; life: number; max: number; big: boolean; colour: string }
+interface Beam { x: number; y: number; tx: number; ty: number; life: number; max: number; colour: string; kind: "line" | "bolt" | "lob"; blast: number }
+
+/** What the player is pointing at on a grid, for the screen to show: nothing the game knows about. */
+export interface ArcadePointer {
+  /** The cell picked out. */
+  cell?: [col: number, row: number];
+  /** A reach to draw round it: the tower's that stands there, or the one about to be built. */
+  range?: number;
+  /** Whether something could be built there. */
+  open?: boolean;
+  tone?: string;
+}
 
 export interface ArcadeScreen {
   /** Fit the canvas to its box, keeping the field's shape. */
@@ -36,7 +50,7 @@ export interface ArcadeScreen {
   hear(events: readonly ArcadeEvent[], quiet: boolean, me?: number): void;
   /** Move the sparks on by a tick. */
   settle(): void;
-  draw(view: ArcadeView, frame: number): void;
+  draw(view: ArcadeView, frame: number, pointer?: ArcadePointer): void;
   /** Clear what is left over from the last game. */
   reset(): void;
 }
@@ -50,6 +64,7 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
   let sparks: Spark[] = [];
   let rings: Ring[] = [];
   let words: Word[] = [];
+  let beams: Beam[] = [];
   let shake = 0;
   let flash = 0;
   let streak = 0;
@@ -65,6 +80,51 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
     }
   }
   const ring = (x: number, y: number, r: number, grow: number, life: number, colour: string) => rings.push({ x, y, r, grow, life, max: life, colour });
+  const beam = (e: ArcadeEvent, kind: Beam["kind"], life: number, blast = 0) => e.to && beams.length < 200 && beams.push({ x: e.x, y: e.y, tx: e.to[0], ty: e.to[1], life, max: life, colour: toneOf(e.tone), kind, blast });
+
+  /** The ground of a game that builds on a grid: grass, the road, and the squares that can be built on. */
+  let ground: HTMLCanvasElement | null = null;
+  let groundKey = "";
+  function groundFor(build: NonNullable<ArcadeView["build"]>) {
+    const key = `${canvas.width}:${build.closed.join(",")}`;
+    if (ground && key === groundKey) return ground;
+    groundKey = key;
+    ground = document.createElement("canvas");
+    ground.width = canvas.width;
+    ground.height = canvas.height;
+    const g = ground.getContext("2d")!;
+    g.scale(scale, scale);
+    g.fillStyle = "#1d3b2a";
+    g.fillRect(0, 0, FW, FH);
+    const closed = new Set(build.closed);
+    for (let row = 0; row < build.rows; row++) {
+      for (let col = 0; col < build.cols; col++) {
+        if (closed.has(row * build.cols + col)) continue;
+        g.fillStyle = (row + col) % 2 ? "#24482f" : "#214330";
+        g.fillRect(col * build.cell + 12, row * build.cell + 12, build.cell - 24, build.cell - 24);
+      }
+    }
+    const trace = () => {
+      g.beginPath();
+      build.road.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+    };
+    g.lineJoin = "round";
+    g.lineCap = "round";
+    trace();
+    g.strokeStyle = "#5b4a33";
+    g.lineWidth = build.cell * 0.92;
+    g.stroke();
+    trace();
+    g.strokeStyle = "#cdb48a";
+    g.lineWidth = build.cell * 0.74;
+    g.stroke();
+    trace();
+    g.strokeStyle = "rgba(91, 74, 51, 0.5)";
+    g.lineWidth = 16;
+    g.setLineDash([90, 130]);
+    g.stroke();
+    return ground;
+  }
 
   // Glowing dots are drawn once and stamped: hundreds of bullets a frame have to be cheap.
   const stamps = new Map<string, HTMLCanvasElement>();
@@ -131,6 +191,7 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
       scale = canvas.width / FW;
     },
     reset() {
+      beams = [];
       sparks = [];
       rings = [];
       words = [];
@@ -218,10 +279,66 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
           case "shoot":
             if (!quiet && e.seat === me) blip(1250, 0.03, "square", 0.008, -500);
             break;
+          // A game that builds: shots go from a tower to what it hit.
+          case "shot":
+            beam(e, "line", 5);
+            if (!quiet) blip(880, 0.025, "square", 0.006, -300);
+            break;
+          case "snipe":
+            beam(e, "line", 12);
+            if (!quiet) blip(240, 0.14, "sawtooth", 0.035, -150);
+            break;
+          case "zap":
+            beam(e, "bolt", 7);
+            if (!quiet) blip(1500, 0.05, "sawtooth", 0.008, 600);
+            break;
+          case "shell":
+            beam(e, "lob", 9, e.amount ?? 500);
+            if (e.to) {
+              ring(e.to[0], e.to[1], 60, (e.amount ?? 500) / 9, 9, "#ffb347");
+              burst(e.to[0], e.to[1], 7, "#ffb347", 60, 16);
+            }
+            if (!quiet) crash(0.22, 0.06);
+            break;
+          case "frost":
+            if (rings.length < 60) ring(e.x, e.y, 80, (e.amount ?? 1000) / 14, 14, "#8fe9ff");
+            break;
+          case "pop":
+            burst(e.x, e.y, 6, toneOf(e.tone), 55, 16);
+            if (!quiet) blip(520, 0.05, "triangle", 0.02, -200);
+            break;
+          case "leak":
+            flash = Math.max(flash, 0.35);
+            shake = Math.max(shake, 12);
+            if (!quiet) blip(160, 0.35, "sawtooth", 0.08, -80);
+            break;
+          case "built":
+          case "upgraded":
+            ring(e.x, e.y, 60, 30, 12, toneOf(e.tone));
+            if (!quiet) notes(e.kind === "built" ? [440, 660] : [520, 780, 1040], 60, 0.09);
+            break;
+          case "sold":
+            if (!quiet) notes([660, 440], 60, 0.09);
+            break;
+          case "nope":
+            if (!quiet && e.seat === me) blip(140, 0.12, "square", 0.04);
+            break;
+          case "wave":
+            if (!quiet) notes([330, 330, 440], 120, 0.12);
+            break;
+          case "send":
+          case "pay":
+          case "interest":
+            if (!quiet) blip(990, 0.08, "triangle", 0.04);
+            break;
         }
+        // Someone else's refusal is theirs to read.
+        if (e.kind === "nope" && e.seat !== me) continue;
         if (e.text && words.length < 40 && e.kind !== "boom") {
           const big = e.kind === "perfect" || e.kind === "extend" || e.kind === "medal-lost";
-          words.push({ x: e.x, y: e.y, text: e.text, life: big ? 110 : 46, max: big ? 110 : 46, big, colour: e.kind === "medal" ? "#ffd166" : e.kind === "medal-lost" ? "#ff8a8a" : "#ffffff" });
+          const colour = e.kind === "medal" || e.kind === "pop" || e.kind === "sold" || e.kind === "pay" || e.kind === "interest" || e.kind === "send" ? "#ffd166" : e.kind === "medal-lost" || e.kind === "leak" || e.kind === "nope" ? "#ff8a8a" : "#ffffff";
+          const slow = big || e.kind === "pay" || e.kind === "interest" || e.kind === "send" || e.kind === "nope";
+          words.push({ x: e.x, y: e.y, text: e.text, life: slow ? 110 : 46, max: slow ? 110 : 46, big, colour });
         }
       }
     },
@@ -238,10 +355,11 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
         return --r.life > 0;
       });
       words = words.filter((w) => --w.life > 0);
+      beams = beams.filter((b) => --b.life > 0);
       shake *= 0.86;
       flash *= 0.86;
     },
-    draw(view, frame) {
+    draw(view, frame, pointer) {
       const W = canvas.width;
       const H = canvas.height;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -256,11 +374,38 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
       const sy = reduced ? 0 : (Math.random() - 0.5) * shake * dpr;
       ctx.setTransform(scale, 0, 0, scale, sx, sy);
 
-      for (const st of stars) {
-        ctx.globalAlpha = 0.25 + st.z * 0.2;
-        ctx.fillStyle = st.z === 3 ? "#cfe6ff" : "#8fa3d6";
-        const size = 8 + st.z * 7;
-        ctx.fillRect(st.x, (st.y + (reduced ? 0 : frame * st.z * 9)) % FH, size, size * (1 + st.z));
+      const build = view.build;
+      if (build) {
+        ctx.setTransform(1, 0, 0, 1, sx, sy);
+        ctx.drawImage(groundFor(build), 0, 0);
+        ctx.setTransform(scale, 0, 0, scale, sx, sy);
+        if (pointer?.cell) {
+          const [col, row] = pointer.cell;
+          const x = col * build.cell + build.cell / 2;
+          const y = row * build.cell + build.cell / 2;
+          const colour = pointer.open === false ? "#ff5a6e" : toneOf(pointer.tone);
+          if (pointer.range) {
+            ctx.beginPath();
+            ctx.arc(x, y, pointer.range, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255,255,255,0.07)";
+            ctx.fill();
+            ctx.strokeStyle = colour;
+            ctx.lineWidth = 22;
+            ctx.setLineDash([70, 70]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+          ctx.strokeStyle = colour;
+          ctx.lineWidth = 34;
+          ctx.strokeRect(col * build.cell + 30, row * build.cell + 30, build.cell - 60, build.cell - 60);
+        }
+      } else {
+        for (const st of stars) {
+          ctx.globalAlpha = 0.25 + st.z * 0.2;
+          ctx.fillStyle = st.z === 3 ? "#cfe6ff" : "#8fa3d6";
+          const size = 8 + st.z * 7;
+          ctx.fillRect(st.x, (st.y + (reduced ? 0 : frame * st.z * 9)) % FH, size, size * (1 + st.z));
+        }
       }
       ctx.globalAlpha = 1;
       ctx.textAlign = "center";
@@ -331,11 +476,113 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
             ctx.fillStyle = colour;
             ctx.fillRect(t.x - t.r, t.y - t.r - 110, (t.r * 2 * t.health) / 1000, 36);
           }
+        } else if (t.kind.startsWith("tower:")) {
+          const kind = t.kind.slice(6);
+          const turn = ((t.angle ?? 27000) / 18000) * Math.PI;
+          // A stone base, then what stands on it, turned the way it last fired.
+          ctx.fillStyle = "#2a3140";
+          ctx.strokeStyle = "#0e131c";
+          ctx.lineWidth = 16;
+          ctx.beginPath();
+          ctx.roundRect(t.x - 200, t.y - 200, 400, 400, 60);
+          ctx.fill();
+          ctx.stroke();
+          if (kind === "frost") solid(STAR, t.x, t.y, 165, colour, frame / 40);
+          else if (kind === "tesla") {
+            solid(HEX, t.x, t.y, 150, colour);
+            solid(HEX, t.x, t.y, 60, "#ffffff", frame / 9);
+          } else {
+            solid(HEX, t.x, t.y, kind === "mortar" ? 150 : 120, colour, Math.PI / 6);
+            // The barrel.
+            const long = kind === "sniper" ? 230 : kind === "mortar" ? 130 : 170;
+            const wide = kind === "mortar" ? 60 : kind === "sniper" ? 22 : 30;
+            ctx.save();
+            ctx.translate(t.x, t.y);
+            ctx.rotate(turn);
+            ctx.fillStyle = colour;
+            ctx.strokeStyle = "#0e131c";
+            ctx.lineWidth = 12;
+            ctx.beginPath();
+            ctx.roundRect(0, -wide, long, wide * 2, 14);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+          }
+          // A pip for each level, in the colour of whoever built it.
+          ctx.fillStyle = toneOf(TONES_BY_SEAT[(t.seat ?? 0) % TONES_BY_SEAT.length]);
+          for (let i = 0; i < (t.level ?? 1); i++) ctx.fillRect(t.x - 160 + i * 70, t.y + 140, 50, 34);
+        } else if (t.kind.startsWith("creep:")) {
+          const kind = t.kind.slice(6);
+          const tint = t.mark === "slowed" ? "#8fe9ff" : colour;
+          const bob = reduced ? 0 : Math.sin(frame / 5 + t.id) * 12;
+          if (kind === "flyer") {
+            ctx.fillStyle = "rgba(0,0,0,0.25)";
+            ctx.beginPath();
+            ctx.ellipse(t.x + 60, t.y + 150, t.r * 0.8, t.r * 0.4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            solid(DART, t.x, t.y + bob, t.r, tint, Math.PI / 2);
+          } else if (kind === "brute") solid(HEX, t.x, t.y, t.r, tint, Math.PI / 6);
+          else if (kind === "boss") {
+            solid(BOSS, t.x, t.y, t.r, tint);
+            solid(STAR, t.x, t.y, t.r * 0.35, "#ffd166", frame / 20);
+          } else if (kind === "runner") solid(DRONE, t.x, t.y + bob / 2, t.r, tint);
+          else {
+            ctx.beginPath();
+            ctx.arc(t.x, t.y + (kind === "swarm" ? bob / 2 : 0), t.r, 0, Math.PI * 2);
+            ctx.fillStyle = "#0b1020";
+            ctx.fill();
+            ctx.globalAlpha = 0.45;
+            ctx.fillStyle = tint;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = tint;
+            ctx.lineWidth = 22;
+            ctx.stroke();
+          }
+          if (t.health !== undefined && t.health < 1000 && kind !== "boss") {
+            const w = Math.max(160, t.r * 1.8);
+            ctx.fillStyle = "rgba(0,0,0,0.55)";
+            ctx.fillRect(t.x - w / 2, t.y - t.r - 80, w, 32);
+            ctx.fillStyle = t.health > 500 ? "#5ee6a0" : t.health > 250 ? "#ffd166" : "#ff5a6e";
+            ctx.fillRect(t.x - w / 2, t.y - t.r - 80, (w * t.health) / 1000, 32);
+          }
         } else {
           const r = t.r * 1.6;
           ctx.drawImage(stamp(colour, false), t.x - r, t.y - r, r * 2, r * 2);
         }
       }
+
+      for (const b of beams) {
+        const left = b.life / b.max;
+        ctx.globalAlpha = left;
+        ctx.strokeStyle = b.colour;
+        ctx.lineCap = "round";
+        if (b.kind === "lob") {
+          // The shell on its way: a dot along an arc.
+          const p = 1 - left;
+          const x = b.x + (b.tx - b.x) * p;
+          const y = b.y + (b.ty - b.y) * p - Math.sin(p * Math.PI) * 500;
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = "#1d1a16";
+          ctx.beginPath();
+          ctx.arc(x, y, 60, 0, Math.PI * 2);
+          ctx.fill();
+          continue;
+        }
+        ctx.lineWidth = b.kind === "bolt" ? 26 : 20;
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y);
+        if (b.kind === "bolt") {
+          // Lightning: a few kinks on the way, different every frame.
+          for (let i = 1; i < 4; i++) ctx.lineTo(b.x + ((b.tx - b.x) * i) / 4 + (Math.random() - 0.5) * 160, b.y + ((b.ty - b.y) * i) / 4 + (Math.random() - 0.5) * 160);
+        }
+        ctx.lineTo(b.tx, b.ty);
+        ctx.stroke();
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = "#ffffff";
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
 
       for (const r of rings) {
         ctx.globalAlpha = r.life / r.max;

@@ -1,11 +1,11 @@
-// Skyfire's controls: keys and fingers in, one tick's input out.
+// The arcade games' controls: keys and fingers in, one tick's input out.
 import { SKYFIRE_SPEED, skyfire } from "@journey-to-code/games";
 import { describe, expect, it } from "vitest";
 import { skyfireControls } from "../src/arcade/controls";
 
 const make = (autofire = false) => skyfireControls({ autofire: () => autofire });
 
-describe("Skyfire's controls", () => {
+describe("Shitstorm's controls (skyfire)", () => {
   it("rests when nothing is touched, and fires by itself only when asked to", () => {
     expect(make().read()).toEqual(skyfire.idle);
     expect(make(true).read()).toEqual({ ...skyfire.idle, fire: true });
@@ -68,5 +68,37 @@ describe("Skyfire's controls", () => {
     let moved = 0;
     for (let i = 0; i < 60; i++) moved += c.read().dx;
     expect(moved).toBeLessThanOrEqual(900);
+  });
+});
+
+describe("Tower of Ryan's controls (bulwark)", () => {
+  it("sends each order once, with the next number, and holds the last one after", async () => {
+    const { bulwarkControls } = await import("../src/arcade/controls");
+    const { bulwark } = await import("@journey-to-code/games");
+    const c = bulwarkControls();
+    expect(c.read()).toEqual(bulwark.idle);
+    c.order!("build", 3, 4, "frost");
+    c.order!("send");
+    const first = c.read();
+    expect(first).toEqual({ n: 1, cmd: "build", col: 3, row: 4, kind: "frost" });
+    expect(bulwark.input(first)).toEqual(first);
+    expect(c.read()).toMatchObject({ n: 2, cmd: "send" });
+    // Nothing new: the same input again, which the game has already seen and won't repeat.
+    expect(c.read()).toMatchObject({ n: 2, cmd: "send" });
+    c.order!("upgrade", 3, 4);
+    c.clear();
+    expect(c.read().n).toBe(2);
+    expect(c.specialLabel).toBe("");
+  });
+
+  it("builds a tower in a real game from an order", async () => {
+    const { bulwarkControls } = await import("../src/arcade/controls");
+    const { bulwark, BULWARK_GRID } = await import("@journey-to-code/games");
+    const state = bulwark.newGame(bulwark.normalize(null), 1, 3);
+    const c = bulwarkControls();
+    const free = Array.from({ length: BULWARK_GRID.cols * BULWARK_GRID.rows }, (_, i) => i).find((i) => !state.road.includes(i))!;
+    c.order!("build", free % BULWARK_GRID.cols, Math.floor(free / BULWARK_GRID.cols), "dart");
+    for (let t = 0; t < 10; t++) bulwark.step(state, [c.read()]);
+    expect(bulwark.view(state).build!.built).toHaveLength(1);
   });
 });
