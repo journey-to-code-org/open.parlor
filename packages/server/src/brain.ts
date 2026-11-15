@@ -4,6 +4,7 @@
 // anything between calls that changes an answer, so it doesn't matter which thread is asked.
 import { QUICK_BUDGET, isKitGame, type KitGameId, type ThinkBudget } from "@journey-to-code/games";
 import { mulberry32, type TableSettings } from "@journey-to-code/rules";
+import { hasCourse, registerCourse, type CustomCourse } from "@open-parlor/courses";
 import { gameOfState, tableRoom } from "./games.js";
 import { kitBot, warmSports } from "./kit.js";
 
@@ -23,6 +24,16 @@ export interface ThinkJob {
    * instead of `Math.random`, so the same job gives the same move on any thread. Never set in play.
    */
   seed?: number;
+  /**
+   * Mini Golf courses people made that the state is played on (see courses.ts). A worker thread has
+   * its own copy of the game, which knows only the built-in courses until it's handed these.
+   */
+  courses?: { id: string; course: CustomCourse }[];
+}
+
+/** Put the job's courses where this thread's copy of the game finds them. */
+function learn(job: ThinkJob) {
+  for (const { id, course } of job.courses ?? []) if (!hasCourse(id)) registerCourse(course, id);
 }
 
 type KitState = { game: KitGameId } & Record<string, unknown>;
@@ -41,6 +52,7 @@ function seeded<T>(seed: number | undefined, fn: () => T): T {
 
 /** The move: exactly what the room's `bot` gives for this state, seat, name and settings. */
 export function think(job: ThinkJob): unknown {
+  learn(job);
   return seeded(job.seed, () =>
     isKitGame(gameOfState(job.state))
       ? kitBot(job.state as KitState, job.seat, job.name, job.settings as TableSettings | null, job.budget)
@@ -53,6 +65,7 @@ export function think(job: ThinkJob): unknown {
  * skill with next to no time. Spades and Palace think quickly whatever they're asked.
  */
 export function quick(job: ThinkJob): unknown {
+  learn(job);
   return seeded(job.seed, () =>
     isKitGame(gameOfState(job.state))
       ? kitBot(job.state as KitState, job.seat, job.name, job.settings as TableSettings | null, QUICK_BUDGET, true)

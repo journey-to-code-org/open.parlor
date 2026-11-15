@@ -63,3 +63,17 @@ h3 { font-size: 0.95rem; margin-bottom: 0.5rem; }
   .games li { grid-template-columns: 2ch 1.75rem minmax(0, 1fr); }
   .games .moves { grid-column: 3; padding-bottom: 0.35rem; }
 }
+
+/* A golf course's first hole, as a little plan. */
+.course-plan { display: grid; place-items: center; padding: 1rem; background: linear-gradient(160deg, #2b6a50, #143628); }
+.plan { display: grid; grid-template-columns: repeat(var(--cols), 1fr); aspect-ratio: var(--cols) / var(--rows); height: 9rem; gap: 1px; }
+.plan span { border-radius: 1px; }
+.plan .garden { background: #4f7a3d; }
+.plan .green, .plan .slope, .plan .tee { background: #7fc46b; }
+.plan .slope { background: #9bd486; }
+.plan .wall { background: #a35a3c; }
+.plan .sand { background: #e9d59a; }
+.plan .water { background: #4f9fd8; }
+.plan .bumper { background: radial-gradient(circle, #d8433a 0 40%, #7fc46b 42%); }
+.plan .tee { box-shadow: inset 0 0 0 2px #fff; }
+.plan .cup { background: radial-gradient(circle, #1d1a16 0 34%, #7fc46b 36%); }
