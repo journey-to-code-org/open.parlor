@@ -20,6 +20,8 @@ export interface ChooserGame {
   fan: Record<string, unknown>[];
   /** A board game shows a little board instead of cards. */
   board?: { cols: number; cells: ({ glyph: string; tone: string; shade?: string } | null)[]; shade?: string };
+  /** A dice game shows a few dice: the face each one shows. */
+  dice?: number[];
   /** A table sport shows a little table from above: its surface, a hole, a ball or two (in a 100 × 100 box). */
   table?: { surface: string; cup?: [number, number]; balls: { x: number; y: number; tone: string }[] };
 }
@@ -61,6 +63,8 @@ function surprise() {
   const game = from[Math.floor(Math.random() * from.length)];
   if (game) emit("pick", game.id);
 }
+/** Where each face's pips sit in a die's three-by-three (0 is the top left). */
+const PIPS: Record<number, number[]> = { 1: [4], 2: [2, 6], 3: [2, 4, 6], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
 const seatsLabel = (g: ChooserGame) => (g.teams ? "4 players · partners" : g.seats[0] === g.seats[1] ? `${g.seats[0]} players` : `${g.seats[0]}–${g.seats[1]} players`);
 const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spades, Palace, Hearts and more, with the family."));
 </script>
@@ -116,7 +120,12 @@ const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spa
       <ul class="grid">
         <li v-for="g in shown" :key="g.id">
           <button type="button" class="tile" :class="{ last: g.id === last }" :aria-label="`${g.name}: ${g.blurb}, ${seatsLabel(g)}`" @click="emit('pick', g.id)">
-            <span v-if="g.board" class="mini-board" :class="g.board.shade ? `shade-${g.board.shade}` : ''" aria-hidden="true" :style="{ '--cols': g.board.cols }">
+            <span v-if="g.dice" class="mini-dice" aria-hidden="true">
+              <span v-for="(face, i) in g.dice" :key="i" class="mini-die" :style="{ '--i': i }">
+                <i v-for="n in 9" :key="n" :class="{ pip: PIPS[face]?.includes(n - 1) }" />
+              </span>
+            </span>
+            <span v-else-if="g.board" class="mini-board" :class="g.board.shade ? `shade-${g.board.shade}` : ''" aria-hidden="true" :style="{ '--cols': g.board.cols }">
               <span v-for="(c, i) in g.board.cells" :key="i" class="mini-cell" :class="c ? [`tone-${c.tone}`, c.shade ? `shade-${c.shade}` : ''] : ''">{{ c?.glyph }}</span>
             </span>
             <span v-else-if="g.table" class="mini-table" :class="`surface-${g.table.surface}`" aria-hidden="true">
@@ -246,7 +255,29 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 /* A green board (Reversi): discs fill their squares. */
 .mini-board.shade-green { background: #17402c; }
 .mini-board.shade-green .mini-cell { background: #2f8a5b; font-size: calc(var(--tile-card) * 1.5 / var(--cols) * 0.95); }
+/* A board of points (Backgammon): long triangles from both edges, and no lines between the cells. */
+.mini-board.shade-points { background: #c9a36b; gap: 0; border: 2px solid #5b3a22; box-sizing: border-box; }
+.mini-board.shade-points .mini-cell { background: none; font-size: calc(var(--tile-card) * 1.5 / var(--cols) * 0.98); }
+.mini-board.shade-points .mini-cell.shade-point-down, .mini-board.shade-points .mini-cell.shade-point-up { position: relative; isolation: isolate; }
+.mini-board.shade-points .mini-cell.shade-point-down::before, .mini-board.shade-points .mini-cell.shade-point-up::before { content: ""; position: absolute; inset: 0; z-index: -1; background: #7a2e23; clip-path: polygon(8% 0, 92% 0, 50% 100%); }
+.mini-board.shade-points .mini-cell.shade-point-up::before { clip-path: polygon(8% 100%, 92% 100%, 50% 0); }
+.mini-board.shade-points .mini-cell:nth-child(even).shade-point-down::before, .mini-board.shade-points .mini-cell:nth-child(odd).shade-point-up::before { background: #efe0bb; }
+.mini-board.shade-points .mini-cell.tone-light { color: #fffaf0; text-shadow: 0 0 1px #3d2717, 0 1px 1px rgba(0, 0, 0, 0.6); }
 .tile:hover .mini-board, .tile:focus-visible .mini-board { rotate: 0deg; scale: 1.06; }
+/* A dice game's tile: a few dice thrown where the fan would be; they square up when you point at the tile. */
+.mini-dice { position: absolute; right: calc(var(--tile-card) * 0.3); top: 50%; translate: 0 -50%; width: calc(var(--tile-card) * 1.5); aspect-ratio: 1; }
+.mini-die {
+  position: absolute; width: 46%; aspect-ratio: 1; padding: 6%; box-sizing: border-box; border-radius: 18%;
+  display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); place-items: center;
+  background: linear-gradient(145deg, #fffdf6, #eadfc8); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.14), 0 4px 8px rgba(0, 0, 0, 0.35);
+  transition: rotate 220ms var(--ease-back, ease-out), translate 220ms var(--ease-back, ease-out);
+}
+.mini-die:nth-child(1) { left: 2%; top: 8%; rotate: -12deg; }
+.mini-die:nth-child(2) { right: 0; top: 20%; rotate: 9deg; }
+.mini-die:nth-child(3) { left: 24%; bottom: 0; rotate: -4deg; }
+.mini-die:nth-child(n + 4) { display: none; }
+.mini-die i.pip { width: 74%; aspect-ratio: 1; border-radius: 50%; background: #1d1a16; }
+.tile:hover .mini-die, .tile:focus-visible .mini-die { rotate: 0deg; translate: 0 -3px; }
 /* A table sport's tile: a little table seen from above, where the fan would be. */
 .mini-table {
   position: absolute; right: calc(var(--tile-card) * 0.3); top: 50%; translate: 0 -50%; rotate: 5deg;
@@ -256,6 +287,9 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .mini-table svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .mini-table .rail { fill: #e9dcc3; stroke: #5b3d22; stroke-width: 2; }
 .mini-table .cloth { fill: #3f9c58; }
+/* A green has timber rails, like the holes themselves. */
+.mini-table.surface-green .rail { fill: #c08a52; stroke: #4a2c12; stroke-width: 2.5; }
+.mini-table.surface-green .cloth { fill: #3aa15a; stroke: rgba(8, 40, 16, 0.5); stroke-width: 2; }
 .mini-table.surface-felt .cloth { fill: #2f8a5b; }
 .mini-table.surface-lane .cloth { fill: #e0b877; }
 .mini-table .aim { stroke: rgba(255, 255, 255, 0.8); stroke-width: 2.5; stroke-dasharray: 1 6; stroke-linecap: round; }
@@ -270,9 +304,10 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
   .fan { top: 14px; right: 14px; translate: none; --tile-card: 34px; }
   .mini-board { top: 12px; right: 14px; translate: none; --tile-card: 32px; }
   .mini-table { top: 12px; right: 14px; translate: none; --tile-card: 32px; }
+  .mini-dice { top: 12px; right: 14px; translate: none; --tile-card: 32px; }
   .emoji { display: none; }
 }
-@media (prefers-reduced-motion: reduce) { .tile, .fan-card, .mini-board, .mini-table { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .tile, .fan-card, .mini-board, .mini-table, .mini-die { transition: none; } }
 .none, .fine { text-align: center; color: #b9d0c2; margin: 0; }
 .links { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem 1.5rem; }
 .design { color: var(--gold); font-weight: 600; text-underline-offset: 3px; }

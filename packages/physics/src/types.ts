@@ -29,6 +29,8 @@ export interface World {
   walls: Wall[];
   pockets: Pocket[];
   regions: Region[];
+  /** Pipes a ball goes into at one place and comes out of at another. May be left out. */
+  tunnels?: Tunnel[];
 }
 
 /** A disc. Everything that moves, and round things that don't (a bumper, a peg). */
@@ -42,6 +44,11 @@ export interface Body {
   /** Never moves, whatever hits it. */
   fixed?: boolean;
   restitution?: number;
+  /**
+   * A bumper: whatever touches this leaves it at no less than this speed (units/s) along the line
+   * between the two, however gently it arrived.
+   */
+  kick?: number;
   /** Velocity in units/s. A resting world never has these; they are for setting something rolling without a shot. */
   vx?: number;
   vy?: number;
@@ -63,6 +70,12 @@ export interface Wall {
   points: Point[];
   closed?: boolean;
   restitution?: number;
+  /**
+   * A ledge: the wall stops a ball on one side only. Walking along the points in the order they
+   * are listed, on a table drawn with y down the screen, a ball on the left rolls straight through
+   * (it drops off the edge) and a ball on the right is stopped (it meets the riser).
+   */
+  oneWay?: boolean;
 }
 
 /**
@@ -76,6 +89,28 @@ export interface Pocket {
   y: number;
   r: number;
   maxSpeed?: number;
+}
+
+/**
+ * A pipe. A ball whose centre comes over the mouth (the circle at `x`, `y`) goes in, unless it is
+ * moving faster than `maxSpeed`, when it carries on as if the mouth weren't there (leave
+ * `maxSpeed` out and the mouth takes anything). It is off the table for `ticks` steps and then
+ * comes out at `to`, rolling at `speed` in the direction `angle`, whatever it went in at.
+ */
+export interface Tunnel {
+  id: string;
+  x: number;
+  y: number;
+  r: number;
+  maxSpeed?: number;
+  /** Where the ball comes out. Keep it clear of walls, and outside this tunnel's own mouth. */
+  to: Point;
+  /** The way it comes out: whole hundredths of a degree, as a shot's angle. */
+  angle: number;
+  /** How fast it comes out, in units/s. */
+  speed: number;
+  /** Steps spent inside. Defaults to 0: out on the very next step. */
+  ticks?: number;
 }
 
 export type Shape = { points: Point[] } | { x: number; y: number; r: number };
@@ -123,6 +158,9 @@ export type SimEvent =
   | { type: "pocket"; tick: number; body: string; pocket: string }
   | { type: "skip"; tick: number; body: string; pocket: string }
   | { type: "out"; tick: number; body: string; region: string }
+  /** A ball went into a tunnel's mouth; it is off the table until the matching `emerge`. */
+  | { type: "tunnel"; tick: number; body: string; tunnel: string }
+  | { type: "emerge"; tick: number; body: string; tunnel: string }
   | { type: "capped"; tick: number };
 
 export interface SimResult {
@@ -144,6 +182,6 @@ export interface Frame {
   done: boolean;
   /** What happened during this step. */
   events: SimEvent[];
-  /** Every body, in the world's order. Speeds in units/s. */
-  bodies: { id: string; x: number; y: number; vx: number; vy: number; live: boolean }[];
+  /** Every body, in the world's order. Speeds in units/s. `in` names the tunnel a body is inside (it is not `live` then, and sits at the mouth). */
+  bodies: { id: string; x: number; y: number; vx: number; vy: number; live: boolean; in?: string }[];
 }

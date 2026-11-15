@@ -11,6 +11,7 @@ import { lift, motionScale, useCardFlip, useFlash } from "../motion";
 import { usePalaceFx } from "./PalaceFx";
 import { HandSortBar, useHandOrder } from "../HandSort";
 import { cardKey } from "../handOrder";
+import { SoundButton } from "../SoundButton";
 
 type PCard = Extract<Card, { kind: "pip" }>;
 const WORD: Record<number, [string, string]> = { 11: ["jack", "jacks"], 12: ["queen", "queens"], 13: ["king", "kings"], 14: ["ace", "aces"] };
@@ -223,9 +224,7 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
         <strong>🏰 {view.rules.name}</strong>
         <span className="bar-buttons">
         {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} />}
-        <button type="button" className="sound-toggle inline" onClick={toggleSound} aria-pressed={soundOn} aria-label={soundOn ? "Turn sounds off" : "Turn sounds on"}>
-          {soundOn ? "🔊" : "🔇"}
-        </button>
+        <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>
       </header>
       {banner}

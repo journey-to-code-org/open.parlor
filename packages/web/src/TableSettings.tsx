@@ -10,6 +10,7 @@ import {
   saveDisplay,
   type DisplaySettings,
 } from "./display";
+import { putEverythingBack, useAnythingMoved, useDragPlace } from "./useDragPlace";
 
 /**
  * Whether these settings are a table's on the server. Only there is a turn timer offered: the server
@@ -150,8 +151,8 @@ export function TableSettingsFields({
   );
 }
 
-/** This device's own look: animations and suit colours. Saved at once. */
-export function DisplayFields() {
+/** This device's own look: animations, suit colours and how a table sport is looked at. Saved at once. */
+export function DisplayFields({ sport = false }: { sport?: boolean }) {
   const [display, setDisplay] = useState(loadDisplay);
   const change = (patch: Partial<DisplaySettings>) => {
     const next = { ...display, ...patch };
@@ -178,6 +179,17 @@ export function DisplayFields() {
         ]}
         onChange={(v) => change({ suits: v === "4" ? 4 : 2 })}
       />
+      {sport && (
+        <Choice
+          label="The table is seen"
+          value={display.view}
+          options={[
+            ["angled", "From an angle"],
+            ["above", "From straight above"],
+          ]}
+          onChange={(v) => change({ view: v === "above" ? "above" : "angled" })}
+        />
+      )}
     </>
   );
 }
@@ -187,24 +199,35 @@ export function TableSettingsButton({
   settings,
   onChange,
   solo = false,
+  sport = false,
 }: {
   settings: TableSettings;
   onChange: (next: TableSettings) => Promise<void> | void;
   solo?: boolean;
+  /** At a table sport: this device may also choose how the table is looked at. */
+  sport?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const drag = useDragPlace<HTMLButtonElement>("settings");
+  const anythingMoved = useAnythingMoved();
   return (
     <>
+      {drag.lift(
       <button
         type="button"
-        className="settings-toggle"
+        ref={drag.target}
+        className={`settings-toggle movable ${drag.moved ? "moved" : ""}`}
+        style={drag.style}
+        {...drag.handle}
         aria-label={solo ? "Table settings: animations and suit colours" : "Table settings: opponents, speed and animations"}
         aria-expanded={open}
-        onClick={() => setOpen(true)}
+        title="Table settings (drag to move)"
+        onClick={() => !drag.wasDrag() && setOpen(true)}
       >
         ⚙︎
-      </button>
+      </button>,
+      )}
       {open &&
         createPortal(
           <>
@@ -234,7 +257,12 @@ export function TableSettingsButton({
               {problem && <p className="error">{problem}</p>}
               <PlayersFields />
               {!solo && <h3>On this device</h3>}
-              <DisplayFields />
+              <DisplayFields sport={sport} />
+              {anythingMoved && (
+                <button type="button" className="link" onClick={putEverythingBack}>
+                  Put the buttons I've moved back
+                </button>
+              )}
               <ReportLink before={() => setOpen(false)} />
               <button
                 type="button"
