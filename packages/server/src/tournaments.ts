@@ -9,7 +9,7 @@
 import type { PalaceRules } from "@cardroom/palace";
 import { cleanSettings, mulberry32, pickPersonas, type RulePreset, type TableSettings } from "@spades/rules";
 import type { RoomDoc } from "@spades/rooms/server";
-import { isKitGame, kitGame, type KitSummary } from "@cardroom/games";
+import { isKitGame, kitGame, matchRules, type KitSummary } from "@cardroom/games";
 import { gameEmoji, gameName, isGameId, type GameId, type TableOptions } from "./games.js";
 import { kitOptions } from "./kit.js";
 import { palaceOptions } from "./palace.js";
@@ -63,6 +63,8 @@ export interface HouseLike {
   members: { id: string; player: string; name: string; role: string }[];
   tables: { id: string; game?: GameId; rules: string; created: number; tournament?: string }[];
   tournaments?: string[];
+  /** The cards the house's tables start with. */
+  deck?: unknown;
 }
 
 interface Rooms {
@@ -71,6 +73,7 @@ interface Rooms {
     documents(): Promise<{ get(collection: string, key: string): Record<string, unknown> | undefined }>;
   };
   create(options: TableOptions, settings?: unknown): Promise<string>;
+  setDeck(id: string, deck: unknown): Promise<void>;
   room(id: string): Promise<RoomDoc<unknown> | undefined>;
   seatPlayer(id: string, seat: number, player: string, name: string): Promise<void>;
   seatBot(id: string, seat: number, name: string): Promise<void>;
@@ -218,12 +221,14 @@ export function createTournaments(rooms: Rooms, { push, saveHouse }: { push?: Pu
       teamSize(t.game) === 2 ? [a.players[0]!, b.players[0]!, a.players[1]!, b.players[1]!] : [a.players[0]!, b.players[0]!, ...computers(t, matchSeats(t.game) - 2)];
     const people = seats.filter((p): p is { member: string } => "member" in p);
     const options: TableOptions = isKitGame(t.game)
-      ? kitOptions(kitGame(t.game)!, t.rules, matchSeats(t.game))
+      ? // A match that counts: moves can't be taken back in it (the game's own rules say so from here on).
+        kitOptions(kitGame(t.game)!, matchRules(kitGame(t.game)!, t.rules), matchSeats(t.game))
       : t.game === "palace"
         ? palaceOptions(t.rules as PalaceRules, 2)
         : (t.rules as RulePreset);
     // A match with nobody to watch it plays itself out quickly.
     const id = await rooms.create(options, people.length ? t.settings : { ...t.settings, pace: "fast" });
+    if (house.deck) await rooms.setDeck(id, house.deck);
     for (const [i, p] of seats.entries()) {
       if ("bot" in p) await rooms.seatBot(id, i, p.bot);
       else {

@@ -388,7 +388,7 @@ describe("a match", () => {
 
 describe("the rules", () => {
   it("come out whole from anything, and a fleet has to fit its board", () => {
-    expect(g.normalize({ id: "combat-quick" })).toEqual(quickCombat);
+    expect(g.normalize({ id: "combat-quick" })).toEqual({ ...quickCombat, offers: "all" });
     expect(g.normalize({ size: 99, fleet: "armada", games: 4, first: "me" })).toMatchObject({ size: 12, fleet: "classic", games: 1, first: "random" });
     expect(g.validate(g.normalize({ ...admiralsCombat, size: 6 }))[0]).toContain("doesn't fit on a 6×6 board without ships touching");
     expect(g.validate(g.normalize({ ...classicCombat, size: 7 }))).toEqual([]);

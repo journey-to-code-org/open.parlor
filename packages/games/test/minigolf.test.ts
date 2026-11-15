@@ -1,10 +1,12 @@
 // Mini Golf's own rules: counting strokes, the stroke limit, water and the drop, holing out (and a
-// ball too fast to drop), both ways of taking turns, the scorecard, ties, and the promise the
-// whole kit rests on: stepping a recorded shot ends exactly where the engine stored it.
+// ball too fast to drop), both ways of taking turns, balls that knock into each other (and what
+// becomes of a ball that is knocked into the cup, into the water, or is lying on the tee), the
+// scorecard, ties, and the promise the whole kit rests on: stepping a recorded shot, with however
+// many balls, ends exactly where the engine stored it.
 import { PHYSICS_VERSION, frames, simulate, start, step, result } from "@cardroom/physics";
 import { mulberry32 } from "@spades/rules";
 import { describe, expect, it } from "vitest";
-import { AIM_SLIP, GameError, MAX_POWER, MIN_POWER, POWER_SLIP, backGarden, ballId, bestPutt, distanceToCup, miniGolf, newMiniGolf, nineHoles, nineTogether, quickThree, sameRest, scoreName, worldBefore, type MiniGolfMove, type MiniGolfRules, type MiniGolfState } from "../src/index.js";
+import { AIM_SLIP, BALL_RADIUS, GameError, MAX_POWER, MIN_POWER, POWER_SLIP, TEE_CLEAR, backGarden, ballId, bestPutt, distanceToCup, holeWorld, miniGolf, newMiniGolf, nineHoles, nineTogether, quickThree, sameRest, scoreName, worldBefore, type MiniGolfMove, type MiniGolfRules, type MiniGolfState } from "../src/index.js";
 
 const UP = 27000;
 const shot = (seat: number, angle: number, power: number): MiniGolfMove => ({ type: "shot", body: ballId(seat), angle, power });
@@ -22,7 +24,21 @@ function onHole(id: string, seats = 1, rules: MiniGolfRules = nineHoles): MiniGo
   return s;
 }
 /** The putt that holes out from the tee of Welcome Mat. */
-const ACE = [UP, 550] as const;
+const ACE = [UP, 600] as const;
+/** On Lily Pond: off the tee's bank and into the water on the left. */
+const SPLASH = [20520, 300] as const;
+const hole = (id: string) => backGarden.holes[holeIndex(id)]!;
+
+/**
+ * A table in turn on a hole with balls set down where a test wants them (tests may build the state
+ * they need): each ball has left the tee and taken `strokes`, and it is `turn`'s shot.
+ */
+function lying(id: string, at: [x: number, y: number, strokes?: number][], turn: number, rules: MiniGolfRules = nineHoles): MiniGolfState {
+  const s = onHole(id, at.length, rules);
+  at.forEach(([x, y, strokes = 1], seat) => Object.assign(s.balls[seat]!, { x, y, strokes, teed: true }));
+  s.turn = turn;
+  return s;
+}
 
 describe("strokes", () => {
   it("counts each putt, moves the ball to where it stopped, and says whose ball is where", () => {
@@ -36,7 +52,7 @@ describe("strokes", () => {
     expect(ball.strokes).toBe(1);
     expect(ball.x).toBe(tee[0]);
     expect(ball.y).toBeLessThan(tee[1]);
-    expect(ball.y).toBeGreaterThan(3200);
+    expect(ball.y).toBeGreaterThan(3000);
     const v = miniGolf.view(s, 0);
     expect(v.table.world.bodies).toEqual([{ id: "ball-0", x: ball.x, y: ball.y, r: 240 }]);
     expect(v.players[0]!.line).toBe("1 stroke");
@@ -49,7 +65,7 @@ describe("strokes", () => {
   it("holes out when the ball drops, and names the score", () => {
     let s = newMiniGolf(nineHoles, 1, 1);
     s = play(s, 0, ...ACE);
-    expect(s.balls[0]).toMatchObject({ done: "holed", strokes: 1, x: 5000, y: 3200 });
+    expect(s.balls[0]).toMatchObject({ done: "holed", strokes: 1, x: 5200, y: 3000 });
     expect(s.card[0]![0]).toBe(1);
     expect(s.phase).toBe("holed");
     expect(s.narration).toBe("{0} makes a hole in one!");
@@ -104,39 +120,40 @@ describe("strokes", () => {
 
 describe("water", () => {
   it("costs a penalty stroke and puts the ball back where it was struck from", () => {
-    let s = onHole("koi-pond");
-    const tee = backGarden.holes[holeIndex("koi-pond")]!.tee;
-    s = play(s, 0, UP, 600);
+    let s = onHole("lily-pond");
+    const tee = hole("lily-pond").tee;
+    s = play(s, 0, ...SPLASH);
     expect(s.balls[0]).toMatchObject({ x: tee[0], y: tee[1], strokes: 2, done: null, teed: true });
     expect(s.narration).toBe("{0} finds the water: back where it was, plus 1 stroke");
     const v = miniGolf.view(s, 0);
     // The shot ended in the pond; the table shows the ball dropped back on the tee.
     expect(v.last!.rest[0]!.out).toBe("water-1");
-    expect(v.table.world.bodies[0]).toEqual({ id: "ball-0", x: tee[0], y: tee[1], r: 240 });
-    // From further up the green, the drop is there and not on the tee.
-    let t = play(onHole("koi-pond"), 0, 22500, 500);
+    expect(v.table.world.bodies).toEqual([{ id: "ball-0", x: tee[0], y: tee[1], r: 240 }]);
+    // From out on the bridge, the drop is there and not on the tee.
+    let t = play(onHole("lily-pond"), 0, UP, 300);
     const lie = [t.balls[0]!.x, t.balls[0]!.y];
-    expect(lie).not.toEqual(tee);
-    const pond = { x: 5000, y: 8200 };
-    const aim = Math.round((Math.atan2(pond.y - lie[1]!, pond.x - lie[0]!) * 18000) / Math.PI + 36000) % 36000;
-    t = play(t, 0, aim, 500);
+    expect(lie[0]).toBe(tee[0]);
+    expect(lie[1]).toBeLessThan(10800);
+    expect(lie[1]).toBeGreaterThan(7600);
+    // There is no rail on the bridge: a nudge sideways and it's in.
+    t = play(t, 0, 0, 300);
     expect(t.lasts[0]!.rest[0]!.out).toBe("water-1");
     expect([t.balls[0]!.x, t.balls[0]!.y, t.balls[0]!.strokes]).toEqual([...lie, 3]);
   });
 
   it("charges what the table's rules say: nothing, or two", () => {
-    const free = play(onHole("koi-pond", 1, { ...nineHoles, penalty: 0 }), 0, UP, 600);
+    const free = play(onHole("lily-pond", 1, { ...nineHoles, penalty: 0 }), 0, ...SPLASH);
     expect(free.balls[0]!.strokes).toBe(1);
     expect(free.narration).toBe("{0} finds the water: back where it was");
-    const dear = play(onHole("koi-pond", 1, { ...nineHoles, penalty: 2 }), 0, UP, 600);
+    const dear = play(onHole("lily-pond", 1, { ...nineHoles, penalty: 2 }), 0, ...SPLASH);
     expect(dear.balls[0]!.strokes).toBe(3);
   });
 
   it("counts penalty strokes towards the limit", () => {
-    let s = onHole("koi-pond", 1, { ...nineHoles, limit: 4 });
-    s = play(play(s, 0, UP, 600), 0, UP, 600);
+    let s = onHole("lily-pond", 1, { ...nineHoles, limit: 4 });
+    s = play(play(s, 0, ...SPLASH), 0, ...SPLASH);
     expect(s.balls[0]).toMatchObject({ strokes: 4, done: "pickup" });
-    expect(s.card[0]![holeIndex("koi-pond")]).toBe(5);
+    expect(s.card[0]![holeIndex("lily-pond")]).toBe(5);
   });
 });
 
@@ -149,10 +166,11 @@ describe("in turn", () => {
     const order = [first, (first + 1) % 3, (first + 2) % 3];
     // Out of turn is refused.
     expect(() => play(s, order[1]!, UP, 300)).toThrow("It's not your shot.");
-    // Three tee shots of different lengths: the middle seat goes furthest, the last one barely moves.
-    s = play(s, order[0]!, UP, 300);
+    // Three tee shots of different lengths, each a little to one side of the last so that none
+    // meets another: the middle seat goes furthest, the last one barely moves.
+    s = play(s, order[0]!, UP - 300, 300);
     expect(s.turn).toBe(order[1]);
-    s = play(s, order[1]!, UP, 450);
+    s = play(s, order[1]!, UP + 300, 450);
     expect(s.turn).toBe(order[2]);
     s = play(s, order[2]!, UP, 100);
     const h = backGarden.holes[0]!;
@@ -190,8 +208,138 @@ describe("in turn", () => {
     expect(miniGolf.view(s, 0).table.key).not.toBe(miniGolf.view(newMiniGolf(nineHoles, 2, 4), 0).table.key);
   });
 
-  it("draws the other balls as ghosts once they have left the tee: they are not in your world", () => {
+});
+
+describe("balls that collide, in turn", () => {
+  it("puts every ball that is out on the hole on the table, and one struck into another moves it", () => {
     let s = newMiniGolf(nineHoles, 3, 4);
+    const [a, b, c] = [s.turn!, (s.turn! + 1) % 3, (s.turn! + 2) % 3];
+    // Nobody has left the tee: the table holds the ball about to be struck and no other.
+    expect(miniGolf.view(s, 0).table.world.bodies.map((x) => x.id)).toEqual([ballId(a)]);
+    s = play(s, a, UP, 300);
+    const lay = { ...s.balls[a]! };
+    // Now it holds the first ball where it stopped and the next one on the tee, in seat order, and
+    // every seat is shown that same table: there are no ghosts.
+    const views = [0, 1, 2].map((seat) => miniGolf.view(s, seat));
+    expect(views[0]!.table.world.bodies.map((x) => x.id)).toEqual([a, b].sort().map(ballId));
+    expect(views[1]!.table).toEqual(views[0]!.table);
+    expect(views[2]!.table).toEqual(views[0]!.table);
+    expect(views[0]!.table.ghosts).toEqual([]);
+    expect(views.map((v) => v.shoot?.body)).toEqual([0, 1, 2].map((seat) => (seat === b ? ballId(b) : undefined)));
+    // The second player putts up the very same line, harder, and runs into the first ball.
+    s = play(s, b, UP, 450);
+    const v = miniGolf.view(s, c);
+    expect(v.last!.from.map((x) => x.id)).toEqual([a, b].sort().map(ballId));
+    const again = simulate(worldBefore(v)!, v.last!.shot);
+    expect(again.events.some((e) => e.type === "hit" && [e.a, e.b].sort().join() === [a, b].sort().map(ballId).join())).toBe(true);
+    expect(again.firstContact).toBe(ballId(a));
+    // The ball that was hit went on up the green and stays where it stopped; it cost its owner nothing.
+    expect(s.balls[a]!.y).toBeLessThan(lay.y - 500);
+    expect(s.balls[a]!.strokes).toBe(1);
+    expect(s.balls[b]!.strokes).toBe(1);
+    expect(s.narration).toBe(`{${b}} putts. {${a}}'s ball is knocked away`);
+    // Each ball is where the physics left it.
+    for (const seat of [a, b]) expect([s.balls[seat]!.x, s.balls[seat]!.y]).toEqual([v.last!.rest.find((r) => r.id === ballId(seat))!.x, v.last!.rest.find((r) => r.id === ballId(seat))!.y]);
+  });
+
+  /** Seat 1 putts straight up at seat 0's ball, which lies just short of the cup: the gentlest putt that knocks it in. */
+  function knockIn(rules: MiniGolfRules) {
+    const cup = hole("welcome-mat").world.pockets[0]!;
+    const s = lying("welcome-mat", [[cup.x, cup.y + 900, 2], [cup.x, cup.y + 2600, 1]], 1, rules);
+    for (let power = 100; power <= 400; power += 10) {
+      const after = play(s, 1, UP, power);
+      if (after.lasts[1]!.rest.find((r) => r.id === "ball-0")!.pocketed === "cup") return { before: s, after };
+    }
+    throw new Error("no putt knocked the ball in");
+  }
+
+  it("holes a ball that is knocked into the cup, for its owner, at the strokes they had taken", () => {
+    const { after } = knockIn(nineHoles);
+    expect(after.balls[0]).toMatchObject({ done: "holed", strokes: 2 });
+    expect(after.card[0]![0]).toBe(2);
+    expect(after.narration).toContain("{0}'s ball is knocked into the cup: in, in 2");
+    // The one who did the knocking took a stroke and plays on.
+    expect(after.balls[1]).toMatchObject({ strokes: 2, done: null });
+    expect(after.turn).toBe(1);
+    const v = miniGolf.view(after, 0);
+    expect(v.players[0]).toMatchObject({ line: "In the cup in 2", done: true });
+    expect(v.table.world.bodies.find((b) => b.id === "ball-0")!.pocketed).toBe("cup");
+    expect(() => play(after, 0, UP, 300)).toThrow("You've holed out");
+  });
+
+  it("puts it back instead where the house says a knock-in doesn't count", () => {
+    const { before, after } = knockIn({ ...nineHoles, knockIn: false });
+    expect(after.balls[0]).toEqual(before.balls[0]);
+    expect(after.card[0]![0]).toBeNull();
+    expect(after.narration).toContain("{0}'s ball is knocked into the cup, and goes back where it was");
+    // The shot itself did drop it: the table shows it replaced.
+    expect(after.lasts[1]!.rest.find((r) => r.id === "ball-0")!.pocketed).toBe("cup");
+    // (On the table, or lifted off it if the ball that knocked it has stopped on its spot.)
+    const table = miniGolf.view(after, 0).table;
+    const shown = [...table.world.bodies, ...table.ghosts].find((b) => b.id === "ball-0")!;
+    expect([shown.x, shown.y, shown.pocketed]).toEqual([before.balls[0]!.x, before.balls[0]!.y, undefined]);
+  });
+
+  it("puts a ball knocked into the water back where it lay, at no cost to its owner", () => {
+    // Out on the bridge: seat 0 near its right-hand edge, seat 1 beside it and about to putt across.
+    const s = lying("lily-pond", [[5700, 9000, 2], [4800, 9000, 1]], 1);
+    const after = play(s, 1, 0, 260);
+    const rest = after.lasts[1]!.rest;
+    expect(rest.find((r) => r.id === "ball-0")!.out).toBe("water-1");
+    expect(after.balls[0]).toEqual(s.balls[0]);
+    expect(after.narration).toContain("{0}'s ball is knocked into the water, and goes back where it was");
+    // Only the striker pays for where their own ball went.
+    const mine = rest.find((r) => r.id === "ball-1")!;
+    expect(after.balls[1]!.strokes).toBe(mine.out === undefined ? 2 : 3);
+    const total = (t: MiniGolfState, seat: number) => miniGolf.view(t, 0).scores[seat]!.value;
+    expect(total(after, 0)).toBe(total(s, 0));
+    expect(total(after, 1)).toBe(total(s, 1) + after.balls[1]!.strokes - 1);
+  });
+
+  it("lifts a ball that is still on the tee while the next player tees off", () => {
+    let s = newMiniGolf(nineHoles, 2, 4);
+    const [a, b] = [s.turn!, 1 - s.turn!];
+    // The first putt is a tap: the ball has left the tee, by a hand's width.
+    s = play(s, a, UP, MIN_POWER);
+    const tee = backGarden.holes[0]!.tee;
+    const lay = { ...s.balls[a]! };
+    expect(Math.hypot(lay.x - tee[0], lay.y - tee[1])).toBeLessThan(TEE_CLEAR);
+    expect(s.turn).toBe(b);
+    // It is off the table for the tee shot, and drawn as something that can't be hit.
+    const v = miniGolf.view(s, b);
+    expect(v.table.world.bodies.map((x) => x.id)).toEqual([ballId(b)]);
+    expect(v.table.ghosts.map((g) => [g.id, g.owner, g.x, g.y])).toEqual([[ballId(a), a, lay.x, lay.y]]);
+    expect(miniGolf.view(s, a).table).toEqual(v.table);
+    // The tee shot goes straight through where it lies, and it hasn't moved.
+    s = play(s, b, UP, 300);
+    expect(s.lasts[b]!.from.map((x) => x.id)).toEqual([ballId(b)]);
+    expect(s.balls[a]).toEqual(lay);
+    expect(s.balls[b]!.x).toBe(tee[0]);
+    // Back on the table for the next shot, which is its own: it lies furthest from the cup.
+    expect(s.turn).toBe(a);
+    const next = miniGolf.view(s, a);
+    expect(next.table.world.bodies.map((x) => x.id)).toEqual([0, 1].map(ballId));
+    expect(next.table.ghosts).toEqual([]);
+    // A ball further up the green than that is not lifted: it is there to be hit, or gone round.
+    const clear = lying("welcome-mat", [[tee[0], tee[1] - TEE_CLEAR - 10, 1], [tee[0], tee[1], 0]], 1);
+    clear.balls[1]!.teed = false;
+    expect(miniGolf.view(clear, 1).table.world.bodies.map((x) => x.id)).toEqual([0, 1].map(ballId));
+  });
+
+  it("lifts a ball lying on top of the one being struck, which only a ball put back can be", () => {
+    const s = lying("welcome-mat", [[5200, 8000, 1], [5300, 8100, 2], [5200, 6000, 1]], 1);
+    const v = miniGolf.view(s, 0);
+    expect(v.table.world.bodies.map((x) => x.id)).toEqual(["ball-1", "ball-2"]);
+    expect(v.table.ghosts.map((g) => g.id)).toEqual(["ball-0"]);
+    const after = play(s, 1, UP, 200);
+    expect(after.balls[0]).toEqual(s.balls[0]);
+    // Touching is not on top: two balls side by side are both on the table.
+    const side = lying("welcome-mat", [[5200, 8000, 1], [5200 + 2 * BALL_RADIUS, 8000, 2]], 1);
+    expect(miniGolf.view(side, 0).table.world.bodies).toHaveLength(2);
+  });
+
+  it("can be turned off: balls then pass through each other, as ghosts", () => {
+    let s = newMiniGolf({ ...nineHoles, collide: false }, 3, 4);
     const a = s.turn!;
     expect(miniGolf.view(s, a).table.ghosts).toEqual([]);
     s = play(s, a, UP, 300);
@@ -199,9 +347,12 @@ describe("in turn", () => {
     const v = miniGolf.view(s, b);
     expect(v.table.ghosts.map((g) => [g.id, g.owner, g.x, g.y])).toEqual([[ballId(a), a, s.balls[a]!.x, s.balls[a]!.y]]);
     expect(v.table.world.bodies.map((x) => x.id)).toEqual([ballId(b)]);
-    // A second ball struck along the very same line passes straight through the first.
+    // A second ball struck along the very same line stops on the very same spot.
     const through = play(s, b, UP, 300);
     expect([through.balls[b]!.x, through.balls[b]!.y]).toEqual([s.balls[a]!.x, s.balls[a]!.y]);
+    expect(miniGolf.describe({ ...nineHoles, collide: false }).join(" ")).toContain("pass through each other");
+    expect(miniGolf.describe(nineHoles).join(" ")).toContain("Balls knock into each other");
+    expect(miniGolf.describe({ ...nineHoles, knockIn: false }).join(" ")).toContain("put back where it was");
   });
 });
 
@@ -220,6 +371,23 @@ describe("everyone at once", () => {
     expect(miniGolf.view(s, 1).last).toBeNull();
     // Seat 1, still on the tee, sees the two balls that are out.
     expect(miniGolf.view(s, 1).table.ghosts.map((g) => g.owner)).toEqual([0, 2]);
+  });
+
+  it("never has balls collide: each player has the hole to themselves, and the others are ghosts", () => {
+    let s = newMiniGolf(nineTogether, 2, 4);
+    s = play(s, 0, UP, 300);
+    // The same line, the same strength: the second ball stops exactly where the first one lies.
+    s = play(s, 1, UP, 300);
+    expect([s.balls[1]!.x, s.balls[1]!.y]).toEqual([s.balls[0]!.x, s.balls[0]!.y]);
+    for (const seat of [0, 1]) {
+      const v = miniGolf.view(s, seat);
+      expect(v.table.world.bodies.map((x) => x.id)).toEqual([ballId(seat)]);
+      expect(v.table.ghosts.map((g) => g.id)).toEqual([ballId(1 - seat)]);
+      expect(v.last!.from).toHaveLength(1);
+    }
+    // And the rules say so, so nobody expects otherwise.
+    expect(miniGolf.describe(nineTogether).join(" ")).toContain("pass straight through yours");
+    expect(miniGolf.fields!.find((f) => f.key === "order")!.hint).toContain("can't knock into each other");
   });
 
   it("moves on when the last player is in or has picked up", () => {
@@ -312,8 +480,25 @@ describe("the card and the end of the round", () => {
 
 describe("determinism", () => {
   it("stepping a recorded shot frame by frame ends in exactly the state the engine stored", () => {
-    // A table of shots that bank, climb, splash and drop, on several holes.
-    const shots: [string, number, number][] = [["welcome-mat", UP, 550], ["welcome-mat", 30100, 1000], ["elbow", 26337, 730], ["off-the-fence", 31140, 780], ["ramp", UP, 480], ["sandbox", 28000, 900], ["koi-pond", UP, 700], ["molehill", 26500, 520], ["whole-yard", 24058, 830]];
+    // A table of shots that bank, plough sand, go down a pipe and a burrow, splash, bounce off a
+    // toadstool, come up against a step and drop, on every hole.
+    const shots: [string, number, number][] = [
+      ["welcome-mat", UP, 600],
+      ["welcome-mat", 30100, 1000],
+      ["elbow", 27000, 700],
+      ["sandpit", 28386, 1000],
+      ["drainpipe", 24282, 480],
+      ["lily-pond", 171, 830],
+      ["toadstools", 0, 620],
+      ["toadstools", 1368, 620],
+      ["terraces", 1368, 480],
+      ["terraces", 22230, 1000],
+      ["mole-run", 28728, 300],
+      ["mole-run", 3078, 1000],
+      ["whole-garden", 27531, 480],
+      ["whole-garden", 28899, 1000],
+    ];
+    const seen = new Set<string>();
     for (const [hole, angle, power] of shots) {
       const s = play(onHole(hole), 0, angle, power);
       const v = miniGolf.view(s, 0);
@@ -337,9 +522,48 @@ describe("determinism", () => {
       while (!loop.done) for (let i = 0; i < 3 && !loop.done; i++) step(loop);
       expect(sameRest(result(loop).world, v.last!.rest)).toBe(true);
       // What the table then shows is that rest with the rules applied: here, only water changes it.
-      const at = v.last!.rest[0]!;
+      const at = v.last!.rest.find((r) => r.id === "ball-0")!;
       if (at.out === undefined && at.pocketed === undefined) expect([s.balls[0]!.x, s.balls[0]!.y]).toEqual([at.x, at.y]);
+      for (const e of simulate(before, v.last!.shot).events) seen.add(e.type === "wall" ? e.wall.replace(/-\d+$/, "") : e.type);
     }
+    // Between them they met everything a hole can have.
+    expect([...seen].sort()).toEqual(["block", "emerge", "hit", "ledge", "out", "pocket", "rail", "skip", "tunnel"]);
+  });
+
+  it("holds with several balls on the table: a recorded shot that scatters them ends where the engine says", () => {
+    // Four balls in a line up the first green and one putted hard into the back of them; then
+    // three on the plank bridge, where some go in the water.
+    const tables: [MiniGolfState, number, number][] = [
+      [lying("welcome-mat", [[5200, 11000], [5200, 9000], [5300, 8400], [5100, 7800], [5250, 5000]], 0), UP, 900],
+      [lying("welcome-mat", [[4000, 10000], [5200, 9000], [6300, 8000], [5200, 3700], [5800, 3400], [4600, 3300]], 0), 29500, 1000],
+      [lying("lily-pond", [[5200, 10400], [5200, 9400], [5500, 8800]], 0), UP, 700],
+      [lying("toadstools", [[2900, 5200], [5600, 5200], [6300, 5300]], 0), 0, 800],
+    ];
+    let hits = 0;
+    for (const [table, angle, power] of tables) {
+      const s = play(table, 0, angle, power);
+      for (const seat of [0, 1, 2]) {
+        const v = miniGolf.view(s, seat);
+        const before = worldBefore(v)!;
+        expect(before.bodies.filter((b) => !b.fixed)).toHaveLength(table.seats);
+        const run = frames(before, v.last!.shot);
+        let frame = run.next();
+        let count = 0;
+        while (!frame.done) {
+          count++;
+          hits += frame.value.events.filter((e) => e.type === "hit").length;
+          frame = run.next();
+        }
+        expect(count).toBe(v.last!.ticks);
+        expect(sameRest(frame.value.world, v.last!.rest)).toBe(true);
+        const loop = start(before, v.last!.shot);
+        while (!loop.done) for (let i = 0; i < 2 && !loop.done; i++) step(loop);
+        expect(sameRest(result(loop).world, v.last!.rest)).toBe(true);
+      }
+      // Whatever the rules did with a ball that left play, every ball still in play lies on a whole number.
+      for (const b of s.balls) expect(Number.isInteger(b.x) && Number.isInteger(b.y)).toBe(true);
+    }
+    expect(hits).toBeGreaterThan(20);
   });
 
   it("replays a whole logged round to the same state, as a restarted room does", () => {
@@ -371,7 +595,7 @@ describe("computer players", () => {
 
   it("hit it nearly as planned at full skill and all over the place at none", () => {
     const s = newMiniGolf(nineHoles, 1, 1);
-    const ideal = bestPutt(backGarden.holes[0]!, 5000, 13500);
+    const ideal = bestPutt(backGarden.holes[0]!, ...backGarden.holes[0]!.tee);
     const spread = (skill: number) => {
       const dice = mulberry32(3);
       const putts = Array.from({ length: 200 }, () => miniGolf.bot(s, 0, { skill, sloppy: 0 }, dice) as Extract<MiniGolfMove, { type: "shot" }>);
@@ -388,6 +612,31 @@ describe("computer players", () => {
     // Whatever the dice, a computer player's putt is one the table accepts.
     const dice = mulberry32(8);
     for (let i = 0; i < 300; i++) expect(() => miniGolf.apply(s, 0, miniGolf.bot(s, 0, { skill: 0, sloppy: 1 }, dice)!)).not.toThrow();
+  });
+
+  it("think with the other balls on the table: one in the way is gone round or used, and never ignored", () => {
+    const h = backGarden.holes[0]!;
+    const cup = h.world.pockets[0]!;
+    // Alone, the putt is straight up the middle. With a ball lying on that line it has to be something else.
+    const alone = bestPutt(h, ...h.tee);
+    const blocker = { id: "ball-1", x: h.tee[0], y: h.tee[1] - 3000 };
+    const round = bestPutt(h, ...h.tee, 1, [blocker]);
+    expect(round.tried).toBeLessThanOrEqual(286);
+    expect(bestPutt(h, ...h.tee, 1, [blocker])).toBe(round);
+    expect(bestPutt(h, ...h.tee)).toBe(alone);
+    // What it expects is what happens when that putt is played with the other ball there.
+    const played = simulate(holeWorld(h, [{ id: "ball", x: h.tee[0], y: h.tee[1] }, blocker]), { body: "ball", angle: round.angle, power: round.power });
+    const mine = played.world.bodies.find((b) => b.id === "ball")!;
+    expect(mine.pocketed === "cup").toBe(round.score < 0);
+    if (round.score >= 0) expect(distanceToCup(h, mine.x, mine.y)).toBeCloseTo(round.score, 6);
+    // The same putt as when alone would have run into the blocker.
+    const blind = simulate(holeWorld(h, [{ id: "ball", x: h.tee[0], y: h.tee[1] }, blocker]), { body: "ball", angle: alone.angle, power: alone.power });
+    if (blind.firstContact === "ball-1") expect([round.angle, round.power]).not.toEqual([alone.angle, alone.power]);
+    // At the table: the computer player's putt is thought out against the balls that are out.
+    const s = lying("welcome-mat", [[h.tee[0], h.tee[1] - 2000, 1], [cup.x + 700, cup.y + 900, 1]], 0);
+    const move = miniGolf.bot(s, 0, { skill: 1, sloppy: 0 }, () => 0.5) as Extract<MiniGolfMove, { type: "shot" }>;
+    const want = bestPutt(h, s.balls[0]!.x, s.balls[0]!.y, 1, [{ id: "ball-1", x: s.balls[1]!.x, y: s.balls[1]!.y }]);
+    expect([move.angle, move.power]).toEqual([want.angle, want.power]);
   });
 
   it("only move when they owe one", () => {

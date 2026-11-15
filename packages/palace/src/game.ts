@@ -195,7 +195,12 @@ function settle(s: PalaceState, seat: number, move: PalaceLast) {
     s.pile = [];
     move.burned = true;
   }
-  while (p.hand.length < s.rules.handSize && s.deck.length) p.hand.push(s.deck.pop()!);
+  // Going again (a burn, or a 2 under that house rule): under `drawAfterAgain` the draw waits for the
+  // card that goes on top, unless the hand is empty and there'd be nothing to play from it.
+  const two = s.rules.twoResets && s.rules.twoAgain && move.cards.at(-1)?.rank === 2;
+  const again = move.burned || two;
+  const holdDraw = again && s.rules.drawAfterAgain && p.hand.length > 0;
+  if (!holdDraw) while (p.hand.length < s.rules.handSize && s.deck.length) p.hand.push(s.deck.pop()!);
   p.hand = sortCards(p.hand);
   if (!p.hand.length && !p.up.length && !p.down.length) {
     s.finished.push(seat);
@@ -210,8 +215,7 @@ function settle(s: PalaceState, seat: number, move: PalaceLast) {
     }
   }
   // A burn means you go again; so does a 2, under that house rule (unless it burned the pile).
-  const two = s.rules.twoResets && s.rules.twoAgain && move.cards.at(-1)?.rank === 2;
-  move.again = (move.burned || two) && p.place === null;
+  move.again = again && p.place === null;
   s.turn = move.again ? seat : nextSeat(s, seat);
   s.last = move;
 }
@@ -263,7 +267,10 @@ export function applyPalace(state: PalaceState, action: PalaceAction): PalaceSta
   if (action.type === "pickup") {
     if (!canPickUp(state, seat)) throw new PalaceError(s.pile.length ? "You can play, so you can't pick up." : "There's nothing to pick up.");
     const count = s.pile.length;
-    p.hand = sortCards([...p.hand, ...s.pile]);
+    p.hand = [...p.hand, ...s.pile];
+    // A draw held back after a 2 (see `settle`) still happens when the turn ends in a pickup.
+    while (p.hand.length < s.rules.handSize && s.deck.length) p.hand.push(s.deck.pop()!);
+    p.hand = sortCards(p.hand);
     s.pile = [];
     s.last = { seat, kind: "pickup", cards: [], from: null, burned: false, pickedUp: count, again: false };
     s.turn = nextSeat(s, seat);

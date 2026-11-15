@@ -11,7 +11,7 @@ import { mulberry32, type PlayStyle } from "@spades/rules";
 /** The games that are played with cards. */
 export type CardGameId = "hearts" | "ohhell" | "euchre" | "crazy8" | "gin" | "pinochle" | "canasta" | "gofish" | "oldmaid" | "war" | "whist" | "golf" | "rummy500" | "president" | "klondike" | "freecell" | "handfoot" | "cribbage" | "fivedraw" | "holdem" | "bluff" | "liarspoker" | "switch" | "thirtyone" | "kingscorner" | "blackjack" | "spite" | "pitch" | "fivehundred" | "durak" | "bridge" | "fruitsalad" | "slapjack" | "speed" | "memory" | "sevens" | "cuckoo" | "contractrummy" | "spider" | "pyramid" | "ridethebus" | "kingscup" | "horserace" | "drinkingpyramid";
 /** The games that are played on a board. */
-export type BoardGameId = "tictactoe" | "dropfour" | "combat" | "reversi" | "checkers";
+export type BoardGameId = "tictactoe" | "dropfour" | "combat" | "reversi" | "checkers" | "go" | "chess" | "yacht" | "backgammon";
 /** The games that are played by striking a ball across a table. */
 export type SportGameId = "minigolf";
 /** Every game on the kit. (Rooms, houses and saved rules have always called these "kit" games.) */
@@ -47,6 +47,8 @@ export interface Choice {
   /** The main choice: drawn as the big gold button. */
   primary?: boolean;
   hint?: string;
+  /** A question to put before it is sent ("Pass your turn?"): for a button that is easy to press and hard to undo. */
+  confirm?: string;
 }
 
 /** Buttons a seat can press now: a bid, a trump call, "Next hand". */
@@ -75,6 +77,48 @@ export interface RoundResult {
 export interface GameOver {
   winners: number[];
   title: string;
+}
+
+/**
+ * A score sheet: a column per thing that is scored (a hole, a frame, a category of dice) and a row
+ * per player. Mini Golf's scorecard and Yacht's sheet are both one of these; how it is laid out
+ * (holes across the page, categories down it) is the table's business.
+ */
+export interface ScoreSheet {
+  title: string;
+  columns: SheetColumn[];
+  /** The column being played, if any. */
+  current: number | null;
+  rows: SheetRow[];
+  /** What `total` and `note` are, for the headings: "Total", "To par". */
+  totalLabel: string;
+  noteLabel?: string;
+  /** The cell filled in last, so the table can point at it. */
+  last?: { seat: number; column: number } | null;
+  /**
+   * Cells of this seat's own row that it can choose now (score this roll as a full house). Each
+   * says what it would score; tapping one sends `{ type, cell }` with the column's `id`. Only ever
+   * sent to the seat that can choose.
+   */
+  pick?: { type: string; cells: { column: number; would: string }[] } | null;
+}
+
+export interface SheetColumn {
+  label: string;
+  /** A second line under the label: a hole's par, what a category scores. */
+  sub?: string;
+  /** Names this column in a move. Needed only where a cell can be chosen. */
+  id?: string;
+  /** A column nobody fills in: it is worked out from the others (a bonus). */
+  kind?: "sum";
+}
+
+export interface SheetRow {
+  seat: number;
+  /** One per column; "" for a cell not filled in yet. */
+  cells: string[];
+  total: string;
+  note?: string;
 }
 
 /** A finished or running game, in a few words, for lobbies, houses, leaderboards and tournaments. */
@@ -122,6 +166,37 @@ export interface GameDeadline<M = Record<string, unknown>> {
   seat: number;
   /** The move made as that seat when time runs out. It goes through `apply` like any other. */
   move: M;
+  /**
+   * The clock holds whoever is in the seat, a computer player too (a chess clock: the time is
+   * part of the game, and a bot that thinks too long loses on it like anyone). Without it a
+   * computer player's seat has no clock, and the table only keeps it moving inside the time.
+   */
+  strict?: boolean;
+}
+
+/**
+ * How long a computer player may think, when the table says. A game that searches (Chess, Go) can
+ * look until the time is nearly gone and play the best move it has; the table gives up on a think
+ * that runs far past it and plays a quick move instead (see `TableGame.bot`).
+ */
+export interface ThinkBudget {
+  /** Ms this think may take. A handful means "answer at once": the first sensible move will do. */
+  ms: number;
+}
+
+/** The style a computer player is asked in when its real think was given up on: no skill wanted, just a legal move, now. */
+export const QUICK_STYLE: PlayStyle = { skill: 0, sloppy: 0 };
+/** And the budget that goes with it. */
+export const QUICK_BUDGET: ThinkBudget = { ms: 10 };
+
+/**
+ * When a move was made, as the table that keeps the time tells it (a room on the server, the
+ * browser in practice). Only a game that keeps time in its state needs it, and a table that keeps
+ * no time leaves it out.
+ */
+export interface MoveTime {
+  /** Ms since the move before it (or since the game began). */
+  elapsed: number;
 }
 
 /**
@@ -148,10 +223,36 @@ export interface TableGame<R extends BaseRules = BaseRules, S = unknown, M = Rec
   describe(rules: R): string[];
   newGame(rules: R, seats: number, seed: number): S;
   /** Apply a seat's move; throws GameError when it isn't allowed. Never changes the given state. */
-  apply(state: S, seat: number, move: M): S;
+  apply(state: S, seat: number, move: M, time?: MoveTime): S;
   view(state: S, seat: number): View;
-  /** The move a computer player makes now, or null when it has nothing to do. */
-  bot(state: S, seat: number, style: PlayStyle): M | null;
+  /**
+   * The move a computer player makes now, or null when it has nothing to do. Whether there is a move
+   * at all must not depend on the style.
+   *
+   * `rand` is where a bot that rolls dice gets them (default `Math.random`); tests pass a seeded one.
+   *
+   * `budget` is how long the think may take, when the table says. The bots here ignore it: they
+   * ration themselves by work done (so many positions, so many putts), which gives the same move on
+   * a fast machine and a slow one. A game that wants to use the time may, and must then keep to it:
+   * a think that runs far past its budget is abandoned by the table, and the seat is asked again
+   * with `QUICK_STYLE` and `QUICK_BUDGET`, on the table's own thread, so that answer has to come at
+   * once whatever the position.
+   */
+  bot(state: S, seat: number, style: PlayStyle, rand?: () => number, budget?: ThinkBudget): M | null;
+  /**
+   * Whether working out this seat's move here is slow enough (a few ms or more) that the table
+   * should do it off its main thread: a search, a simulation. It must answer at once, from the state
+   * alone, and say no when the seat has nothing to do or its move is obvious ("Next hand"). A game
+   * without it always thinks on the table's own thread, which is right for anything quick: handing a
+   * think to another thread costs a little too.
+   */
+  heavy?(state: S, seat: number): boolean;
+  /**
+   * The computer player's move on the board alone, when `bot` may do something else first (answer
+   * an offer: see offers.ts). The turn timer plays this for a person who has run out of time; a
+   * game without it is played `bot`'s move.
+   */
+  play?(state: S, seat: number, style: PlayStyle, rand?: () => number, budget?: ThinkBudget): M | null;
   /** How long a person would think here, in ms (before the persona's own pace). */
   thinkingTime(state: S, seat: number): number;
   /**
@@ -167,6 +268,12 @@ export interface TableGame<R extends BaseRules = BaseRules, S = unknown, M = Rec
    * computer player in the seat is never held to it (and never takes longer than it).
    */
   deadline?(state: S): GameDeadline<M> | null;
+  /**
+   * Ms of the wait for the next move on the board that have already gone by, over moves that
+   * aren't one (an offer and its answer). The table's clocks count from the last move of any kind,
+   * so the turn timer takes this off; a game's own `deadline` has already allowed for it.
+   */
+  spent?(state: S): number;
   summary(state: S): KitSummary;
 }
 

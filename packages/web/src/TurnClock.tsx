@@ -59,6 +59,12 @@ function seatBox(seat: number, mine: boolean): DOMRect | null {
   return box && box.width > 0 ? box : null;
 }
 
+/** Whether the seat shows a clock of the game's own that runs out when this deadline does (see board/SeatClock.tsx). */
+function ownClockAt(seat: number, at: number): boolean {
+  const until = Number(document.querySelector<HTMLElement>(`.table [data-seat="${seat}"] .seat-clock.running`)?.dataset.until);
+  return Number.isFinite(until) && Math.abs(until - at) < 2000;
+}
+
 export function TurnClock({ deadline, mySeat, now }: { deadline: DeadlineDoc | null | undefined; mySeat: number | null; now: () => number }) {
   const left = useTimeLeft(deadline, now);
   const mine = !!deadline && deadline.seat === mySeat;
@@ -91,6 +97,8 @@ export function TurnClock({ deadline, mySeat, now }: { deadline: DeadlineDoc | n
   if (!deadline || left === null || typeof document === "undefined") return null;
   const box = seatBox(deadline.seat, mine);
   if (!box) return null;
+  // A game that draws its own clock at the seat (a chess clock) is already counting this one down.
+  if (ownClockAt(deadline.seat, deadline.at)) return null;
   const low = left <= LOW_MS;
   return createPortal(
     <span

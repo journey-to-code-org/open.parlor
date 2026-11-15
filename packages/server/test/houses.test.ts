@@ -120,6 +120,52 @@ describe("houses", () => {
   });
 });
 
+describe("the house's cards", () => {
+  it("an owner picks the deck the house's tables start with; the house keeps its own copy", async () => {
+    const { phone } = setup();
+    const grammi = phone();
+    const rick = phone();
+    const pearl = phone();
+    const made = (await grammi.send("/houses", { name: "Grammi's House", you: "brokennil" })).body;
+    await rick.send("/houses/grammis-house/join", { code: made.code, name: "Rick" });
+    expect(made.deck).toBeNull();
+    const shared = (await pearl.send("/designs", { design: { name: "Pearl's deck", back: "#224466" }, author: "Pearl", shared: true })).body;
+    const secret = (await phone().send("/designs", { design: { name: "Not yet" } })).body;
+    const mine = (await grammi.send("/designs", { design: { name: "Grammi's own" }, author: "Grammi" })).body;
+
+    // Only someone who runs the house, and only a deck they could show everyone.
+    expect((await rick.send("/houses/grammis-house/deck", { design: shared.id })).status).toBe(403);
+    expect((await pearl.send("/houses/grammis-house/deck", { design: shared.id })).status).toBe(403);
+    expect((await grammi.send("/houses/grammis-house/deck", { design: secret.id })).status).toBe(404);
+    expect((await grammi.send("/houses/grammis-house/deck", { design: "nosuchid" })).status).toBe(404);
+    expect((await grammi.send("/houses/grammis-house/deck", {})).status).toBe(400);
+    expect((await grammi.send("/houses/grammis-house")).body.deck).toBeNull();
+
+    const set = await grammi.send("/houses/grammis-house/deck", { design: shared.id });
+    expect(set.status).toBe(200);
+    expect(set.body.deck).toMatchObject({ id: shared.id, author: "Pearl", design: { name: "Pearl's deck" } });
+    // Every member sees it, and a table anyone in the house opens starts with it.
+    expect((await rick.send("/houses/grammis-house")).body.deck.design.name).toBe("Pearl's deck");
+    const table = (await rick.send("/houses/grammis-house/tables", {})).body.id as string;
+    expect((await pearl.send(`/rooms/${table}`)).body.deck).toMatchObject({ id: shared.id, design: { name: "Pearl's deck" } });
+    // The players can still pick others before the deal.
+    await rick.send(`/rooms/${table}/sit`, { seat: 0, name: "Rick" });
+    expect((await rick.send(`/designs/table/${table}`, { design: "starter:Holly" })).body.deck.design.name).toBe("Holly");
+
+    // Its maker changes or deletes the design: the house's copy stays as it was chosen.
+    await pearl.send(`/designs/${shared.id}`, { design: { name: "Changed" } });
+    await pearl.send(`/designs/${shared.id}/delete`, {});
+    expect((await grammi.send("/houses/grammis-house")).body.deck.design.name).toBe("Pearl's deck");
+
+    // One of the card room's own, one of the owner's own (never shared), and none at all.
+    expect((await grammi.send("/houses/grammis-house/deck", { design: "starter:Holly" })).body.deck).toMatchObject({ id: "starter:Holly", author: "Card Room" });
+    expect((await grammi.send("/houses/grammis-house/deck", { design: mine.id })).body.deck.design.name).toBe("Grammi's own");
+    expect((await grammi.send("/houses/grammis-house/deck", { design: null })).body.deck).toBeNull();
+    const plain = (await rick.send("/houses/grammis-house/tables", { game: "palace" })).body.id as string;
+    expect((await rick.send(`/rooms/${plain}`)).body.deck ?? null).toBeNull();
+  });
+});
+
 describe("the house leaderboard", () => {
   it("counts a real finished house game for the members who played it", async () => {
     const { phone } = setup();

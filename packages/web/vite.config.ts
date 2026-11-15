@@ -28,6 +28,8 @@ export default defineConfig({
       transformIndexHtml: (html) => html.replaceAll("__OG_BASE__", `${process.env.SITE_ORIGIN ?? "__ORIGIN__"}${base}`),
     },
   ],
+  // The practice tables' bot worker (src/kit/bot.worker.ts) is a module, like the page.
+  worker: { format: "es" },
   // `npm run dev -w @spades/server` serves the rooms and the sync log on 8787.
   server: { proxy: Object.fromEntries(["/rooms", "/_zb", "/houses", "/challenges", "/lobby", "/push", "/bugs", "/designs", "/moderation", "/catalogue", "/spectate"].map((p) => [p, "http://localhost:8787"])) },
   resolve: {

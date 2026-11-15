@@ -6,6 +6,9 @@ export type SoundName =
   | "deal"
   | "card"
   | "piece"
+  | "stone"
+  | "capture"
+  | "dice"
   | "putt"
   | "knock"
   | "cup"
@@ -113,6 +116,31 @@ export const SOUNDS: Record<SoundName, Play> = {
     glide(ctx, out, t, 620 + Math.random() * 60, 300, { peak: 0.32, decay: 0.05, type: "triangle" });
     swish(ctx, out, t, { freq: 1700, q: 1.2, peak: 0.16, decay: 0.03 });
   },
+  /** A stone set down on a wooden board: sharper and higher than a piece, slate on kaya. */
+  stone: (ctx, out, t) => {
+    glide(ctx, out, t, 980 + Math.random() * 90, 520, { peak: 0.3, decay: 0.035, type: "triangle" });
+    swish(ctx, out, t, { freq: 2600, q: 1.6, peak: 0.2, decay: 0.022 });
+    swish(ctx, out, t + 0.004, { freq: 500, q: 0.8, peak: 0.14, decay: 0.06, type: "lowpass" });
+  },
+  /** Stones taken off the board and dropped in the lid of the bowl: the click of the stone that took them, then a little rattle. */
+  capture: (ctx, out, t) => {
+    glide(ctx, out, t, 980 + Math.random() * 90, 520, { peak: 0.28, decay: 0.035, type: "triangle" });
+    swish(ctx, out, t, { freq: 2600, q: 1.6, peak: 0.18, decay: 0.022 });
+    for (let i = 0; i < 3; i++) {
+      const at = t + 0.14 + i * 0.07 + Math.random() * 0.02;
+      glide(ctx, out, at, 1500 + Math.random() * 500, 900, { peak: 0.14 - i * 0.03, decay: 0.03, type: "triangle" });
+      swish(ctx, out, at, { freq: 3400, q: 1.8, peak: 0.07, decay: 0.02 });
+    }
+  },
+  /** Dice thrown across a table: a rattle of small hard knocks that slows as they settle. */
+  dice: (ctx, out, t) => {
+    let at = t;
+    for (let i = 0; i < 9; i++) {
+      glide(ctx, out, at, 950 + Math.random() * 500, 480, { peak: 0.2 - i * 0.014, decay: 0.03, type: "triangle" });
+      swish(ctx, out, at, { freq: 2600 + Math.random() * 900, q: 1.3, peak: 0.1 - i * 0.006, decay: 0.02 });
+      at += 0.03 + i * 0.009 + Math.random() * 0.02;
+    }
+  },
   /** A putter meeting a ball: a soft, short tock. */
   putt: (ctx, out, t) => {
     glide(ctx, out, t, 420 + Math.random() * 40, 210, { peak: 0.34, decay: 0.06, type: "sine" });
@@ -198,6 +226,7 @@ export const SOUNDS: Record<SoundName, Play> = {
 /** Vibration patterns (ms), for phones that support the Vibration API (Android). */
 export const BUZZES: Partial<Record<SoundName, number | number[]>> = {
   yourTurn: [18, 60, 18],
+  dice: [10, 30, 10, 45, 14],
   putt: 12,
   cup: [20, 50, 30],
   splash: 40,
@@ -212,7 +241,7 @@ export const BUZZES: Partial<Record<SoundName, number | number[]>> = {
 
 /** How long each sound runs, for rendering them offline. */
 export const LENGTHS: Record<SoundName, number> = {
-  deal: 0.8, card: 0.2, piece: 0.15, putt: 0.15, knock: 0.1, cup: 0.75, splash: 0.45, bid: 0.15, yourTurn: 0.7, trickUs: 0.85, trickThem: 0.65, spadesBroken: 0.4,
+  deal: 0.8, card: 0.2, piece: 0.15, stone: 0.12, capture: 0.45, dice: 0.75, putt: 0.15, knock: 0.1, cup: 0.75, splash: 0.45, bid: 0.15, yourTurn: 0.7, trickUs: 0.85, trickThem: 0.65, spadesBroken: 0.4,
   nilMade: 0.9, set: 1.0, handDone: 1.3, won: 2.0, lost: 1.3, nope: 0.35, message: 0.15, hurry: 0.35,
 };
 

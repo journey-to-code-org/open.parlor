@@ -5,6 +5,7 @@ import { createTournaments } from "./tournaments.js";
 // Everything is one server-only document per house (`houses/<slug>` in the sync log); pages read
 // it through these endpoints, which show members only what members may see. A member is the same
 // player cookie that holds a seat at a table.
+import type { TableDeck } from "@cardroom/decks";
 import { familyPalace, normalizePalaceRules, validatePalaceRules, type PalaceRules } from "@cardroom/palace";
 import { familyTable, renamedPreset, validatePreset, type RulePreset } from "@spades/rules";
 import { newPlayerId, playerCookie, playerOf, type RoomDoc } from "@spades/rooms/server";
@@ -54,6 +55,8 @@ export interface HouseDoc {
   tournaments?: string[];
   /** House rules for the kit games (Hearts, Euchre…), by game. Missing: the game's own presets. */
   kitRules?: Partial<Record<KitGameId, { presets: KitRules[]; default: string }>>;
+  /** The cards the house's tables start with: a design as it was when the house chose it. */
+  deck?: TableDeck | null;
   /** The house's own AI connection, for its bots' table talk. Its key never leaves the server. */
   ai?: HouseAi;
 }
@@ -69,6 +72,7 @@ interface Rooms {
     }>;
   };
   create(options: TableOptions, settings?: unknown): Promise<string>;
+  setDeck(id: string, deck: unknown): Promise<void>;
   room(id: string): Promise<RoomDoc<unknown> | undefined>;
   holders(id: string): Promise<(string | null)[]>;
   seatPlayer(id: string, seat: number, player: string, name: string): Promise<void>;
@@ -145,7 +149,7 @@ function cleanPreset(value: unknown): RulePreset | string {
 
 export function createHouses(
   rooms: Rooms,
-  { mount = "/houses", push, ai = createAi(), gameOn = () => true }: { mount?: string; push?: Push; ai?: Ai; /** Whether new tables of a game may be opened (the card room's catalogue). */ gameOn?: (game: GameId) => boolean | Promise<boolean> } = {},
+  { mount = "/houses", push, ai = createAi(), gameOn = () => true, deckFor }: { mount?: string; push?: Push; ai?: Ai; /** The deck a design id stands for, for a player who may use it (the card room's designs). */ deckFor?: (wanted: unknown, player: string | null) => Promise<TableDeck | undefined>; /** Whether new tables of a game may be opened (the card room's catalogue). */ gameOn?: (game: GameId) => boolean | Promise<boolean> } = {},
 ) {
   const docs = rooms.sync.documents();
   const get = async (slug: string) => {
@@ -153,9 +157,9 @@ export function createHouses(
     // A house the card room's host deleted is gone: its name is free again.
     if (!doc || doc.deleted) return undefined;
     // Keep only the house's own fields (the view may carry sync bookkeeping such as $clocks).
-    const { slug: s, name, code, members, presets, defaultPreset, palacePresets, palaceDefault, tables, tournaments, kitRules, ai: houseAi } = doc as unknown as HouseDoc;
+    const { slug: s, name, code, members, presets, defaultPreset, palacePresets, palaceDefault, tables, tournaments, kitRules, deck, ai: houseAi } = doc as unknown as HouseDoc;
     for (const t of tables) houseOf.set(t.id, s);
-    return structuredClone({ slug: s, name, code, members, presets: presets.map(renamedPreset), defaultPreset, palacePresets: (palacePresets ?? [familyPalace]).map((p) => normalizePalaceRules(p)), palaceDefault: palaceDefault ?? palacePresets?.[0]?.id ?? familyPalace.id, tables, tournaments: tournaments ?? [], kitRules: kitRules ?? {}, ...(houseAi ? { ai: houseAi } : {}) }) as HouseDoc;
+    return structuredClone({ slug: s, name, code, members, presets: presets.map(renamedPreset), defaultPreset, palacePresets: (palacePresets ?? [familyPalace]).map((p) => normalizePalaceRules(p)), palaceDefault: palaceDefault ?? palacePresets?.[0]?.id ?? familyPalace.id, tables, tournaments: tournaments ?? [], kitRules: kitRules ?? {}, ...(deck ? { deck } : {}), ...(houseAi ? { ai: houseAi } : {}) }) as HouseDoc;
   };
   // Which house a table belongs to, so its bots can find the house's AI: kept in memory, and in a
   // server-only document per table so it survives a restart.
@@ -169,7 +173,7 @@ export function createHouses(
       void rooms.sync.write("tablehouse", t.id, { house: house.slug });
     }
     // A house that disconnected its AI keeps no trace of the key.
-    return rooms.sync.write("houses", house.slug, { ...house, ai: house.ai ?? null, deleted: false });
+    return rooms.sync.write("houses", house.slug, { ...house, ai: house.ai ?? null, deck: house.deck ?? null, deleted: false });
   };
   const tournaments = createTournaments(rooms, { push, saveHouse: (h) => save(h as HouseDoc) });
 
@@ -205,6 +209,8 @@ export function createHouses(
       palaceDefault: house.palaceDefault,
       tournaments: await tournaments.list(house),
       kitRules: Object.fromEntries(KIT_GAMES.map((g) => [g.id, kitRulesOf(house, g.id)])),
+      /** The cards the house's tables start with, or null for the card room's own. */
+      deck: house.deck ?? null,
       // Everyone sees whether the bots talk through a model; only managers see how it's set up (never the key).
       ai: me.role === "member" ? (ai.view(house.ai) ? { on: ai.view(house.ai)!.on } : null) : ai.view(house.ai),
       /** The card room has an AI account of its own that houses may use. */
@@ -374,6 +380,8 @@ export function createHouses(
         id = await rooms.create(preset, input.settings);
         rulesName = preset.name;
       }
+      // The house's cards, to start with: the players can still pick others before the deal.
+      if (house.deck) await rooms.setDeck(id, house.deck);
       house.tables.push({ id, game, rules: rulesName, created: Date.now() });
       await save(house);
       // Let the rest of the house know there's a seat waiting.
@@ -393,6 +401,20 @@ export function createHouses(
     }
 
     if (!canManage) return json({ error: "Only the house owner or an admin can change that." }, 403);
+
+    // POST /houses/:slug/deck { design: id | "starter:<name>" | null } → the cards the house's tables start with
+    if (action === "deck") {
+      if (input.design === undefined || input.design === "") return json({ error: "Pick a deck." }, 400);
+      if (input.design === null) delete house.deck;
+      else {
+        const deck = await deckFor?.(input.design, me.player);
+        if (!deck) return json({ error: "That deck isn't in the gallery any more. Pick another." }, 404);
+        // The house keeps its own copy: changing, deleting or hiding the design later doesn't change the house's cards.
+        house.deck = deck;
+      }
+      await save(house);
+      return json(await forMember(house, me));
+    }
 
     // POST /houses/:slug/ai { provider?, key?, model?, context?, on? } → connect the house's AI, or change it.
     // POST /houses/:slug/ai { disconnect: true } → forget the key.
