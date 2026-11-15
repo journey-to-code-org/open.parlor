@@ -1,11 +1,12 @@
 <!--
-  The open.parlor's front door: every game as a tile, a "who's playing?" filter, your houses, and the
-  tables that are waiting for players right now.
+  The open.parlor's front door: every game as a tile, sorted onto shelves by category (or in the
+  host's order, or by name), a "who's playing?" filter, your houses, and the tables that are waiting
+  for players right now.
   A Vue island inside the React app. The cards and the select are Zubra components: in a .vue file a
   .zb import is a Vue component (Zubra's Vue adapter), with props, events and v-model.
 -->
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import PlayingCard from "@open-parlor/ui/playing-card.zb";
 import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
 
@@ -14,6 +15,8 @@ export interface ChooserGame {
   name: string;
   emoji: string;
   blurb: string;
+  /** The shelf it sits on: "cards", "board", "dice", "sports", "arcade". */
+  category: string;
   seats: [number, number];
   teams: boolean;
   /** Three cards to fan out on the tile. */
@@ -27,7 +30,10 @@ export interface ChooserGame {
 }
 
 const props = defineProps<{
+  /** In the host's order. */
   games: ChooserGame[];
+  /** Every category, in the order the shelves are listed. */
+  categories: { id: string; name: string; emoji: string }[];
   houses: { slug: string; name: string }[];
   /** The game played last on this device, if any. */
   last: string | null;
@@ -56,6 +62,42 @@ const fits = (g: ChooserGame) => {
   return n >= 5 ? g.seats[1] >= 5 : g.seats[0] <= n && n <= g.seats[1];
 };
 const shown = computed(() => props.games.filter(fits));
+
+// How the tiles are sorted: onto shelves by category, in the host's own order, or by name. Kept in this browser.
+type Sort = "category" | "host" | "name";
+const SORT_KEY = "cardroom.sort";
+const sorts = [
+  { value: "category", label: "By category" },
+  { value: "host", label: "The parlor's picks first" },
+  { value: "name", label: "A to Z" },
+];
+const savedSort = (): Sort => {
+  try {
+    const saved = localStorage.getItem(SORT_KEY);
+    return saved === "host" || saved === "name" ? saved : "category";
+  } catch {
+    return "category";
+  }
+};
+const sort = ref<string>(savedSort());
+watch(sort, (value) => {
+  try {
+    localStorage.setItem(SORT_KEY, value);
+  } catch {
+    /* private mode: it still applies for now */
+  }
+});
+const categoryName = (id: string) => props.categories.find((c) => c.id === id)?.name ?? id;
+/** The tiles in groups: one shelf per category that has a game (each in the host's order), or everything in one. */
+const shelves = computed<{ id: string; name: string; emoji: string; games: ChooserGame[] }[]>(() => {
+  if (sort.value === "category") {
+    const known = new Set(props.categories.map((c) => c.id));
+    const stray = shown.value.filter((g) => !known.has(g.category));
+    return [...props.categories.map((c) => ({ ...c, games: shown.value.filter((g) => g.category === c.id) })), { id: "other", name: "Other games", emoji: "🎮", games: stray }].filter((s) => s.games.length);
+  }
+  const games = sort.value === "name" ? [...shown.value].sort((a, b) => a.name.localeCompare(b.name)) : shown.value;
+  return games.length ? [{ id: "all", name: "", emoji: "", games }] : [];
+});
 /** "Surprise me": any game that fits who's playing, other than the one played last when there's a choice. */
 function surprise() {
   const fresh = shown.value.filter((g) => g.id !== props.last);
@@ -114,11 +156,16 @@ const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spa
           <div class="filter">
             <SelectField v-model="players" label="Who's playing?" :options="sizes" />
           </div>
+          <div class="filter">
+            <SelectField v-model="sort" label="Sort" :options="sorts" />
+          </div>
           <button type="button" class="house surprise" :disabled="!shown.length" @click="surprise"><span aria-hidden="true">🎲</span> Surprise me</button>
         </div>
       </div>
-      <ul class="grid">
-        <li v-for="g in shown" :key="g.id">
+      <template v-for="shelf in shelves" :key="shelf.id">
+      <h3 v-if="shelf.name" class="shelf"><span aria-hidden="true">{{ shelf.emoji }}</span> {{ shelf.name }} <small>{{ shelf.games.length }}</small></h3>
+      <ul class="grid" :aria-label="shelf.name || 'Games'">
+        <li v-for="g in shelf.games" :key="g.id">
           <button type="button" class="tile" :class="{ last: g.id === last }" :aria-label="`${g.name}: ${g.blurb}, ${seatsLabel(g)}`" @click="emit('pick', g.id)">
             <span v-if="g.dice" class="mini-dice" aria-hidden="true">
               <span v-for="(face, i) in g.dice" :key="i" class="mini-die" :style="{ '--i': i }">
@@ -149,11 +196,13 @@ const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spa
             <span class="blurb">{{ g.blurb }}</span>
             <span class="chips">
               <span class="chip">{{ seatsLabel(g) }}</span>
+              <span v-if="sort !== 'category'" class="chip">{{ categoryName(g.category) }}</span>
               <span v-if="g.id === last" class="chip gold">Last played</span>
             </span>
           </button>
         </li>
       </ul>
+      </template>
       <p v-if="!shown.length" class="none">No games for that many players yet.</p>
     </section>
 
@@ -203,6 +252,9 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .quiet { margin: 10px 0 0; color: #b9d0c2; }
 
 .games-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.shelf { margin: clamp(20px, 2.6vw, 30px) 0 0; display: flex; align-items: baseline; gap: 10px; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.15rem, 1.7vw, 1.4rem); color: var(--cream); border-bottom: 1px solid rgba(232, 196, 106, 0.35); padding-bottom: 6px; }
+.shelf small { font-family: inherit; font-size: 0.8rem; font-weight: 400; color: #b9d0c2; }
+.shelf + .grid { margin-top: 12px; }
 .filter { min-width: 220px; --background: var(--cream); --foreground: var(--ink); --border: rgba(255, 255, 255, 0.18); --muted-foreground: #cfe2d6; --ring: var(--gold); }
 .choosing { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
 .surprise { white-space: nowrap; }
