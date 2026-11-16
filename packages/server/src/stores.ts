@@ -23,6 +23,31 @@ export interface StoreReply {
   body: unknown;
 }
 
+/** Something on its way to a member's store from another one in the house. */
+interface Parcel {
+  id: string;
+  what: "hotshot" | "sold";
+  from: string;
+}
+/** A member's tabs, up for the rest of the house to buy. */
+interface Listing {
+  id: string;
+  seller: string;
+  amount: number;
+  at: number;
+}
+/** What goes on between a house's stores: one document per house per game. */
+interface Network {
+  inbox: Record<string, Parcel[]>;
+  listings: Listing[];
+  /** When each member last sent a driver out. */
+  sent: Record<string, number>;
+}
+/** A driver can be sent this often: a little under what the game itself allows, so a slow clock never loses a run. */
+const HOTSHOT_EVERY = 14 * 60_000;
+/** The most that can wait for a member who has not opened their store. */
+const INBOX = 30;
+
 /** The biggest a saved store may be, as text: far more than any real one. */
 const LIMIT = 200_000;
 
@@ -43,6 +68,87 @@ export function createStores(sync: Sync) {
     return { score: engine.score(loaded), perSecond: view.perSecond ?? 0, moves: view.move?.moves ?? 0, crew: view.crew?.filter((c) => c.hired).length ?? 0 };
   }
 
+  const networkOf = async (house: string, game: IdleGameId): Promise<Network> => {
+    const doc = (await sync.documents()).get("networks", `${house}/${game}`) as Partial<Network> | undefined;
+    return { inbox: { ...(doc?.inbox ?? {}) }, listings: [...(doc?.listings ?? [])], sent: { ...(doc?.sent ?? {}) } };
+  };
+  let made = 0;
+  const fresh = (now: number) => `${now.toString(36)}${(made++).toString(36)}`;
+
+  /**
+   * /houses/:slug/network, for a member of the house: what goes on between its stores.
+   *   GET  ?game=                      → { waiting, listings, members, hotshotWait }
+   *   POST { game, do: "collect" }      → { parcels }: what was waiting for this member, now theirs
+   *   POST { game, do: "hotshot", to }  → a parcel for that member; 429 when the truck was out too recently
+   *   POST { game, do: "list", amount } → this member's tabs go up for sale (one lot each)
+   *   POST { game, do: "unlist" }       → and come down; 409 when somebody has bought them
+   *   POST { game, do: "buy", id }      → the lot is the buyer's, and its seller is told; 409 when it is gone
+   * The game decides what each of these is worth to a store. This only passes them between members.
+   */
+  async function network(house: { slug: string; members: Member[] }, me: Member, game: IdleGameId, method: string, input: Record<string, unknown>, now: number): Promise<StoreReply> {
+    const net = await networkOf(house.slug, game);
+    const nameOf = (id: string) => house.members.find((m) => m.id === id)?.name ?? "Somebody who left";
+    const keep = () => sync.write("networks", `${house.slug}/${game}`, { inbox: net.inbox, listings: net.listings, sent: net.sent, deleted: false });
+    // Lots whose seller has left the house are gone with them.
+    net.listings = net.listings.filter((l) => house.members.some((m) => m.id === l.seller));
+    const wait = () => Math.max(0, (net.sent[me.id] ?? 0) + HOTSHOT_EVERY - now);
+
+    if (method === "GET") {
+      return {
+        status: 200,
+        body: {
+          waiting: (net.inbox[me.id] ?? []).length,
+          listings: net.listings.map((l) => ({ id: l.id, name: nameOf(l.seller), amount: l.amount, mine: l.seller === me.id })),
+          members: house.members.filter((m) => m.id !== me.id).map((m) => ({ id: m.id, name: m.name })),
+          hotshotWait: Math.ceil(wait() / 1000),
+        },
+      };
+    }
+    switch (input.do) {
+      case "collect": {
+        const parcels = net.inbox[me.id] ?? [];
+        if (parcels.length) {
+          delete net.inbox[me.id];
+          await keep();
+        }
+        return { status: 200, body: { parcels: parcels.map((p) => ({ what: p.what, from: p.from })) } };
+      }
+      case "hotshot": {
+        const to = house.members.find((m) => m.id === input.to && m.id !== me.id);
+        if (!to) return { status: 400, body: { error: "That is nobody in this house." } };
+        if (wait() > 0) return { status: 429, body: { error: "The truck was out too recently.", hotshotWait: Math.ceil(wait() / 1000) } };
+        net.sent[me.id] = now;
+        net.inbox[to.id] = [...(net.inbox[to.id] ?? []), { id: fresh(now), what: "hotshot" as const, from: me.name }].slice(-INBOX);
+        await keep();
+        return { status: 200, body: { to: to.name } };
+      }
+      case "list": {
+        const amount = typeof input.amount === "number" && Number.isSafeInteger(input.amount) && input.amount > 0 ? input.amount : 0;
+        if (!amount) return { status: 400, body: { error: "That is not an amount." } };
+        net.listings = [...net.listings.filter((l) => l.seller !== me.id), { id: fresh(now), seller: me.id, amount, at: now }];
+        await keep();
+        return { status: 200, body: {} };
+      }
+      case "unlist": {
+        if (!net.listings.some((l) => l.seller === me.id)) return { status: 409, body: { error: "Somebody has bought them." } };
+        net.listings = net.listings.filter((l) => l.seller !== me.id);
+        await keep();
+        return { status: 200, body: {} };
+      }
+      case "buy": {
+        const lot = net.listings.find((l) => l.id === input.id);
+        if (!lot) return { status: 409, body: { error: "Somebody got there first." } };
+        if (lot.seller === me.id) return { status: 400, body: { error: "Those are your own." } };
+        net.listings = net.listings.filter((l) => l !== lot);
+        net.inbox[lot.seller] = [...(net.inbox[lot.seller] ?? []), { id: fresh(now), what: "sold" as const, from: me.name }].slice(-INBOX);
+        await keep();
+        return { status: 200, body: { from: nameOf(lot.seller) } };
+      }
+      default:
+        return { status: 400, body: { error: "There is no such thing to do." } };
+    }
+  }
+
   return {
     /**
      * /houses/:slug/store and /houses/:slug/stores, for a member of the house.
@@ -54,6 +160,7 @@ export function createStores(sync: Sync) {
       const asked = method === "POST" ? input.game : query.get("game");
       if (!isIdleGame(asked)) return { status: 400, body: { error: "That is not a game that keeps a store." } };
       const game = asked;
+      if (action === "network") return network(house, me, game, method, input, now);
 
       if (action === "store" && method === "GET") {
         const saved = await read(house.slug, game, me.id);

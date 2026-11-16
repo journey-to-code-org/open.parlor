@@ -11,7 +11,7 @@ import { dollars, idleGame, type DelbiesCommand, type DelbiesPieceId, type Delbi
 import { useEffect, useRef, useState } from "react";
 import { blip, notes, wakeArcadeSound } from "../arcade/sounds";
 import { loadIdle, loadIdleHouse, loadMyHouses, saveIdle, saveIdleHouse } from "../storage";
-import { fetchStandings, fetchStore, sendStore, type Standing } from "./network";
+import { fetchNetwork, fetchStandings, fetchStore, networkDo, sendStore, type NetworkLook, type Parcel, type Standing } from "./network";
 
 /** The time, as the game wants it: the second, and the time of day on this device. */
 export function clockNow(): IdleClock {
@@ -46,6 +46,83 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
   const [standings, setStandings] = useState<Standing[]>([]);
   const [clash, setClash] = useState<{ slug: string; name: string; state: DelbiesState; rev: number } | null>(null);
   const myHouses = loadMyHouses();
+  const [net, setNet] = useState<NetworkLook | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  /**
+   * Look at the house's network: take in whatever is waiting for this store, and make what the house
+   * has up for sale agree with what this store thinks it has listed.
+   */
+  const lookNet = async () => {
+    const at = houseRef.current;
+    const s = state_.current;
+    if (!at || !s) return setNet(null);
+    let seen = await fetchNetwork(at.slug, id);
+    if (!seen || houseRef.current?.slug !== at.slug) return;
+    if (seen.waiting > 0) {
+      const got = await networkDo(at.slug, id, "collect");
+      const parcels: Parcel[] = got.ok && Array.isArray(got.body.parcels) ? got.body.parcels : [];
+      for (const parcel of parcels) act({ cmd: "receive", what: parcel.what, from: parcel.from }, true);
+      if (parcels.length) {
+        notes([523, 659, 784], 70, 0.1);
+        void sync();
+      }
+    }
+    const listed = state_.current ? game.view(state_.current, clockNow()).network.tabs.listed : 0;
+    const mine = seen.listings.some((l) => l.mine);
+    if (listed > 0 && !mine) await networkDo(at.slug, id, "list", { amount: listed });
+    if (listed === 0 && mine) await networkDo(at.slug, id, "unlist");
+    if ((listed > 0) !== mine) seen = (await fetchNetwork(at.slug, id)) ?? seen;
+    if (houseRef.current?.slug === at.slug) setNet(seen);
+  };
+  /** One thing at a time on the network, then a fresh look at it. */
+  const onNetwork = async (work: (slug: string) => Promise<void>) => {
+    const at = houseRef.current;
+    if (!at || busy) return;
+    setBusy(true);
+    try {
+      await work(at.slug);
+      await sync();
+      await lookNet();
+      void fetchStandings(at.slug, id).then(setStandings);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const say = (text: string) => setToast({ text, key: Date.now() });
+  const sendHotshot = (to: Standing) =>
+    onNetwork(async (slug) => {
+      if (!state_.current || !game.view(state_.current, clockNow()).network.hotshot.can) return void act({ cmd: "hotshot" });
+      const sent = await networkDo(slug, id, "hotshot", { to: to.id });
+      if (!sent.ok) return say(sent.status === 429 ? "The truck was out too recently." : sent.body.error ?? "The house can't be reached just now.");
+      act({ cmd: "hotshot" });
+      say(`A driver is on his way to ${to.name}.`);
+    });
+  const listTabs = () =>
+    onNetwork(async (slug) => {
+      const done = act({ cmd: "list" });
+      if (!done?.ok || !state_.current) return;
+      const listed = game.view(state_.current, clockNow()).network.tabs.listed;
+      const up = await networkDo(slug, id, "list", { amount: listed });
+      if (!up.ok) {
+        act({ cmd: "unlist" }, true);
+        say("The house can't be reached just now.");
+      }
+    });
+  const unlistTabs = () =>
+    onNetwork(async (slug) => {
+      const down = await networkDo(slug, id, "unlist");
+      // Refused: somebody has bought them, and the money is waiting.
+      if (down.ok) act({ cmd: "unlist" });
+      else if (down.status !== 409) say("The house can't be reached just now.");
+    });
+  const buyTabs = (lot: NetworkLook["listings"][number]) =>
+    onNetwork(async (slug) => {
+      if (!state_.current || !game.view(state_.current, clockNow()).network.tabs.canBuy) return void act({ cmd: "buy", from: lot.name });
+      const bought = await networkDo(slug, id, "buy", { id: lot.id });
+      if (!bought.ok) return say(bought.status === 409 ? "Somebody got there first." : bought.body.error ?? "The house can't be reached just now.");
+      act({ cmd: "buy", from: lot.name });
+    });
 
   const keep = (next: { slug: string; name: string; rev: number } | null) => {
     saveIdleHouse(id, next);
@@ -90,9 +167,15 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
   };
 
   useEffect(() => {
-    if (!house) return setStandings([]);
+    if (!house) {
+      setNet(null);
+      return setStandings([]);
+    }
     let live = true;
-    const look = () => void fetchStandings(house.slug, id).then((s) => live && setStandings(s));
+    const look = () => {
+      void fetchStandings(house.slug, id).then((s) => live && setStandings(s));
+      void lookNet();
+    };
     // On opening, the house's copy is taken up if it was played somewhere else since this browser last agreed with it.
     void fetchStore(house.slug, id).then((theirs) => {
       if (!live || !theirs) return;
@@ -101,7 +184,7 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
       look();
     });
     const send = setInterval(() => void sync(), 15_000);
-    const watch = setInterval(look, 30_000);
+    const watch = setInterval(() => document.hidden || look(), 20_000);
     const away = () => document.hidden || void sync();
     document.addEventListener("visibilitychange", away);
     return () => {
@@ -442,10 +525,67 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
                       <span>
                         {dollars(st.score * 100)} taken in · {dollars(st.perSecond)} a second · {st.crew} on the payroll{st.moves > 0 ? ` · ${st.moves} ${st.moves === 1 ? "move" : "moves"}` : ""}
                       </span>
+                      {!st.me && view.network.hotshot.hasDriver && (
+                        <button type="button" disabled={busy || !view.network.hotshot.can || (net?.hotshotWait ?? 0) > 0} onClick={() => void sendHotshot(st)}>
+                          Send a hotshot
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ol>
               )}
+              <div className="delbies-hotshot">
+                <b>Hotshot Delivery Board</b>
+                {!view.network.hotshot.hasDriver ? (
+                  <span>Hire a driver and you can send him to a housemate's store with the part they are short of.</span>
+                ) : view.network.hotshot.outSeconds > 0 ? (
+                  <span>
+                    A driver is out. Back in {minutesAndSeconds(view.network.hotshot.outSeconds)} with {dollars(view.network.hotshot.pays)}.
+                  </span>
+                ) : view.network.hotshot.waitSeconds > 0 ? (
+                  <span>The truck can go again in {minutesAndSeconds(view.network.hotshot.waitSeconds)}.</span>
+                ) : standings.some((st) => !st.me) ? (
+                  <span>
+                    Send a driver to a housemate: {dollars(view.network.hotshot.cost)} in gas, {dollars(view.network.hotshot.pays)} when he is back in five minutes. They get a sale and a calmer counter.
+                  </span>
+                ) : (
+                  <span>Nobody else in {house.name} keeps a store here yet.</span>
+                )}
+              </div>
+              <div className="delbies-hotshot">
+                <b>Tabs for sale</b>
+                {view.network.tabs.collecting > 0 && <span>Collecting on tabs you bought: {dollars(view.network.tabs.collecting)} still to come.</span>}
+                {view.network.tabs.listed > 0 ? (
+                  <>
+                    <span>
+                      Your {dollars(view.network.tabs.listed)} of tabs are up for sale. A housemate who buys them puts {dollars(view.network.tabs.sellsFor)} in your till.
+                    </span>
+                    <button type="button" disabled={busy} onClick={() => void unlistTabs()}>
+                      Take them back
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span>
+                      {view.network.tabs.canList
+                        ? `Put the ${dollars(view.tabs)} you are owed up for sale: it comes off your books now, and you get ${dollars(view.network.tabs.sellsFor)} when a housemate buys it.`
+                        : `Once you are owed ${dollars(view.network.tabs.listAtLeast)} or more, you can put it up for a housemate to buy.`}
+                    </span>
+                    {view.network.tabs.canList && (
+                      <button type="button" disabled={busy} onClick={() => void listTabs()}>
+                        Put my tabs up for sale
+                      </button>
+                    )}
+                  </>
+                )}
+                {(net?.listings ?? [])
+                  .filter((lot) => !lot.mine)
+                  .map((lot) => (
+                    <button key={lot.id} type="button" disabled={busy || !view.network.tabs.canBuy} onClick={() => void buyTabs(lot)}>
+                      Buy {lot.name}'s tabs: {dollars(view.network.tabs.buyCost)} now, {dollars(view.network.tabs.buyPays)} back over ten minutes
+                    </button>
+                  ))}
+              </div>
               <button type="button" className="delbies-reset" onClick={() => keep(null)}>
                 Keep it only in this browser
               </button>
