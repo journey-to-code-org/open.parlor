@@ -15,14 +15,18 @@ interface Props {
   onHome: () => void;
   /** `rival` is a housemate's run to take on: the same seed, and their score to beat. */
   onPlay: (rules: ArcadeRules, seats: number, autofire: boolean, rival?: { name: string; score: number; seed: number }) => void;
+  /** Open a table on the server for this many people (and computer players), to play the same game together. */
+  onTogether?: (rules: ArcadeRules, seats: number) => Promise<void>;
 }
 
-export function ArcadeSetup({ game: id, onHome, onPlay }: Props) {
+export function ArcadeSetup({ game: id, onHome, onPlay, onTogether }: Props) {
   const game = arcadeGame(id)!;
   const [rules, setRules] = useState<ArcadeRules>(() => loadArcadeRules(id));
   const [crew, setCrew] = useState(() => loadArcadeCrew(id));
   const [autofire, setAutofire] = useState(loadAutofire);
   const [showRules, setShowRules] = useState(false);
+  const [together, setTogether] = useState(2);
+  const [opening, setOpening] = useState<string | null>(null);
   const houses = loadMyHouses();
   const [house, setHouse] = useState(loadArcadeHouse);
   const [runs, setRuns] = useState<HouseRun[]>([]);
@@ -125,6 +129,26 @@ export function ArcadeSetup({ game: id, onHome, onPlay }: Props) {
             Play
           </button>
           {errors.length > 0 && <p className="error">{errors.join(" ")}</p>}
+          {onTogether && (
+            <section className="arcade-together" aria-label="Play together">
+              <h3>Play together</h3>
+              <p>Open a table and send the link: everyone plays the same game, live, on the same side.</p>
+              <Choice label="Seats" value={together} options={Array.from({ length: game.seats.max - 1 }, (_, i) => [String(i + 2), `${i + 2} players`] as [string, string])} onChange={(v) => setTogether(Number(v))} />
+              <button
+                type="button"
+                className="secondary"
+                disabled={errors.length > 0 || opening === ""}
+                onClick={() => {
+                  saveArcadeRules(id, rules);
+                  setOpening("");
+                  onTogether(rules, together).catch((e: Error) => setOpening(e.message || "The table could not be opened."));
+                }}
+              >
+                {opening === "" ? "Opening a table…" : "Open a table"}
+              </button>
+              {opening && <p className="error">{opening}</p>}
+            </section>
+          )}
         </>
       }
       table={

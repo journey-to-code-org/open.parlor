@@ -37,7 +37,13 @@ export interface LiveState {
   /** How many orders each seat has had carried out: how a page knows which of its own have landed. */
   done: number[];
 }
-export type LiveMove = { type: "beat" } | { type: "cmd"; inputs: unknown[] };
+/**
+ * `gaps` goes with `inputs`, one each: how many ticks the seat waited before giving that order
+ * (after its last one in the same move). A game can tell orders given in a row from orders given
+ * one a tick (Chip Stack only counts a tap every few ticks), so a page that saved some up says how
+ * they were spaced.
+ */
+export type LiveMove = { type: "beat" } | { type: "cmd"; inputs: unknown[]; gaps?: unknown[] };
 export interface LiveView extends Omit<LiveState, "rules"> {
   live: true;
   seat: number;
@@ -59,6 +65,9 @@ export const BEAT_MS = 1500;
 const LONGEST_WAIT_MS = 5000;
 /** The most orders taken in one move: a page saves up its taps and sends them together. */
 export const MOST_ORDERS = 24;
+/** The longest wait before one order, and before all the orders of one move together, in ticks. */
+const LONGEST_GAP = 30;
+const MOST_GAPS = 90;
 /** How far ahead a computer player is asked, in ticks. */
 const LOOK_AHEAD = 30;
 
@@ -82,13 +91,10 @@ const held = (game: ArcadeGame<any, any, any>, s: LiveState) => {
   return Array.from({ length: s.seats }, (_, seat) => ({ ...game.idle, n: seen[seat] ?? 0 }));
 };
 
-/** Play forward by a wait of `ms`. */
-function wait(game: ArcadeGame<any, any, any>, s: LiveState, ms: number) {
-  s.owed += Math.max(0, Math.min(ms, LONGEST_WAIT_MS)) * game.rate;
-  while (s.owed >= 1000) {
-    s.owed -= 1000;
-    game.step(s.arcade, held(game, s));
-  }
+/** One tick with every seat holding still. */
+function tick(game: ArcadeGame<any, any, any>, s: LiveState) {
+  s.owed -= 1000;
+  game.step(s.arcade, held(game, s));
 }
 
 export const arcadeRoom: RoomDefinition<LiveState, LiveMove, LiveView, ArcadeOptions, LiveSummary> = {
@@ -102,19 +108,29 @@ export const arcadeRoom: RoomDefinition<LiveState, LiveMove, LiveView, ArcadeOpt
     const game = gameFor(before.game);
     if (game.view(before.arcade).over) throw new RefusedMove("The game is over.");
     const s = structuredClone(before);
-    wait(game, s, time.elapsed);
+    // The table waited this long, and the orders were given during the wait: they are carried out
+    // first, spaced as they were given, and whatever is left of the wait is played after them. Orders
+    // that take more ticks than the wait had are carried out ahead of the clock, which then catches up.
+    s.owed += Math.max(0, Math.min(time.elapsed, LONGEST_WAIT_MS)) * game.rate;
     s.at = time.at;
-    const given = move && typeof move === "object" && move.type === "cmd" && Array.isArray(move.inputs) ? move.inputs.slice(0, MOST_ORDERS) : [];
-    for (const one of given) {
+    const cmd = move && typeof move === "object" && move.type === "cmd" && Array.isArray(move.inputs) ? move : null;
+    const given = cmd ? cmd.inputs.slice(0, MOST_ORDERS) : [];
+    let gaps = MOST_GAPS;
+    given.forEach((one, i) => {
       const order = game.input(one) as { cmd?: string };
-      if (!order.cmd || order.cmd === "none") continue;
+      if (!order.cmd || order.cmd === "none") return;
+      const asked = Array.isArray(cmd!.gaps) ? Number(cmd!.gaps[i]) : 0;
+      let gap = Number.isInteger(asked) ? Math.max(0, Math.min(asked, LONGEST_GAP, gaps)) : 0;
+      gaps -= gap;
+      while (gap-- > 0) tick(game, s);
       // The order is this seat's next, whatever number the page gave it, and takes a tick of its own.
       const inputs = held(game, s);
       inputs[seat] = { ...order, n: inputs[seat]!.n + 1 };
       game.step(s.arcade, inputs);
       s.owed -= 1000;
       s.done[seat] = (s.done[seat] ?? 0) + 1;
-    }
+    });
+    while (s.owed >= 1000) tick(game, s);
     return s;
   },
   view: (s, seat) => {

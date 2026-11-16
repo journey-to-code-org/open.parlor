@@ -13,7 +13,8 @@ import { useTable, type Move } from "./useTable";
 import type { PalaceMove, PalaceView } from "@journey-to-code/palace";
 import { PalaceTable } from "./palace/PalaceTable";
 import { isBoardGame, isKitGame, isSportGame, kitGame, type BoardView, type KitView, type SportView } from "@journey-to-code/games";
-import { GAME_LIST } from "./GamePicker";
+import { ARCADE_LIST, GAME_LIST } from "./GamePicker";
+import { isLiveArcade, LiveArcade, type LiveView } from "./arcade/ArcadeTable";
 import { GameTable } from "./kit/GameTable";
 import { OnlineTable, TablePlayers, TableSettingsFields, TurnTimerField, type TablePlayersValue } from "./TableSettings";
 import { TableTime } from "./board/SeatClock";
@@ -25,7 +26,7 @@ type SpadesRoom = Room<SeatView, Move, Summary>;
 type Info = { game?: string; rules?: string } | null;
 const gameOf = (doc: RoomDoc<Summary>): string => {
   const g = (doc as { info?: Info }).info?.game ?? doc.summary?.game;
-  return g === "palace" || isKitGame(g) ? g! : "spades";
+  return g === "palace" || isKitGame(g) || isLiveArcade(g) ? g! : "spades";
 };
 /** Seats by compass point in spades and other four-seat partnership games; numbered otherwise. */
 const seatLabel = (game: string, i: number) => (game === "spades" ? SEAT_LABELS[i]! : `Seat ${i + 1}`);
@@ -232,6 +233,13 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
   ) : null;
 
   if (doc.started && seat !== null && view) {
+    // An arcade game played live: everyone on the same side, no turns and so no turn clock.
+    if (isLiveArcade(game)) {
+      const live = view as LiveView;
+      const names = doc.seats.map((s, i) => s.name ?? seatLabel(game, i));
+      // Someone watching gives no orders; a seat that is theirs does.
+      return <LiveArcade view={{ ...live, seat }} seat={seat} names={names} serverNow={room.serverNow} act={watching ? () => Promise.resolve() : (move) => room.act(move)} onLeave={onLeave} />;
+    }
     if (isKitGame(game)) {
       return online(
         <GameTable
@@ -330,7 +338,8 @@ function Lobby(props: {
 }) {
   const { room, doc, mySeat } = props;
   const game = gameOf(doc);
-  const about = GAME_LIST.find((g) => g.id === game) ?? GAME_LIST[0]!;
+  const arcade = isLiveArcade(game);
+  const about = ARCADE_LIST.find((g) => g.id === game) ?? GAME_LIST.find((g) => g.id === game) ?? GAME_LIST[0]!;
   const partners = game === "spades" || (isKitGame(game) && kitGame(game)!.teams);
   const info = (doc as { info?: Info }).info;
   const [name, setName] = useState(loadSavedName);
@@ -367,7 +376,7 @@ function Lobby(props: {
         <h1>{doc.label ?? `${about.name} · Table ${room.id}`}</h1>
         <p>
           {doc.open && !doc.started ? "An open table: anyone in the parlor can take a seat, and it deals as soon as every seat is taken. " : ""}
-          {doc.started ? "This game has started." : doc.locked ? (mySeat !== null ? "Your tournament match. Deal when you're ready; the game waits for whoever's turn it is." : "A tournament match. The seats are set.") : game === "palace" ? "First one out wins. Fill empty seats with bots." : partners ? "Partners sit across from each other." : `${about.blurb}. Fill empty seats with bots.`}
+          {doc.started ? "This game has started." : doc.locked ? (mySeat !== null ? "Your tournament match. Deal when you're ready; the game waits for whoever's turn it is." : "A tournament match. The seats are set.") : arcade ? "Everyone at the table plays the same game, on the same side, at the same time. Fill empty seats with bots." : game === "palace" ? "First one out wins. Fill empty seats with bots." : partners ? "Partners sit across from each other." : `${about.blurb}. Fill empty seats with bots.`}
           {info?.rules ? ` ${info.rules}.` : ""}
         </p>
       </header>
@@ -442,12 +451,12 @@ function Lobby(props: {
         })}
       </ol>
 
-      {!doc.started && props.settings && doc.seats.length > 1 && (
+      {!doc.started && props.settings && doc.seats.length > 1 && !arcade && (
         <section className="house-block" aria-label="Turn timer">
           <TurnTimerField settings={props.settings.value} onChange={(next) => attempt(() => props.settings!.change(next))} />
         </section>
       )}
-      <TableDeckPicker table={room.id} deck={(doc.deck ?? null) as TableDeck | null} canChoose={!doc.started && mySeat !== null} onProblem={props.setProblem} />
+      {!arcade && <TableDeckPicker table={room.id} deck={(doc.deck ?? null) as TableDeck | null} canChoose={!doc.started && mySeat !== null} onProblem={props.setProblem} />}
       {!doc.started && props.settings && doc.seats.some((s) => s.bot) && (
         <section className="house-block" aria-label="Computer players">
           <TableSettingsFields settings={props.settings.value} onChange={(next) => attempt(() => props.settings!.change(next))} />
@@ -460,14 +469,14 @@ function Lobby(props: {
               {copied ? "Link copied" : "Invite people"}
             </button>
           )}
-          {mySeat !== null && !doc.locked && doc.seats.length > 1 && !full && (
+          {mySeat !== null && !doc.locked && doc.seats.length > 1 && !full && !arcade && (
             <button type="button" className="secondary" aria-pressed={Boolean(doc.open)} onClick={() => attempt(() => lobby.setOpen(room.id, !doc.open))}>
               {doc.open ? "Close the table (invited people only)" : "Open the table to everyone"}
             </button>
           )}
           {mySeat !== null && (
             <button type="button" className="primary deal" disabled={!full} onClick={() => attempt(() => room.start())}>
-              {full ? (isBoardGame(game) || isSportGame(game) ? "Start the game" : "Deal") : doc.open ? "Waiting for players…" : "Waiting for every seat"}
+              {full ? (arcade || isBoardGame(game) || isSportGame(game) ? "Start the game" : "Deal") : doc.open ? "Waiting for players…" : "Waiting for every seat"}
             </button>
           )}
         </>
