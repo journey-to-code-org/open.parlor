@@ -2,6 +2,7 @@
 // kept, one best for each member for each set of rules and crew.
 import { memoryLog } from "@zubra/sync/server";
 import { ARCADE_GAMES, arcadeGame, recorder, type ArcadeGameId } from "@journey-to-code/games";
+import { gzipSync } from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCardRoom } from "../src/app.js";
 
@@ -69,13 +70,18 @@ describe("a house's arcade scores", () => {
     const cut = { changes: run.log.changes.filter((c) => c[0] < 60), ticks: 60 };
     expect((await owner(`/houses/${slug}/scores`, { ...run, log: cut, score: 0 })).body.error).toBe("That run is not over.");
     expect((await owner(`/houses/${slug}/scores`, { ...run, log: { changes: [], ticks: 1e12 } })).status).toBe(400);
+    // Packed, it is the same run; packed nonsense is not one.
+    const { log, ...rest } = run;
+    expect((await owner(`/houses/${slug}/scores`, { ...rest, logz: "not gzip at all" })).status).toBe(400);
+    expect((await owner(`/houses/${slug}/scores`, { ...rest, logz: gzipSync(JSON.stringify(log)).toString("base64"), score: run.score + 1 })).body.error).toBe("That run does not earn that score.");
+    expect((await owner(`/houses/${slug}/scores`, { ...rest, logz: gzipSync(JSON.stringify(log)).toString("base64") })).body).toMatchObject({ kept: true, best: run.score });
     for (const bad of [{ log: null }, { seats: 99 }, { seed: -1 }, { score: 1.5 }, { game: "hearts" }, { log: { changes: "x", ticks: 3 } }]) {
       expect((await owner(`/houses/${slug}/scores`, { ...run, ...bad })).status).toBe(400);
     }
     expect((await stranger(`/houses/${slug}/scores`, run)).status).toBe(403);
     expect((await stranger(`/houses/${slug}/scores?game=skyfire`)).status).toBe(403);
     expect((await owner(`/houses/${slug}/scores?game=delbies`)).status).toBe(400);
-    expect((await owner(`/houses/${slug}/scores?game=skyfire`)).body).toEqual({ game: "skyfire", runs: [] });
+    expect((await owner(`/houses/${slug}/scores?game=skyfire`)).body.runs).toHaveLength(1);
   }, 120_000);
 
   it("keeps each member's best for a set of rules, best first, with the seed to take it on", async () => {
