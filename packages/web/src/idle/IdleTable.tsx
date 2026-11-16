@@ -226,6 +226,8 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
       payroll: view.payroll.inSeconds,
       moves: view.move.moves,
       department: view.move.departments[view.move.departments.length - 1] ?? null,
+      inspector: view.inspector ? (view.inspector.here ? "here" : "coming") : null,
+      sticker: view.sticker > 0,
       minute: clockNow().minute,
     };
   }
@@ -282,6 +284,7 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
       hungry: view.breakroom.brice && view.breakroom.hungry,
       cinnamon: view.breakroom.cinnamon,
       shocked: view.breakroom.plutoShocked > 0,
+      inspector: view.inspector?.here ? { passing: view.inspector.checks.filter((c) => c.ok).length, of: view.inspector.checks.length } : null,
     };
   }
   const ready = !!view;
@@ -527,6 +530,28 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
             </div>
           )}
 
+          {view.inspector && (
+            <div className={`delbies-ask inspector${view.inspector.here ? " here" : ""}`} role="group" aria-label="The inspector">
+              <p>
+                📋 {view.inspector.here ? <b>The inspector is on the floor.</b> : <b>The inspector is on the way.</b>}{" "}
+                <span>{view.inspector.here ? `Done in ${view.inspector.seconds}s` : `Here in ${view.inspector.seconds}s`}</span>
+              </p>
+              <ul>
+                {view.inspector.checks.map((c) => (
+                  <li key={c.key} className={c.ok ? "ok" : "off"}>
+                    <i aria-hidden="true">{c.ok ? "✓" : "✗"}</i>
+                    <span>
+                      {c.label}
+                      {!c.ok && <small>{c.fix}</small>}
+                    </span>
+                    <span className="sr-only">{c.ok ? "fine" : "not right"}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="fine">Everything right when the visit ends is a clean sheet: a sticker, and more through the door while it's fresh. Two things wrong is a fine.</p>
+            </div>
+          )}
+
           {(view.breakroom.brice || view.breakroom.cinnamon) && (
             <div className="delbies-tabs breakroom">
               <div className="row">
@@ -561,6 +586,8 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
 
           <p className="delbies-payroll">
             Payroll: <b>{dollars(view.payroll.due)}</b> in {minutesAndSeconds(view.payroll.inSeconds)}
+            {view.sticker > 0 && ` · ✅ Passed inspection: +10% for ${minutesAndSeconds(view.sticker)}`}
+            {view.sheets > 0 && ` · ${view.sheets} clean ${view.sheets === 1 ? "sheet" : "sheets"}`}
             {view.belt > 0 && ` · Delbie's belt: ${view.belt} ${view.belt === 1 ? "notch" : "notches"} tighter`}
           </p>
 
@@ -661,8 +688,8 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
             <p className="empty">Nothing yet. Give it a minute.</p>
           ) : (
             <ul>
-              {told.map((entry) => (
-                <li key={entry.at}>
+              {told.map((entry, i) => (
+                <li key={`${entry.at}-${i}`}>
                   {entry.text}
                   {entry.times > 1 && <small> (and {entry.times - 1} more like it)</small>}
                 </li>
