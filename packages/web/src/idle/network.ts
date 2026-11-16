@@ -54,3 +54,36 @@ export async function fetchStandings(slug: string, game: IdleGameId): Promise<St
     return [];
   }
 }
+
+/** What goes on between a house's stores, as one member sees it. */
+export interface NetworkLook {
+  /** Things waiting to be collected. */
+  waiting: number;
+  listings: { id: string; name: string; amount: number; mine: boolean }[];
+  /** Seconds until the house lets this member send another driver. */
+  hotshotWait: number;
+}
+export interface Parcel {
+  what: "hotshot" | "sold";
+  from: string;
+}
+
+export async function fetchNetwork(slug: string, game: IdleGameId): Promise<NetworkLook | null> {
+  try {
+    const reply = await call(`/houses/${encodeURIComponent(slug)}/network?game=${game}`);
+    if (reply.status !== 200) return null;
+    return { waiting: Number(reply.body.waiting) || 0, listings: Array.isArray(reply.body.listings) ? reply.body.listings : [], hotshotWait: Number(reply.body.hotshotWait) || 0 };
+  } catch {
+    return null;
+  }
+}
+
+/** Do something on the house's network. `ok` when it was done; otherwise the house's reason, or none when it could not be reached. */
+export async function networkDo(slug: string, game: IdleGameId, what: "collect" | "hotshot" | "list" | "unlist" | "buy", more: Record<string, unknown> = {}): Promise<{ ok: boolean; status: number; body: any }> {
+  try {
+    const reply = await call(`/houses/${encodeURIComponent(slug)}/network`, { game, do: what, ...more });
+    return { ok: reply.status === 200, status: reply.status, body: reply.body };
+  } catch {
+    return { ok: false, status: 0, body: {} };
+  }
+}

@@ -328,7 +328,7 @@ export function createHouses(
     }
 
     // /houses/:slug/store, /houses/:slug/stores → a member's idle game kept here, and how the house's stores stand
-    if (action === "store" || action === "stores") {
+    if (action === "store" || action === "stores" || action === "network") {
       if (!me) return json({ error: "Join the house first." }, 403);
       const reply = await stores.handle(house, me, action, method, input, new URL(request.url).searchParams);
       return json(reply.body, reply.status);

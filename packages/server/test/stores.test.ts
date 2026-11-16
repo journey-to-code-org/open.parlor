@@ -111,4 +111,53 @@ describe("a house's stores", () => {
     expect((await me(`/houses/${two.slug}/stores?game=delbies`)).body.stores).toEqual([]);
     expect((await me(`/houses/${one.slug}/stores?game=delbies`)).body.stores).toHaveLength(1);
   });
+
+  it("passes a hotshot from one member to another, once, and not too often", async () => {
+    const { slug, owner, friend, stranger } = await house();
+    const seen = (await owner(`/houses/${slug}/network?game=delbies`)).body;
+    expect(seen).toMatchObject({ waiting: 0, listings: [], hotshotWait: 0 });
+    expect(seen.members.map((m: { name: string }) => m.name)).toEqual(["Dubs"]);
+    const dubs = seen.members[0].id;
+    expect((await owner(`/houses/${slug}/network`, { game: "delbies", do: "hotshot", to: "nobody" })).status).toBe(400);
+    expect((await owner(`/houses/${slug}/network`, { game: "delbies", do: "hotshot", to: dubs })).body).toEqual({ to: "Dubs" });
+    // The truck has only just gone.
+    const again = await owner(`/houses/${slug}/network`, { game: "delbies", do: "hotshot", to: dubs });
+    expect(again.status).toBe(429);
+    expect(again.body.hotshotWait).toBeGreaterThan(800);
+    expect((await owner(`/houses/${slug}/network?game=delbies`)).body.hotshotWait).toBeGreaterThan(800);
+    // It waits for Dubs, and is Dubs's once collected.
+    expect((await friend(`/houses/${slug}/network?game=delbies`)).body.waiting).toBe(1);
+    expect((await owner(`/houses/${slug}/network`, { game: "delbies", do: "collect" })).body).toEqual({ parcels: [] });
+    expect((await friend(`/houses/${slug}/network`, { game: "delbies", do: "collect" })).body).toEqual({ parcels: [{ what: "hotshot", from: "McMikey" }] });
+    expect((await friend(`/houses/${slug}/network`, { game: "delbies", do: "collect" })).body).toEqual({ parcels: [] });
+    expect((await stranger(`/houses/${slug}/network?game=delbies`)).status).toBe(403);
+    expect((await stranger(`/houses/${slug}/network`, { game: "delbies", do: "collect" })).status).toBe(403);
+    expect((await owner(`/houses/${slug}/network`, { game: "delbies", do: "dance" })).status).toBe(400);
+    expect((await owner(`/houses/${slug}/network?game=hearts`)).status).toBe(400);
+  });
+
+  it("puts a member's tabs up for the house, sells them once, and tells the seller", async () => {
+    const { slug, owner, friend } = await house();
+    expect((await owner(`/houses/${slug}/network`, { game: "delbies", do: "list", amount: -5 })).status).toBe(400);
+    expect((await owner(`/houses/${slug}/network`, { game: "delbies", do: "unlist" })).status).toBe(409);
+    await owner(`/houses/${slug}/network`, { game: "delbies", do: "list", amount: 10_000 });
+    // One lot each: listing again replaces it.
+    await owner(`/houses/${slug}/network`, { game: "delbies", do: "list", amount: 40_000 });
+    const mine = (await owner(`/houses/${slug}/network?game=delbies`)).body.listings;
+    expect(mine).toMatchObject([{ name: "McMikey", amount: 40_000, mine: true }]);
+    expect((await owner(`/houses/${slug}/network`, { game: "delbies", do: "buy", id: mine[0].id })).status).toBe(400);
+    const theirs = (await friend(`/houses/${slug}/network?game=delbies`)).body.listings;
+    expect(theirs).toMatchObject([{ name: "McMikey", amount: 40_000, mine: false }]);
+    expect((await friend(`/houses/${slug}/network`, { game: "delbies", do: "buy", id: theirs[0].id })).body).toEqual({ from: "McMikey" });
+    expect((await friend(`/houses/${slug}/network`, { game: "delbies", do: "buy", id: theirs[0].id })).status).toBe(409);
+    expect((await friend(`/houses/${slug}/network?game=delbies`)).body.listings).toEqual([]);
+    // Too late to take them back: the money is waiting instead.
+    expect((await owner(`/houses/${slug}/network`, { game: "delbies", do: "unlist" })).status).toBe(409);
+    expect((await owner(`/houses/${slug}/network`, { game: "delbies", do: "collect" })).body).toEqual({ parcels: [{ what: "sold", from: "Dubs" }] });
+    // Taken back in time, nobody can buy them.
+    await friend(`/houses/${slug}/network`, { game: "delbies", do: "list", amount: 7_000 });
+    const lot = (await owner(`/houses/${slug}/network?game=delbies`)).body.listings[0].id;
+    expect((await friend(`/houses/${slug}/network`, { game: "delbies", do: "unlist" })).status).toBe(200);
+    expect((await owner(`/houses/${slug}/network`, { game: "delbies", do: "buy", id: lot })).status).toBe(409);
+  });
 });
