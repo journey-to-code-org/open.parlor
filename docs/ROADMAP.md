@@ -170,6 +170,10 @@ new netcode and is a separate decision.
 - **The side apps.** The admin's "which games appear and in what order" needs the new sections.
   The card designer could grow into board and piece themes.
 
+## The driving game
+
+A driving game with a garage, wagers and pink slips has a roadmap of its own: [DRIVING.md](DRIVING.md).
+
 ## Open questions
 
 1. **The new name.** Decided and done: open.parlor.
