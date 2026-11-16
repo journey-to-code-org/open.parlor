@@ -24,7 +24,7 @@ export interface ChooserGame {
   /** A board game shows a little board instead of cards. */
   board?: { cols: number; cells: ({ glyph: string; tone: string; shade?: string } | null)[]; shade?: string };
   /** An arcade game shows a little screen: a ship, what it is up against, and what is coming at it (in a 100 × 100 box). */
-  screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][]; chip?: boolean; shop?: boolean };
+  screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][]; chip?: boolean; shop?: boolean; strip?: boolean };
   /** A dice game shows a few dice: the face each one shows. */
   dice?: number[];
   /** A table sport shows a little table from above: its surface, a hole, a ball or two (in a 100 × 100 box). */
@@ -188,6 +188,18 @@ const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spa
                 <rect class="pane" x="16" y="62" width="20" height="18" rx="2" />
                 <rect class="pane" x="64" y="62" width="20" height="18" rx="2" />
                 <path class="wrench" d="M30 24 h30 M60 24 l6 -5 M60 24 l6 5" />
+              </svg>
+              <svg v-else-if="g.screen.strip" viewBox="0 0 100 100">
+                <rect class="night" x="3" y="3" width="94" height="94" rx="14" />
+                <path class="tarmac" d="M40 30 H60 L88 97 H12 Z" />
+                <path class="lane" d="M50 34 V44 M50 52 V64 M50 74 V90" />
+                <rect class="treepost" x="48.5" y="10" width="3" height="24" rx="1" />
+                <circle class="lamp amber" cx="50" cy="13" r="3" />
+                <circle class="lamp amber" cx="50" cy="20" r="3" />
+                <circle class="lamp go" cx="50" cy="27" r="3" />
+                <rect class="racer a" x="24" y="66" width="20" height="13" rx="3" />
+                <rect class="racer b" x="57" y="50" width="15" height="10" rx="2.5" />
+                <path class="tail" d="M27 75 h4 M37 75 h4 M59.5 57 h3 M66.5 57 h3" />
               </svg>
               <svg v-else-if="g.screen.chip" viewBox="0 0 100 100">
                 <rect class="felt" x="3" y="3" width="94" height="94" rx="14" />
@@ -421,6 +433,15 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .mini-screen .stripe { stroke: #fbf6ec; stroke-width: 5; }
 .mini-screen .door { fill: #0e131c; stroke: #8b97b8; stroke-width: 1.4; }
 .mini-screen .pane { fill: #4cc9ff; opacity: 0.75; }
+.mini-screen .night { fill: #14101f; stroke: #ff5a8a; stroke-width: 2; }
+.mini-screen .tarmac { fill: #2b2a33; }
+.mini-screen .lane { stroke: #e8e2d0; stroke-width: 1.6; fill: none; }
+.mini-screen .treepost { fill: #8b97b8; }
+.mini-screen .lamp.amber { fill: #ffb627; }
+.mini-screen .lamp.go { fill: #55d68a; }
+.mini-screen .racer.a { fill: #4cc9ff; stroke: #0e131c; stroke-width: 1.4; }
+.mini-screen .racer.b { fill: #ff5a6e; stroke: #0e131c; stroke-width: 1.2; }
+.mini-screen .tail { stroke: #ff2d2d; stroke-width: 2; stroke-linecap: round; }
 .mini-screen .felt { fill: #1f4d3a; stroke: #e8c46a; stroke-width: 2; }
 .mini-screen .coin { fill: #ffd166; stroke: #8a6a14; stroke-width: 1.6; }
 .mini-screen .bigchip { fill: #c8323c; stroke: #5b1420; stroke-width: 1.6; }

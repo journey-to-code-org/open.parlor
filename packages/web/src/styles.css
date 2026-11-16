@@ -2363,3 +2363,126 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 @media (max-width: 1050px) { .delbies-floor { grid-template-columns: minmax(260px, 360px) minmax(0, 1fr); } .delbies-log { grid-column: 1 / -1; grid-row: auto; } }
 @media (max-width: 720px) { .delbies-floor { grid-template-columns: minmax(0, 1fr); padding: 12px; } .delbies-desk, .delbies-floorplan, .delbies-crew, .delbies-log { grid-column: 1; grid-row: auto; } .delbies-till { gap: 12px; width: 100%; justify-content: space-between; } }
 @media (prefers-reduced-motion: reduce) { .delbies .bar i { transition: none; } }
+
+/* ---- Pink Slips ----------------------------------------------------------------------------------
+   A garage at night: oil-dark panels, a sodium-lamp amber for what matters and a tail-light pink for
+   the name. Three columns on a wide screen (the bays, the car, how it goes), one on a phone. The
+   strip is a canvas with the controls laid over it. */
+.pinks {
+  --shop: #14121b;
+  --panel: #211e2b;
+  --edge: #3a3548;
+  --ink: #f1eef6;
+  --dim: #a39db3;
+  --amber: #ffb627;
+  --pink: #ff5a8a;
+  --red: #ff5a5f;
+  --green: #55d68a;
+  position: fixed; inset: 0; overflow-y: auto; background: var(--shop); color: var(--ink); font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+}
+.pinks h1, .pinks h2, .pinks h3 { font-family: inherit; margin: 0; }
+.pinks h2 { font-size: 1.05rem; }
+.pinks h3 { font-size: 0.95rem; }
+.pinks h2 small { color: var(--dim); font-weight: 400; font-size: 0.78rem; margin-left: 6px; }
+.pinks button, .pinks select, .pinks input { font: inherit; color: inherit; }
+.pinks button { cursor: pointer; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--edge); background: #2b2738; }
+.pinks button:disabled { cursor: default; opacity: 0.45; }
+.pinks button:focus-visible, .pinks select:focus-visible, .pinks input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.pinks button.yes { background: var(--amber); border-color: var(--amber); color: #1d1a16; font-weight: 700; }
+.pinks button.fine { padding: 2px 8px; font-size: 0.75rem; font-weight: 400; margin-left: 8px; }
+.pinks small { color: var(--dim); }
+.pinks p { margin: 0; }
+.pinks .row { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.pinks .cash { color: var(--amber); font-variant-numeric: tabular-nums; }
+.pinks .facts { color: var(--dim); font-size: 0.84rem; line-height: 1.4; }
+.pinks .bad { color: var(--red); }
+.pinks .empty { color: var(--dim); font-size: 0.88rem; line-height: 1.4; }
+.pinks-top { position: sticky; top: 0; z-index: 2; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 10px 16px; background: #1b1824; border-bottom: 1px solid var(--edge); }
+.pinks-top h1 { flex: 1; min-width: 150px; font-size: clamp(1.05rem, 2.6vw, 1.4rem); color: var(--pink); }
+.pinks-back { background: transparent !important; font-size: 0.85rem; padding: 6px 10px !important; }
+.pinks-till { display: flex; gap: 18px; font-variant-numeric: tabular-nums; }
+.pinks-till div { display: flex; flex-direction: column; }
+.pinks-till small { font-size: 0.66rem; letter-spacing: 0.07em; text-transform: uppercase; }
+.pinks-till b { font-size: 1.05rem; white-space: nowrap; }
+.pinks-till .cash { font-size: 1.45rem; }
+.pinks-floor { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr) minmax(200px, 280px); gap: 16px; padding: 16px; max-width: 1320px; margin: 0 auto; align-items: start; }
+.pinks-bays { display: flex; flex-direction: column; gap: 8px; }
+.pinks .bay { display: flex; flex-direction: column; gap: 2px; text-align: left; background: var(--panel); }
+.pinks .bay span { color: var(--dim); font-size: 0.8rem; }
+.pinks .bay.on { border-color: var(--amber); box-shadow: inset 3px 0 0 var(--amber); }
+.pinks .bay.ads { margin-top: 8px; border-style: dashed; }
+.pinks-card { display: grid; gap: 10px; padding: 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--edge); }
+.pinks-car, .pinks-ads { display: grid; gap: 12px; min-width: 0; }
+.pinks-ads ul, .pinks-parts, .pinks-locals { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.pinks-ads ul { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.pinks-ads .pitch { font-style: italic; }
+.pinks-ads .tier1 { border-color: #5d6fb0; }
+.pinks-ads .tier2 { border-color: var(--pink); box-shadow: 0 0 0 1px var(--pink), 0 0 22px rgba(255, 90, 138, 0.25); }
+.pinks-car .worth { color: var(--dim); font-size: 0.85rem; }
+.pinks-car input { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--edge); background: #15131c; min-width: 0; }
+.pinks-numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+.pinks-numbers div { display: flex; flex-direction: column; padding: 8px 10px; border-radius: 8px; background: #191622; }
+.pinks-numbers small { font-size: 0.66rem; letter-spacing: 0.07em; text-transform: uppercase; }
+.pinks-numbers b { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.pinks-wear { display: grid; grid-template-columns: 58px minmax(60px, 1fr) 48px auto; gap: 8px; align-items: center; font-size: 0.84rem; }
+.pinks-wear .bar { height: 8px; border-radius: 4px; background: #15131c; overflow: hidden; }
+.pinks-wear .bar i { display: block; height: 100%; background: var(--green); }
+.pinks-wear .bar.mid i { background: var(--amber); }
+.pinks-wear .bar.low i { background: var(--red); }
+.pinks-wear em { font-style: normal; color: var(--dim); font-variant-numeric: tabular-nums; }
+.pinks-wear button { padding: 4px 10px; font-size: 0.8rem; }
+.pinks-parts li, .pinks-locals li { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--edge); }
+.pinks-parts li:first-child, .pinks-locals li:first-child { border-top: 0; padding-top: 0; }
+.pinks-parts li > div, .pinks-locals li > div { min-width: 0; }
+.pinks-parts small, .pinks-locals small { display: block; font-size: 0.78rem; line-height: 1.35; }
+.pinks-parts .has, .pinks-locals .has { color: var(--dim); font-size: 0.82rem; }
+.pinks-parts button, .pinks-locals button { flex: none; max-width: 48%; text-align: right; font-size: 0.85rem; }
+.pinks-parts button i { display: block; font-style: normal; color: var(--amber); font-variant-numeric: tabular-nums; }
+.pinks-parts .maxed { color: var(--green); font-size: 0.82rem; }
+.pinks-final { display: flex; flex: none; }
+.pinks-final button { border-radius: 0; padding: 6px 10px; font-size: 0.82rem; max-width: none; }
+.pinks-final button:first-child { border-radius: 8px 0 0 8px; }
+.pinks-final button:last-child { border-radius: 0 8px 8px 0; }
+.pinks-final button.on { background: var(--amber); border-color: var(--amber); color: #1d1a16; font-weight: 700; }
+.pinks-where { font-size: 0.84rem; color: var(--dim); }
+.pinks-where select { margin-left: 6px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--edge); background: #15131c; }
+.pinks .pinks-sell { justify-self: start; background: transparent; color: var(--dim); font-size: 0.82rem; }
+.pinks-how { display: grid; gap: 10px; padding: 14px; border-radius: 12px; border: 1px dashed var(--edge); font-size: 0.86rem; line-height: 1.45; }
+.pinks-how ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.pinks-how kbd { padding: 1px 6px; border-radius: 5px; border: 1px solid var(--edge); background: #191622; font: inherit; font-size: 0.8rem; }
+.pinks-toast { position: fixed; left: 50%; bottom: 22px; translate: -50% 0; z-index: 5; max-width: min(92vw, 460px); padding: 10px 16px; border-radius: 10px; background: #2c3a2f; border: 1px solid var(--green); box-shadow: var(--elev-2); animation: pinks-toast 3.6s forwards; pointer-events: none; }
+.pinks-toast.no { background: #3a2a2c; border-color: var(--red); }
+@keyframes pinks-toast { 0% { opacity: 0; translate: -50% 10px; } 8%, 80% { opacity: 1; translate: -50% 0; } 100% { opacity: 0; } }
+@media (max-width: 980px) {
+  .pinks-floor { grid-template-columns: 1fr; padding: 12px; }
+  .pinks-bays { flex-direction: row; flex-wrap: wrap; }
+  .pinks-bays h2 { width: 100%; }
+  .pinks .bay { flex: 1 1 150px; }
+  .pinks .bay.ads { margin-top: 0; }
+}
+
+.pinks-strip { position: fixed; inset: 0; background: #0b0a18; color: #f1eef6; font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; overflow: hidden; }
+.pinks-strip canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.pinks-strip button { font: inherit; color: inherit; cursor: pointer; }
+.pinks-strip-top { position: absolute; top: 30px; left: 12px; right: 12px; display: flex; gap: 12px; align-items: center; font-size: 0.85rem; text-shadow: 0 1px 3px #000; }
+.pinks-strip-top button { padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(10, 10, 20, 0.6); }
+.pinks-strip-top button:disabled { opacity: 0.4; }
+.pinks-banner { position: absolute; top: 24%; left: 0; right: 0; text-align: center; font-size: clamp(1.4rem, 6vw, 3rem); font-weight: 800; letter-spacing: 0.04em; text-shadow: 0 2px 12px #000; pointer-events: none; animation: pinks-pop 240ms var(--ease-back, ease-out); }
+@keyframes pinks-pop { from { scale: 0.7; opacity: 0; } }
+.pinks-pads { position: absolute; inset: auto 10px 10px 10px; display: flex; justify-content: space-between; align-items: flex-end; pointer-events: none; }
+.pinks-pads button { pointer-events: auto; border: 2px solid rgba(255, 255, 255, 0.4); background: rgba(20, 18, 30, 0.55); border-radius: 14px; font-weight: 700; touch-action: none; }
+.pinks-pads button:active { background: rgba(255, 182, 39, 0.45); }
+.pinks-pads .shifter { display: grid; gap: 8px; }
+.pinks-pads .shifter button { width: 84px; height: 68px; font-size: 1.3rem; display: grid; place-content: center; }
+.pinks-pads .shifter small { font-size: 0.68rem; font-weight: 400; opacity: 0.8; }
+.pinks-pads .pedal { width: 92px; height: 150px; font-size: 0.95rem; background: linear-gradient(rgba(255, 90, 138, 0.5), rgba(20, 18, 30, 0.55)); }
+@media (hover: hover) and (pointer: fine) { .pinks-pads { opacity: 0.5; } .pinks-pads:hover { opacity: 1; } }
+.pinks-slip { position: absolute; left: 50%; top: 46%; translate: -50% -50%; width: min(92vw, 400px); display: grid; gap: 12px; padding: 20px; border-radius: 14px; background: #f6f1e4; color: #1d1a16; box-shadow: var(--elev-3); font-family: "Courier New", ui-monospace, monospace; animation: pinks-pop 260ms var(--ease-back, ease-out); }
+.pinks-slip h2 { margin: 0; font-size: 1.5rem; font-family: inherit; text-align: center; }
+.pinks-slip h2.won { color: #17703f; }
+.pinks-slip .money { margin: 0; text-align: center; font-size: 1.2rem; font-weight: 700; }
+.pinks-slip .bad { margin: 0; color: #a3221c; font-size: 0.85rem; }
+.pinks-slip table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.pinks-slip th, .pinks-slip td { padding: 5px 6px; text-align: right; border-bottom: 1px dashed #b9b09a; font-size: 0.9rem; }
+.pinks-slip tbody th, .pinks-slip thead th:first-child { text-align: left; }
+.pinks-slip button.yes { padding: 10px; border-radius: 8px; border: 0; background: #1d1a16; color: #f6f1e4; font-weight: 700; }
