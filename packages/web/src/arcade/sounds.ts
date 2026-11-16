@@ -18,6 +18,8 @@ export function wakeArcadeSound() {
   }
 }
 export const setArcadeSound = (sound: boolean) => (on = sound);
+/** The audio context, when sound is on and running: for a sound that has to be held and bent, like an engine. */
+export const arcadeAudio = (): AudioContext | null => (on && ctx?.state === "running" ? ctx : null);
 
 export function blip(freq: number, dur: number, type: OscillatorType = "square", vol = 0.05, slide = 0) {
   if (!ctx || !on || ctx.state !== "running") return;

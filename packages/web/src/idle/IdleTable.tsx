@@ -2,14 +2,20 @@
 // date from the clock, and if that was a while it says what happened. While the page is open it is
 // brought up to date a few times a second, and saved every few seconds and whenever the page is
 // put away.
+//
+// A player in a house can keep the store there instead (the Parts Network): it is then the same
+// store on every device they are in that house on, and the house sees how each member's store
+// stands. The page still plays it; the house is sent a copy every so often, and when the house's
+// copy has been played somewhere else since, that one is taken up here.
 import { DELBIES_FLOOR_RULES, DELBIES_PIECES, dollars, idleGame, type DelbiesCommand, type DelbiesPieceId, type DelbiesState, type DelbiesView, type IdleClock, type IdleGameId, type IdleReport } from "@journey-to-code/games";
 import { useEffect, useRef, useState } from "react";
 import { blip, notes, wakeArcadeSound } from "../arcade/sounds";
+import { loadIdle, loadIdleHouse, loadMyHouses, saveIdle, saveIdleHouse } from "../storage";
 import { useWants3d } from "../display";
-import { loadIdle, saveIdle } from "../storage";
 import { BOARD_TRANSFORM } from "../board/board3d";
 import { loadCounter3d, type Counter3d, type CounterLook } from "./counter3d";
 import { loadFloor3d, type Floor3d, type FloorLook } from "./floor3d";
+import { fetchNetwork, fetchStandings, fetchStore, networkDo, sendStore, type NetworkLook, type Parcel, type Standing } from "./network";
 
 /** The time, as the game wants it: the second, and the time of day on this device. */
 export function clockNow(): IdleClock {
@@ -28,7 +34,7 @@ const GROUPS: [role: string, name: string, about: string][] = [
 export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () => void }) {
   // One idle game so far, so this screen is its screen.
   const game = idleGame(id)!;
-  const state = useRef<DelbiesState | null>(null);
+  const state_ = useRef<DelbiesState | null>(null);
   const [view, setView] = useState<DelbiesView | null>(null);
   const [report, setReport] = useState<IdleReport | null>(null);
   const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
@@ -36,6 +42,162 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
   const [moving, setMoving] = useState(false);
   // The floor plan: the piece picked up, waiting for a square to be put down on.
   const [holding, setHolding] = useState<DelbiesPieceId | null>(null);
+  // The Parts Network: the house this store is kept in, how its stores stand, and a choice to make
+  // when the house already has a store of this player's.
+  const [house, setHouse] = useState(() => loadIdleHouse(id));
+  const houseRef = useRef(house);
+  houseRef.current = house;
+  const [standings, setStandings] = useState<Standing[]>([]);
+  const [clash, setClash] = useState<{ slug: string; name: string; state: DelbiesState; rev: number } | null>(null);
+  const myHouses = loadMyHouses();
+  const [net, setNet] = useState<NetworkLook | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  /**
+   * Look at the house's network: take in whatever is waiting for this store, and make what the house
+   * has up for sale agree with what this store thinks it has listed.
+   */
+  const lookNet = async () => {
+    const at = houseRef.current;
+    const s = state_.current;
+    if (!at || !s) return setNet(null);
+    let seen = await fetchNetwork(at.slug, id);
+    if (!seen || houseRef.current?.slug !== at.slug) return;
+    if (seen.waiting > 0) {
+      const got = await networkDo(at.slug, id, "collect");
+      const parcels: Parcel[] = got.ok && Array.isArray(got.body.parcels) ? got.body.parcels : [];
+      for (const parcel of parcels) act({ cmd: "receive", what: parcel.what, from: parcel.from }, true);
+      if (parcels.length) {
+        notes([523, 659, 784], 70, 0.1);
+        void sync();
+      }
+    }
+    const listed = state_.current ? game.view(state_.current, clockNow()).network.tabs.listed : 0;
+    const mine = seen.listings.some((l) => l.mine);
+    if (listed > 0 && !mine) await networkDo(at.slug, id, "list", { amount: listed });
+    if (listed === 0 && mine) await networkDo(at.slug, id, "unlist");
+    if ((listed > 0) !== mine) seen = (await fetchNetwork(at.slug, id)) ?? seen;
+    if (houseRef.current?.slug === at.slug) setNet(seen);
+  };
+  /** One thing at a time on the network, then a fresh look at it. */
+  const onNetwork = async (work: (slug: string) => Promise<void>) => {
+    const at = houseRef.current;
+    if (!at || busy) return;
+    setBusy(true);
+    try {
+      await work(at.slug);
+      await sync();
+      await lookNet();
+      void fetchStandings(at.slug, id).then(setStandings);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const say = (text: string) => setToast({ text, key: Date.now() });
+  const sendHotshot = (to: Standing) =>
+    onNetwork(async (slug) => {
+      if (!state_.current || !game.view(state_.current, clockNow()).network.hotshot.can) return void act({ cmd: "hotshot" });
+      const sent = await networkDo(slug, id, "hotshot", { to: to.id });
+      if (!sent.ok) return say(sent.status === 429 ? "The truck was out too recently." : sent.body.error ?? "The house can't be reached just now.");
+      act({ cmd: "hotshot" });
+      say(`A driver is on his way to ${to.name}.`);
+    });
+  const listTabs = () =>
+    onNetwork(async (slug) => {
+      const done = act({ cmd: "list" });
+      if (!done?.ok || !state_.current) return;
+      const listed = game.view(state_.current, clockNow()).network.tabs.listed;
+      const up = await networkDo(slug, id, "list", { amount: listed });
+      if (!up.ok) {
+        act({ cmd: "unlist" }, true);
+        say("The house can't be reached just now.");
+      }
+    });
+  const unlistTabs = () =>
+    onNetwork(async (slug) => {
+      const down = await networkDo(slug, id, "unlist");
+      // Refused: somebody has bought them, and the money is waiting.
+      if (down.ok) act({ cmd: "unlist" });
+      else if (down.status !== 409) say("The house can't be reached just now.");
+    });
+  const buyTabs = (lot: NetworkLook["listings"][number]) =>
+    onNetwork(async (slug) => {
+      if (!state_.current || !game.view(state_.current, clockNow()).network.tabs.canBuy) return void act({ cmd: "buy", from: lot.name });
+      const bought = await networkDo(slug, id, "buy", { id: lot.id });
+      if (!bought.ok) return say(bought.status === 409 ? "Somebody got there first." : bought.body.error ?? "The house can't be reached just now.");
+      act({ cmd: "buy", from: lot.name });
+    });
+
+  const keep = (next: { slug: string; name: string; rev: number } | null) => {
+    saveIdleHouse(id, next);
+    houseRef.current = next;
+    setHouse(next);
+  };
+  /** Take up a store from the house in place of the one here. */
+  const adopt = (state: unknown, rev: number, at: { slug: string; name: string }) => {
+    const loaded = game.load(state) as DelbiesState | null;
+    if (!loaded) return false;
+    state_.current = loaded;
+    saveIdle(id, loaded);
+    keep({ ...at, rev });
+    refresh();
+    return true;
+  };
+  /** Send the store to its house; take the house's up instead when that one is newer. */
+  const sync = async () => {
+    const at = houseRef.current;
+    const s = state_.current;
+    if (!at || !s || document.hidden) return;
+    const sent = await sendStore(at.slug, id, s, at.rev);
+    if (houseRef.current?.slug !== at.slug) return;
+    if (sent.kind === "saved") keep({ ...at, rev: sent.rev });
+    else if (sent.kind === "newer") {
+      if (adopt(sent.state, sent.rev, at)) setToast({ text: "Picked up where your other device left off.", key: Date.now() });
+    } else if (sent.kind === "gone") {
+      keep(null);
+      setToast({ text: `You are no longer in ${at.name}. The store is kept here.`, key: Date.now() });
+    }
+  };
+  /** Put the store in a house: straight in when the house has none of this player's, a choice when it has. */
+  const join = async (slug: string) => {
+    const chosen = myHouses.find((h) => h.slug === slug);
+    if (!chosen) return;
+    const theirs = await fetchStore(slug, id);
+    if (!theirs) return setToast({ text: "That house can't be reached just now.", key: Date.now() });
+    const loaded = theirs.state ? (game.load(theirs.state) as DelbiesState | null) : null;
+    if (loaded) return setClash({ slug, name: chosen.name, state: loaded, rev: theirs.rev });
+    keep({ slug, name: chosen.name, rev: theirs.rev });
+    void sync().then(() => fetchStandings(slug, id).then(setStandings));
+  };
+
+  useEffect(() => {
+    if (!house) {
+      setNet(null);
+      return setStandings([]);
+    }
+    let live = true;
+    const look = () => {
+      void fetchStandings(house.slug, id).then((s) => live && setStandings(s));
+      void lookNet();
+    };
+    // On opening, the house's copy is taken up if it was played somewhere else since this browser last agreed with it.
+    void fetchStore(house.slug, id).then((theirs) => {
+      if (!live || !theirs) return;
+      if (theirs.state && theirs.rev !== house.rev) adopt(theirs.state, theirs.rev, house);
+      else void sync();
+      look();
+    });
+    const send = setInterval(() => void sync(), 15_000);
+    const watch = setInterval(() => document.hidden || look(), 20_000);
+    const away = () => document.hidden || void sync();
+    document.addEventListener("visibilitychange", away);
+    return () => {
+      live = false;
+      clearInterval(send);
+      clearInterval(watch);
+      document.removeEventListener("visibilitychange", away);
+    };
+  }, [house?.slug]);
 
   // The counter, drawn in 3-D in the big button where the face was (counter3d.ts): a picture of
   // what the numbers already say. Where it can't be drawn, or isn't wanted, the face is still there.
@@ -151,7 +313,7 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
   }, [three, ready]);
 
   const refresh = () => {
-    const s = state.current;
+    const s = state_.current;
     if (!s) return;
     const told = game.advance(s, clockNow());
     if (told.lines.length) setReport(told);
@@ -160,10 +322,10 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
 
   useEffect(() => {
     const clock = clockNow();
-    state.current = (game.load(loadIdle(id)) as DelbiesState | null) ?? (game.newGame(Math.floor(Math.random() * 2 ** 31), clock) as DelbiesState);
+    state_.current = (game.load(loadIdle(id)) as DelbiesState | null) ?? (game.newGame(Math.floor(Math.random() * 2 ** 31), clock) as DelbiesState);
     refresh();
     const tick = setInterval(refresh, 250);
-    const save = () => state.current && saveIdle(id, state.current);
+    const save = () => state_.current && saveIdle(id, state_.current);
     const keep = setInterval(save, 5000);
     // Back from another tab: catch up at once, and say what happened if it was a while.
     const seen = () => (document.hidden ? save() : refresh());
@@ -179,7 +341,7 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
   }, [id]);
 
   function act(command: DelbiesCommand, quiet = false) {
-    const s = state.current;
+    const s = state_.current;
     if (!s) return;
     wakeArcadeSound();
     const result = game.act(s, command, clockNow());
@@ -473,6 +635,100 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
               ))}
             </ul>
           )}
+          <h2>The Parts Network</h2>
+          {house ? (
+            <div className="delbies-network">
+              <p>
+                This store is kept in <b>{house.name}</b>. Open it on any device you are in that house on.
+              </p>
+              {standings.length > 0 && (
+                <ol>
+                  {standings.map((st) => (
+                    <li key={st.id} className={st.me ? "mine" : ""}>
+                      <b>{st.me ? `${st.name} (you)` : st.name}</b>
+                      <span>
+                        {dollars(st.score * 100)} taken in · {dollars(st.perSecond)} a second · {st.crew} on the payroll{st.moves > 0 ? ` · ${st.moves} ${st.moves === 1 ? "move" : "moves"}` : ""}
+                      </span>
+                      {!st.me && view.network.hotshot.hasDriver && (
+                        <button type="button" disabled={busy || !view.network.hotshot.can || (net?.hotshotWait ?? 0) > 0} onClick={() => void sendHotshot(st)}>
+                          Send a hotshot
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              )}
+              <div className="delbies-hotshot">
+                <b>Hotshot Delivery Board</b>
+                {!view.network.hotshot.hasDriver ? (
+                  <span>Hire a driver and you can send him to a housemate's store with the part they are short of.</span>
+                ) : view.network.hotshot.outSeconds > 0 ? (
+                  <span>
+                    A driver is out. Back in {minutesAndSeconds(view.network.hotshot.outSeconds)} with {dollars(view.network.hotshot.pays)}.
+                  </span>
+                ) : view.network.hotshot.waitSeconds > 0 ? (
+                  <span>The truck can go again in {minutesAndSeconds(view.network.hotshot.waitSeconds)}.</span>
+                ) : standings.some((st) => !st.me) ? (
+                  <span>
+                    Send a driver to a housemate: {dollars(view.network.hotshot.cost)} in gas, {dollars(view.network.hotshot.pays)} when he is back in five minutes. They get a sale and a calmer counter.
+                  </span>
+                ) : (
+                  <span>Nobody else in {house.name} keeps a store here yet.</span>
+                )}
+              </div>
+              <div className="delbies-hotshot">
+                <b>Tabs for sale</b>
+                {view.network.tabs.collecting > 0 && <span>Collecting on tabs you bought: {dollars(view.network.tabs.collecting)} still to come.</span>}
+                {view.network.tabs.listed > 0 ? (
+                  <>
+                    <span>
+                      Your {dollars(view.network.tabs.listed)} of tabs are up for sale. A housemate who buys them puts {dollars(view.network.tabs.sellsFor)} in your till.
+                    </span>
+                    <button type="button" disabled={busy} onClick={() => void unlistTabs()}>
+                      Take them back
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span>
+                      {view.network.tabs.canList
+                        ? `Put the ${dollars(view.tabs)} you are owed up for sale: it comes off your books now, and you get ${dollars(view.network.tabs.sellsFor)} when a housemate buys it.`
+                        : `Once you are owed ${dollars(view.network.tabs.listAtLeast)} or more, you can put it up for a housemate to buy.`}
+                    </span>
+                    {view.network.tabs.canList && (
+                      <button type="button" disabled={busy} onClick={() => void listTabs()}>
+                        Put my tabs up for sale
+                      </button>
+                    )}
+                  </>
+                )}
+                {(net?.listings ?? [])
+                  .filter((lot) => !lot.mine)
+                  .map((lot) => (
+                    <button key={lot.id} type="button" disabled={busy || !view.network.tabs.canBuy} onClick={() => void buyTabs(lot)}>
+                      Buy {lot.name}'s tabs: {dollars(view.network.tabs.buyCost)} now, {dollars(view.network.tabs.buyPays)} back over ten minutes
+                    </button>
+                  ))}
+              </div>
+              <button type="button" className="delbies-reset" onClick={() => keep(null)}>
+                Keep it only in this browser
+              </button>
+            </div>
+          ) : myHouses.length > 0 ? (
+            <div className="delbies-network">
+              <p>This store is only in this browser. Keep it in one of your houses to open it on any device, and to see how the rest of the house is doing.</p>
+              <div className="col">
+                {myHouses.map((h) => (
+                  <button key={h.slug} type="button" onClick={() => void join(h.slug)}>
+                    Keep it in {h.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="empty">This store is only in this browser. Join or start a house from the front page, and you can keep it there and see the rest of the house's stores.</p>
+          )}
+
           <h2>Lost &amp; Found</h2>
           <ul className="delbies-relics">
             {view.relics.map((r) => (
@@ -532,6 +788,43 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
         </div>
       )}
 
+      {clash && (
+        <div className="delbies-sheet" role="dialog" aria-label="Which store?">
+          <div>
+            <h2>{clash.name} already has a store of yours</h2>
+            <p>
+              The one there has taken in {dollars(game.score(clash.state) * 100)}. The one here has taken in {dollars(view.earned)}. Only one can be kept.
+            </p>
+            <div className="row">
+              <button
+                type="button"
+                className="yes"
+                autoFocus
+                onClick={() => {
+                  adopt(clash.state, clash.rev, clash);
+                  setClash(null);
+                }}
+              >
+                Use the one in {clash.name}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  keep({ slug: clash.slug, name: clash.name, rev: clash.rev });
+                  setClash(null);
+                  void sync();
+                }}
+              >
+                Replace it with this one
+              </button>
+              <button type="button" onClick={() => setClash(null)}>
+                Never mind
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {moving && (
         <div className="delbies-sheet" role="dialog" aria-label="Move the store?">
           <div>
@@ -568,8 +861,8 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
               <button
                 type="button"
                 onClick={() => {
-                  state.current = game.newGame(Math.floor(Math.random() * 2 ** 31), clockNow()) as DelbiesState;
-                  saveIdle(id, state.current);
+                  state_.current = game.newGame(Math.floor(Math.random() * 2 ** 31), clockNow()) as DelbiesState;
+                  saveIdle(id, state_.current);
                   setAsking(false);
                   refresh();
                 }}

@@ -173,3 +173,28 @@ export function saveArcadeBest(game: ArcadeGameId, rules: ArcadeRules, crew: num
 // page is opened again. The game's own `load` checks what comes back.
 export const loadIdle = (game: IdleGameId): unknown => read<unknown>(`cardroom:${game}:save`, null);
 export const saveIdle = (game: IdleGameId, state: unknown) => write(`cardroom:${game}:save`, state);
+/** The house an idle game's store is kept in (and the save of it this browser last agreed with the house on), or null while it is only here. */
+export const loadIdleHouse = (game: IdleGameId): { slug: string; name: string; rev: number } | null => {
+  const kept = read<{ slug?: unknown; name?: unknown; rev?: unknown } | null>(`cardroom:${game}:house`, null);
+  return kept && typeof kept.slug === "string" && typeof kept.name === "string" ? { slug: kept.slug, name: kept.name, rev: typeof kept.rev === "number" ? kept.rev : 0 } : null;
+};
+export const saveIdleHouse = (game: IdleGameId, house: { slug: string; name: string; rev: number } | null) => write(`cardroom:${game}:house`, house);
+
+/** The house this browser's arcade runs are sent to, or null when they stay here. */
+export const loadArcadeHouse = (): { slug: string; name: string } | null => {
+  const slug = read<string | null>("cardroom:arcade:house", null);
+  return loadMyHouses().find((h) => h.slug === slug) ?? null;
+};
+export const saveArcadeHouse = (slug: string | null) => write("cardroom:arcade:house", slug);
+
+// ---- Pink Slips ----------------------------------------------------------------------------------
+
+/** The garage, as the game saved it: it checks it over itself when it is opened. */
+export const loadDrive = (): unknown => read<unknown>("cardroom:pinkslips:garage", null);
+export const saveDrive = (garage: unknown) => write("cardroom:pinkslips:garage", garage);
+/** The strip the player last raced on. */
+export const loadDriveStrip = (): string => read<string>("cardroom:pinkslips:strip", "strip");
+export const saveDriveStrip = (id: string) => write("cardroom:pinkslips:strip", id);
+/** Where the player watches a race from: behind the car, or the driver's seat. */
+export const loadDriveSeat = (): "chase" | "cockpit" => (read<string>("cardroom:pinkslips:seat", "chase") === "cockpit" ? "cockpit" : "chase");
+export const saveDriveSeat = (seat: "chase" | "cockpit") => write("cardroom:pinkslips:seat", seat);

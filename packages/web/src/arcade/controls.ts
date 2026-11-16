@@ -184,5 +184,8 @@ export function controlsFor(game: ArcadeGameId, options: { autofire: () => boole
       return bulwarkControls();
     case "chipstack":
       return chipStackControls();
+    case "pinkslips":
+      // It has a screen of its own (drive/Strip.tsx), with a pedal and a shifter.
+      throw new Error("Pink Slips is driven from its own screen");
   }
 }
