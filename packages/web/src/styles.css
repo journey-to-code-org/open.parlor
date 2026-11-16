@@ -2740,3 +2740,11 @@ button.mj-slot { cursor: pointer; }
 .mj-river-tile.last { filter: drop-shadow(0 0 4px #f2c14e); }
 .mj-core { grid-area: core; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .mj-dora { display: flex; gap: 3px; }
+
+/* Parting out: your own shelf, a parts car in the marketplace, and what the scrappers are up to. */
+.pinks-shelf button.low { border-color: var(--red); }
+.pinks-page.parts { background: #e4ddcc; border-top-style: dashed; }
+.pinks-page .apart { font-size: 0.85rem; }
+.pinks-page .watching { font-size: 0.82rem; font-weight: 700; color: #a3221c; }
+.pinks-news { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--red); background: #3a2a2c; font-size: 0.9rem; }
+.pinks-buy .off { background: transparent; color: var(--dim); font-size: 0.78rem; padding: 4px 8px; }
