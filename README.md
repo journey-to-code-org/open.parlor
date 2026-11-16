@@ -571,8 +571,9 @@ its own **3D** switch, remembered for that game; `?flat` in the address turns it
   Chip Stack is the one big chip on a card table, with the winnings stacked round it.
 - **The boards** (`board/board3d*.ts`): Chess, Checkers, Reversi, Go (up to 13×13), Tic-Tac-Toe
   and Drop Four share one scene, each with its own board and set: a turned chess set on walnut,
-  two-faced Reversi discs that turn over, stones on the crossings, discs that run down their
-  column. The board's grid of buttons is still what is tapped, dragged and read out: it is made
+  two-faced Reversi discs that turn over, stones on the crossings. Drop Four's rack stands on
+  the table as the real one does, nearly upright: two blue grilles with a hole for every disc,
+  and a disc dropped in at the top runs down its column between them. The board's grid of buttons is still what is tapped, dragged and read out: it is made
   see-through and tipped back by a CSS transform that is the scene's camera, so each button lies
   on its square. A game with no set of its own here gets plain counters.
 - **Combat** (`board/sea3d-gl.ts`): the same trick, over a tray of rolling water. Ships are models

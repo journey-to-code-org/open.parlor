@@ -5,7 +5,7 @@ import { colOf, rowOf, type BoardGrid, type BoardPiece } from "@journey-to-code/
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { reducedMotion } from "../motion";
 import { useWants3d } from "../display";
-import { BOARD_TRANSFORM, CANVAS, hasBoard3d, loadBoard3d, type Board3d, type BoardFrame3d } from "./board3d";
+import { boardTransform, CANVAS, hasBoard3d, loadBoard3d, type Board3d, type BoardFrame3d } from "./board3d";
 
 interface Given {
   game: string;
@@ -129,7 +129,7 @@ export function useBoard3d(el: RefObject<HTMLDivElement | null>, given: Given) {
     /** The scene is up and drawing: the grid of buttons is laid over it. */
     up: wanted && up,
     /** What tips the grid of buttons back to lie on the picture. */
-    style: wanted && up ? ({ transform: BOARD_TRANSFORM } as React.CSSProperties) : undefined,
+    style: wanted && up ? ({ transform: boardTransform(!!grid.gravity) } as React.CSSProperties) : undefined,
     /** The canvas the scene draws on: it goes in the board's own place, under the buttons. */
     canvas: wanted ? <canvas ref={canvas} className={`board-gl${up ? " up" : ""}`} style={{ "--gl-wide": CANVAS.wide, "--gl-high": CANVAS.high } as React.CSSProperties} aria-hidden /> : null,
     /** A piece being dragged follows the pointer; `null` lets it go. */
