@@ -81,6 +81,7 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
   const [naming, setNaming] = useState<string | null>(null);
 
   const view: GarageView = useMemo(() => garageView(garage), [garage]);
+  const tools = garage.tools;
   const car = view.cars.find((c) => c.id === picked) ?? view.cars[0] ?? null;
   const rules = pinkSlips.normalize({ id: strip });
   const locals = useMemo(() => (car?.runs ? localsFor(car.build, car.value, garage.day) : []), [car?.id, car?.value, car?.runs, garage.day]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -116,12 +117,11 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
       const stake = was.rival?.stake ?? 0;
       const won = !!was.rival && outcome.mine.won;
       const lost = !!was.rival && (outcome.forfeit || !!outcome.theirs?.won);
-      const owned = g.cars.find((c) => c.id === was.car);
-      // Bodywork is four tenths of the car for a wreck, and less for less.
-      const body = owned ? Math.round((carValue(owned) * outcome.mine.damage * 4) / 10_000 / 10) * 10 : 0;
+      // The wear, the bends in it and the fines all come home with the car.
       afterRace(g, was.car, { ...outcome.mine, won });
-      settleUp(g, (won ? stake : lost ? -stake : 0) - outcome.mine.fines - body);
-      const bills = [outcome.mine.fines ? `${dollars(outcome.mine.fines)} in fines` : "", body ? `${dollars(body)} of bodywork` : ""].filter(Boolean).join(" and ");
+      settleUp(g, (won ? stake : lost ? -stake : 0) - outcome.mine.fines);
+      const bent = g.cars.find((c) => c.id === was.car)?.body ?? 0;
+      const bills = [outcome.mine.fines ? `${dollars(outcome.mine.fines)} in fines` : "", bent >= 1000 ? "the car, which is a write-off" : bent >= 300 ? "bodywork before it goes out again" : bent ? "a few dents" : ""].filter(Boolean).join(" and ");
       return { ok: won || (!was.rival && outcome.mine.out === "finished"), message: `${won ? `${was.rival!.name} pays up: ${dollars(stake)}. ` : lost ? `${was.rival!.name} takes ${dollars(stake)}. ` : ""}${bills ? `It cost you ${bills}.` : outcome.mine.out === "finished" ? "Home without a scratch." : "Nothing to pay."}` };
     });
   };
@@ -169,14 +169,28 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
           ))}
           {view.cars.length === 0 && <p className="empty">Nothing in here but an oil stain. The classifieds are where it starts.</p>}
           <button type="button" className={tab === "ads" ? "bay ads on" : "bay ads"} onClick={() => setTab("ads")}>
-            <b>Classifieds</b>
-            <span>{view.listings.length} for sale today</span>
+            <b>Marketplace</b>
+            <span>{view.listings.length} cars for sale today</span>
           </button>
+          <div className="pinks-card pinks-tools">
+            <h3>The tool wall</h3>
+            {view.tools.map((t) => (
+              <div key={t.tool} className="row">
+                <div><b>{t.label}</b><small>{t.hint}</small></div>
+                {t.owned ? <span className="maxed">Got it</span> : <button type="button" disabled={!t.can} onClick={() => act({ cmd: "tool", tool: t.tool })}>{dollars(t.cost)}</button>}
+              </div>
+            ))}
+          </div>
+          <div className="pinks-card pinks-tools">
+            <h3>Rix Racing <small>used parts</small></h3>
+            {view.rix.map((r) => <div key={r.id} className="row"><div><b>{r.name}</b><small>{r.label} · off a {r.tier.toLowerCase()}</small></div><span className="cash">{dollars(r.price)}</span></div>)}
+            <p className="facts">Fit one from a car's parts list, when it is the next step for that car.</p>
+          </div>
         </nav>
 
         {tab === "ads" || !car ? (
           <section className="pinks-ads" aria-label="Classifieds">
-            <h2>Classifieds <small>New ones tomorrow</small></h2>
+            <h2>Marketplace <small>New listings tomorrow. A seller's word is a seller's word.</small></h2>
             {broke && (
               <div className="pinks-card cousin">
                 <p>No car and not enough for one. Your cousin will front you the money for a shitbox, this once more.</p>
@@ -185,10 +199,22 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
             )}
             <ul>
               {view.listings.map((l) => (
-                <li key={l.id} className={`pinks-card tier${CAR_MODELS.find((m) => m.name === l.sheet.model)?.tier ?? 0}`}>
-                  <div className="row"><b>{l.sheet.year} {l.sheet.model}</b><b className="cash">{dollars(l.price)}</b></div>
+                <li key={l.id} className={`pinks-page tier${CAR_MODELS.find((m) => m.name === l.sheet.model)?.tier ?? 0}`}>
+                  <header>
+                    <span>{l.sheet.tier}</span>
+                    <b className="cash">{dollars(l.price)}</b>
+                  </header>
+                  <h3><small>{l.sheet.year}</small> {l.sheet.model}</h3>
                   <p className="pitch">“{l.pitch}”</p>
-                  <p className="facts">{l.sheet.tier} · {l.sheet.horsepower} hp · {l.sheet.drive} · {l.sheet.gearbox}{l.sheet.quarter ? ` · runs ${seconds(l.sheet.quarter.et)}` : " · does not run"}</p>
+                  <dl>
+                    <div><dt>Power</dt><dd>{l.sheet.horsepower} hp</dd></div>
+                    <div><dt>Quarter mile</dt><dd>{l.sheet.quarter ? `${seconds(l.sheet.quarter.et)} s` : "Won't run"}</dd></div>
+                    <div><dt>At the line</dt><dd>{l.sheet.quarter ? `${l.sheet.quarter.mph} mph` : "—"}</dd></div>
+                    <div><dt>Weight</dt><dd>{l.sheet.mass} kg</dd></div>
+                    <div><dt>Drive</dt><dd>{l.sheet.drive.replace(" drive", "")}</dd></div>
+                    <div><dt>Gearbox</dt><dd>{l.sheet.gearbox}</dd></div>
+                  </dl>
+                  <p className="says">The seller says</p>
                   <Wear label="Engine" value={l.engine} />
                   <Wear label="Tyres" value={l.rubber} />
                   <button type="button" className="yes" disabled={!l.can} onClick={() => { const g = act({ cmd: "buy", listing: l.id }); const mine = g.cars.at(-1); if (mine && g.cars.length > garage.cars.length) { setPicked(mine.id); setTab("car"); } }}>{l.can ? "Buy it" : view.cars.length >= view.bays ? "No room" : "Can't afford it"}</button>
@@ -217,8 +243,31 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
                 <div><small>At the line</small><b>{car.sheet.quarter ? `${car.sheet.quarter.mph} mph` : "—"}</b></div>
                 <div><small>Record</small><b>{car.wins} of {car.races}</b></div>
               </div>
-              <Wear label="Engine" value={car.engine}>{car.repairs.engine > 0 && <button type="button" disabled={view.cash < car.repairs.engine} onClick={() => act({ cmd: "engine", car: car.id })}>Rebuild {dollars(car.repairs.engine)}</button>}</Wear>
-              <Wear label="Tyres" value={car.rubber}>{car.repairs.tyres > 0 && <button type="button" disabled={view.cash < car.repairs.tyres} onClick={() => act({ cmd: "tyres", car: car.id })}>New set {dollars(car.repairs.tyres)}</button>}</Wear>
+              <Wear label="Engine" value={car.engine}>{car.repairs.engine > 0 && <Job label="Rebuild" cost={car.repairs.engine} tool={tools.wrenches ? null : "wrenches"} cash={view.cash} onClick={() => act({ cmd: "engine", car: car.id })} />}</Wear>
+              <Wear label="Tyres" value={car.rubber}>{car.repairs.tyres > 0 && <Job label="New set" cost={car.repairs.tyres} tool={tools.jack ? null : "a jack"} cash={view.cash} onClick={() => act({ cmd: "tyres", car: car.id })} />}</Wear>
+              <Wear label="Oil" value={car.oil}>{car.repairs.oil > 0 && <Job label="Change it" cost={car.repairs.oil} tool={tools.wrenches ? null : "wrenches"} cash={view.cash} onClick={() => act({ cmd: "oil", car: car.id })} />}</Wear>
+              <Wear label="Plugs" value={car.plugs}>{car.repairs.plugs > 0 && <Job label="New plugs" cost={car.repairs.plugs} tool={tools.wrenches ? null : "wrenches"} cash={view.cash} onClick={() => act({ cmd: "plugs", car: car.id })} />}</Wear>
+              <Wear label="Body" value={1000 - car.body} dead="Write-off">{car.repairs.body > 0 && <Job label="Straighten" cost={car.repairs.body} tool={tools.hammer ? null : "a hammer"} cash={view.cash} onClick={() => act({ cmd: "body", car: car.id })} />}</Wear>
+              {car.totaled && (
+                <div className="pinks-wreck">
+                  <p className="bad">It is a write-off. No hammer fixes that.</p>
+                  <button type="button" onClick={() => { act({ cmd: "scrap", car: car.id }); setPicked(null); }}>Scrap it for {dollars(car.scrap)}</button>
+                  <button type="button" className="yes" disabled={!tools.wrenches} onClick={() => { act({ cmd: "salvage", car: car.id }); setPicked(null); }}>{tools.wrenches ? `Pull the parts first: ${dollars(car.salvage)}` : "Pulling the parts needs wrenches"}</button>
+                </div>
+              )}
+            </div>
+
+            <div className="pinks-card">
+              <div className="row">
+                <h3>The tune</h3>
+                <span className={`pinks-afr ${car.mixture}`}><b>{(car.afr / 10).toFixed(1)}</b> : 1 · {car.mixture === "right" ? "On the money" : car.mixture === "lean" ? "Lean" : "Rich"}</span>
+              </div>
+              <p className="facts">{car.mixture === "lean" ? "Lean makes a little more power and a lot more heat. Work it hard like this and it will let go." : car.mixture === "rich" ? "Rich is safe and slow, and it is fouling the plugs." : "The mixture is where this engine wants it. Bolt on anything that helps it breathe and it will want more fuel."}</p>
+              <div className="pinks-fuel">
+                <button type="button" disabled={car.fuel <= 0} onClick={() => act({ cmd: "fuel", car: car.id, fuel: car.fuel - 1 })} aria-label="Less fuel">Leaner</button>
+                <div className="scale" aria-hidden="true">{Array.from({ length: car.fuelMax + 1 }, (_, i) => <i key={i} className={i === car.fuel ? "on" : ""} />)}</div>
+                <button type="button" disabled={car.fuel >= car.fuelMax} onClick={() => act({ cmd: "fuel", car: car.id, fuel: car.fuel + 1 })} aria-label="More fuel">Richer</button>
+              </div>
             </div>
 
             <div className="pinks-card">
@@ -227,7 +276,12 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
                 {car.parts.map((p) => (
                   <li key={p.slot}>
                     <div><b>{p.label}</b> <span className="has">{p.has}</span><small>{p.hint}</small></div>
-                    {p.next ? <button type="button" disabled={!p.next.can} onClick={() => act({ cmd: "fit", car: car.id, slot: p.slot, level: p.next!.level })}>{p.next.label}<i>{dollars(p.next.cost)}</i></button> : <span className="maxed">Maxed</span>}
+                    {p.next ? (
+                      <span className="pinks-buy">
+                        <button type="button" disabled={!p.next.can} onClick={() => act({ cmd: "fit", car: car.id, slot: p.slot, level: p.next!.level })}>{p.next.label}<i>{p.needs ? `Needs ${p.needs === "jack" ? "a jack" : "wrenches"}` : dollars(p.next.cost)}</i></button>
+                        {p.next.rix && !p.needs && <button type="button" className="rix" disabled={view.cash < p.next.rix.price} onClick={() => act({ cmd: "fit", car: car.id, slot: p.slot, level: p.next!.level, rix: p.next!.rix!.id })}>Used, from Rix Racing<i>{dollars(p.next.rix.price)}</i></button>}
+                      </span>
+                    ) : <span className="maxed">Maxed</span>}
                   </li>
                 ))}
                 <li>
@@ -257,7 +311,7 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
                   ))}
                 </ul>
               ) : (
-                <p className="bad">It will not start. The engine needs a rebuild first.</p>
+                <p className="bad">{car.totaled ? "It is not going anywhere again." : car.body >= 300 ? "It is too bent to drive. It needs straightening first." : "It will not start. The engine needs a rebuild first."}</p>
               )}
             </div>
 
@@ -267,7 +321,7 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
                   <h3>The mountain road</h3>
                   <label className="pinks-where">Which run <select value={route} onChange={(e) => setRoute(e.target.value)}>{MOUNTAIN_ROAD_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
                 </div>
-                <p className="facts">{mountainRoad.describe(mountainRoad.normalize({ id: route }))[0]} Fines and bodywork come out of your cash when you get back.</p>
+                <p className="facts">{mountainRoad.describe(mountainRoad.normalize({ id: route }))[0]} Fines come out of your cash, and whatever you hit comes home on the car.</p>
                 <ul className="pinks-locals">
                   <li>
                     <div><b>Take it out</b><small>The road, the traffic and the law. Nobody to beat but the clock.</small></div>
@@ -294,6 +348,7 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
             <li>On the green, shift into first. Before the green is a red light, and you lose.</li>
             <li>Shift up when the light by the tach comes on. Past the redline the engine cooks.</li>
             <li>If the tyres spin, lift a little.</li>
+            <li>Watch the oil pressure. If it falls behind the revs, shift early, and change the oil.</li>
           </ol>
           <h3>Keys</h3>
           <p><kbd>W</kbd> or <kbd>↑</kbd> throttle · <kbd>S</kbd> or <kbd>↓</kbd> half throttle · <kbd>Space</kbd> or <kbd>D</kbd> shift up · <kbd>A</kbd> shift down · <kbd>C</kbd> get in or step back</p>
@@ -307,13 +362,18 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
   );
 }
 
-function Wear({ label, value, children }: { label: string; value: number; children?: React.ReactNode }) {
+/** A job on a car: what it costs, or the tool it is waiting for. */
+function Job({ label, cost, tool, cash, onClick }: { label: string; cost: number; tool: string | null; cash: number; onClick: () => void }) {
+  return <button type="button" disabled={!!tool || cash < cost} onClick={onClick}>{tool ? `Needs ${tool}` : `${label} ${dollars(cost)}`}</button>;
+}
+
+function Wear({ label, value, dead = "Blown", children }: { label: string; value: number; dead?: string; children?: React.ReactNode }) {
   const tone = value === 0 ? "dead" : value < 350 ? "low" : value < 700 ? "mid" : "good";
   return (
     <div className="pinks-wear">
       <span>{label}</span>
       <div className={`bar ${tone}`}><i style={{ width: `${value / 10}%` }} /></div>
-      <em>{value === 0 ? "Blown" : `${Math.round(value / 10)}%`}</em>
+      <em>{value === 0 ? dead : `${Math.round(value / 10)}%`}</em>
       {children}
     </div>
   );

@@ -12,6 +12,7 @@ import {
   Material, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, PerspectiveCamera, PlaneGeometry, Points, PointsMaterial, RepeatWrapping, Scene, Shape, SphereGeometry, SpotLight, Sprite, SpriteMaterial,
   SRGBColorSpace, Texture, TorusGeometry, WebGLRenderer,
 } from "three";
+import { oilStarved } from "@journey-to-code/games";
 import type { Frame3d, Strip3d } from "./strip3d";
 
 const LANE = 4.6;
@@ -233,7 +234,7 @@ function boardTexture() {
 // the wheel, and a shifter that goes through the gate. It is built once and moved with your car.
 
 /** What the dash shows: the gauges of whoever is at the wheel. */
-export type Lane = Pick<Frame3d["race"]["lanes"][number], "rpm" | "redline" | "mph" | "gear" | "auto" | "boost" | "heat" | "spinning" | "blown">;
+export type Lane = Pick<Frame3d["race"]["lanes"][number], "rpm" | "redline" | "mph" | "gear" | "auto" | "boost" | "heat" | "oil" | "afr" | "spinning" | "blown">;
 /** Where the knob sits for each gear: across the gate, and along it. Neutral is the middle. */
 const GATE: [x: number, z: number][] = [[0, 0], [-1, -1], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 1]];
 
@@ -293,7 +294,7 @@ export function buildCockpit(tone: string) {
   const g = face.getContext("2d")!;
   let drawn = "";
   const draw = (me: Lane) => {
-    const key = `${Math.round(me.rpm / 40)}|${me.mph}|${me.gear}|${me.boost === null ? "" : Math.round(me.boost / 25)}|${Math.round(me.heat / 25)}|${me.spinning}|${me.blown}`;
+    const key = `${Math.round(me.rpm / 40)}|${me.mph}|${me.gear}|${me.oil}|${me.afr}|${me.boost === null ? "" : Math.round(me.boost / 25)}|${Math.round(me.heat / 25)}|${me.spinning}|${me.blown}`;
     if (key === drawn) return;
     drawn = key;
     g.fillStyle = "#07080b";
@@ -348,11 +349,15 @@ export function buildCockpit(tone: string) {
       g.fillStyle = colour;
       g.fillRect(226, y, (60 * Math.min(1000, share)) / 1000, 9);
     };
-    bar(110, me.heat, me.heat > 600 ? "#ff3b3b" : "#55d68a", "HEAT");
-    if (me.boost !== null) bar(160, me.boost, "#4cc9ff", "BOOST");
+    bar(96, me.heat, me.heat > 600 ? "#ff3b3b" : "#55d68a", "HEAT");
+    const starved = !me.blown && oilStarved(me.oil, me.rpm);
+    bar(134, me.oil * 10, starved ? "#ff3b3b" : "#ffb627", `OIL ${me.oil}`);
+    if (me.boost !== null) bar(172, me.boost, "#4cc9ff", "BOOST");
+    g.fillStyle = me.afr > 128 ? "#ff5a5f" : me.afr < 112 ? "#6f95ff" : "#98a2b6";
+    g.fillText(`AFR ${(me.afr / 10).toFixed(1)}`, 256, 236);
     if (me.spinning) {
       g.fillStyle = "#ffcf3f";
-      g.fillText("SPIN", 256, 215);
+      g.fillText("SPIN", 256, 76);
     }
     dial.needsUpdate = true;
   };

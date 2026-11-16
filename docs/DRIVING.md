@@ -180,13 +180,15 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
 
 ### Phase 2: the phone
 
-- [ ] **Parts as things**: owned, worn, taken off, sold on.
-- [ ] **Tools**: a jack, wrenches, a hammer, and jobs that need them.
-- [ ] **Oil pressure and the tune**: gauges to watch, an air-fuel ratio to get right, plugs to foul.
-- [ ] **The marketplace**: sellers, deals, and condition you only learn afterwards.
-- [ ] **The performance sites and the used-parts seller.**
+- [x] **Tools**: a jack, wrenches, a hammer, and jobs that need them.
+- [x] **Oil pressure and the tune**: gauges to watch, an air-fuel ratio to get right, plugs to foul.
+- [x] **The marketplace**: sellers, and condition you only learn afterwards.
+- [x] **Rix Racing**: used parts for less than new, when they have the one you need.
+- [x] **Spec sheets**: a listing laid out like a magazine page.
+- [x] **Bodywork and write-offs**: a bent car stays home, and a wrecked one is scrap or parts.
+- [ ] **Parts as things**: taken off, kept on a shelf, sold on. Today a part is a level on a car.
+- [ ] **Parts on the marketplace**, and the performance sites as places of their own.
 - [ ] **Cosmetics**, and a car that looks like its build on the strip.
-- [ ] **Spec sheets**: a listing laid out like a magazine page.
 
 ### Phase 3: the road
 

@@ -2667,3 +2667,40 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .pinks-road .pedal { width: 78px; height: 110px; }
 .pinks-road .pedal.brake { background: linear-gradient(rgba(120, 130, 150, 0.55), rgba(20, 18, 30, 0.55)); }
 @media (max-width: 560px) { .pinks-road .pinks-strip-top { top: 34px; } }
+
+/* The tool wall, Rix's shelf, the tune, and a listing laid out like a page from a car magazine. */
+.pinks-tools { gap: 8px; font-size: 0.85rem; }
+.pinks-tools .row { flex-wrap: nowrap; align-items: center; }
+.pinks-tools small { display: block; font-size: 0.74rem; line-height: 1.3; }
+.pinks-tools button { padding: 4px 10px; font-size: 0.82rem; flex: none; }
+.pinks .maxed { color: var(--green); font-size: 0.82rem; flex: none; }
+.pinks-wreck { display: grid; gap: 8px; }
+.pinks-afr { font-size: 0.9rem; color: var(--dim); font-variant-numeric: tabular-nums; }
+.pinks-afr b { font-size: 1.3rem; color: var(--green); }
+.pinks-afr.lean b { color: var(--red); }
+.pinks-afr.rich b { color: #6f95ff; }
+.pinks-fuel { display: flex; gap: 10px; align-items: center; }
+.pinks-fuel .scale { flex: 1; display: flex; gap: 3px; height: 14px; }
+.pinks-fuel .scale i { flex: 1; border-radius: 2px; background: #15131c; }
+.pinks-fuel .scale i.on { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+.pinks-buy { display: grid; gap: 6px; flex: none; max-width: 48%; justify-items: stretch; }
+.pinks-buy button { max-width: none; }
+.pinks-buy .rix { border-color: var(--pink); }
+.pinks-page { display: grid; gap: 10px; padding: 16px; border-radius: 4px; background: #f3ecdc; color: #1d1a16; border-top: 6px solid #1d1a16; box-shadow: var(--elev-2); }
+.pinks-page.tier1 { border-top-color: #33488f; }
+.pinks-page.tier2 { border-top-color: #c2255c; box-shadow: 0 0 0 2px var(--pink), 0 0 26px rgba(255, 90, 138, 0.3); }
+.pinks-page header { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; }
+.pinks-page header .cash { color: #1d1a16; font-size: 1.35rem; letter-spacing: 0; }
+.pinks-page h3 { font-family: Georgia, "Times New Roman", serif; font-size: 1.5rem; line-height: 1.05; font-weight: 700; }
+.pinks-page h3 small { display: block; color: #6d6354; font-family: inherit; font-size: 0.8rem; font-weight: 400; letter-spacing: 0.08em; }
+.pinks-page .pitch { font-family: Georgia, serif; font-style: italic; color: #4b4336; border-left: 3px solid #c9bfa6; padding-left: 10px; }
+.pinks-page dl { margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid #1d1a16; border-bottom: 1px solid #1d1a16; }
+.pinks-page dl div { padding: 7px 4px; border-right: 1px dotted #a89f8a; }
+.pinks-page dl div:nth-child(3n) { border-right: 0; }
+.pinks-page dl div:nth-child(-n + 3) { border-bottom: 1px dotted #a89f8a; }
+.pinks-page dt { font-size: 0.6rem; letter-spacing: 0.12em; text-transform: uppercase; color: #6d6354; }
+.pinks-page dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 0.92rem; }
+.pinks-page .says { font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: #6d6354; margin-bottom: -4px; }
+.pinks-page .pinks-wear em { color: #4b4336; }
+.pinks-page .pinks-wear .bar { background: #d9cfb8; }
+.pinks .pinks-page button.yes { background: #1d1a16; border-color: #1d1a16; color: #f3ecdc; }

@@ -5,7 +5,7 @@
 //
 // The race is the engine's (`pinkSlips` from open.games), stepped here sixty times a second. Your
 // lane is seat 0; the other lane, when there is one, is a computer driver in seat 1.
-import { CAR_MODELS, pinkSlips, pinkSlipsResults, specOf, type ArcadeView, type Build, type PinkSlipsInput, type PinkSlipsResult, type PinkSlipsRules, type PinkSlipsState } from "@journey-to-code/games";
+import { CAR_MODELS, oilStarved, pinkSlips, pinkSlipsResults, specOf, type ArcadeView, type Build, type PinkSlipsInput, type PinkSlipsResult, type PinkSlipsRules, type PinkSlipsState } from "@journey-to-code/games";
 import type { PlayStyle } from "@journey-to-code/rules";
 import { useEffect, useRef, useState } from "react";
 import { arcadeAudio, blip, crash, notes, wakeArcadeSound } from "../arcade/sounds";
@@ -297,7 +297,7 @@ function draw(g: CanvasRenderingContext2D, w: number, h: number, view: ArcadeVie
   g.font = `600 ${Math.round(r * 0.17)}px system-ui, sans-serif`;
   const meter = (row: number, label: string, share: number, colour: string) => {
     const mx = sx + r * 1.25;
-    const my = gy - r * 0.34 + row * r * 0.38;
+    const my = gy - r * 0.5 + row * r * 0.38;
     g.fillStyle = "#98a2b6";
     g.fillText(label, mx, my - r * 0.14);
     g.fillStyle = "rgba(255, 255, 255, 0.14)";
@@ -307,7 +307,12 @@ function draw(g: CanvasRenderingContext2D, w: number, h: number, view: ArcadeVie
   };
   if (w > 520) {
     meter(0, me.heat > 600 ? "ENGINE: HOT" : "ENGINE", me.heat, me.heat > 600 ? "#ff3b3b" : "#55d68a");
-    if (me.boost !== null) meter(1, "BOOST", me.boost, "#4cc9ff");
+    // Oil pressure against what the engine wants at these revs: short of it, the bar goes red.
+    const starved = !me.blown && oilStarved(me.oil, me.rpm);
+    meter(1, `OIL ${me.oil} PSI${starved ? ": LOW" : ""}`, me.oil * 10, starved ? "#ff3b3b" : "#ffb627");
+    if (me.boost !== null) meter(2, "BOOST", me.boost, "#4cc9ff");
+    g.fillStyle = me.afr > 128 ? "#ff5a5f" : me.afr < 112 ? "#6f95ff" : "#98a2b6";
+    g.fillText(`AFR ${(me.afr / 10).toFixed(1)}`, sx + r * 1.25, gy - r * 0.5 + (me.boost !== null ? 3 : 2) * r * 0.38 - r * 0.14);
   }
   if (me.spinning) {
     g.fillStyle = "#ffcf3f";
