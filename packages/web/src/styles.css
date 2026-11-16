@@ -2275,7 +2275,7 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .delbies .fine { font-size: 0.8rem; color: var(--dim); }
 .delbies-tabs > button { padding: 9px 14px; border-radius: 10px; border: 1px solid var(--edge); background: #2c3340; font-weight: 600; justify-self: start; }
 .delbies-delbie.away { border-color: var(--edge); opacity: 0.75; }
-.delbies-network { display: grid; gap: 8px; }
+.delbies-network { display: grid; gap: 8px; flex-shrink: 0; }
 .delbies-log .delbies-network p { margin: 0; font-size: 0.84rem; line-height: 1.4; color: #c5ccda; }
 .delbies-log .delbies-network ol { margin: 0; padding: 0; list-style: none; counter-reset: place; display: grid; gap: 5px; }
 .delbies-log .delbies-network li { counter-increment: place; border-left: 0; display: grid; gap: 1px; padding: 7px 10px 7px 34px; border-radius: 8px; background: var(--panel); font-size: 0.84rem; position: relative; }
