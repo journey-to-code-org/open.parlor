@@ -11,7 +11,7 @@ import { arcadeGame, points, shortly, type ArcadeBuild, type ArcadeGameId, type 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadFeedbackSettings, saveFeedbackSettings } from "../feedback/sounds";
 import { loadArcadeBest, saveArcadeBest, type ArcadeRules } from "../storage";
-import { depthSetting, loadDisplay, saveDisplay, wants3d } from "../display";
+import { wants3d } from "../display";
 import { controlsFor } from "./controls";
 import { arcadeSays } from "./flavour";
 import { hasArcade3d, loadArcade3d, type Arcade3d } from "./scene3d";
@@ -45,6 +45,16 @@ interface Ending {
   scores: number[];
 }
 
+/** Whether this game was last switched to 3-D or to flat on this device; null when it never has been. */
+function loadArcadeDepth(game: ArcadeGameId): boolean | null {
+  try {
+    const saved = localStorage.getItem(`cardroom:arcade3d:${game}`);
+    return saved === "on" ? true : saved === "off" ? false : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The computer players: steady, and not quite perfect. */
 const WINGMAN = { skill: 0.75, sloppy: 0.04 };
 const clock = (ticks: number, rate: number) => `${Math.floor(ticks / rate / 60)}:${String(Math.floor(ticks / rate) % 60).padStart(2, "0")}`;
@@ -57,7 +67,11 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
   const gl = useRef<Arcade3d | null>(null);
   /** Whether the frame just drawn was the 3-D scene's: where a tap lands depends on it. */
   const solid = useRef(false);
-  const [depth, setDepth] = useState(() => wants3d(id));
+  // This game's own choice on this device, where one has been made with the 3D switch; until then
+  // it follows the setting the tables share (⚙︎ at any of them: "The table is drawn").
+  const [depth, setDepth] = useState(() => loadArcadeDepth(id) ?? wants3d(id));
+  const depthRef = useRef(depth);
+  depthRef.current = depth;
   const says = (text: string) => arcadeSays(id, text);
   const scoreEl = useRef<HTMLElement>(null);
   const bankEl = useRef<HTMLElement>(null);
@@ -156,7 +170,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
         glEl.style.width = el.style.width;
         glEl.style.height = el.style.height;
       }
-      solid.current = !!scene && wants3d(id) && scene.render({ view, frame, width: el.clientWidth, height: el.clientHeight, dpr: Math.min(2, window.devicePixelRatio || 1), still, ...(pointer ? { pointer } : {}) });
+      solid.current = !!scene && depthRef.current && scene.render({ view, frame, width: el.clientWidth, height: el.clientHeight, dpr: Math.min(2, window.devicePixelRatio || 1), still, ...(pointer ? { pointer } : {}) });
       if (glEl) glEl.style.visibility = solid.current ? "visible" : "hidden";
       if (solid.current) screen.drawOverlay(view, frame, scene!.project);
       else screen.draw(view, frame, pointer);
@@ -311,12 +325,15 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
     };
   }, [id]);
 
-  /** In 3-D or flat: this device's choice, the same one the table sports go by. */
+  /** In 3-D or flat: this device's choice for this game. */
   function toggleDepth() {
     const next = !depth;
     setDepth(next);
-    // Turning it on when the setting says "flat" makes it "the best for each game", which for these is 3-D.
-    saveDisplay({ ...loadDisplay(), depth: next ? (depthSetting() === "flat" ? "auto" : depthSetting()) : "flat" });
+    try {
+      localStorage.setItem(`cardroom:arcade3d:${id}`, next ? "on" : "off");
+    } catch {
+      /* private mode: it still applies for now */
+    }
   }
 
   // A stat that is a meter (a timer running down) is drawn as a bar under the number before it,

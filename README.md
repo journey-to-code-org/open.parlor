@@ -556,8 +556,8 @@ Bowling plays the way bowling games on a phone do:
 
 Some games have a look in three dimensions as well as the flat drawing they began with. Each is
 fetched only when its table is on screen and only where WebGL works; anywhere else, and for anyone
-who prefers it, the flat drawing is still there (⚙︎ → **The table is drawn**, or the **3D** switch
-at an arcade game; `?flat` in the address turns it off for a visit).
+who prefers it, the flat drawing is still there (⚙︎ → **The table is drawn**; an arcade game has
+its own **3D** switch, remembered for that game; `?flat` in the address turns it off for a visit).
 
 - **Bowling and Mini Golf** (`sport/scene3d*.ts`, `sport/alley3d.ts`): the table sports' scene.
   "The best for each game" is 3D for bowling and the angled flat drawing for mini golf.
