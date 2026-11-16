@@ -9,7 +9,8 @@ import {
   type Meld,
 } from "@journey-to-code/games";
 import { type TableSettings } from "@journey-to-code/rules";
-import PlayingCard from "@open-parlor/ui/playing-card.zb";
+import PlayingCard from "./CardFace";
+import { RiversArea, TilesArea } from "./MahjongAreas";
 import { useEffect, useRef, useState } from "react";
 import { Bubble, TableChat, useBubbles, type ChatProps } from "../Chat";
 import { Confetti } from "../Confetti";
@@ -175,7 +176,11 @@ export function KitTable({
         ? [view.center.discardCount, view.center.stock]
         : view.center.kind === "fan"
           ? [view.center.from, view.center.count]
-          : [],
+          : view.center.kind === "tiles"
+            ? [view.center.tiles.length]
+            : view.center.kind === "rivers"
+              ? [view.center.last]
+              : [],
   );
   const seen = useRef<string | null>(null);
   useEffect(() => {
@@ -756,6 +761,8 @@ function CenterArea({
       </div>
     );
   }
+  if (center.kind === "tiles") return <TilesArea center={center} send={send} />;
+  if (center.kind === "rivers") return <RiversArea center={center} me={view.me} names={names} />;
   if (center.kind === "piles") {
     const top = center.discard.slice(-3);
     return (
