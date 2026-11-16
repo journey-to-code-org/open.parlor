@@ -111,6 +111,8 @@ const TABLES: Record<string, MiniTable> = {
   // Two balls out on the green: they knock into each other.
   bowling: { surface: "lane", balls: [...PINS, { x: 50, y: 80, tone: "red" }] },
   minigolf: { surface: "green", cup: [66, 32], balls: [{ x: 36, y: 72, tone: "white" }, { x: 70, y: 62, tone: "red" }] },
+  // A cue ball lined up on a little rack.
+  billiards: { surface: "felt", balls: [{ x: 28, y: 74, tone: "white" }, { x: 62, y: 30, tone: "red" }, { x: 72, y: 36, tone: "red" }, { x: 52, y: 38, tone: "red" }] },
 };
 const EMPTY_TABLE: MiniTable = { surface: "green", balls: [] };
 
