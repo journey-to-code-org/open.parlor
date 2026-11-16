@@ -2265,6 +2265,18 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .delbies-ask p span { color: var(--dim); font-variant-numeric: tabular-nums; }
 .delbies-ask button, .delbies-sheet button, .delbies-reset { padding: 9px 14px; border-radius: 10px; border: 1px solid var(--edge); background: #2c3340; font-weight: 600; }
 .delbies .yes { background: var(--yellow); border-color: var(--yellow); color: #1b1608; }
+.delbies-ask.radio { border-color: #4cc9ff; }
+.delbies-ask .col { display: grid; gap: 6px; }
+.delbies-ask .col button { text-align: left; }
+.delbies .fine { font-size: 0.8rem; color: var(--dim); }
+.delbies-tabs > button { padding: 9px 14px; border-radius: 10px; border: 1px solid var(--edge); background: #2c3340; font-weight: 600; justify-self: start; }
+.delbies-delbie.away { border-color: var(--edge); opacity: 0.75; }
+.delbies-relics { margin: 0 0 6px; padding: 0; list-style: none; display: grid; gap: 6px; }
+.delbies-relics li { display: grid; gap: 2px; padding: 8px 10px; border-radius: 8px; background: var(--panel); border: 1px dashed var(--edge); font-size: 0.84rem; line-height: 1.35; }
+.delbies-relics li span { color: var(--dim); }
+.delbies-relics li.found { border: 1px solid var(--yellow); }
+.delbies-relics li.found b { color: var(--yellow); }
+.delbies-log h2:not(:first-child) { margin-top: 14px; }
 .delbies-actions { display: grid; gap: 8px; }
 .delbies-actions button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--edge); background: var(--panel); }
 .delbies-actions button:hover:not(:disabled) { border-color: var(--yellow); }

@@ -29,6 +29,7 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
   const [report, setReport] = useState<IdleReport | null>(null);
   const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
   const [asking, setAsking] = useState(false);
+  const [moving, setMoving] = useState(false);
 
   const refresh = () => {
     const s = state.current;
@@ -133,13 +134,13 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
 
       <div className="delbies-floor">
         <section className="delbies-desk" aria-label="Delbie">
-          <button type="button" className={`delbies-delbie ${view.fever > 0 ? "dream" : ""}`} onClick={hustle}>
+          <button type="button" className={`delbies-delbie ${view.fever > 0 ? "dream" : ""} ${view.vacation > 0 ? "away" : ""}`} onClick={hustle}>
             <span className="face" aria-hidden="true">
-              {view.fever > 0 ? "😁" : view.chaos >= 500 ? "😤" : "🙂"}
+              {view.vacation > 0 ? "🎣" : view.fever > 0 ? "😁" : view.chaos >= 500 ? "😤" : "🙂"}
             </span>
             <span className="shout">{view.shout}</span>
             <small>
-              Hustle: {dollars(view.perClick)} a click{view.fever > 0 ? ` · ${view.fever}s of the dream left` : ""}
+              {view.vacation > 0 ? `Back in ${minutesAndSeconds(view.vacation)}. The store is doing fine.` : `Hustle: ${dollars(view.perClick)} a click${view.fever > 0 ? ` · ${view.fever}s of the dream left` : ""}`}
             </small>
           </button>
 
@@ -186,6 +187,59 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
             </div>
           )}
 
+          {view.radio && (
+            <div className="delbies-ask radio" role="group" aria-label="Ears is on the radio">
+              <p>
+                📻 Ears, on the radio: <b>{view.radio.heard}</b> <span>{view.radio.secondsLeft}s</span>
+              </p>
+              <p className="fine">Which garage was he at?</p>
+              <div className="col">
+                {view.radio.options.map((garage, pick) => (
+                  <button key={garage} type="button" onClick={() => act({ cmd: "radio", pick })}>
+                    {garage}
+                  </button>
+                ))}
+                {view.crew.some((c) => c.id === "tommy" && c.hired) && (
+                  <button type="button" className="yes" disabled={!view.radio.rescue} onClick={() => act({ cmd: "rescue" })}>
+                    {view.radio.rescue ? "Let Tommy answer it" : `Tommy is busy for ${minutesAndSeconds(view.radio.rescueInSeconds)}`}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {(view.breakroom.brice || view.breakroom.cinnamon) && (
+            <div className="delbies-tabs breakroom">
+              <div className="row">
+                <small>The breakroom</small>
+                {view.breakroom.brice && (
+                  <small>
+                    In the fridge: <b>{view.breakroom.fridge}</b> for {minutesAndSeconds(view.breakroom.fridgeChangesIn)}
+                  </small>
+                )}
+              </div>
+              {view.breakroom.brice && (
+                <>
+                  <p>
+                    {view.breakroom.hungry ? "B-Rice has not eaten. Nobody is keeping the counter calm." : `B-Rice is fed for another ${hoursAndMinutes(Math.ceil(view.breakroom.hungryInSeconds / 60))}.`}
+                    {view.breakroom.plutoShocked > 0 && ` Pluto is still in shock (${minutesAndSeconds(view.breakroom.plutoShocked)}).`}
+                  </p>
+                  <button type="button" className={view.breakroom.fridge === "pasta" ? "yes" : ""} onClick={() => act({ cmd: "feed" })}>
+                    Give B-Rice the {view.breakroom.fridge}
+                  </button>
+                </>
+              )}
+              {view.breakroom.cinnamon && (
+                <>
+                  <p>There is a cinnamon roll on the table. Ricky Roost will not come near the counter.</p>
+                  <button type="button" className="yes" onClick={() => act({ cmd: "toss" })}>
+                    Throw it out
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           <p className="delbies-payroll">
             Payroll: <b>{dollars(view.payroll.due)}</b> in {minutesAndSeconds(view.payroll.inSeconds)}
             {view.belt > 0 && ` · Delbie's belt: ${view.belt} ${view.belt === 1 ? "notch" : "notches"} tighter`}
@@ -222,7 +276,7 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
                       <p className="numbers">
                         {c.hired && <span>Level {c.level}</span>}
                         {c.perSecond > 0 && <span>{dollars(c.perSecond)} a second</span>}
-                        {c.status && <span className={`delbies-status ${c.status.startsWith("In") || c.status.startsWith("Off") || c.status === "Clocked out" ? "away" : ""}`}>{c.status}</span>}
+                        {c.status && <span className={`delbies-status ${c.status === "On the clock" ? "" : "away"}`}>{c.status}</span>}
                       </p>
                     </div>
                     <button type="button" disabled={!c.can} onClick={() => act({ cmd: c.hired ? "train" : "hire", who: c.id })}>
@@ -250,6 +304,36 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
               ))}
             </ul>
           )}
+          <h2>Lost &amp; Found</h2>
+          <ul className="delbies-relics">
+            {view.relics.map((r) => (
+              <li key={r.id} className={r.found ? "found" : ""}>
+                <b>{r.found ? r.name : "???"}</b>
+                <span>{r.found ? r.does : `${r.how}: ${r.done} of ${r.needs}`}</span>
+              </li>
+            ))}
+          </ul>
+
+          <h2>The Store Move</h2>
+          <div className="delbies-tabs">
+            <div className="row">
+              <small>{view.move.moves === 0 ? "This building" : `Building #${view.move.moves + 1}`}</small>
+              <b>
+                {dollars(view.move.here)} <span>of {dollars(view.move.needs)}</span>
+              </b>
+            </div>
+            <div className="bar" role="img" aria-label={`Towards the next move: ${Math.min(100, Math.round((view.move.here * 100) / view.move.needs))}%`}>
+              <i style={{ width: `${Math.min(100, (view.move.here * 100) / view.move.needs)}%` }} />
+            </div>
+            <p>
+              {view.move.moves > 0 && `Everything brings in ${view.move.bonusPercent}% more. Departments: ${view.move.departments.join(", ")}. `}
+              Next door down the road has a {view.move.nextDepartment}.
+            </p>
+            <button type="button" className="yes" disabled={!view.move.can} onClick={() => setMoving(true)}>
+              Move the store
+            </button>
+          </div>
+
           <button type="button" className="delbies-reset" onClick={() => setAsking(true)}>
             Close the store and start again
           </button>
@@ -275,6 +359,33 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
             <button type="button" className="yes" autoFocus onClick={() => setReport(null)}>
               Back to work
             </button>
+          </div>
+        </div>
+      )}
+
+      {moving && (
+        <div className="delbies-sheet" role="dialog" aria-label="Move the store?">
+          <div>
+            <h2>Store Move #{view.move.moves + 1}</h2>
+            <p>
+              Pack everyone up and move down the road. The till, the crew, the tabs and the store's name all start again. You keep what is in the Lost &amp; Found, everything brings in 50% more for good, Pluto gets an Old Timer badge, and the new building has a{" "}
+              {view.move.nextDepartment}.
+            </p>
+            <div className="row">
+              <button
+                type="button"
+                className="yes"
+                onClick={() => {
+                  act({ cmd: "move" });
+                  setMoving(false);
+                }}
+              >
+                Load the truck
+              </button>
+              <button type="button" autoFocus onClick={() => setMoving(false)}>
+                Not yet
+              </button>
+            </div>
           </div>
         </div>
       )}
