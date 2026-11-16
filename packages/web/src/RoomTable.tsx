@@ -14,7 +14,7 @@ import type { PalaceMove, PalaceView } from "@journey-to-code/palace";
 import { PalaceTable } from "./palace/PalaceTable";
 import { isBoardGame, isKitGame, isSportGame, kitGame, type BoardView, type KitView, type SportView } from "@journey-to-code/games";
 import { ARCADE_LIST, GAME_LIST } from "./GamePicker";
-import { isLiveArcade, LiveArcade, type LiveView } from "./arcade/ArcadeTable";
+import { isLiveArcade, LiveArcade, type FlownView, type LiveView } from "./arcade/ArcadeTable";
 import { GameTable } from "./kit/GameTable";
 import { OnlineTable, TablePlayers, TableSettingsFields, TurnTimerField, type TablePlayersValue } from "./TableSettings";
 import { TableTime } from "./board/SeatClock";
@@ -235,10 +235,10 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
   if (doc.started && seat !== null && view) {
     // An arcade game played live: everyone on the same side, no turns and so no turn clock.
     if (isLiveArcade(game)) {
-      const live = view as LiveView;
+      const live = view as LiveView | FlownView;
       const names = doc.seats.map((s, i) => s.name ?? seatLabel(game, i));
       // Someone watching gives no orders; a seat that is theirs does.
-      return <LiveArcade view={{ ...live, seat }} seat={seat} names={names} serverNow={room.serverNow} act={watching ? () => Promise.resolve() : (move) => room.act(move)} onLeave={onLeave} />;
+      return <LiveArcade view={{ ...live, seat }} table={id} seat={seat} flying={!watching} names={names} serverNow={room.serverNow} act={watching ? () => Promise.resolve() : (move) => room.act(move)} onLeave={onLeave} />;
     }
     if (isKitGame(game)) {
       return online(

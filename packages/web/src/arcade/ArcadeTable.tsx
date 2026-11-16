@@ -10,7 +10,7 @@
 import { arcadeGame, points, recorder, shortly, type ArcadeBuild, type ArcadeGameId, type ArcadeMarket, type ArcadeView } from "@journey-to-code/games";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadFeedbackSettings, saveFeedbackSettings } from "../feedback/sounds";
-import { loadArcadeBest, loadArcadeHouse, saveArcadeBest, type ArcadeRules } from "../storage";
+import { loadArcadeBest, loadArcadeHouse, loadAutofire, saveArcadeBest, type ArcadeRules } from "../storage";
 import { boardOf, sendRun, type HouseRun } from "./scores";
 import { controlsFor } from "./controls";
 import { createArcadeScreen, type ArcadePointer } from "./screen";
@@ -50,6 +50,22 @@ export interface LiveDriver {
   send: (inputs: unknown[], gaps: number[]) => Promise<unknown>;
 }
 
+/**
+ * A game flown live at a table (Shitstorm): the server plays the one real game and says, over a
+ * socket, what every seat's controls did on each tick. This page starts from the game as it stood
+ * when it joined and plays every tick it is told of, so it sees the very same game a moment behind;
+ * all it sends is what its own controls are doing.
+ */
+export interface StreamDriver {
+  /** The table, which is where the socket is: /live/<table>. */
+  table: string;
+  /** The seat this page flies, or null when it only watches. */
+  seat: number | null;
+  names: string[];
+  /** How the game came out, when the room already knows: a page that arrives after the end has no game to join. */
+  result: { score: number; stage: string; scores: number[]; ticks: number } | null;
+}
+
 interface Props {
   game: ArcadeGameId;
   rules: ArcadeRules;
@@ -60,6 +76,8 @@ interface Props {
   rival?: { name: string; score: number };
   /** Played live at a table on the server, instead of here. */
   live?: LiveDriver;
+  /** Flown live at a table on the server. */
+  stream?: StreamDriver;
   /** Back to the game's setup screen. */
   onLeave: () => void;
 }
@@ -91,7 +109,9 @@ const clock = (ticks: number, rate: number) => `${Math.floor(ticks / rate / 60)}
 const SEND_EVERY_MS = 350;
 const SEND_AT_MOST = 24;
 
-export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, live: table, onLeave }: Props) {
+export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, live: table, stream, onLeave }: Props) {
+  // At a table on the server, either way: the game is everyone's, so no pause, no second go, no score of one's own.
+  const shared = !!table || !!stream;
   const game = arcadeGame(id)!;
   const canvas = useRef<HTMLCanvasElement>(null);
   const scoreEl = useRef<HTMLElement>(null);
@@ -99,7 +119,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
   const [run, setRun] = useState(0);
   const [paused, setPaused] = useState(false);
   const [ending, setEnding] = useState<Ending | null>(null);
-  const [house] = useState(() => (table ? null : loadArcadeHouse()));
+  const [house] = useState(() => (shared ? null : loadArcadeHouse()));
   const [posted, setPosted] = useState<Posted | null>(null);
   const [hud, setHud] = useState<Hud>({ stage: "", lives: 0, stats: [], build: null, market: null });
   // Building: what is picked in the shop, and which square is picked out on the field.
@@ -120,7 +140,63 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
     // Play again: a new game from a new seed, unless a housemate's run is being taken on, which is always the same game.
     const playing = run === 0 || rival ? seed : Math.floor(Math.random() * 2 ** 31);
     let state = table ? structuredClone(table.view().arcade) : game.newGame(normal, seats, playing);
-    const mySeat = table?.seat ?? 0;
+    const mySeat = table?.seat ?? stream?.seat ?? 0;
+    // Flown at a table: the ticks the server has told of that are not played here yet, each a list of
+    // the seats whose controls changed; what every seat's controls are doing; and the socket.
+    let frames: [number, unknown][][] = [];
+    let flown: unknown[] = [];
+    let serverOver = false;
+    let joined = false;
+    let socket: WebSocket | null = null;
+    let lastSent = "";
+    let again: ReturnType<typeof setTimeout> | undefined;
+    const endOf = (result: { score: number; stage: string; scores: number[]; ticks: number }) => {
+      over = true;
+      setEnding({ score: result.score, best: 0, isBest: false, stage: result.stage, time: clock(result.ticks, game.rate), scores: result.scores });
+    };
+    function connect() {
+      if (!stream || !live) return;
+      const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/live/${encodeURIComponent(stream.table)}`);
+      socket = ws;
+      ws.onmessage = (e) => {
+        const m = JSON.parse(String(e.data)) as { snap?: unknown; inputs?: unknown[]; over?: boolean; f?: [number, unknown][][] };
+        if (m.snap) {
+          state = m.snap;
+          flown = m.inputs ?? [];
+          frames = [];
+          joined = true;
+          lastSent = "";
+          serverOver = !!m.over;
+        } else if (m.f) frames.push(...m.f);
+        if (m.over) serverOver = true;
+      };
+      ws.onclose = (e) => {
+        if (!live || over) return;
+        // No game in the air at this table: it ended, or the server lost it.
+        if (e.code === 4404) return endOf(stream.result ?? { score: game.summary(state).score, stage: joined ? game.view(state).stage : "Lost in the storm", scores: game.summary(state).scores, ticks: game.summary(state).ticks });
+        again = setTimeout(connect, 1000);
+      };
+    }
+    /** Play what the server has told of: a tick a frame, and faster when this page has fallen behind. */
+    function fly() {
+      const read = JSON.stringify(controls.read());
+      if (stream!.seat !== null && read !== lastSent && socket?.readyState === 1) {
+        lastSent = read;
+        socket.send(read);
+      }
+      let n = frames.length > 20 ? frames.length - 2 : frames.length > 4 ? 2 : Math.min(1, frames.length);
+      while (n-- > 0) {
+        for (const [seat, input] of frames.shift()!) flown[seat] = input;
+        game.step(state, flown);
+        frame++;
+        screen.hear(game.view(state).events, false, 0);
+        screen.settle();
+      }
+      if (serverOver && !frames.length && !over) {
+        const sum = game.summary(state);
+        endOf({ score: sum.score, stage: game.view(state).stage, scores: sum.scores, ticks: sum.ticks });
+      }
+    }
     // Live: every seat holding still, which is all this page knows of anyone else between the server's words.
     const held = (): { n: number }[] => {
       const seen = (state as { seen?: number[] }).seen ?? [];
@@ -248,7 +324,13 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
       const dt = Math.min(100, now - last);
       last = now;
       if (table && table.version() !== seenVersion) adopt();
-      if ((table || !pausedRef.current) && !over) {
+      if (stream) {
+        if (!over) fly();
+        else {
+          screen.settle();
+          frame++;
+        }
+      } else if ((table || !pausedRef.current) && !over) {
         owed += dt;
         // Catch up a few ticks at most: after a long stall the game carries on from where it was.
         let steps = 0;
@@ -290,16 +372,17 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
       }
     }
     raf = requestAnimationFrame(loop);
+    connect();
 
     // A game at a table is everyone's: it does not stop for one of them.
-    const pause = () => !over && !table && setPaused(true);
+    const pause = () => !over && !shared && setPaused(true);
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
       const key = e.key.toLowerCase();
       const down = e.type === "keydown";
       if (["arrowleft", "arrowright", "arrowup", "arrowdown", " "].includes(key)) e.preventDefault();
       if (down) wakeArcadeSound();
-      if (down && !e.repeat && over && key === "enter" && !table) return setRun((n) => n + 1);
+      if (down && !e.repeat && over && key === "enter" && !shared) return setRun((n) => n + 1);
       const build = game.view(state).build;
       if (build && down && !e.repeat && !over) {
         // Building by keyboard: a number picks from the shop, U and S are for the tower picked out, Space sends the wave.
@@ -320,7 +403,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
         }
         if (key === " ") return controls.order?.("send");
       }
-      if (down && !e.repeat && !over && !table && (key === "p" || key === "escape")) return setPaused((p) => !p);
+      if (down && !e.repeat && !over && !shared && (key === "p" || key === "escape")) return setPaused((p) => !p);
       controls.key(key, down);
     };
     const onBlur = () => {
@@ -391,6 +474,8 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
     return () => {
       live = false;
       if (post) clearInterval(post);
+      clearTimeout(again);
+      socket?.close();
       cancelAnimationFrame(raf);
       removeEventListener("keydown", onKey);
       removeEventListener("keyup", onKey);
@@ -477,7 +562,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
               <div className="arcade-card">
                 <h2>Game over</h2>
                 <div className="arcade-final">{points(ending.score)}</div>
-                {table ? <p>Everyone at the table, together.</p> : <p>{ending.isBest ? "A new best on this device." : `Your best: ${points(ending.best)}`}</p>}
+                {shared ? <p>Everyone at the table, together.</p> : <p>{ending.isBest ? "A new best on this device." : `Your best: ${points(ending.best)}`}</p>}
                 {rival && (
                   <p className="arcade-rival">
                     {ending.score > rival.score ? `You beat ${rival.name} (${points(rival.score)}) at the very same game.` : ending.score === rival.score ? `Level with ${rival.name} at the very same game.` : `${rival.name === "your best" ? "Your best" : rival.name} had ${points(rival.score)} at this same game.`}
@@ -517,19 +602,19 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
                   {ending.scores.length > 1 &&
                     ending.scores.map((n, seat) => (
                       <div key={seat} className="arcade-pair">
-                        <dt>{table ? (seat === table.seat ? `${table.names[seat] ?? "You"} (you)` : (table.names[seat] ?? `Seat ${seat + 1}`)) : seat === 0 ? "You" : `Computer ${seat}`}</dt>
+                        <dt>{shared ? (seat === (table ?? stream)!.seat ? `${(table ?? stream)!.names[seat] ?? "You"} (you)` : ((table ?? stream)!.names[seat] ?? `Seat ${seat + 1}`)) : seat === 0 ? "You" : `Computer ${seat}`}</dt>
                         <dd>{points(n)}</dd>
                       </div>
                     ))}
                 </dl>
                 <div className="arcade-row">
-                  {!table && (
+                  {!shared && (
                     <button type="button" className="primary" autoFocus onClick={() => setRun((n) => n + 1)}>
                       {rival ? "Try that game again" : "Play again"}
                     </button>
                   )}
-                  <button type="button" className={table ? "primary" : "secondary"} onClick={onLeave}>
-                    {table ? "Leave the table" : "Change the rules"}
+                  <button type="button" className={shared ? "primary" : "secondary"} onClick={onLeave}>
+                    {shared ? "Leave the table" : "Change the rules"}
                   </button>
                 </div>
               </div>
@@ -667,7 +752,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
               {controls.specialLabel}
             </button>
           )}
-          <button type="button" className="arcade-btn" hidden={!!table} onClick={() => !ending && !table && setPaused((p) => !p)}>
+          <button type="button" className="arcade-btn" hidden={shared} onClick={() => !ending && !shared && setPaused((p) => !p)}>
             {paused ? "Carry on" : "Pause"}
           </button>
           <button type="button" className="arcade-btn" aria-pressed={sound} aria-label={sound ? "Turn sounds off" : "Turn sounds on"} onClick={toggleSound}>
@@ -679,12 +764,35 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
   );
 }
 
-/** The arcade games that can be played live at a table on the server: the ones played by giving orders. */
-export const LIVE_ARCADE: ArcadeGameId[] = ["bulwark", "chipstack"];
+/** The arcade games that can be played live at a table on the server: by giving orders through the room, or (Shitstorm) flown over a socket. */
+export const LIVE_ARCADE: ArcadeGameId[] = ["skyfire", "bulwark", "chipstack"];
 export const isLiveArcade = (id: unknown): id is ArcadeGameId => LIVE_ARCADE.includes(id as ArcadeGameId);
 
 /** An arcade game at a table on the server: the room's views in, this seat's orders out. */
-export function LiveArcade({ view, seat, names, serverNow, act, onLeave }: { view: LiveView; seat: number; names: string[]; serverNow: () => number; act: (move: unknown) => Promise<unknown>; onLeave: () => void }) {
+export function LiveArcade({ view, table, seat, flying, names, serverNow, act, onLeave }: { view: LiveView | FlownView; table: string; seat: number; /** False for someone only watching. */ flying: boolean; names: string[]; serverNow: () => number; act: (move: unknown) => Promise<unknown>; onLeave: () => void }) {
+  if ("stream" in view) return <Flown view={view} table={table} seat={flying ? seat : null} names={names} onLeave={onLeave} />;
+  return <Ordered view={view} seat={seat} names={names} serverNow={serverNow} act={act} onLeave={onLeave} />;
+}
+
+/** What the room says of a game that is flown: who sits where, and how it came out. The game itself comes over the socket. */
+export interface FlownView {
+  live: true;
+  stream: true;
+  game: ArcadeGameId;
+  seats: number;
+  seat: number;
+  over: boolean;
+  result: StreamDriver["result"];
+}
+
+function Flown({ view, table, seat, names, onLeave }: { view: FlownView; table: string; seat: number | null; names: string[]; onLeave: () => void }) {
+  const game = arcadeGame(view.game)!;
+  // The driver is read once, as the table opens: the socket says everything after that.
+  const driver = useMemo<StreamDriver>(() => ({ table, seat, names, result: view.result }), [table, seat]);
+  return <ArcadeTable game={view.game} rules={game.presets[0] as ArcadeRules} seats={view.seats} seed={0} autofire={loadAutofire()} stream={driver} onLeave={onLeave} />;
+}
+
+function Ordered({ view, seat, names, serverNow, act, onLeave }: { view: LiveView; seat: number; names: string[]; serverNow: () => number; act: (move: unknown) => Promise<unknown>; onLeave: () => void }) {
   const latest = useRef({ view, version: 0 });
   if (latest.current.view !== view) latest.current = { view, version: latest.current.version + 1 };
   const driver = useMemo<LiveDriver>(

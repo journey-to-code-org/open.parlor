@@ -13,6 +13,7 @@ import { kitOptions, kitRoom, kitSpent, kitTimeoutMove, type KitOptions } from "
 import { sooner, turnDeadline } from "./timer.js";
 import { arcadeGame } from "@journey-to-code/games";
 import { arcadeOptions, arcadeRoom, isLiveArcade, type ArcadeOptions, type LiveState } from "./arcade.js";
+import { flightOptions, flightRoom, isFlight, type FlightOptions, type FlightState } from "./flight.js";
 
 export type GameId = "spades" | "palace" | KitGameId;
 export const GAMES: { id: GameId; name: string; emoji: string; seats: [number, number]; teams: boolean }[] = [
@@ -24,8 +25,8 @@ export const gameName = (id: GameId) => GAMES.find((g) => g.id === id)?.name ?? 
 export const gameEmoji = (id: GameId) => GAMES.find((g) => g.id === id)?.emoji ?? arcadeGame(id)?.emoji ?? "🃏";
 export const isGameId = (id: unknown): id is GameId => GAMES.some((g) => g.id === id);
 
-export type TableOptions = RulePreset | PalaceOptions | KitOptions | ArcadeOptions;
-type AnyState = GameState | PalaceState | ({ game: KitGameId } & Record<string, unknown>) | LiveState;
+export type TableOptions = RulePreset | PalaceOptions | KitOptions | ArcadeOptions | FlightOptions;
+type AnyState = GameState | PalaceState | ({ game: KitGameId } & Record<string, unknown>) | LiveState | FlightState;
 
 /**
  * A room's game, from its options or its state. Spades rooms have no `game` (they predate the others).
@@ -34,10 +35,12 @@ type AnyState = GameState | PalaceState | ({ game: KitGameId } & Record<string, 
  */
 const gameOf = (x: unknown): GameId => {
   const g = (x as { game?: string } | null)?.game;
-  return g === "palace" || isKitGame(g) || isLiveArcade(g) ? (g as GameId) : "spades";
+  return g === "palace" || isKitGame(g) || isLiveArcade(g) || isFlight(g) ? (g as GameId) : "spades";
 };
 /** Whether a room's game is an arcade game played live. */
-const live = (id: GameId): boolean => isLiveArcade(id);
+const live = (id: GameId): boolean => isLiveArcade(id) || isFlight(id);
+/** The room for an arcade game played live: by orders through the room itself, or flown beside it (flight.ts). */
+const liveRoom = (id: GameId): RoomDefinition<any, any, any, any, any> => (isFlight(id) ? flightRoom : arcadeRoom);
 export const gameOfOptions = gameOf;
 export const gameOfState = gameOf;
 
@@ -46,7 +49,7 @@ const rooms: Record<GameId, RoomDefinition<any, any, any, any, any>> = {
   palace: palaceRoom,
   ...(Object.fromEntries(KIT_GAMES.map((g) => [g.id, kitRoom])) as Record<KitGameId, typeof kitRoom>),
 };
-const roomFor = (id: GameId): RoomDefinition<any, any, any, any, any> => (live(id) ? arcadeRoom : rooms[id]);
+const roomFor = (id: GameId): RoomDefinition<any, any, any, any, any> => (live(id) ? liveRoom(id) : rooms[id]);
 const byState = (s: AnyState) => roomFor(gameOfState(s));
 
 /**
@@ -65,7 +68,7 @@ export const tableRoom: RoomDefinition<AnyState, unknown, unknown, TableOptions,
   setup: (o, seed) => roomFor(gameOfOptions(o)).setup(o, seed),
   info: (o) => {
     const game = gameOfOptions(o);
-    if (live(game)) return { game, rules: arcadeOptions(game, (o as ArcadeOptions).rules, (o as ArcadeOptions).seats).rules.name };
+    if (live(game)) return { game, rules: (isFlight(game) ? flightOptions : arcadeOptions)(game, (o as ArcadeOptions).rules, (o as ArcadeOptions).seats).rules.name };
     if (game === "palace") return { game, rules: palaceOptions((o as PalaceOptions).rules, (o as PalaceOptions).seats).rules.name };
     if (game === "spades") return { game, rules: (o as RulePreset).name };
     return { game, rules: kitOptions(kitGame(game)!, (o as KitOptions).rules, (o as KitOptions).seats).rules.name };
@@ -84,7 +87,7 @@ export const tableRoom: RoomDefinition<AnyState, unknown, unknown, TableOptions,
   // the turn timer (a table setting: the game's computer player moves for a person who runs out of
   // time). Whichever runs out first is the room's deadline.
   // An arcade game played live has neither: its deadline is the beat that keeps it moving.
-  deadline: (s, table) => (live(gameOfState(s)) ? (arcadeRoom.deadline!(s as LiveState, table) as ReturnType<NonNullable<typeof kitRoom.deadline>>) : sooner(byState(s).deadline?.(s, table) ?? null, turnTimer(s, table))),
+  deadline: (s, table) => (live(gameOfState(s)) ? (liveRoom(gameOfState(s)).deadline!(s, table) as ReturnType<NonNullable<typeof kitRoom.deadline>>) : sooner(byState(s).deadline?.(s, table) ?? null, turnTimer(s, table))),
 };
 
 /**
@@ -94,7 +97,7 @@ export const tableRoom: RoomDefinition<AnyState, unknown, unknown, TableOptions,
  */
 function turnTimer(s: AnyState, table: Parameters<NonNullable<typeof tableRoom.deadline>>[1]) {
   const kit = isKitGame(gameOfState(s)) ? (s as { game: KitGameId } & Record<string, unknown>) : null;
-  const due = turnDeadline(s as Exclude<AnyState, LiveState>, table, (seat, name) => (kit ? kitTimeoutMove(kit, seat, name, table.settings, TIMEOUT_BUDGET) : (byState(s).bot?.(s, seat, name, table.settings) ?? null)));
+  const due = turnDeadline(s as Exclude<AnyState, LiveState | FlightState>, table, (seat, name) => (kit ? kitTimeoutMove(kit, seat, name, table.settings, TIMEOUT_BUDGET) : (byState(s).bot?.(s, seat, name, table.settings) ?? null)));
   const spent = kit ? kitSpent(kit) : 0;
   return due && spent > 0 && due.after !== undefined ? { ...due, after: Math.max(0, due.after - spent) } : due;
 }
@@ -191,7 +194,7 @@ export const talk = {
     live(game) ? [] : game === "spades" ? replyTo(text, seat as Seat, cast as { bots: { seat: Seat; name: string }[] }) : palaceReplyTo(text, cast),
   finished: (s: AnyState) => {
     const game = gameOfState(s);
-    if (live(game)) return arcadeRoom.finished!(s as LiveState);
+    if (live(game)) return liveRoom(game).finished!(s);
     return isKitGame(game) ? kitGame(game)!.summary(s).over : (s as { phase?: string }).phase === "finished";
   },
 };

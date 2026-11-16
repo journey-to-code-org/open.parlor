@@ -21,11 +21,13 @@
     "@journey-to-code/rules": "^0.1.0",
     "@open-parlor/courses": "*",
     "@zubra/sync": "^5.15.0",
-    "web-push": "^4.0.0"
+    "web-push": "^4.0.0",
+    "ws": "^8.23.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/web-push": "^3.6.4",
+    "@types/ws": "^8.18.2",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
   }
