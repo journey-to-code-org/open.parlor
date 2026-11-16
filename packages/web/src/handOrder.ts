@@ -18,7 +18,8 @@ export interface SortKey {
 type AnyCard =
   | { kind: "pip"; suit: string; rank: number }
   | { kind: "joker"; size: "big" | "little" }
-  | { kind: "fruit"; fruit: string | null; face: number | string };
+  | { kind: "fruit"; fruit: string | null; face: number | string }
+  | { kind: "tile" };
 
 const SUIT_PLACE: Record<string, number> = { spades: 0, hearts: 1, clubs: 2, diamonds: 3 };
 const FRUIT_PLACE: Record<string, number> = { cherry: 0, lemon: 1, pear: 2, grape: 3 };
@@ -27,6 +28,8 @@ const FRUIT_FACE: Record<string, number> = { hop: 10, turn: 11, plus2: 12, salad
 /** A plain reading of any card: jokers lead the suits and top the ranks; wild fruit goes last. */
 export function cardKey(card: AnyCard): SortKey {
   if (card.kind === "joker") return { suit: -1, rank: card.size === "big" ? 100 : 99 };
+  // Mahjong tiles are kept as they come: the engine hands them over in order.
+  if (card.kind === "tile") return { suit: 6, rank: 0 };
   if (card.kind === "fruit") return { suit: card.fruit ? (FRUIT_PLACE[card.fruit] ?? 4) : 5, rank: typeof card.face === "number" ? card.face : (FRUIT_FACE[card.face] ?? 15) };
   return { suit: SUIT_PLACE[card.suit] ?? 4, rank: card.rank };
 }

@@ -2435,6 +2435,14 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .delbies-ask button, .delbies-sheet button, .delbies-reset { padding: 9px 14px; border-radius: 10px; border: 1px solid var(--edge); background: #2c3340; font-weight: 600; }
 .delbies .yes { background: var(--yellow); border-color: var(--yellow); color: #1b1608; }
 .delbies-ask.radio { border-color: #4cc9ff; }
+.delbies-ask.inspector { border-color: #9aa3b2; }
+.delbies-ask.inspector.here { border-color: var(--red); }
+.delbies-ask.inspector ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.delbies-ask.inspector li { display: grid; grid-template-columns: 1.4em 1fr; gap: 6px; align-items: start; line-height: 1.35; }
+.delbies-ask.inspector li i { font-style: normal; font-weight: 800; text-align: center; }
+.delbies-ask.inspector li.ok i { color: #5fd08a; }
+.delbies-ask.inspector li.off i { color: var(--red); }
+.delbies-ask.inspector li small { display: block; color: var(--dim); font-size: 0.8rem; }
 .delbies-ask .col { display: grid; gap: 6px; }
 .delbies-ask .col button { text-align: left; }
 .delbies .fine { font-size: 0.8rem; color: var(--dim); }

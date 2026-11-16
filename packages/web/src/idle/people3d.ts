@@ -98,6 +98,20 @@ export function delbie(): Person {
   return person({ shirt: "#1f2a3a", skin: SKINS[1]!, cap: "#f2c230" }, 1);
 }
 
+/** The inspector: a grey suit, a hat with a brim, glasses, and a clipboard that is being written on. */
+export function inspector(): Person {
+  const p = person({ shirt: "#6f7682", skin: SKINS[4]!, hair: null, glasses: "#1d1f24", trousers: "#4a505a", tall: 1.04 }, 77);
+  const felt = paint("#3a3f48", 0.9);
+  put(p.head, drum(0.3, 0.3, 0.025, felt, 18), 0, 0.12, 0);
+  put(p.head, drum(0.17, 0.2, 0.16, felt, 18), 0, 0.2, 0);
+  put(p.head, drum(0.202, 0.202, 0.04, paint("#1d1f24", 0.6), 18), 0, 0.15, 0);
+  put(p.group, box(0.06, 0.3, 0.02, paint("#8a1f1a", 0.6)), 0, 0.94, 0.235);
+  const clip = put(p.arms[0], box(0.26, 0.34, 0.02, paint("#7a5a3a", 0.8)), 0.04, -0.5, 0.1);
+  put(clip, box(0.22, 0.28, 0.01, paint("#fbf7ee", 0.9)), 0, -0.01, 0.012);
+  put(clip, box(0.1, 0.035, 0.02, paint("#b8b8c0", 0.4, 0.6)), 0, 0.16, 0.012);
+  return p;
+}
+
 /** One of the crew, as the game describes them. Somebody this file hasn't met gets a look from their name. */
 export function crewPerson(id: string): Person {
   const dark = paint("#1d1f24", 0.5);

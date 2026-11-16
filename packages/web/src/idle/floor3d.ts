@@ -26,6 +26,8 @@ export interface FloorLook {
   hungry: boolean;
   cinnamon: boolean;
   shocked: boolean;
+  /** The inspector, walking the room: how many of the things on the sheet are right just now, out of how many. */
+  inspector: { passing: number; of: number } | null;
 }
 
 export interface Floor3d {

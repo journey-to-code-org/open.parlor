@@ -33,6 +33,10 @@ export interface CounterLook {
   /** How many times the store has moved, and what the newest building brought with it. */
   moves: number;
   department: string | null;
+  /** The inspector: a minute out (the car is in the yard), on the floor with the clipboard, or nowhere about. */
+  inspector: "coming" | "here" | null;
+  /** A clean sheet, still fresh: the sticker is up on the front of the counter. */
+  sticker: boolean;
   /** The time of day where the player is, in minutes since midnight: it is dark out after closing. */
   minute: number;
 }

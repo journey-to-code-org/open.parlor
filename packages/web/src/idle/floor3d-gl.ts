@@ -35,7 +35,7 @@ import {
   type Material,
 } from "three";
 import { PERSPECTIVE, SCALE, SHIFT, TILT } from "../board/board3d";
-import { box, crewPerson, drum as drumOf, paint, put, rabbit, type Person } from "./people3d";
+import { box, crewPerson, drum as drumOf, inspector, paint, put, rabbit, type Person } from "./people3d";
 import type { Floor3d, FloorLook } from "./floor3d";
 
 const drum = (top: number, bottom: number, h: number, m: Material, sides = 12) => drumOf(top, bottom, h, m, sides);
@@ -229,6 +229,16 @@ export function build(canvas: HTMLCanvasElement): Floor3d | null {
   let drawn = 0;
   let begun = false;
 
+  // The inspector walks the aisle in front of the back row, the count so far held up over the hat.
+  const suit = inspector();
+  suit.group.scale.multiplyScalar(0.46);
+  suit.group.visible = false;
+  things.add(suit.group);
+  const tally = new Mesh(new PlaneGeometry(0.4, 0.2), plate("", "#1f2a3a", "#ffffff"));
+  tally.visible = false;
+  things.add(tally);
+  let tallyKey = "";
+
   const spot = (square: number): [number, number] => [(square % cols) + 0.5 - cols / 2, Math.floor(square / cols) + 0.5 - rows / 2];
 
   function buildRoom() {
@@ -405,6 +415,28 @@ export function build(canvas: HTMLCanvasElement): Floor3d | null {
             things.remove(s.group);
             standing.delete(id);
           }
+        suit.group.visible = tally.visible = !!look.inspector;
+        if (look.inspector) {
+          const { passing, of } = look.inspector;
+          const key = `${passing}/${of}`;
+          if (key !== tallyKey) {
+            tallyKey = key;
+            (tally.material as MeshBasicMaterial).map?.dispose();
+            tally.material = plate(`${passing} of ${of}`, passing === of ? "#2f8a4f" : passing >= of - 1 ? "#c98a2c" : "#b3261e", "#ffffff");
+          }
+          const far = cols / 2 - 0.4;
+          // Between two rows of squares, where nothing stands.
+          const aisle = rows / 2 - 1;
+          const x = still ? 0 : Math.sin(t * 0.45) * far;
+          suit.group.position.set(x, 0, aisle);
+          suit.group.rotation.y = still ? Math.PI : Math.PI + Math.cos(t * 0.45) * 0.9;
+          suit.group.position.y = still ? 0 : Math.abs(Math.sin(t * 5)) * 0.012;
+          suit.arms[0].rotation.x = -1.1;
+          suit.arms[1].rotation.x = still ? -1.2 : -1.2 + Math.sin(t * 11) * 0.12;
+          suit.arms[1].rotation.z = -0.5;
+          tally.position.set(x, 1.08, aisle);
+          tally.rotation.x = -(Math.PI / 2 - (TILT * Math.PI) / 180);
+        }
         begun = true;
         // What two neighbours do to each other beats gently.
         const beat = still ? 1 : 0.7 + Math.sin(t * 3) * 0.3;
