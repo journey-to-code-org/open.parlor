@@ -11,6 +11,8 @@ import { palaceOptions, palaceRoom, type PalaceOptions } from "./palace.js";
 import { spadesRoom } from "./spades.js";
 import { kitOptions, kitRoom, kitSpent, kitTimeoutMove, type KitOptions } from "./kit.js";
 import { sooner, turnDeadline } from "./timer.js";
+import { arcadeGame } from "@journey-to-code/games";
+import { arcadeOptions, arcadeRoom, isLiveArcade, type ArcadeOptions, type LiveState } from "./arcade.js";
 
 export type GameId = "spades" | "palace" | KitGameId;
 export const GAMES: { id: GameId; name: string; emoji: string; seats: [number, number]; teams: boolean }[] = [
@@ -18,18 +20,24 @@ export const GAMES: { id: GameId; name: string; emoji: string; seats: [number, n
   { id: "palace", name: "Palace", emoji: "🏰", seats: [2, 6], teams: false },
   ...KIT_GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, seats: [g.seats.min, g.seats.max] as [number, number], teams: g.teams })),
 ];
-export const gameName = (id: GameId) => GAMES.find((g) => g.id === id)?.name ?? "Spades";
-export const gameEmoji = (id: GameId) => GAMES.find((g) => g.id === id)?.emoji ?? "🃏";
+export const gameName = (id: GameId) => GAMES.find((g) => g.id === id)?.name ?? arcadeGame(id)?.name ?? "Spades";
+export const gameEmoji = (id: GameId) => GAMES.find((g) => g.id === id)?.emoji ?? arcadeGame(id)?.emoji ?? "🃏";
 export const isGameId = (id: unknown): id is GameId => GAMES.some((g) => g.id === id);
 
-export type TableOptions = RulePreset | PalaceOptions | KitOptions;
-type AnyState = GameState | PalaceState | ({ game: KitGameId } & Record<string, unknown>);
+export type TableOptions = RulePreset | PalaceOptions | KitOptions | ArcadeOptions;
+type AnyState = GameState | PalaceState | ({ game: KitGameId } & Record<string, unknown>) | LiveState;
 
-/** A room's game, from its options or its state. Spades rooms have no `game` (they predate the others). */
+/**
+ * A room's game, from its options or its state. Spades rooms have no `game` (they predate the others).
+ * An arcade game played live (arcade.ts) has a room too. It is not one of GAMES: no lobby, house
+ * table, challenge or tournament offers it, and a table of one is opened from its own setup screen.
+ */
 const gameOf = (x: unknown): GameId => {
   const g = (x as { game?: string } | null)?.game;
-  return g === "palace" || isKitGame(g) ? (g as GameId) : "spades";
+  return g === "palace" || isKitGame(g) || isLiveArcade(g) ? (g as GameId) : "spades";
 };
+/** Whether a room's game is an arcade game played live. */
+const live = (id: GameId): boolean => isLiveArcade(id);
 export const gameOfOptions = gameOf;
 export const gameOfState = gameOf;
 
@@ -38,7 +46,8 @@ const rooms: Record<GameId, RoomDefinition<any, any, any, any, any>> = {
   palace: palaceRoom,
   ...(Object.fromEntries(KIT_GAMES.map((g) => [g.id, kitRoom])) as Record<KitGameId, typeof kitRoom>),
 };
-const byState = (s: AnyState) => rooms[gameOfState(s)];
+const roomFor = (id: GameId): RoomDefinition<any, any, any, any, any> => (live(id) ? arcadeRoom : rooms[id]);
+const byState = (s: AnyState) => roomFor(gameOfState(s));
 
 /**
  * How long a game that thinks by the clock gets for the move the turn timer makes for someone who
@@ -50,12 +59,13 @@ export const TIMEOUT_BUDGET: ThinkBudget = { ms: 150 };
 
 export const tableRoom: RoomDefinition<AnyState, unknown, unknown, TableOptions, unknown> = {
   seats: (o) => {
-    const room = rooms[gameOfOptions(o)];
+    const room = roomFor(gameOfOptions(o));
     return typeof room.seats === "function" ? room.seats(o) : room.seats;
   },
-  setup: (o, seed) => rooms[gameOfOptions(o)].setup(o, seed),
+  setup: (o, seed) => roomFor(gameOfOptions(o)).setup(o, seed),
   info: (o) => {
     const game = gameOfOptions(o);
+    if (live(game)) return { game, rules: arcadeOptions(game, (o as ArcadeOptions).rules, (o as ArcadeOptions).seats).rules.name };
     if (game === "palace") return { game, rules: palaceOptions((o as PalaceOptions).rules, (o as PalaceOptions).seats).rules.name };
     if (game === "spades") return { game, rules: (o as RulePreset).name };
     return { game, rules: kitOptions(kitGame(game)!, (o as KitOptions).rules, (o as KitOptions).seats).rules.name };
@@ -73,7 +83,8 @@ export const tableRoom: RoomDefinition<AnyState, unknown, unknown, TableOptions,
   // Two clocks can be running: the game's own (a shot clock, which makes the game's timeout move) and
   // the turn timer (a table setting: the game's computer player moves for a person who runs out of
   // time). Whichever runs out first is the room's deadline.
-  deadline: (s, table) => sooner(byState(s).deadline?.(s, table) ?? null, turnTimer(s, table)),
+  // An arcade game played live has neither: its deadline is the beat that keeps it moving.
+  deadline: (s, table) => (live(gameOfState(s)) ? (arcadeRoom.deadline!(s as LiveState, table) as ReturnType<NonNullable<typeof kitRoom.deadline>>) : sooner(byState(s).deadline?.(s, table) ?? null, turnTimer(s, table))),
 };
 
 /**
@@ -83,7 +94,7 @@ export const tableRoom: RoomDefinition<AnyState, unknown, unknown, TableOptions,
  */
 function turnTimer(s: AnyState, table: Parameters<NonNullable<typeof tableRoom.deadline>>[1]) {
   const kit = isKitGame(gameOfState(s)) ? (s as { game: KitGameId } & Record<string, unknown>) : null;
-  const due = turnDeadline(s, table, (seat, name) => (kit ? kitTimeoutMove(kit, seat, name, table.settings, TIMEOUT_BUDGET) : (byState(s).bot?.(s, seat, name, table.settings) ?? null)));
+  const due = turnDeadline(s as Exclude<AnyState, LiveState>, table, (seat, name) => (kit ? kitTimeoutMove(kit, seat, name, table.settings, TIMEOUT_BUDGET) : (byState(s).bot?.(s, seat, name, table.settings) ?? null)));
   const spent = kit ? kitSpent(kit) : 0;
   return due && spent > 0 && due.after !== undefined ? { ...due, after: Math.max(0, due.after - spent) } : due;
 }
@@ -97,6 +108,8 @@ function turnTimer(s: AnyState, table: Parameters<NonNullable<typeof tableRoom.d
 export function watchView(game: GameId, views: unknown[]): unknown {
   type Any = Record<string, unknown>;
   const seats = views as Any[];
+  // An arcade game played live: everyone is on the same side, and nothing is hidden.
+  if (live(game)) return seats[0];
   if (game === "spades") return sharedView(seats, { blank: { hand: [], legal: [], myPass: null }, from: { seat: 0, keys: ["seat", "team", "partner", "teamSeats"] } });
   if (game === "palace") return sharedView(seats, { blank: { hand: [], can: null }, from: { seat: 0, keys: ["you"] } });
   // A table sport has nothing hidden: every ball is in plain sight of everyone. What can differ
@@ -159,12 +172,15 @@ type Cast = { bots: { seat: number; name: string }[] };
 export const talk = {
   greet: (s: AnyState, cast: Cast): Remark[] => {
     const game = gameOfState(s);
+    // Nobody talks over an arcade game.
+    if (live(game)) return [];
     if (game === "palace") return palaceGreet(cast);
     if (game === "spades") return greet(cast as { bots: { seat: Seat; name: string }[] });
     return kitGreet(cast, undefined, game);
   },
   react: (before: AnyState, after: AnyState, cast: Cast): Remark[] => {
     const game = gameOfState(after);
+    if (live(game)) return [];
     if (game === "palace") return reactToPalace(before as PalaceState, after as PalaceState, cast);
     if (game === "spades") return reactToMove(before as GameState, after as GameState, cast as { bots: { seat: Seat; name: string }[] });
     const kit = kitGame(game)!;
@@ -172,9 +188,10 @@ export const talk = {
   },
   // Anything but spades answers in the shared reply lines (they're the same cast).
   reply: (game: GameId, text: string, seat: number, cast: Cast): Remark[] =>
-    game === "spades" ? replyTo(text, seat as Seat, cast as { bots: { seat: Seat; name: string }[] }) : palaceReplyTo(text, cast),
+    live(game) ? [] : game === "spades" ? replyTo(text, seat as Seat, cast as { bots: { seat: Seat; name: string }[] }) : palaceReplyTo(text, cast),
   finished: (s: AnyState) => {
     const game = gameOfState(s);
+    if (live(game)) return arcadeRoom.finished!(s as LiveState);
     return isKitGame(game) ? kitGame(game)!.summary(s).over : (s as { phase?: string }).phase === "finished";
   },
 };
