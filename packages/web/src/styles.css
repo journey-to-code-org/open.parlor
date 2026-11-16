@@ -2097,7 +2097,9 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .arcade-bar::after { content: ""; display: block; height: 100%; width: var(--fill, 0%); background: var(--gold); }
 .arcade-grow { flex: 1; }
 .arcade-stage { position: relative; flex: 1; min-height: 0; display: grid; place-items: center; background: #02030a; }
-.arcade-stage canvas { display: block; touch-action: none; outline: none; }
+.arcade-stage canvas { display: block; touch-action: none; outline: none; grid-area: 1 / 1; }
+/* The 3-D scene, under the field's own canvas, which then only draws what is written over it. */
+.arcade-stage .arcade-gl { pointer-events: none; visibility: hidden; }
 .arcade-btn {
   font: inherit; font-weight: 600; font-size: 0.85rem; color: inherit; cursor: pointer; padding: 7px 12px; border-radius: 8px;
   border: 1px solid var(--arc-line); background: rgba(255, 255, 255, 0.05);

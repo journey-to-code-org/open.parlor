@@ -1,4 +1,5 @@
 import { ARCADE_GAMES, IDLE_GAMES, KIT_GAMES, type ArcadeGameId, type IdleGameId } from "@journey-to-code/games";
+import { arcadeBlurb } from "./arcade/flavour";
 import { arranged } from "./catalogue";
 import type { GameId } from "./storage";
 
@@ -13,7 +14,7 @@ export const GAME_LIST: { id: GameId; name: string; emoji: string; blurb: string
  * the rest, but not in `GAME_LIST`, which is the games a table can be opened for (houses, the lobby,
  * challenges and tournaments go by it).
  */
-export const ARCADE_LIST: { id: ArcadeGameId; name: string; emoji: string; blurb: string }[] = ARCADE_GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, blurb: g.blurb }));
+export const ARCADE_LIST: { id: ArcadeGameId; name: string; emoji: string; blurb: string }[] = ARCADE_GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, blurb: arcadeBlurb(g.id, g.blurb) }));
 /** The idle games: they carry on while nobody is looking, one player each, kept in this browser. */
 export const IDLE_LIST: { id: IdleGameId; name: string; emoji: string; blurb: string }[] = IDLE_GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, blurb: g.blurb }));
 /** A game that is played on its own screen, with no table opened for it. */

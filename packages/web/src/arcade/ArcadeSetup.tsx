@@ -7,6 +7,7 @@ import { useState } from "react";
 import { KitRulesFields, KitRulesSheet } from "../kit/KitRules";
 import { Choice, Toggle } from "../RulesEditor";
 import { SetupLayout } from "../SetupLayout";
+import { arcadeSays, arcadeTagline } from "./flavour";
 import { loadArcadeBest, loadArcadeCrew, loadArcadeRules, loadAutofire, saveArcadeCrew, saveArcadeRules, saveAutofire, type ArcadeRules } from "../storage";
 
 interface Props {
@@ -26,7 +27,9 @@ export function ArcadeSetup({ game: id, onHome, onPlay }: Props) {
   const errors: string[] = game.validate(rules);
   const best = loadArcadeBest(id, rules, crew);
   // The rules sheet and editor only read a game's fields and its rules in words, which an arcade game has too.
-  const asTable = game as unknown as TableGame<any, any, any, any>;
+  // They are worded the way the parlor words this game (see flavour.ts).
+  const says = (text: string) => arcadeSays(id, text);
+  const asTable = { ...game, fields: game.fields.map((f) => ({ ...f, label: says(f.label), ...(f.hint ? { hint: says(f.hint) } : {}) })), describe: (r: ArcadeRules) => game.describe(r).map(says) } as unknown as TableGame<any, any, any, any>;
 
   const crews: [string, string][] = [];
   for (let n = game.seats.min; n <= game.seats.max; n++) crews.push([String(n), n === 1 ? "On your own" : n === 2 ? "With a computer player" : `With ${n - 1} computer players`]);
@@ -36,7 +39,7 @@ export function ArcadeSetup({ game: id, onHome, onPlay }: Props) {
       solo
       emoji={game.emoji}
       title={game.name}
-      tagline={game.tagline}
+      tagline={arcadeTagline(id, game.tagline)}
       onHome={onHome}
       you={
         <>
@@ -100,7 +103,7 @@ export function ArcadeSetup({ game: id, onHome, onPlay }: Props) {
           <h3 className="arcade-how">Controls</h3>
           <ul className="rules-lines">
             {game.controls.map((line) => (
-              <li key={line}>{line}</li>
+              <li key={line}>{arcadeSays(id, line)}</li>
             ))}
           </ul>
         </>

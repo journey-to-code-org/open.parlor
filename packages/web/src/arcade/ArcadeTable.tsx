@@ -11,7 +11,10 @@ import { arcadeGame, points, shortly, type ArcadeBuild, type ArcadeGameId, type 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadFeedbackSettings, saveFeedbackSettings } from "../feedback/sounds";
 import { loadArcadeBest, saveArcadeBest, type ArcadeRules } from "../storage";
+import { depthSetting, loadDisplay, saveDisplay, wants3d } from "../display";
 import { controlsFor } from "./controls";
+import { arcadeSays } from "./flavour";
+import { hasArcade3d, loadArcade3d, type Arcade3d } from "./scene3d";
 import { createArcadeScreen, type ArcadePointer } from "./screen";
 import { notes, setArcadeSound, wakeArcadeSound } from "./sounds";
 
@@ -49,6 +52,13 @@ const clock = (ticks: number, rate: number) => `${Math.floor(ticks / rate / 60)}
 export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }: Props) {
   const game = arcadeGame(id)!;
   const canvas = useRef<HTMLCanvasElement>(null);
+  // The 3-D scene's canvas lies under the field's own, which then only draws what goes over it.
+  const glCanvas = useRef<HTMLCanvasElement>(null);
+  const gl = useRef<Arcade3d | null>(null);
+  /** Whether the frame just drawn was the 3-D scene's: where a tap lands depends on it. */
+  const solid = useRef(false);
+  const [depth, setDepth] = useState(() => wants3d(id));
+  const says = (text: string) => arcadeSays(id, text);
   const scoreEl = useRef<HTMLElement>(null);
   const bankEl = useRef<HTMLElement>(null);
   const [run, setRun] = useState(0);
@@ -72,8 +82,10 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
     const normal = game.normalize(rules);
     // Play again: a new game from a new seed.
     const state = game.newGame(normal, seats, run === 0 ? seed : Math.floor(Math.random() * 2 ** 31));
-    const screen = createArcadeScreen(el, game.view(state).field);
+    const screen = createArcadeScreen(el, game.view(state).field, says);
     screen.resize();
+    gl.current?.reset();
+    const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
     controls.clear();
     setEnding(null);
     setPaused(false);
@@ -94,6 +106,8 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
       const view = game.view(state);
       screen.hear(view.events, false, 0);
       screen.settle();
+      gl.current?.hear(view.events);
+      gl.current?.settle();
       if (view.over) {
         over = true;
         const sum = game.summary(state);
@@ -121,6 +135,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
         if (owed > stepMs * 5) owed = 0;
       } else if (over) {
         screen.settle();
+        gl.current?.settle();
         frame++;
       }
       const view = game.view(state);
@@ -133,7 +148,18 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
         if (standing) pointer = { cell: [standing.col, standing.row], range: standing.range, tone: "white" };
         else if (item && hover) pointer = { cell: hover, range: item.range, tone: item.tone, open: !build.closed.includes(hover[1] * build.cols + hover[0]) && !build.built.some((b) => b.col === hover[0] && b.row === hover[1]) };
       }
-      screen.draw(view, frame, pointer);
+      // In three dimensions where the scene is up and wanted: its canvas has the field and what is
+      // on it, and this one only what is written over it. Everywhere else it is drawn flat as ever.
+      const scene = gl.current;
+      const glEl = glCanvas.current;
+      if (glEl && glEl.style.width !== el.style.width) {
+        glEl.style.width = el.style.width;
+        glEl.style.height = el.style.height;
+      }
+      solid.current = !!scene && wants3d(id) && scene.render({ view, frame, width: el.clientWidth, height: el.clientHeight, dpr: Math.min(2, window.devicePixelRatio || 1), still, ...(pointer ? { pointer } : {}) });
+      if (glEl) glEl.style.visibility = solid.current ? "visible" : "hidden";
+      if (solid.current) screen.drawOverlay(view, frame, scene!.project);
+      else screen.draw(view, frame, pointer);
       const me = view.pilots[0];
       const market = view.market;
       if (scoreEl.current) scoreEl.current.textContent = market ? shortly(view.score) : points(view.score);
@@ -195,8 +221,11 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
       const build = game.view(state).build;
       const box = el.getBoundingClientRect();
       if (!build || !box.width) return null;
-      const col = Math.floor((((e.clientX - box.left) / box.width) * build.cols * build.cell) / build.cell);
-      const row = Math.floor((((e.clientY - box.top) / box.height) * build.rows * build.cell) / build.cell);
+      // In the 3-D scene the ground is seen from an angle: the scene says what is under the pointer.
+      const spot = solid.current ? gl.current?.pick((e.clientX - box.left) / box.width, (e.clientY - box.top) / box.height) : undefined;
+      if (solid.current && !spot) return null;
+      const col = Math.floor(spot ? spot[0] / build.cell : (((e.clientX - box.left) / box.width) * build.cols * build.cell) / build.cell);
+      const row = Math.floor(spot ? spot[1] / build.cell : (((e.clientY - box.top) / box.height) * build.rows * build.cell) / build.cell);
       return col >= 0 && col < build.cols && row >= 0 && row < build.rows ? [col, row] : null;
     };
     const down = (e: PointerEvent) => {
@@ -263,6 +292,33 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
     };
   }, [run]);
 
+  // The 3-D scene is fetched once the table is up, and only for a game that has one and where WebGL
+  // works; until it is there (and for good, where it isn't) the field is drawn flat.
+  useEffect(() => {
+    const el = glCanvas.current;
+    if (!el || !hasArcade3d(id)) return;
+    let alive = true;
+    let made: Arcade3d | null = null;
+    loadArcade3d(el, id, game.view(game.newGame(game.normalize(rules), seats, seed)).field).then((scene) => {
+      if (!alive || !scene) return scene?.dispose();
+      made = scene;
+      gl.current = scene;
+    });
+    return () => {
+      alive = false;
+      gl.current = null;
+      made?.dispose();
+    };
+  }, [id]);
+
+  /** In 3-D or flat: this device's choice, the same one the table sports go by. */
+  function toggleDepth() {
+    const next = !depth;
+    setDepth(next);
+    // Turning it on when the setting says "flat" makes it "the best for each game", which for these is 3-D.
+    saveDisplay({ ...loadDisplay(), depth: next ? (depthSetting() === "flat" ? "auto" : depthSetting()) : "flat" });
+  }
+
   // A stat that is a meter (a timer running down) is drawn as a bar under the number before it,
   // which is what it belongs to: the chain's timer under the multiplier.
   const cells: { stat: Hud["stats"][number]; meter?: Hud["stats"][number] }[] = [];
@@ -309,6 +365,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
           </div>
         </div>
         <div className={`arcade-stage ${market ? "short" : ""}`}>
+          <canvas ref={glCanvas} className="arcade-gl" aria-hidden />
           <canvas ref={canvas} tabIndex={0} aria-label={`${game.name}: the field`} />
           {paused && !ending && (
             <section className="arcade-sheet" aria-label="Paused">
@@ -316,7 +373,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
                 <h2>Paused</h2>
                 <ul className="arcade-controls">
                   {game.controls.map((line) => (
-                    <li key={line}>{line}</li>
+                    <li key={line}>{says(line)}</li>
                   ))}
                 </ul>
                 <div className="arcade-row">
@@ -480,7 +537,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
           )}
           {!build && !market && cells.map(({ stat: s, meter }) => (
             <div className="arcade-cell" key={s.key}>
-              <small>{s.label}</small>
+              <small>{says(s.label)}</small>
               {s.key === "multiplier" ? (
                 <b data-hot={s.value >= 8 ? 2 : s.value >= 3 ? 1 : 0}>×{s.value}</b>
               ) : (
@@ -494,7 +551,12 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
           <span className="arcade-grow" />
           {controls.specialLabel && (
             <button type="button" className="arcade-btn special" onPointerDown={(e) => (e.preventDefault(), controls.special())}>
-              {controls.specialLabel}
+              {says(controls.specialLabel)}
+            </button>
+          )}
+          {hasArcade3d(id) && (
+            <button type="button" className="arcade-btn" aria-pressed={depth} title={depth ? "Drawn in 3D. Press for the flat drawing." : "Drawn flat. Press for 3D."} onClick={toggleDepth}>
+              3D
             </button>
           )}
           <button type="button" className="arcade-btn" onClick={() => !ending && setPaused((p) => !p)}>
