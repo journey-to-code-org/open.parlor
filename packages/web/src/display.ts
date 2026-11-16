@@ -3,6 +3,8 @@
 // coordinates are drawn and whether a stone takes one tap or two. Kept in this
 // browser and put on <html> as data attributes, so the CSS (and the card motion) follow them.
 
+import { useSyncExternalStore } from "react";
+
 export type Motion = "on" | "calm" | "off";
 export interface DisplaySettings {
   motion: Motion;
@@ -10,7 +12,7 @@ export interface DisplaySettings {
   suits: 2 | 4;
   /** How a table sport is looked at: down from an angle, like a model on a table, or from straight above, like a plan. */
   view: TableView;
-  /** Whether a table sport is drawn in 3-D (where the device can) or in the flat drawing it always had. */
+  /** Whether a game that has a 3-D look (a table sport, an arcade game, Chess, Palace) is drawn in 3-D, where the device can, or in the flat drawing it always had. */
   depth: Depth;
   /** A board's coordinates (A to T, 1 to 19) are drawn round it. */
   coords: boolean;
@@ -76,6 +78,14 @@ export function saveDisplay(settings: DisplaySettings) {
     /* private mode: it still applies for now */
   }
   applyDisplay(settings);
+  for (const heard of watching) heard();
+}
+
+/** Things on the page that are drawn from a setting, and want to know when it is changed. */
+const watching = new Set<() => void>();
+function watchDisplay(heard: () => void) {
+  watching.add(heard);
+  return () => void watching.delete(heard);
 }
 
 /** The motion setting as it stands on the page. */
@@ -92,6 +102,12 @@ export const depthSetting = (): Depth => {
   const d = typeof document === "undefined" ? undefined : document.documentElement.dataset.depth;
   return d === "flat" || d === "3d" ? d : "auto";
 };
+/**
+ * Whether `game` is to be drawn in 3-D, for a component: it is drawn again when the setting changes.
+ * (A table that paints a canvas every frame can simply ask `wants3d` as it goes.)
+ */
+export const useWants3d = (game: string) => useSyncExternalStore(watchDisplay, () => wants3d(game), () => false);
+
 /** Games whose flat, angled drawing is the better one, and so is what "auto" gives. */
 const BEST_FLAT = new Set(["minigolf"]);
 /** Is this game drawn in 3-D, going by the setting? */

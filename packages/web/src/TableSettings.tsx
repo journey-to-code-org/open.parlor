@@ -153,7 +153,7 @@ export function TableSettingsFields({
 }
 
 /** This device's own look: animations, suit colours and how a table sport is looked at. Saved at once. */
-export function DisplayFields({ sport = false, stones = false }: { sport?: boolean; stones?: boolean }) {
+export function DisplayFields({ sport = false, stones = false, depth = false }: { sport?: boolean; stones?: boolean; depth?: boolean }) {
   const [display, setDisplay] = useState(loadDisplay);
   const change = (patch: Partial<DisplaySettings>) => {
     const next = { ...display, ...patch };
@@ -191,7 +191,7 @@ export function DisplayFields({ sport = false, stones = false }: { sport?: boole
           onChange={(v) => change({ view: v === "above" ? "above" : "angled" })}
         />
       )}
-      {sport && (
+      {(sport || depth) && (
         <Choice
           label="The table is drawn"
           value={display.depth}
@@ -234,6 +234,7 @@ export function TableSettingsButton({
   solo = false,
   sport = false,
   stones = false,
+  depth = false,
 }: {
   settings: TableSettings;
   onChange: (next: TableSettings) => Promise<void> | void;
@@ -242,6 +243,8 @@ export function TableSettingsButton({
   sport?: boolean;
   /** At a board of crossings (Go): how a stone is put down, and whether the coordinates show. */
   stones?: boolean;
+  /** At a table that has a 3-D look (Chess, Palace): this device may choose it or the flat drawing. */
+  depth?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -293,7 +296,7 @@ export function TableSettingsButton({
               {problem && <p className="error">{problem}</p>}
               <PlayersFields />
               {!solo && <h3>On this device</h3>}
-              <DisplayFields sport={sport} stones={stones} />
+              <DisplayFields sport={sport} stones={stones} depth={depth} />
               {anythingMoved && (
                 <button type="button" className="link" onClick={putEverythingBack}>
                   Put the buttons I've moved back

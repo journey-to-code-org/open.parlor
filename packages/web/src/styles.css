@@ -1414,6 +1414,27 @@ html[data-motion="off"] .board-grid .cell.mark-must::before { animation: none; }
 .board-chess .me-badge { margin-bottom: 0; }
 .board-chess .kit-seat { flex-direction: row; align-items: center; gap: 8px; }
 
+/* The board in 3-D (board/board3d.ts). The scene's canvas sits in the board's own place, a little
+   bigger than it (for the frame, and for pieces that stand up past the far edge). The grid of
+   buttons stays where it is and stays what is pressed: it is made see-through and tipped back with
+   the same camera the scene has, so each button lies on its square of the picture. */
+.board-gl {
+  grid-area: grid; z-index: 0; pointer-events: none; visibility: hidden; display: block; max-width: none;
+  width: calc(100% * var(--gl-wide)); aspect-ratio: var(--gl-wide) / var(--gl-high);
+  margin: calc(-50% * (var(--gl-high) - 1)) calc(-50% * (var(--gl-wide) - 1));
+}
+.board-gl.up { visibility: visible; }
+.board-wrap.three .board-grid {
+  z-index: 1; overflow: visible; background: none; box-shadow: none;
+}
+.board-wrap.three .board-grid .cell, .board-wrap.three .board-grid .cell:hover { background: none !important; background-image: none !important; box-shadow: none; }
+.board-wrap.three .board-grid .cell > .piece, .board-wrap.three .board-grid .cell::after, .board-wrap.three .board-grid .cell::before { opacity: 0; }
+.board-wrap.three .board-grid .cell.can:hover { background: rgba(255, 255, 255, 0.14) !important; }
+/* The letters and numbers are painted on the board's frame in the scene. */
+.board-wrap.three .coords { visibility: hidden; }
+.looking-back .board-wrap.three .board-grid { outline: none; }
+.looking-back .board-wrap.three .board-gl { filter: sepia(0.35); }
+
 /* A clock of the game's own at a seat (board/SeatClock.tsx). */
 .seat-clock {
   padding: 2px 9px; border-radius: 8px; background: rgba(0, 0, 0, 0.45); color: #d9e6dd; border: 1px solid rgba(251, 246, 236, 0.25);
