@@ -5,6 +5,9 @@
 // What there is to do: buy something tired, fix it, bolt parts on it, and take it to the line,
 // alone against the clock or against one of the locals for money. What a run did to the car comes
 // back with it.
+//
+// It is a place, not a list: you stand in the garage and pick the thing you mean (the paper on the
+// bench, the hood, the door), and a part comes off by undoing its bolts. The pictures are in `Scenes`.
 import {
   CAR_MODELS, DYNO_COST, GARAGE_STAKE, MOUNTAIN_ROAD_PRESETS, REMOTE_TUNE_COST, PINKSLIPS_PRESETS, afterRace, carValue, garageAct, garageView, loadGarage, mountainRoad, newDay, newGarage, pinkSlips, safeBuild, settleUp, timeslip,
   type Build, type GarageState, type GarageView,
@@ -15,6 +18,7 @@ import { blip, notes, wakeArcadeSound } from "../arcade/sounds";
 import { loadDrive, loadDriveHouse, loadDriveStrip, loadMyHouses, saveDrive, saveDriveHouse, saveDriveStrip } from "../storage";
 import { fetchGarage, fetchGarages, fetchMarket, marketDo, sendGarage, type HouseGarage, type MarketLook } from "./house";
 import { Road, type RoadOutcome } from "./Road";
+import { EngineBay, GarageScene, Junction, Lot, SideView, paintOf } from "./Scenes";
 import { Strip, type Rival, type StripOutcome } from "./Strip";
 
 const today = () => {
@@ -72,12 +76,22 @@ function localsFor(mine: Build, value: number, day: number): Local[] {
 /** What each kind of piece is called when the talk is of the market for them: a gearbox off a car is not a gearbox upgrade. */
 const KINDS: Record<string, string> = { intake: "intakes", exhaust: "exhausts", cam: "cams", boost: "boost parts", tyres: "tyre upgrades", weight: "weight parts", trans: "gearbox upgrades", block: "engines", gearbox: "gearboxes", panels: "body panels", interior: "interiors", wheels: "wheels", glass: "glass" };
 
+type Place = "garage" | "hood" | "under" | "body" | "paper" | "laptop" | "tools" | "shelf" | "board" | "manual" | "out";
+const PLACES: Record<Place, string> = { garage: "The garage", hood: "Under the hood", under: "Up on stands", body: "The car", paper: "The paper", laptop: "The laptop", tools: "The tool wall", shelf: "Your shelf", board: "The board", manual: "The manual", out: "Out the door" };
+const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+
 type Racing = { car: number; carName: string; build: Build; rival: Rival | null; key: number; road: boolean; tune: boolean };
 
 export function PinkSlips({ onHome }: { onHome: () => void }) {
   const [garage, setGarage] = useState(openGarage);
   const [picked, setPicked] = useState<number | null>(() => garage.cars[0]?.id ?? null);
-  const [tab, setTab] = useState<"car" | "ads" | "house">(() => (garage.cars.length ? "car" : "ads"));
+  // Where you are standing, and what you have picked there.
+  const [place, setPlace] = useState<Place>(() => (garage.cars.length ? "garage" : "paper"));
+  const [sel, setSel] = useState<string | null>(null);
+  const [hover, setHover] = useState<string | null>(null);
+  const [job, setJob] = useState<{ spot: string; label: string; left: number[]; run: () => void } | null>(null);
+  const [pulled, setPulled] = useState(0);
+  const [site, setSite] = useState<"rix" | "speed">("rix");
   // The house this garage is kept in: sent there after every change, and where the trading is.
   const [house, setHouse] = useState(loadDriveHouse);
   const houseRef = useRef(house);
@@ -245,9 +259,240 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
 
   const cheapest = Math.min(...view.listings.map((l) => l.price));
   const broke = view.cars.length === 0 && view.cash < cheapest;
+  const model = car ? CAR_MODELS[car.build[0]!]! : null;
+  const level = (slot: string) => car?.parts.find((x) => x.slot === slot)?.level ?? 0;
+  const mine = car && model ? { model: model.key, tone: paintOf(car.id), bent: car.body, tyres: level("tyres") } : null;
+  const when = new Date(garage.day * 86_400_000);
+
+  /** Walk somewhere: whatever was in hand is put down. */
+  const go = (to: Place, pickedThere: string | null = null) => {
+    wakeArcadeSound();
+    setPlace(to);
+    setSel(pickedThere);
+    setJob(null);
+    setHover(null);
+    if (to === "board") lookAround();
+  };
+  /** A job that has bolts in it: it is done when the last one is out. */
+  const wrench = (spot: string, label: string, run: () => void, bolts = 4) => setJob({ spot, label, left: Array.from({ length: bolts }, (_, i) => i), run });
+  const undo = (bolt: number) => {
+    if (!job) return;
+    const left = job.left.filter((x) => x !== bolt);
+    blip(300 + left.length * 60, 0.05, "square", 0.04);
+    if (left.length) return setJob({ ...job, left });
+    setJob(null);
+    job.run();
+  };
+  const picking = {
+    sel,
+    hint: setHover,
+    bolts: job,
+    undo,
+    pick: (spot: string) => {
+      if (place !== "garage") {
+        setJob(null);
+        setPulled(0);
+        return setSel(spot);
+      }
+      if (spot === "door" && !car) return say("There is nothing to drive. The paper is on the bench.");
+      go(spot === "door" ? "out" : (spot as Place));
+    },
+  };
+
+  /** One of the bolt-on parts: what is on the car, and what could go on in its place. */
+  const partPanel = (slot: string) => {
+    const part = car?.parts.find((x) => x.slot === slot);
+    if (!car || !part) return <p className="facts">There is nothing here to change on this car.</p>;
+    const bolts = slot === "tyres" ? 5 : 4;
+    const fit = (label: string, command: Record<string, unknown>) => wrench(slot, label, () => act({ ...command, car: car.id }), bolts);
+    return (
+      <>
+        <h3>{part.label} <span className="has">{part.has}</span></h3>
+        <p className="facts">{part.hint}</p>
+        {job?.spot === slot ? (
+          <div className="sr-acts">
+            <p className="sr-do">{job.label} {job.left.length} {slot === "tyres" ? "wheel nuts" : "bolts"} to go. Undo them on the car.</p>
+            <button type="button" onClick={() => setJob(null)}>Leave it</button>
+          </div>
+        ) : part.needs ? (
+          <p className="bad">That is a job for {part.needs === "jack" ? "a jack" : "wrenches"}, and there {part.needs === "jack" ? "is none" : "are none"} on the wall.</p>
+        ) : (
+          <div className="sr-acts">
+            {part.shelf !== null && <button type="button" className="yes" onClick={() => fit("Fitting the one off your shelf.", { cmd: "bolt", piece: part.shelf })}>Fit the one on your shelf<i>Free</i></button>}
+            {part.next && <button type="button" disabled={!part.next.can} onClick={() => fit(`Fitting: ${part.next!.label}.`, { cmd: "fit", slot, level: part.next!.level })}>{part.next.label}<i>{dollars(part.next.cost)} new</i></button>}
+            {part.next?.rix && <button type="button" className="rix" disabled={view.cash < part.next.rix.price} onClick={() => fit("Fitting the used one from Rix Racing.", { cmd: "fit", slot, level: part.next!.level, rix: part.next!.rix!.id })}>The same, used<i>{dollars(part.next.rix.price)} at Rix Racing</i></button>}
+            {part.level > 0 && <button type="button" className="off" onClick={() => fit("Taking it off.", { cmd: "pull", slot })}>Take it off<i>Onto the shelf</i></button>}
+            {!part.next && part.level > 0 && <span className="maxed">Nothing better is made for it.</span>}
+          </div>
+        )}
+      </>
+    );
+  };
+
+  /** What the panel under the picture says about the thing you picked. */
+  const about = () => {
+    if (place === "garage") {
+      if (!car) return <p className="empty">Nothing in here but an oil stain. {broke ? "And not enough for a car." : "The paper on the bench is where it starts."}</p>;
+      return (
+        <>
+          <p className="facts">{car.sheet.year} {car.sheet.model} · {car.sheet.tier} · {car.sheet.drive} · {car.sheet.gearbox} · {car.sheet.mass} kg · worth {dollars(car.value)}</p>
+          <div className="pinks-numbers">
+            <div><small>Power</small><b>{car.runs ? `${car.sheet.horsepower} hp` : "—"}</b></div>
+            <div><small>Quarter mile</small><b>{car.sheet.quarter ? `${seconds(car.sheet.quarter.et)} s` : "—"}</b></div>
+            <div><small>At the line</small><b>{car.sheet.quarter ? `${car.sheet.quarter.mph} mph` : "—"}</b></div>
+            <div><small>Record</small><b>{car.wins} of {car.races}</b></div>
+          </div>
+          {!car.runs && <p className="bad">{car.totaled ? "It is a write-off." : car.body >= 300 ? "It is too bent to drive." : "It will not start."}</p>}
+        </>
+      );
+    }
+    if (!car) return null;
+    if (place === "hood") {
+      if (sel === "cam" || sel === "intake" || sel === "boost") return partPanel(sel);
+      if (sel === "block") return (
+        <>
+          <h3>The engine</h3>
+          <Wear label="Engine" value={car.engine}>{car.repairs.engine > 0 && <Job label="Rebuild it" cost={car.repairs.engine} tool={tools.wrenches ? null : "wrenches"} cash={view.cash} onClick={() => act({ cmd: "engine", car: car.id })} />}</Wear>
+          <p className="facts">Every pass wears it. Run it short of oil, or lean, and it goes all at once.</p>
+        </>
+      );
+      if (sel === "plugs") return (
+        <>
+          <h3>Plugs</h3>
+          <Wear label="Plugs" value={car.plugs}>{car.repairs.plugs > 0 && <Job label="New plugs" cost={car.repairs.plugs} tool={tools.wrenches ? null : "wrenches"} cash={view.cash} onClick={() => act({ cmd: "plugs", car: car.id })} />}</Wear>
+          <p className="facts">A rich mixture fouls them, and fouled plugs cost power.</p>
+        </>
+      );
+      if (sel === "oil") return (
+        <>
+          <h3>Oil</h3>
+          <Wear label="Oil" value={car.oil}>{car.repairs.oil > 0 && <Job label="Change it" cost={car.repairs.oil} tool={tools.wrenches ? null : "wrenches"} cash={view.cash} onClick={() => act({ cmd: "oil", car: car.id })} />}</Wear>
+          <p className="facts">Old oil loses pressure at high revs. Watch the gauge on a pass.</p>
+        </>
+      );
+      if (sel === "fuel") return (
+        <>
+          <div className="row"><h3>The mixture screw</h3><span className={`pinks-afr ${car.mixture}`}><b>{(car.afr / 10).toFixed(1)}</b> : 1 · {car.mixture === "right" ? "On the money" : car.mixture === "lean" ? "Lean" : "Rich"}</span></div>
+          <div className="pinks-fuel">
+            <button type="button" disabled={car.fuel <= 0} onClick={() => act({ cmd: "fuel", car: car.id, fuel: car.fuel - 1 })} aria-label="Less fuel">Leaner</button>
+            <div className="scale" aria-hidden="true">{Array.from({ length: car.fuelMax + 1 }, (_, i) => <i key={i} className={i === car.fuel ? "on" : ""} />)}</div>
+            <button type="button" disabled={car.fuel >= car.fuelMax} onClick={() => act({ cmd: "fuel", car: car.id, fuel: car.fuel + 1 })} aria-label="More fuel">Richer</button>
+          </div>
+          <p className="facts">{car.mixture === "lean" ? "Lean makes a little more power and a lot more heat. Work it hard like this and it will let go." : car.mixture === "rich" ? "Rich is safe and slow, and it is fouling the plugs." : "It is where this engine wants it. Anything that helps it breathe will want more fuel."} The tuner in Morgantown will set it for you, for money.</p>
+        </>
+      );
+      return (
+        <>
+          <Wear label="Engine" value={car.engine} /><Wear label="Oil" value={car.oil} /><Wear label="Plugs" value={car.plugs} />
+          <p className="facts">Pick something in the bay.</p>
+        </>
+      );
+    }
+    if (place === "under") {
+      if (sel === "exhaust" || sel === "trans") return partPanel(sel);
+      if (sel === "tyres") return (
+        <>
+          <Wear label="Tyres" value={car.rubber}>{car.repairs.tyres > 0 && <Job label="New set" cost={car.repairs.tyres} tool={tools.jack ? null : "a jack"} cash={view.cash} onClick={() => act({ cmd: "tyres", car: car.id })} />}</Wear>
+          {partPanel("tyres")}
+        </>
+      );
+      if (sel === "final") return (
+        <>
+          <h3>Final drive</h3>
+          <p className="facts">Shorter leaves harder and runs out sooner. Free to change.</p>
+          <span className="pinks-final">{["Tall", "Stock", "Short"].map((name, i) => <button key={name} type="button" className={car.final === i ? "on" : ""} onClick={() => act({ cmd: "final", car: car.id, final: i })}>{name}</button>)}</span>
+        </>
+      );
+      return <p className="facts">{tools.jack ? "It is up on stands." : "No jack, so it is up on blocks. Tyres will not come off like this."} Pick something underneath.</p>;
+    }
+    if (place === "body") {
+      if (sel === "weight") return partPanel(sel);
+      if (sel === "panels") return (
+        <>
+          <h3>Bodywork</h3>
+          <Wear label="Body" value={1000 - car.body} dead="Write-off">{car.repairs.body > 0 && <Job label="Straighten it" cost={car.repairs.body} tool={tools.hammer ? null : "a hammer"} cash={view.cash} onClick={() => act({ cmd: "body", car: car.id })} />}</Wear>
+          {car.totaled && (
+            <div className="sr-acts">
+              <p className="bad">It is a write-off. No hammer fixes that.</p>
+              <button type="button" onClick={() => { act({ cmd: "scrap", car: car.id }); setPicked(null); go("garage"); }}>Scrap it<i>{dollars(car.scrap)}</i></button>
+              <button type="button" className="yes" disabled={!tools.wrenches} onClick={() => { act({ cmd: "salvage", car: car.id }); setPicked(null); go("garage"); }}>Pull the parts first<i>{tools.wrenches ? dollars(car.salvage) : "Needs wrenches"}</i></button>
+            </div>
+          )}
+        </>
+      );
+      if (sel === "plate") return (
+        <form className="sr-acts" onSubmit={(e) => { e.preventDefault(); if (naming !== null) act({ cmd: "name", car: car.id, name: naming }); setNaming(null); }}>
+          <h3>What it is called</h3>
+          <input value={naming ?? car.name} maxLength={28} onChange={(e) => setNaming(e.target.value)} aria-label="The car's name" />
+          <button type="submit" className="yes">Paint it on</button>
+        </form>
+      );
+      if (sel === "sell") return (
+        <>
+          <h3>Get rid of it</h3>
+          <div className="sr-acts">
+            <button type="button" onClick={() => { if (window.confirm(`Sell ${car.name} to the dealer for ${dollars(car.sells)}?`)) { act({ cmd: "sell", car: car.id }); setPicked(null); go("garage"); } }}>Sell it to the dealer<i>{dollars(car.sells)}</i></button>
+            {house && <button type="button" onClick={() => { const price = priceFor(car.name, car.value); if (price) { void trade({ do: "list", car: car.id, price }, () => `${car.name} is up for sale in ${house.name} at ${dollars(price)}.`); setPicked(null); go("garage"); } }}>Put it up in {house.name}<i>Name your price</i></button>}
+            <button type="button" disabled={!tools.wrenches || !tools.jack} onClick={() => { if (window.confirm(`Tear ${car.name} down for parts? It comes to about ${dollars(car.teardown)} in pieces today, and there is no putting it back.`)) { act({ cmd: "strip", car: car.id }); setPicked(null); go("shelf"); } }}>Tear it down for parts<i>{tools.wrenches && tools.jack ? `About ${dollars(car.teardown)} in pieces` : "Needs wrenches and a jack"}</i></button>
+          </div>
+        </>
+      );
+      return <p className="facts">Worth {dollars(car.value)} as it stands. Pick a part of it.</p>;
+    }
+    if (place === "out") {
+      if (!car.runs) return <p className="bad">{car.totaled ? "It is not going anywhere again." : car.body >= 300 ? "It is too bent to drive. It needs straightening first." : "It will not start. The engine needs a rebuild first."}</p>;
+      if (sel === "strip") {
+        const them = locals.length ? locals[pulled % locals.length]! : null;
+        return (
+          <>
+            <div className="row">
+              <h3>{rules.name ?? "The strip"}</h3>
+              <label className="pinks-where">Tonight it is <select value={strip} onChange={(e) => setStrip(e.target.value)}>{PINKSLIPS_PRESETS.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+            </div>
+            <p className="facts">{pinkSlips.describe(rules).slice(0, 2).join(" ")}</p>
+            {!them && <p className="facts">Nobody will line up against it until it has put a time on the board.</p>}
+            {them && <p className="sr-says"><b>{them.name}</b> pulls up in a {them.car}. Runs about {seconds(them.et)}. “{them.pitch}”</p>}
+            <div className="sr-acts">
+              {them && <button type="button" className="yes" disabled={view.cash < them.stake} onClick={() => race(them)}>Race {them.name}<i>For {dollars(them.stake)}</i></button>}
+              {locals.length > 1 && <button type="button" onClick={() => { setPulled(pulled + 1); blip(220, 0.08, "triangle", 0.04); }}>Wave them on<i>See who is next</i></button>}
+              <button type="button" onClick={() => race(null)}>Make a pass alone<i>Nothing riding on it</i></button>
+            </div>
+          </>
+        );
+      }
+      if (sel === "mountain") return (
+        <>
+          <div className="row">
+            <h3>The mountain road</h3>
+            <label className="pinks-where">Which run <select value={route} onChange={(e) => setRoute(e.target.value)}>{MOUNTAIN_ROAD_PRESETS.filter((x) => x.id !== "remote").map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+          </div>
+          <p className="facts">{mountainRoad.describe(mountainRoad.normalize({ id: route }))[0]} Fines come out of your cash, and whatever you hit comes home on the car.</p>
+          <div className="sr-acts">
+            <button type="button" className="yes" onClick={() => race(null, true)}>Take it out<i>Nobody to beat but the clock</i></button>
+            {locals[1] && <button type="button" disabled={view.cash < locals[1].stake} onClick={() => race(locals[1]!, true)}>Run it against {locals[1].name}<i>{locals[1].car} · for {dollars(locals[1].stake)}</i></button>}
+          </div>
+        </>
+      );
+      if (sel === "tuner") return (
+        <>
+          <div className="row"><h3>Morgantown</h3><span className={`pinks-afr ${car.mixture}`}><b>{(car.afr / 10).toFixed(1)}</b> : 1 · {car.mixture === "right" ? "On the money" : car.mixture === "lean" ? "Lean" : "Rich"}</span></div>
+          <p className="facts">Three pulls on the rollers and it comes back right. Or he tunes it from his laptop while you make the pulls on a dark road: foot flat, no lifting, and there are deer. You pay him only if he gets his pulls.</p>
+          <div className="sr-acts">
+            <button type="button" disabled={view.cash < DYNO_COST || car.mixture === "right"} onClick={() => act({ cmd: "dyno", car: car.id })}>The dyno<i>{car.mixture === "right" ? "It's right already" : dollars(DYNO_COST)}</i></button>
+            <button type="button" disabled={view.cash < REMOTE_TUNE_COST || car.mixture === "right"} onClick={() => race(null, true, true)}>A remote tune<i>{car.mixture === "right" ? "It's right already" : dollars(REMOTE_TUNE_COST)}</i></button>
+          </div>
+        </>
+      );
+      return <p className="facts">The end of the street. Pick a sign.</p>;
+    }
+    return null;
+  };
+
+  const ad = place === "paper" ? view.listings.find((l) => String(l.id) === sel) ?? null : null;
+  const them = place === "out" && sel === "strip" && locals.length ? locals[pulled % locals.length]! : null;
 
   return (
-    <div className="pinks">
+    <div className="pinks sr">
       <header className="pinks-top">
         <button type="button" className="pinks-back" onClick={onHome}>← Games</button>
         <h1>🏁 Road to the Shootout</h1>
@@ -257,298 +502,192 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
         </div>
       </header>
 
-      <div className="pinks-floor">
-        <nav className="pinks-bays" aria-label="Your cars">
-          <h2>The garage <small>{view.cars.length} of {view.bays} bays</small></h2>
-          {view.cars.map((c) => (
-            <button key={c.id} type="button" className={c.id === car?.id && tab === "car" ? "bay on" : "bay"} onClick={() => { setPicked(c.id); setTab("car"); }}>
-              <b>{c.name}</b>
-              <span>{c.runs ? (c.sheet.quarter ? `${seconds(c.sheet.quarter.et)} s · ${c.sheet.horsepower} hp` : `${c.sheet.horsepower} hp`) : "Blown engine"}</span>
-            </button>
-          ))}
-          {view.cars.length === 0 && <p className="empty">Nothing in here but an oil stain. The classifieds are where it starts.</p>}
-          <button type="button" className={tab === "ads" ? "bay ads on" : "bay ads"} onClick={() => setTab("ads")}>
-            <b>Marketplace</b>
-            <span>{view.listings.length} cars for sale today</span>
-          </button>
-          {house && (
-            <button type="button" className={tab === "house" ? "bay ads on" : "bay ads"} onClick={() => { setTab("house"); lookAround(); }}>
-              <b>{house.name}'s market</b>
-              <span>{market ? `${market.lots.length} for sale${market.waiting ? ` · ${dollars(market.waiting)} waiting for you` : ""}` : "Pieces and cars, between you"}</span>
-            </button>
-          )}
-          <div className="pinks-card pinks-tools">
-            <h3>Where it is kept</h3>
-            {house ? (
-              <>
-                <p className="facts">In <b>{house.name}</b>. It is the same garage on any device you are in that house on, and the house can see what you have built.</p>
-                <button type="button" onClick={() => keepHouse(null)}>Keep it in this browser only</button>
-              </>
-            ) : myHouses.length > 0 ? (
-              <>
-                <p className="facts">In this browser. Keep it in a house to have it on every device, and to trade with the people in it.</p>
-                {myHouses.map((h) => <button key={h.slug} type="button" onClick={() => void moveIn(h.slug)}>Keep it in {h.name}</button>)}
-              </>
-            ) : (
-              <p className="facts">In this browser. Join a house to keep it there, have it on every device, and trade with the people in it.</p>
-            )}
-          </div>
-          <div className="pinks-card pinks-tools">
-            <h3>The tool wall</h3>
-            {view.tools.map((t) => (
-              <div key={t.tool} className="row">
-                <div><b>{t.label}</b><small>{t.hint}</small></div>
-                {t.owned ? <span className="maxed">Got it</span> : <button type="button" disabled={!t.can} onClick={() => act({ cmd: "tool", tool: t.tool })}>{dollars(t.cost)}</button>}
-              </div>
-            ))}
-          </div>
-          <div className="pinks-card pinks-tools">
-            <h3>Rix Racing <small>used parts</small></h3>
-            {view.rix.map((r) => <div key={r.id} className="row"><div><b>{r.name}</b><small>{r.label} · off a {r.tier.toLowerCase()}</small></div><span className="cash">{dollars(r.price)}</span></div>)}
-            <p className="facts">Fit one from a car's parts list, when it is the next step for that car.</p>
-          </div>
-          <div className="pinks-card pinks-tools pinks-shelf">
-            <h3>Your shelf <small>{view.shelf.length} of {view.shelfSpace}</small></h3>
-            {view.gluts.length > 0 && <p className="facts">Flooded today: {view.gluts.map((x) => `${KINDS[x.kind] ?? x.label.toLowerCase()} (${x.by})`).join(", ")}. Those go for a little over half.</p>}
-            {view.shelf.length === 0 && <p className="empty">Nothing on it. Pull a part off a car, or tear a parts car down.</p>}
-            {view.shelf.map((x) => (
-              <div key={x.id} className="row">
-                <div><b>{x.name}</b><small>off a {x.from} · {Math.round(x.cond / 10)}%{x.glut ? ` · ${x.glut} has flooded these` : ""}</small></div>
-                <span className="pinks-buy">
-                  <button type="button" className={x.glut ? "low" : ""} onClick={() => act({ cmd: "sellPiece", piece: x.id })}>Sell {dollars(x.value)}</button>
-                  {house && <button type="button" className="off" onClick={() => { const price = priceFor(x.name, x.worth); if (price) void trade({ do: "list", piece: x.id, price }, () => `Up for sale in ${house.name} at ${dollars(price)}.`); }}>List it in the house</button>}
-                </span>
-              </div>
-            ))}
-            {view.shelf.length > 1 && <button type="button" onClick={() => change((g) => { let made = 0; for (const x of [...g.shelf]) { const was = g.cash; if (garageAct(g, { cmd: "sellPiece", piece: x.id }).ok) made += g.cash - was; } return { ok: true, message: `The lot went for ${dollars(made)}.` }; })}>Sell the lot for {dollars(view.shelf.reduce((sum, x) => sum + x.value, 0))}</button>}
-          </div>
-        </nav>
+      <main className="sr-stage">
+        <div className="sr-screen">
+          {place === "garage" && <GarageScene look={{ car: mine, tools, shelf: view.shelf.length, date: [MONTHS[when.getUTCMonth()]!, when.getUTCDate()], house: !!house }} p={picking} />}
+          {place === "hood" && car && model && <EngineBay look={{ tone: paintOf(car.id), intake: level("intake"), cam: level("cam"), boost: level("boost"), turbo: !!model.turbo, engine: car.engine, oil: car.oil, plugs: car.plugs, mixture: car.mixture }} p={picking} />}
+          {(place === "under" || place === "body") && car && mine && model && <SideView lifted={place === "under"} look={{ ...mine, exhaust: level("exhaust"), trans: level("trans"), weight: level("weight"), jack: tools.jack, rear: model.drive !== "fwd", forSale: false }} p={picking} />}
+          {place === "out" && mine && (sel === "strip" ? <Lot mine={mine} theirs={them ? { model: CAR_MODELS[them.build[0]!]!.key, tone: paintOf(pulled * 3 + 4) } : null} name={them?.name ?? null} /> : <Junction car={mine} p={picking} />)}
 
-        {tab === "house" && house ? (
-          <section className="pinks-ads" aria-label="House market">
-            <h2>{house.name}'s market <small>What the house is selling, and what the scrappers have up today.</small></h2>
-            {market && market.waiting > 0 && (
-              <div className="pinks-card cousin">
-                <p>Something of yours sold. {dollars(market.waiting)} is waiting for you.</p>
-                <button type="button" className="yes" onClick={() => void trade({ do: "collect" }, (d) => (d.sales?.length ? d.sales.map((x) => `${x.from} bought your ${x.what.toLowerCase()} for ${dollars(x.amount)}.`).join(" ") : "Nothing was waiting."))}>Collect it</button>
-              </div>
-            )}
-            {!market && <p className="empty">Asking the house…</p>}
-            <ul className="pinks-lots">
-              {market?.lots.map((l) => (
-                <li key={l.id} className={`pinks-card${l.mine ? " mine" : ""}`}>
-                  <div className="row"><b>{l.piece ? l.piece.name : l.car?.name}</b><b className="cash">{dollars(l.price)}</b></div>
-                  <p className="facts">
-                    {l.piece ? `Off a ${l.piece.from} · ${Math.round(l.piece.cond / 10)}% · worth about ${dollars(l.piece.worth)}` : l.car ? `${l.car.model} · engine ${Math.round(l.car.engine / 10)}% · ${l.car.runs ? "runs" : "does not run"} · about ${dollars(l.car.teardown)} in pieces` : ""}
-                  </p>
-                  <div className="row">
-                    <span className="has">{l.mine ? "Yours" : l.scrapper ? l.seller : `From ${l.seller}`}</span>
-                    {l.mine ? <button type="button" onClick={() => void trade({ do: "unlist", id: l.id }, () => "Back in your garage.")}>Take it back</button> : <button type="button" className="yes" disabled={view.cash < l.price} onClick={() => void trade({ do: "buy", id: l.id }, (d) => `${d.bought ?? "It"} is yours.`)}>{view.cash < l.price ? "Can't afford it" : "Buy it"}</button>}
-                  </div>
-                </li>
-              ))}
-            </ul>
-            {club.length > 0 && (
-              <div className="pinks-card">
-                <h3>Who has what</h3>
-                <ul className="pinks-locals">
-                  {club.map((m) => (
-                    <li key={m.id}>
-                      <div><b>{m.name}{m.me ? " (you)" : ""}</b><small>{m.cars.length ? m.cars.map((c) => `${c.name}${c.quarter ? ` ${seconds(c.quarter)}` : ""}`).join(" · ") : "An empty garage"}</small></div>
-                      <span className="has">{m.wins} of {m.races}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </section>
-        ) : tab === "ads" || !car ? (
-          <section className="pinks-ads" aria-label="Classifieds">
-            <h2>Marketplace <small>New listings tomorrow. A seller's word is a seller's word.</small></h2>
-            {view.news && <p className="pinks-news">{view.news}</p>}
-            {broke && (
-              <div className="pinks-card cousin">
-                <p>No car and not enough for one. Your cousin will front you the money for a shitbox, this once more.</p>
-                <button type="button" className="yes" onClick={() => change((g) => { settleUp(g, Math.max(GARAGE_STAKE / 2, cheapest) - g.cash); return { ok: true, message: "Don't make him regret it." }; })}>Take it</button>
-              </div>
-            )}
-            <ul>
-              {view.listings.map((l) => (
-                <li key={l.id} className={`pinks-page tier${CAR_MODELS.find((m) => m.name === l.sheet.model)?.tier ?? 0}${l.partsCar ? " parts" : ""}`}>
-                  <header>
-                    <span>{l.partsCar ? "Parts car" : l.sheet.tier}</span>
-                    <b className="cash">{dollars(l.price)}</b>
-                  </header>
-                  <h3><small>{l.sheet.year}</small> {l.sheet.model}</h3>
-                  <p className="pitch">“{l.pitch}”</p>
-                  <dl>
-                    <div><dt>Power</dt><dd>{l.sheet.horsepower} hp</dd></div>
-                    <div><dt>Quarter mile</dt><dd>{l.sheet.quarter ? `${seconds(l.sheet.quarter.et)} s` : "Won't run"}</dd></div>
-                    <div><dt>At the line</dt><dd>{l.sheet.quarter ? `${l.sheet.quarter.mph} mph` : "—"}</dd></div>
-                    <div><dt>Weight</dt><dd>{l.sheet.mass} kg</dd></div>
-                    <div><dt>Drive</dt><dd>{l.sheet.drive.replace(" drive", "")}</dd></div>
-                    <div><dt>Gearbox</dt><dd>{l.sheet.gearbox}</dd></div>
-                  </dl>
-                  {l.partsCar && <p className="apart">Bent {Math.round(l.body / 10)}%. In pieces it comes to about <b>{dollars(l.teardown)}</b>, on a good day.</p>}
-                  {l.watching && <p className="watching">{l.watching} is looking at this one. {l.movesLeft <= 1 ? "It will be gone the next thing you do." : `Gone in ${l.movesLeft} moves.`}</p>}
-                  <p className="says">The seller says</p>
-                  <Wear label="Engine" value={l.engine} />
-                  <Wear label="Tyres" value={l.rubber} />
-                  <button type="button" className="yes" disabled={!l.can} onClick={() => { const g = act({ cmd: "buy", listing: l.id }); const mine = g.cars.at(-1); if (mine && g.cars.length > garage.cars.length) { setPicked(mine.id); setTab("car"); } }}>{l.can ? "Buy it" : view.cars.length >= view.bays ? "No room" : "Can't afford it"}</button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : (
-          <section className="pinks-car" aria-label={car.name}>
-            <div className="pinks-card">
-              <div className="row">
-                {naming === null ? (
-                  <h2>{car.name} <button type="button" className="fine" onClick={() => setNaming(car.name)}>Rename</button></h2>
-                ) : (
-                  <form className="row" onSubmit={(e) => { e.preventDefault(); act({ cmd: "name", car: car.id, name: naming }); setNaming(null); }}>
-                    <input value={naming} maxLength={28} autoFocus onChange={(e) => setNaming(e.target.value)} aria-label="The car's name" />
-                    <button type="submit" className="yes">Save</button>
-                  </form>
-                )}
-                <span className="worth">Worth {dollars(car.value)}</span>
-              </div>
-              <p className="facts">{car.sheet.year} {car.sheet.model} · {car.sheet.tier} · {car.sheet.drive} · {car.sheet.gearbox} · {car.sheet.mass} kg</p>
-              <div className="pinks-numbers">
-                <div><small>Power</small><b>{car.sheet.horsepower} hp</b></div>
-                <div><small>Quarter mile</small><b>{car.sheet.quarter ? `${seconds(car.sheet.quarter.et)} s` : "—"}</b></div>
-                <div><small>At the line</small><b>{car.sheet.quarter ? `${car.sheet.quarter.mph} mph` : "—"}</b></div>
-                <div><small>Record</small><b>{car.wins} of {car.races}</b></div>
-              </div>
-              <Wear label="Engine" value={car.engine}>{car.repairs.engine > 0 && <Job label="Rebuild" cost={car.repairs.engine} tool={tools.wrenches ? null : "wrenches"} cash={view.cash} onClick={() => act({ cmd: "engine", car: car.id })} />}</Wear>
-              <Wear label="Tyres" value={car.rubber}>{car.repairs.tyres > 0 && <Job label="New set" cost={car.repairs.tyres} tool={tools.jack ? null : "a jack"} cash={view.cash} onClick={() => act({ cmd: "tyres", car: car.id })} />}</Wear>
-              <Wear label="Oil" value={car.oil}>{car.repairs.oil > 0 && <Job label="Change it" cost={car.repairs.oil} tool={tools.wrenches ? null : "wrenches"} cash={view.cash} onClick={() => act({ cmd: "oil", car: car.id })} />}</Wear>
-              <Wear label="Plugs" value={car.plugs}>{car.repairs.plugs > 0 && <Job label="New plugs" cost={car.repairs.plugs} tool={tools.wrenches ? null : "wrenches"} cash={view.cash} onClick={() => act({ cmd: "plugs", car: car.id })} />}</Wear>
-              <Wear label="Body" value={1000 - car.body} dead="Write-off">{car.repairs.body > 0 && <Job label="Straighten" cost={car.repairs.body} tool={tools.hammer ? null : "a hammer"} cash={view.cash} onClick={() => act({ cmd: "body", car: car.id })} />}</Wear>
-              {car.totaled && (
-                <div className="pinks-wreck">
-                  <p className="bad">It is a write-off. No hammer fixes that.</p>
-                  <button type="button" onClick={() => { act({ cmd: "scrap", car: car.id }); setPicked(null); }}>Scrap it for {dollars(car.scrap)}</button>
-                  <button type="button" className="yes" disabled={!tools.wrenches} onClick={() => { act({ cmd: "salvage", car: car.id }); setPicked(null); }}>{tools.wrenches ? `Pull the parts first: ${dollars(car.salvage)}` : "Pulling the parts needs wrenches"}</button>
+          {place === "paper" && (
+            <div className="sr-paper">
+              <div className="masthead"><small>{MONTHS[when.getUTCMonth()]} {when.getUTCDate()}</small><b>The Valley Trader</b><small>Free · every day</small></div>
+              {view.news && <p className="lead">{view.news}</p>}
+              {broke && (
+                <div className="note">
+                  <p>No car and not enough for one. Your cousin will front you the money for a shitbox, this once more.</p>
+                  <button type="button" onClick={() => change((g) => { settleUp(g, Math.max(GARAGE_STAKE / 2, cheapest) - g.cash); return { ok: true, message: "Don't make him regret it." }; })}>Take it</button>
                 </div>
               )}
-            </div>
-
-            <div className="pinks-card">
-              <div className="row">
-                <h3>The tune</h3>
-                <span className={`pinks-afr ${car.mixture}`}><b>{(car.afr / 10).toFixed(1)}</b> : 1 · {car.mixture === "right" ? "On the money" : car.mixture === "lean" ? "Lean" : "Rich"}</span>
-              </div>
-              <p className="facts">{car.mixture === "lean" ? "Lean makes a little more power and a lot more heat. Work it hard like this and it will let go." : car.mixture === "rich" ? "Rich is safe and slow, and it is fouling the plugs." : "The mixture is where this engine wants it. Bolt on anything that helps it breathe and it will want more fuel."}</p>
-              <div className="pinks-fuel">
-                <button type="button" disabled={car.fuel <= 0} onClick={() => act({ cmd: "fuel", car: car.id, fuel: car.fuel - 1 })} aria-label="Less fuel">Leaner</button>
-                <div className="scale" aria-hidden="true">{Array.from({ length: car.fuelMax + 1 }, (_, i) => <i key={i} className={i === car.fuel ? "on" : ""} />)}</div>
-                <button type="button" disabled={car.fuel >= car.fuelMax} onClick={() => act({ cmd: "fuel", car: car.id, fuel: car.fuel + 1 })} aria-label="More fuel">Richer</button>
-              </div>
-              <ul className="pinks-locals">
-                <li>
-                  <div><b>The dyno, in Morgantown</b><small>Three pulls on the rollers and it comes back right.</small></div>
-                  <button type="button" disabled={view.cash < DYNO_COST || car.mixture === "right"} onClick={() => act({ cmd: "dyno", car: car.id })}>{car.mixture === "right" ? "It's right" : dollars(DYNO_COST)}</button>
-                </li>
-                <li>
-                  <div><b>A remote tune</b><small>A tuner on a laptop, and you on a dark road: three pulls, foot flat, no lifting. There are deer. You pay if he gets his pulls.</small></div>
-                  <button type="button" disabled={view.cash < REMOTE_TUNE_COST || !car.runs || car.mixture === "right"} onClick={() => race(null, true, true)}>{car.mixture === "right" ? "It's right" : dollars(REMOTE_TUNE_COST)}</button>
-                </li>
-              </ul>
-            </div>
-
-            <div className="pinks-card">
-              <h3>Parts</h3>
-              <ul className="pinks-parts">
-                {car.parts.map((p) => (
-                  <li key={p.slot}>
-                    <div><b>{p.label}</b> <span className="has">{p.has}</span><small>{p.hint}</small></div>
-                    {p.next || p.level > 0 ? (
-                      <span className="pinks-buy">
-                        {p.shelf !== null && !p.needs && <button type="button" className="yes" onClick={() => act({ cmd: "bolt", car: car.id, piece: p.shelf })}>Fit the one on your shelf<i>Free</i></button>}
-                        {p.level > 0 && !p.needs && <button type="button" className="off" onClick={() => act({ cmd: "pull", car: car.id, slot: p.slot })}>Take it off</button>}
-                        {p.next && <>
-                        <button type="button" disabled={!p.next.can} onClick={() => act({ cmd: "fit", car: car.id, slot: p.slot, level: p.next!.level })}>{p.next.label}<i>{p.needs ? `Needs ${p.needs === "jack" ? "a jack" : "wrenches"}` : dollars(p.next.cost)}</i></button>
-                        {p.next.rix && !p.needs && <button type="button" className="rix" disabled={view.cash < p.next.rix.price} onClick={() => act({ cmd: "fit", car: car.id, slot: p.slot, level: p.next!.level, rix: p.next!.rix!.id })}>Used, from Rix Racing<i>{dollars(p.next.rix.price)}</i></button>}
-                        </>}
-                      </span>
-                    ) : <span className="maxed">Maxed</span>}
+              <h2>Autos for sale</h2>
+              <ul>
+                {view.listings.map((l) => (
+                  <li key={l.id}>
+                    <button type="button" className={String(l.id) === sel ? "ad on" : "ad"} onClick={() => setSel(String(l.id))}>
+                      <b>{l.sheet.year} {l.sheet.model}</b>
+                      <span>{l.partsCar ? "FOR PARTS. " : ""}{l.pitch}</span>
+                      <em>{dollars(l.price)}{l.watching ? " · someone is looking" : ""}</em>
+                    </button>
                   </li>
                 ))}
-                <li>
-                  <div><b>Final drive</b><small>Shorter leaves harder and runs out sooner. Free to change.</small></div>
-                  <span className="pinks-final">{["Tall", "Stock", "Short"].map((name, i) => <button key={name} type="button" className={car.final === i ? "on" : ""} onClick={() => act({ cmd: "final", car: car.id, final: i })}>{name}</button>)}</span>
-                </li>
               </ul>
+              <p className="small">WE BUY CARS. Any state. The dealer pays cash, and not much of it. · New listings tomorrow. A seller's word is a seller's word.</p>
             </div>
+          )}
 
-            <div className="pinks-card">
-              <div className="row">
-                <h3>Tonight</h3>
-                <label className="pinks-where">Where <select value={strip} onChange={(e) => setStrip(e.target.value)}>{PINKSLIPS_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+          {place === "laptop" && (
+            <div className="sr-laptop">
+              <div className="tabs">
+                <button type="button" className={site === "rix" ? "on" : ""} onClick={() => setSite("rix")}>Rix Racing</button>
+                <button type="button" className={site === "speed" ? "on" : ""} onClick={() => setSite("speed")}>Ridgeline Speed</button>
               </div>
-              <p className="facts">{pinkSlips.describe(rules).slice(0, 2).join(" ")}</p>
-              {car.runs ? (
-                <ul className="pinks-locals">
-                  <li>
-                    <div><b>Test and tune</b><small>A pass alone against the clock. Nothing riding on it but the wear.</small></div>
-                    <button type="button" className="yes" onClick={() => race(null)}>Make a pass</button>
-                  </li>
-                  {locals.map((l) => (
-                    <li key={l.kind}>
-                      <div><b>{l.kind}: {l.name}</b> <span className="has">{l.car}, runs about {seconds(l.et)}</span><small>{l.pitch}</small></div>
-                      <button type="button" className="yes" disabled={view.cash < l.stake} onClick={() => race(l)}>Race for {dollars(l.stake)}</button>
-                    </li>
-                  ))}
-                </ul>
+              <div className="address">{site === "rix" ? "rixracing.example/used-parts" : "ridgelinespeed.example/catalog"}</div>
+              {site === "rix" ? (
+                <div className="site">
+                  <h2>Rix Racing <small>used parts, off cars Ricky has taken apart</small></h2>
+                  <ul>{view.rix.map((r) => <li key={r.id}><div><b>{r.name}</b><small>{r.label} · off a {r.tier.toLowerCase()}</small></div><b>{dollars(r.price)}</b></li>)}</ul>
+                  {view.rix.length === 0 && <p>Nothing in today.</p>}
+                  <p className="small">A used part goes on at the car, when it is the next step for that car. Stock changes every day.</p>
+                </div>
               ) : (
-                <p className="bad">{car.totaled ? "It is not going anywhere again." : car.body >= 300 ? "It is too bent to drive. It needs straightening first." : "It will not start. The engine needs a rebuild first."}</p>
+                <div className="site">
+                  <h2>Ridgeline Speed <small>new parts{car ? ` for your ${car.sheet.model}` : ""}</small></h2>
+                  {car ? <ul>{car.parts.map((x) => <li key={x.slot}><div><b>{x.next ? x.next.label : x.has}</b><small>{x.label} · {x.hint}</small></div><b>{x.next ? dollars(x.next.cost) : "Fitted"}</b></li>)}</ul> : <p>No car on file. Buy one first.</p>}
+                  <p className="small">Order at the car: pick the part on it, and it is delivered as you undo the bolts.</p>
+                </div>
               )}
             </div>
+          )}
 
-            {car.runs && (
-              <div className="pinks-card">
-                <div className="row">
-                  <h3>The mountain road</h3>
-                  <label className="pinks-where">Which run <select value={route} onChange={(e) => setRoute(e.target.value)}>{MOUNTAIN_ROAD_PRESETS.filter((p) => p.id !== "remote").map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
-                </div>
-                <p className="facts">{mountainRoad.describe(mountainRoad.normalize({ id: route }))[0]} Fines come out of your cash, and whatever you hit comes home on the car.</p>
-                <ul className="pinks-locals">
-                  <li>
-                    <div><b>Take it out</b><small>The road, the traffic and the law. Nobody to beat but the clock.</small></div>
-                    <button type="button" className="yes" onClick={() => race(null, true)}>Drive</button>
+          {place === "tools" && (
+            <div className="sr-sheet">
+              <h2>The tool wall</h2>
+              <ul className="pinks-locals">
+                {view.tools.map((t) => (
+                  <li key={t.tool}>
+                    <div><b>{t.label}</b><small>{t.hint}</small></div>
+                    {t.owned ? <span className="maxed">On the wall</span> : <button type="button" className="yes" disabled={!t.can} onClick={() => act({ cmd: "tool", tool: t.tool })}>Buy it · {dollars(t.cost)}</button>}
                   </li>
-                  {locals[1] && (
-                    <li>
-                      <div><b>Run it against {locals[1].name}</b> <span className="has">{locals[1].car}</span><small>Same road, same traffic. First to the far end.</small></div>
-                      <button type="button" className="yes" disabled={view.cash < locals[1].stake} onClick={() => race(locals[1]!, true)}>Race for {dollars(locals[1].stake)}</button>
-                    </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {place === "shelf" && (
+            <div className="sr-sheet">
+              <h2>Your shelf <small>{view.shelf.length} of {view.shelfSpace}</small></h2>
+              {view.gluts.length > 0 && <p className="facts">Flooded today: {view.gluts.map((x) => `${KINDS[x.kind] ?? x.label.toLowerCase()} (${x.by})`).join(", ")}. Those go for a little over half.</p>}
+              {view.shelf.length === 0 && <p className="empty">Nothing on it. Take a part off a car, or tear a parts car down.</p>}
+              <ul className="pinks-locals">
+                {view.shelf.map((x) => (
+                  <li key={x.id}>
+                    <div><b>{x.name}</b><small>off a {x.from} · {Math.round(x.cond / 10)}%{x.glut ? ` · ${x.glut} has flooded these` : ""}</small></div>
+                    <span className="pinks-buy">
+                      <button type="button" className={x.glut ? "low" : ""} onClick={() => act({ cmd: "sellPiece", piece: x.id })}>Sell {dollars(x.value)}</button>
+                      {house && <button type="button" className="off" onClick={() => { const price = priceFor(x.name, x.worth); if (price) void trade({ do: "list", piece: x.id, price }, () => `Up for sale in ${house.name} at ${dollars(price)}.`); }}>Pin it on the board</button>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {view.shelf.length > 1 && <button type="button" onClick={() => change((g) => { let made = 0; for (const x of [...g.shelf]) { const was = g.cash; if (garageAct(g, { cmd: "sellPiece", piece: x.id }).ok) made += g.cash - was; } return { ok: true, message: `The lot went for ${dollars(made)}.` }; })}>Sell the lot for {dollars(view.shelf.reduce((sum, x) => sum + x.value, 0))}</button>}
+            </div>
+          )}
+
+          {place === "board" && (
+            <div className="sr-sheet">
+              <h2>{house ? `${house.name}'s board` : "The notice board"}</h2>
+              {house ? (
+                <>
+                  <p className="facts">Your garage is kept in <b>{house.name}</b>: the same one on any device you are in that house on. <button type="button" className="fine" onClick={() => keepHouse(null)}>Keep it in this browser only</button></p>
+                  {market && market.waiting > 0 && (
+                    <div className="pinks-card cousin">
+                      <p>Something of yours sold. {dollars(market.waiting)} is waiting for you.</p>
+                      <button type="button" className="yes" onClick={() => void trade({ do: "collect" }, (d) => (d.sales?.length ? d.sales.map((x) => `${x.from} bought your ${x.what.toLowerCase()} for ${dollars(x.amount)}.`).join(" ") : "Nothing was waiting."))}>Collect it</button>
+                    </div>
                   )}
-                </ul>
-              </div>
-            )}
+                  {!market && <p className="empty">Asking the house…</p>}
+                  <ul className="pinks-lots">
+                    {market?.lots.map((l) => (
+                      <li key={l.id} className={`pinks-card${l.mine ? " mine" : ""}`}>
+                        <div className="row"><b>{l.piece ? l.piece.name : l.car?.name}</b><b className="cash">{dollars(l.price)}</b></div>
+                        <p className="facts">{l.piece ? `Off a ${l.piece.from} · ${Math.round(l.piece.cond / 10)}% · worth about ${dollars(l.piece.worth)}` : l.car ? `${l.car.model} · engine ${Math.round(l.car.engine / 10)}% · ${l.car.runs ? "runs" : "does not run"} · about ${dollars(l.car.teardown)} in pieces` : ""}</p>
+                        <div className="row">
+                          <span className="has">{l.mine ? "Yours" : l.scrapper ? l.seller : `From ${l.seller}`}</span>
+                          {l.mine ? <button type="button" onClick={() => void trade({ do: "unlist", id: l.id }, () => "Back in your garage.")}>Take it back</button> : <button type="button" className="yes" disabled={view.cash < l.price} onClick={() => void trade({ do: "buy", id: l.id }, (d) => `${d.bought ?? "It"} is yours.`)}>{view.cash < l.price ? "Can't afford it" : "Buy it"}</button>}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  {club.length > 0 && (
+                    <>
+                      <h3>Who has what</h3>
+                      <ul className="pinks-locals">
+                        {club.map((m) => <li key={m.id}><div><b>{m.name}{m.me ? " (you)" : ""}</b><small>{m.cars.length ? m.cars.map((c) => `${c.name}${c.quarter ? ` ${seconds(c.quarter)}` : ""}`).join(" · ") : "An empty garage"}</small></div><span className="has">{m.wins} of {m.races}</span></li>)}
+                      </ul>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="facts">Your garage is kept in this browser. Keep it in a house to have it on every device, and to trade parts and cars with the people in it.</p>
+                  {myHouses.length > 0 ? <div className="sr-acts">{myHouses.map((h) => <button key={h.slug} type="button" onClick={() => void moveIn(h.slug)}>Keep it in {h.name}</button>)}</div> : <p className="empty">You are not in a house yet. Join one from the games page.</p>}
+                </>
+              )}
+            </div>
+          )}
 
-            <button type="button" className="pinks-sell" disabled={!tools.wrenches || !tools.jack} onClick={() => { if (window.confirm(`Tear ${car.name} down for parts? It comes to about ${dollars(car.teardown)} in pieces today, and there is no putting it back.`)) { act({ cmd: "strip", car: car.id }); setPicked(null); } }}>{tools.wrenches && tools.jack ? `Tear it down for parts: about ${dollars(car.teardown)} today` : "Tearing it down needs wrenches and a jack"}</button>
-            {house && <button type="button" className="pinks-sell" onClick={() => { const price = priceFor(car.name, car.value); if (price) { void trade({ do: "list", car: car.id, price }, () => `${car.name} is up for sale in ${house.name} at ${dollars(price)}.`); setPicked(null); } }}>Put it up for sale in {house.name}</button>}
-            <button type="button" className="pinks-sell" onClick={() => { if (window.confirm(`Sell ${car.name} to the dealer for ${dollars(car.sells)}?`)) { act({ cmd: "sell", car: car.id }); setPicked(null); } }}>Sell to the dealer for {dollars(car.sells)}</button>
-          </section>
-        )}
+          {place === "manual" && (
+            <div className="sr-sheet">
+              <h2>The manual</h2>
+              <ol>
+                <li>Hold the revs up in neutral while you wait.</li>
+                <li>On the green, shift into first. Before the green is a red light, and you lose.</li>
+                <li>Shift up when the light by the tach comes on. Past the redline the engine cooks.</li>
+                <li>If the tyres spin, lift a little.</li>
+                <li>Watch the oil pressure. If it falls behind the revs, shift early, and change the oil.</li>
+              </ol>
+              <p>On the strip: <kbd>W</kbd> or <kbd>↑</kbd> throttle · <kbd>S</kbd> or <kbd>↓</kbd> half throttle · <kbd>Space</kbd> or <kbd>D</kbd> shift up · <kbd>A</kbd> shift down · <kbd>C</kbd> get in or step back</p>
+              <p>On the road: <kbd>A</kbd> <kbd>D</kbd> or <kbd>←</kbd> <kbd>→</kbd> steer · <kbd>W</kbd> throttle · <kbd>S</kbd> brake · <kbd>E</kbd> shift up · <kbd>Q</kbd> shift down</p>
+              <p className="facts">On a phone there is a pedal and a shifter on the screen. Slide your thumb down the pedal to lift.</p>
+            </div>
+          )}
+        </div>
 
-        <aside className="pinks-how">
-          <h2>How it goes</h2>
-          <ol>
-            <li>Hold the revs up in neutral while you wait.</li>
-            <li>On the green, shift into first. Before the green is a red light, and you lose.</li>
-            <li>Shift up when the light by the tach comes on. Past the redline the engine cooks.</li>
-            <li>If the tyres spin, lift a little.</li>
-            <li>Watch the oil pressure. If it falls behind the revs, shift early, and change the oil.</li>
-          </ol>
-          <h3>Keys</h3>
-          <p><kbd>W</kbd> or <kbd>↑</kbd> throttle · <kbd>S</kbd> or <kbd>↓</kbd> half throttle · <kbd>Space</kbd> or <kbd>D</kbd> shift up · <kbd>A</kbd> shift down · <kbd>C</kbd> get in or step back</p>
-          <p>On the road: <kbd>A</kbd> <kbd>D</kbd> or <kbd>←</kbd> <kbd>→</kbd> steer · <kbd>W</kbd> throttle · <kbd>S</kbd> brake · <kbd>E</kbd> shift up · <kbd>Q</kbd> shift down</p>
-          <p className="facts">On a phone there is a pedal and a shifter on the screen. Slide your thumb down the pedal to lift.</p>
-        </aside>
-      </div>
+        <section className="sr-console" aria-live="polite">
+          <header>
+            <h2>{place === "garage" ? (car ? car.name : "The garage") : PLACES[place]}{place !== "garage" && car && (place === "hood" || place === "under" || place === "body" || place === "out") ? <small>{car.name}</small> : null}</h2>
+            {place === "out" && sel ? <button type="button" onClick={() => setSel(null)}>← The junction</button> : null}
+            {place !== "garage" && <button type="button" onClick={() => go("garage")}>← The garage</button>}
+          </header>
+          <p className="sr-hint">&gt; {hover ?? (place === "garage" ? "Point at something." : place === "paper" ? "Pick an ad to read it." : job ? job.label : "…")}</p>
+
+          {place === "paper" && ad && (
+            <div className="sr-ad">
+              <div className="row"><h3>{ad.sheet.year} {ad.sheet.model} <span className="has">{ad.partsCar ? "Parts car" : ad.sheet.tier}</span></h3><b className="cash">{dollars(ad.price)}</b></div>
+              <dl className="sr-spec">
+                <div><dt>Power</dt><dd>{ad.sheet.horsepower} hp</dd></div>
+                <div><dt>Quarter mile</dt><dd>{ad.sheet.quarter ? `${seconds(ad.sheet.quarter.et)} s` : "Won't run"}</dd></div>
+                <div><dt>At the line</dt><dd>{ad.sheet.quarter ? `${ad.sheet.quarter.mph} mph` : "—"}</dd></div>
+                <div><dt>Weight</dt><dd>{ad.sheet.mass} kg</dd></div>
+                <div><dt>Drive</dt><dd>{ad.sheet.drive.replace(" drive", "")}</dd></div>
+                <div><dt>Gearbox</dt><dd>{ad.sheet.gearbox}</dd></div>
+              </dl>
+              <Wear label="Engine" value={ad.engine} /><Wear label="Tyres" value={ad.rubber} />
+              {ad.partsCar && <p className="facts">Bent {Math.round(ad.body / 10)}%. In pieces it comes to about <b>{dollars(ad.teardown)}</b>, on a good day.</p>}
+              {ad.watching && <p className="bad">{ad.watching} is looking at this one. {ad.movesLeft <= 1 ? "It will be gone the next thing you do." : `Gone in ${ad.movesLeft} moves.`}</p>}
+              <div className="sr-acts"><button type="button" className="yes" disabled={!ad.can} onClick={() => { const g = act({ cmd: "buy", listing: ad.id }); const got = g.cars.at(-1); if (got && g.cars.length > garage.cars.length) { setPicked(got.id); go("garage"); } }}>{ad.can ? "Call the number" : view.cars.length >= view.bays ? "No room in the garage" : "Can't afford it"}<i>{dollars(ad.price)}, as it sits</i></button></div>
+            </div>
+          )}
+          {about()}
+
+          {place === "garage" && view.cars.length > 0 && (
+            <div className="sr-keys" role="group" aria-label="Your cars">
+              <small>Keys · {view.cars.length} of {view.bays} bays</small>
+              {view.cars.map((c) => <button key={c.id} type="button" className={c.id === car?.id ? "on" : ""} onClick={() => setPicked(c.id)}>{c.name}</button>)}
+            </div>
+          )}
+        </section>
+      </main>
 
       {toast && <div className={toast.ok ? "pinks-toast" : "pinks-toast no"} key={toast.key} role="status">{toast.text}</div>}
     </div>
