@@ -253,7 +253,7 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
             <li>If the tyres spin, lift a little.</li>
           </ol>
           <h3>Keys</h3>
-          <p><kbd>W</kbd> or <kbd>↑</kbd> throttle · <kbd>S</kbd> or <kbd>↓</kbd> half throttle · <kbd>Space</kbd> or <kbd>D</kbd> shift up · <kbd>A</kbd> shift down</p>
+          <p><kbd>W</kbd> or <kbd>↑</kbd> throttle · <kbd>S</kbd> or <kbd>↓</kbd> half throttle · <kbd>Space</kbd> or <kbd>D</kbd> shift up · <kbd>A</kbd> shift down · <kbd>C</kbd> get in or step back</p>
           <p className="facts">On a phone there is a pedal and a shifter on the screen. Slide your thumb down the pedal to lift.</p>
         </aside>
       </div>

@@ -195,3 +195,6 @@ export const saveDrive = (garage: unknown) => write("cardroom:pinkslips:garage",
 /** The strip the player last raced on. */
 export const loadDriveStrip = (): string => read<string>("cardroom:pinkslips:strip", "strip");
 export const saveDriveStrip = (id: string) => write("cardroom:pinkslips:strip", id);
+/** Where the player watches a race from: behind the car, or the driver's seat. */
+export const loadDriveSeat = (): "chase" | "cockpit" => (read<string>("cardroom:pinkslips:seat", "chase") === "cockpit" ? "cockpit" : "chase");
+export const saveDriveSeat = (seat: "chase" | "cockpit") => write("cardroom:pinkslips:seat", seat);

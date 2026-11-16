@@ -10,6 +10,7 @@ import type { PlayStyle } from "@journey-to-code/rules";
 import { useEffect, useRef, useState } from "react";
 import { arcadeAudio, blip, crash, notes, wakeArcadeSound } from "../arcade/sounds";
 import { motionSetting, wants3d } from "../display";
+import { loadDriveSeat, saveDriveSeat } from "../storage";
 import { loadStrip3d, type Strip3d } from "./strip3d";
 
 export interface Rival {
@@ -41,7 +42,7 @@ type Lane = NonNullable<ArcadeView["race"]>["lanes"][number];
  * Draw a frame. When the road has been drawn in 3-D underneath (`solid`), only what lies over it is
  * drawn here: how far along everyone is, the start lights and the dashboard.
  */
-function draw(g: CanvasRenderingContext2D, w: number, h: number, view: ArcadeView, tick: number, solid: boolean) {
+function draw(g: CanvasRenderingContext2D, w: number, h: number, view: ArcadeView, tick: number, solid: boolean, inside: boolean) {
   g.clearRect(0, 0, w, h);
   const race = view.race!;
   const me = race.lanes[0]!;
@@ -222,6 +223,9 @@ function draw(g: CanvasRenderingContext2D, w: number, h: number, view: ArcadeVie
     g.shadowBlur = 0;
   }
 
+  // From the driver's seat the gauges are on the dash, in the scene.
+  if (solid && inside) return;
+
   // The dashboard.
   const r = Math.min(w * 0.19, h * 0.17, 120);
   // On a phone the tachometer sits between the shifter and the pedal, with the speed above it.
@@ -350,6 +354,15 @@ export function Strip({ rules, build, carName, rival, onDone }: { rules: PinkSli
   const [results, setResults] = useState<PinkSlipsResult[] | null>(null);
   const [banner, setBanner] = useState("");
   const [gearShown, setGearShown] = useState(0);
+  const [seat, setSeat] = useState<"chase" | "cockpit">(loadDriveSeat);
+  const seatNow = useRef(seat);
+  seatNow.current = seat;
+  const [solidShown, setSolidShown] = useState(false);
+  const swapSeat = () => setSeat((was) => {
+    const next = was === "chase" ? "cockpit" : "chase";
+    saveDriveSeat(next);
+    return next;
+  });
   const spec = specOf(build);
   const topGear = spec.auto ? 1 : spec.gears.length;
 
@@ -434,9 +447,10 @@ export function Strip({ rules, build, carName, rival, onDone }: { rules: PinkSli
       note?.set(me.rpm, controls.current.gas, !done && !me.blown);
       const words = view.race!.phase === "ready" ? "Staged. Bring the revs up." : view.race!.phase === "tree" ? "" : view.race!.phase === "racing" && me.reaction === null && !me.blown ? "GO" : me.foul && !done ? "Red light" : me.blown && !done ? "Blown" : "";
       setBanner((was) => (was === words ? was : words));
-      const solid = !!gl && gl.render({ race: view.race!, cars: models, tones: TONES, width: cv.clientWidth, height: cv.clientHeight, dpr: Math.min(2, window.devicePixelRatio || 1), time: now, still: motionSetting() !== "on" });
+      const solid = !!gl && gl.render({ race: view.race!, cars: models, tones: TONES, width: cv.clientWidth, height: cv.clientHeight, dpr: Math.min(2, window.devicePixelRatio || 1), time: now, still: motionSetting() !== "on", seat: seatNow.current });
+      setSolidShown((was) => (was === solid ? was : solid));
       if (glCanvas.current) glCanvas.current.style.visibility = solid ? "visible" : "hidden";
-      draw(g, cv.clientWidth, cv.clientHeight, view, s.tick, solid);
+      draw(g, cv.clientWidth, cv.clientHeight, view, s.tick, solid, seatNow.current === "cockpit");
     };
     frame = requestAnimationFrame(loop);
 
@@ -444,6 +458,7 @@ export function Strip({ rules, build, carName, rival, onDone }: { rules: PinkSli
     const throttle = () => (controls.current.gas = keys.has("up") ? 100 : keys.has("half") ? 55 : 0);
     const named = (e: KeyboardEvent) => (e.key === "ArrowUp" || e.key === "w" || e.key === "W" ? "up" : e.key === "ArrowDown" || e.key === "s" || e.key === "S" ? "half" : e.key === " " || e.key === "d" || e.key === "D" || e.key === "ArrowRight" ? "shiftup" : e.key === "a" || e.key === "A" || e.key === "ArrowLeft" ? "shiftdown" : "");
     const down = (e: KeyboardEvent) => {
+      if ((e.key === "c" || e.key === "C") && !e.repeat) return swapSeat();
       const k = named(e);
       if (!k) return;
       e.preventDefault();
@@ -505,6 +520,7 @@ export function Strip({ rules, build, carName, rival, onDone }: { rules: PinkSli
       <canvas ref={canvas} />
       <div className="pinks-strip-top">
         <button type="button" onClick={leave} disabled={!!results}>{rival && rival.stake > 0 ? "Forfeit" : "Leave"}</button>
+        {solidShown && <button type="button" onClick={swapSeat} aria-label="Change the view">{seat === "chase" ? "Get in" : "Step back"}</button>}
         <span>{rules.name}{rival ? ` · ${carName} against ${rival.name}` : ` · ${carName}, test and tune`}</span>
       </div>
       {banner && !results && <div className="pinks-banner" key={banner}>{banner}</div>}
