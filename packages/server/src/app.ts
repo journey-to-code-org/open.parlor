@@ -19,11 +19,13 @@ import { createBots, type BotOptions } from "./bots.js";
 import { createPush, type PushOptions } from "./push.js";
 import { playerOf } from "@journey-to-code/rooms/server";
 import { gameName, gameOfOptions, tableRoom, talk, type GameId, type Remark } from "./games.js";
+import { createFlights, isFlight, type Flights, type FlightState, type Flyer } from "./flight.js";
 
 export function createCardRoom(
-  options: { log?: Log; botDelay?: number; talk?: boolean; push?: PushOptions; ai?: AiOptions; lobby?: LobbyOptions; /** Turns moderation on (see moderation.ts). */ adminToken?: string; bugs?: BugOptions; /** Copies of the database (see backup.ts), for the admin app to report and hand out. */ backups?: Backups; /** Worker threads for the computer players' thinking (see bots.ts). Without it they think on the main thread. */ bots?: BotOptions; /** The clock, for tests. */ spectate?: { now?: () => number } } = {},
+  options: { log?: Log; botDelay?: number; talk?: boolean; push?: PushOptions; ai?: AiOptions; lobby?: LobbyOptions; /** Turns moderation on (see moderation.ts). */ adminToken?: string; bugs?: BugOptions; /** Copies of the database (see backup.ts), for the admin app to report and hand out. */ backups?: Backups; /** Worker threads for the computer players' thinking (see bots.ts). Without it they think on the main thread. */ bots?: BotOptions; /** The games flown live (see flight.ts): one a caller made, for tests that play them by hand. Without it they play by the clock. */ flights?: Flights; /** The clock, for tests. */ spectate?: { now?: () => number } } = {},
 ) {
   const talking = options.talk ?? true;
+  const flights = options.flights ?? createFlights({ every: 16 });
   const timers = new Set<ReturnType<typeof setTimeout>>();
   const lastWord = new Map<string, number>();
   let closed = false;
@@ -125,6 +127,8 @@ export function createCardRoom(
           (await courses.refuse((given as { rules?: { lane?: unknown } } | null)?.rules?.lane, "bowling")))
         : `${gameName(gameOfOptions(given))} is switched off in this parlor.`,
     onStart: ({ id, state, room }) => {
+      // A game that is flown starts flying.
+      if (isFlight((state as { game?: unknown }).game)) flights.start(id, state as FlightState, room.seats, room.settings as never);
       speak(id, talk.greet(state, castOf(room)));
       lobby.started(id);
     },
@@ -204,6 +208,15 @@ export function createCardRoom(
     push,
     /** The computer players' thinking: its counters, and when its workers are up. Null when they think on the main thread. */
     bots,
+    /**
+     * Put a page on a table's live game (flight.ts): `player` is the browser's own id (its cookie),
+     * which says which seat it flies, if any. Null when the table has no game in the air.
+     */
+    async fly(id: string, player: string | null, flyer: Flyer) {
+      if (!flights.has(id)) return null;
+      const seat = player ? (await rooms.holders(id)).indexOf(player) : -1;
+      return flights.join(id, seat >= 0 ? seat : null, flyer);
+    },
     /** Answers houses, designs, moderation, rooms and sync requests; null for anything else. */
     async fetch(request: Request): Promise<Response | null> {
       return (await ours(request)) ?? (await rooms.fetch(request));
@@ -243,6 +256,7 @@ export function createCardRoom(
     close: () => {
       closed = true;
       for (const t of timers) clearTimeout(t);
+      flights.close();
       rooms.close();
       // Resolves once the worker threads have stopped.
       return bots?.close() ?? Promise.resolve();
