@@ -5,7 +5,7 @@
 // Over the road is what a driver needs to know: the leg and the clock, the fuel and the damage, a
 // radar detector that lights before the patrol car is in sight, and, when it is behind you, how far.
 // Glass that has been hit stays cracked.
-import { CAR_MODELS, mountainRoad, mountainRoadResults, specOf, type ArcadeRoad, type ArcadeView, type Build, type MountainRoadInput, type MountainRoadResult, type MountainRoadRules, type MountainRoadState } from "@journey-to-code/games";
+import { CAR_MODELS, oilStarved, mountainRoad, mountainRoadResults, specOf, type ArcadeRoad, type ArcadeView, type Build, type MountainRoadInput, type MountainRoadResult, type MountainRoadRules, type MountainRoadState } from "@journey-to-code/games";
 import { useEffect, useRef, useState } from "react";
 import { arcadeAudio, blip, crash, notes, wakeArcadeSound } from "../arcade/sounds";
 import { motionSetting, wants3d } from "../display";
@@ -89,7 +89,7 @@ function drawOver(g: CanvasRenderingContext2D, w: number, h: number, road: Arcad
   const px = 12, py = 78, pw = Math.min(210, w * 0.5);
   g.fillStyle = "rgba(8, 9, 14, 0.72)";
   g.beginPath();
-  g.roundRect(px, py, pw, 104, 10);
+  g.roundRect(px, py, pw, 126, 10);
   g.fill();
   g.fillStyle = "#eef1f6";
   g.textAlign = "left";
@@ -109,8 +109,10 @@ function drawOver(g: CanvasRenderingContext2D, w: number, h: number, road: Arcad
   };
   bar(0, "FUEL", me.fuel, me.fuel < 200 ? "#ff3b3b" : "#ffb627");
   bar(1, "DAMAGE", me.damage, me.damage > 600 ? "#ff3b3b" : "#c9ccd2");
+  const starved = oilStarved(me.oil, me.rpm);
+  bar(2, `OIL ${me.oil}`, me.oil * 10, starved ? "#ff3b3b" : "#ffb627");
   // The detector, and the law.
-  const rx = 12, ry = 190;
+  const rx = 12, ry = 212;
   g.fillStyle = "rgba(8, 9, 14, 0.72)";
   g.beginPath();
   g.roundRect(rx, ry, 138, 44, 10);

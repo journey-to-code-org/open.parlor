@@ -335,7 +335,7 @@ export function makeRoad3d(canvas: HTMLCanvasElement): Road3d | null {
         const tilt = mine[0]?.pitch ?? 0;
         cockpit.rig.position.copy(eye);
         cockpit.rig.rotation.set(tilt * 0.8, -here.h, 0);
-        cockpit.update({ rpm: me.rpm, redline: me.redline, mph: me.mph, gear: me.gear, auto: me.auto, boost: me.boost, heat: me.heat, spinning: me.squeal, blown: false }, frame.time, dt, true, frame.steer);
+        cockpit.update({ rpm: me.rpm, redline: me.redline, mph: me.mph, gear: me.gear, auto: me.auto, boost: me.boost, heat: me.heat, oil: me.oil, afr: me.afr, spinning: me.squeal, blown: false }, frame.time, dt, true, frame.steer);
         camera.fov = (tall ? 84 : 64) + Math.min(8, speed * 0.1);
         camera.position.copy(eye);
         // Eyes go where the road goes.
