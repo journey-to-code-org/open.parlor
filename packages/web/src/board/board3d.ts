@@ -23,8 +23,8 @@ export const CANVAS = { wide: 1.16, high: 1.3 };
 /** The transform that lays the grid of buttons over the picture; `--board-s` is the board's width. */
 export const BOARD_TRANSFORM = `perspective(calc(var(--board-s) * ${PERSPECTIVE})) translateY(calc(var(--board-s) * ${SHIFT})) rotateX(${TILT}deg) scale(${SCALE})`;
 
-/** The games whose pieces have been modelled: a chess set, and Combat's fleets on their sea. */
-const SETS = new Set(["chess", "combat"]);
+/** The games that have a board and pieces in the scene: the chess set, Combat's fleets on their sea, and the plainer boards. */
+const SETS = new Set(["chess", "combat", "checkers", "reversi", "go", "tictactoe", "dropfour"]);
 export const hasBoard3d = (game: string) => SETS.has(game);
 
 export interface Piece3d {
@@ -40,14 +40,25 @@ export interface Piece3d {
   span?: string;
   /** What it is called ("Submarine"), where two pieces of a kind differ only in that. */
   name?: string;
+  /** Its colour by name, where it has one that isn't simply light or dark ("red", "gold"). */
+  tone?: string;
 }
 
 export interface BoardFrame3d {
+  game: string;
   cols: number;
   rows: number;
+  /** Pieces stand where the lines cross, not in the squares between them (Go). */
+  points: boolean;
+  /** The board stands on its edge: a piece put in drops down its column (Drop Four). */
+  gravity: boolean;
+  /** How each square is shaded, where the game says ("light", "dark", "spot"), by place on the screen. */
+  shades: string[] | null;
   pieces: Piece3d[];
-  /** Squares marked out: the move just made ("from", "last"), a king in check ("threat"). */
-  marks: { at: number; mark: string }[];
+  /** Squares marked out: the move just made ("from", "last"), a king in check ("threat"), a winning line ("win"), territory ("claimed", with whose). */
+  marks: { at: number; mark: string; tone?: string }[];
+  /** A piece shown where it would go, before it is put down. */
+  ghost: { at: number; kind: string; tone: string } | null;
   /** Where the piece in hand can go. */
   targets: number[];
   /** The square of the piece in hand. */

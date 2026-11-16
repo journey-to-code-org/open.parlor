@@ -250,7 +250,9 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
         const box = el.getBoundingClientRect();
         const x = ((e.clientX - box.left) / Math.max(1, box.width)) * seen.field.width;
         const y = ((e.clientY - box.top) / Math.max(1, box.height)) * seen.field.height;
-        const gold = seen.things.find((t) => t.kind === "golden" && Math.hypot(t.x - x, t.y - y) <= t.r * 1.5);
+        // In the 3-D scene the golden chip stands up off the table: it is caught where it is drawn.
+        const where = (t: { x: number; y: number; r: number }): [number, number] => (solid.current && gl.current ? gl.current.project(t.x, t.y, t.r * 1.25) : [t.x, t.y]);
+        const gold = seen.things.find((t) => t.kind === "golden" && Math.hypot(where(t)[0] - x, where(t)[1] - y) <= t.r * 1.6);
         return controls.order?.(gold ? "catch" : "tap");
       }
       const build = seen.build;

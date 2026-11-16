@@ -1312,6 +1312,216 @@ function skyfireWorld(scene: Scene, fx: Effects, FW: number, FH: number): World 
 }
 
 // ====================================================================================================
+// Chip Stack
+// ====================================================================================================
+// A card table with the one big chip on it that everything comes from. What has been earned stands
+// round it in stacks: the more in the bank, the more of them and the higher. The golden chip stands
+// on its edge and spins.
+
+/** A chip's edge: its own colour with white insets, the way a casino chip is striped. */
+function chipEdge(colour: string): CanvasTexture {
+  return canvasTexture(256, 16, (g) => {
+    g.fillStyle = colour;
+    g.fillRect(0, 0, 256, 16);
+    g.fillStyle = "#fbf6ec";
+    for (let i = 0; i < 8; i++) g.fillRect(i * 32 + 4, 0, 12, 16);
+  });
+}
+/** A chip's face: a ring of insets, an inner ring, and a spade. */
+function chipFace(colour: string): CanvasTexture {
+  return canvasTexture(256, 256, (g) => {
+    g.fillStyle = colour;
+    g.beginPath();
+    g.arc(128, 128, 128, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = "#fbf6ec";
+    g.lineWidth = 22;
+    g.setLineDash([36, 54]);
+    g.beginPath();
+    g.arc(128, 128, 114, 0, Math.PI * 2);
+    g.stroke();
+    g.setLineDash([]);
+    g.lineWidth = 5;
+    g.beginPath();
+    g.arc(128, 128, 84, 0, Math.PI * 2);
+    g.stroke();
+    g.fillStyle = "#fbf6ec";
+    g.font = "700 96px Georgia, 'Times New Roman', serif";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillText("\u2660\uFE0E", 128, 134);
+  });
+}
+
+function chipstackWorld(scene: Scene, fx: Effects, FW: number, FH: number): World {
+  scene.background = new Color("#143628");
+  scene.add(new HemisphereLight(0xfff6e0, 0x1c3a2b, 1.5));
+  const lamp = new DirectionalLight(0xfff0d0, 2.2);
+  lamp.position.set(FW / 2 - 2, 8, FH / 2 + 4);
+  lamp.target.position.set(FW / 2, 0, FH / 2);
+  lamp.castShadow = true;
+  lamp.shadow.mapSize.set(1024, 1024);
+  lamp.shadow.bias = -0.0006;
+  const cam = lamp.shadow.camera;
+  cam.left = cam.bottom = -5;
+  cam.right = cam.top = 5;
+  cam.near = 1;
+  cam.far = 30;
+  scene.add(lamp, lamp.target);
+  // The felt, darker towards its edges.
+  const felt = canvasTexture(256, 256, (g, n) => {
+    const fade = g.createRadialGradient(128, 128, 20, 128, 128, 180);
+    fade.addColorStop(0, "#2f7355");
+    fade.addColorStop(1, "#143628");
+    g.fillStyle = fade;
+    g.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 1500; i++) {
+      g.globalAlpha = 0.06;
+      g.fillStyle = n() < 0.5 ? "#000000" : "#ffffff";
+      g.fillRect(n() * 256, n() * 256, 1, 1);
+    }
+  });
+  const table = new Mesh(new PlaneGeometry(FW * 3, FH * 3.4).rotateX(-Math.PI / 2), new MeshStandardMaterial({ map: felt, roughness: 1 }));
+  table.receiveShadow = true;
+  put(scene, table, FW / 2, 0, FH / 2);
+
+  const faces = new Map<string, MeshStandardMaterial[]>();
+  /** The three sides of a chip in a colour: its edge, and its two faces. */
+  const skin = (colour: string) => {
+    let m = faces.get(colour);
+    if (!m) {
+      const edge = new MeshStandardMaterial({ map: chipEdge(colour), roughness: 0.5 });
+      const face = new MeshStandardMaterial({ map: chipFace(colour), roughness: 0.45 });
+      faces.set(colour, (m = [edge, face, face]));
+    }
+    return m;
+  };
+  const big = new Mesh(new CylinderGeometry(1, 1, 0.22, 48), skin(toneOf("red")));
+  big.castShadow = true;
+  scene.add(big);
+  const heat = new Mesh(new CircleGeometry(1.5, 40).rotateX(-Math.PI / 2), new MeshBasicMaterial({ color: "#ff5a6e", transparent: true, opacity: 0, blending: AdditiveBlending, depthWrite: false }));
+  scene.add(heat);
+  const golden = new Group();
+  const coin = new Mesh(new CylinderGeometry(1, 1, 0.2, 36).rotateX(Math.PI / 2), skin("#f2c230"));
+  coin.castShadow = true;
+  const timer = new Mesh(new RingGeometry(1.25, 1.4, 48), new MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0.9, side: DoubleSide, depthWrite: false }));
+  golden.add(coin, timer);
+  golden.visible = false;
+  scene.add(golden);
+
+  // The winnings: stacks of small chips round the big one.
+  const SPOTS: [number, number][] = [];
+  const n = rng(2024);
+  for (let i = 0; i < 26; i++) {
+    const a = (i / 26) * Math.PI * 2 + n() * 0.2;
+    const far = 1.75 + (i % 3) * 0.48 + n() * 0.12;
+    SPOTS.push([FW / 2 + Math.cos(a) * far * 1.45, FH / 2 + Math.sin(a) * far * 0.8]);
+  }
+  const TALL = 14;
+  const stacks = new InstancedMesh(new CylinderGeometry(0.2, 0.2, 0.05, 20), new MeshStandardMaterial({ color: "#ffffff", roughness: 0.5 }), SPOTS.length * TALL);
+  stacks.castShadow = true;
+  stacks.count = 0;
+  stacks.instanceMatrix.setUsage(DynamicDrawUsage);
+  scene.add(stacks);
+  const COLOURS = ["#c8372d", "#2f6fd0", "#3f9a55", "#1d1a16", "#8a5bd6", "#f2c230"].map((c) => new Color(c));
+  const cream = new Color("#fbf6ec");
+  let stacked = -1;
+  const m4 = new Matrix4();
+  const q = new Quaternion();
+  const at = new Vector3();
+  const one = new Vector3(1, 1, 1);
+  function restack(bank: number) {
+    // A chip more for every doubling and a half, near enough: it never stops growing, but slowly.
+    const chips = Math.min(SPOTS.length * TALL, Math.floor(Math.log2(Math.max(1, bank)) * 5));
+    if (chips === stacked) return;
+    stacked = chips;
+    let k = 0;
+    for (let level = 0; level < TALL && k < chips; level++)
+      for (let spot = 0; spot < SPOTS.length && k < chips; spot++) {
+        const [x, z] = SPOTS[spot]!;
+        q.setFromAxisAngle(UP, spot * 1.3 + level * 0.4);
+        m4.compose(at.set(x + Math.sin(level * 2.1 + spot) * 0.012, 0.025 + level * 0.05, z + Math.cos(level * 1.7 + spot) * 0.012), q, one);
+        stacks.setMatrixAt(k, m4);
+        stacks.setColorAt(k, (level + spot) % 5 === 4 ? cream : COLOURS[spot % COLOURS.length]!);
+        k++;
+      }
+    stacks.count = k;
+    stacks.instanceMatrix.needsUpdate = true;
+    if (stacks.instanceColor) stacks.instanceColor.needsUpdate = true;
+  }
+
+  let bump = 0;
+  let shaking = 0;
+  return {
+    tilt: 0.78,
+    headroom: 0.4,
+    shake: () => shaking,
+    reset() {
+      bump = shaking = 0;
+      stacked = -1;
+    },
+    hear(events) {
+      shaking *= 0.86;
+      bump *= 0.8;
+      for (const e of events) {
+        const x = e.x * K;
+        const z = e.y * K;
+        switch (e.kind) {
+          case "tap":
+            bump = 1;
+            fx.burst(FW / 2, 0.3, FH / 2, 3, "#ffd166", 0.06, 22, 0.05);
+            break;
+          case "buy":
+          case "boost":
+            fx.burst(FW / 2, 0.3, FH / 2, 12, e.kind === "buy" ? "#fbf6ec" : "#ffd166", 0.07, 26, 0.05);
+            break;
+          case "golden":
+            fx.ring(x, 0.05, z, 0.06, 0.04, 20, "#ffd166");
+            break;
+          case "frenzy":
+          case "lucky":
+            fx.burst(x, 0.4, z, 50, "#ffd166", 0.12, 44, 0.06);
+            fx.ring(x, 0.05, z, 0.1, 0.08, 24, "#ffd166");
+            shaking = 0.05;
+            break;
+          case "cashout":
+            fx.burst(FW / 2, 0.4, FH / 2, 90, "#b08cff", 0.16, 60, 0.07);
+            fx.burst(FW / 2, 0.4, FH / 2, 50, "#ffd166", 0.13, 60, 0.06);
+            shaking = 0.08;
+            break;
+        }
+      }
+    },
+    show({ view, frame, still }) {
+      restack(view.market?.bank ?? 0);
+      golden.visible = false;
+      for (const t of view.things) {
+        const r = t.r * K;
+        if (t.kind === "chip") {
+          const colour = toneOf(t.tone);
+          big.material = skin(colour === "#ffffff" ? "#c8372d" : colour);
+          // A tap squashes it for a moment.
+          big.scale.set(r * (1 + bump * 0.05), 1 - bump * 0.3, r * (1 + bump * 0.05));
+          big.position.set(t.x * K, 0.11 * (1 - bump * 0.3), t.y * K);
+          big.rotation.y = still ? 0 : frame * 0.004;
+          heat.position.set(t.x * K, 0.012, t.y * K);
+          heat.scale.setScalar(r);
+          (heat.material as MeshBasicMaterial).opacity = ((t.health ?? 0) / 1000) * 0.55;
+        } else if (t.kind === "golden") {
+          golden.visible = true;
+          golden.position.set(t.x * K, r * 1.25 + (still ? 0 : Math.sin(frame / 7) * 0.05), t.y * K);
+          golden.scale.setScalar(r);
+          coin.rotation.y = still ? 0.5 : frame * 0.09;
+          // How long it has left: the ring round it runs down.
+          timer.geometry.dispose();
+          timer.geometry = new RingGeometry(1.25, 1.4, 48, 1, Math.PI / 2, -Math.PI * 2 * ((t.health ?? 1000) / 1000));
+        }
+      }
+    },
+  };
+}
+
+// ====================================================================================================
 // The scene
 // ====================================================================================================
 export function build(canvas: HTMLCanvasElement, game: ArcadeGameId, field: { width: number; height: number }): Arcade3d | null {
@@ -1332,6 +1542,11 @@ export function build(canvas: HTMLCanvasElement, game: ArcadeGameId, field: { wi
     renderer.shadowMap.type = PCFShadowMap;
     world = bulwarkWorld(scene, fx, FW, FH);
   } else if (game === "skyfire") world = skyfireWorld(scene, fx, FW, FH);
+  else if (game === "chipstack") {
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = PCFShadowMap;
+    world = chipstackWorld(scene, fx, FW, FH);
+  }
   else {
     renderer.dispose();
     return null;

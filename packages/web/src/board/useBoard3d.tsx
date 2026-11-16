@@ -1,7 +1,7 @@
 // The 3-D board, for the board table: fetches the scene when a board that has one is on screen,
 // keeps it drawn as the game moves on, and says whether it is up (the grid of buttons is then made
 // see-through and laid over it: see board3d.ts).
-import type { BoardGrid } from "@journey-to-code/games";
+import { colOf, rowOf, type BoardGrid, type BoardPiece } from "@journey-to-code/games";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { reducedMotion } from "../motion";
 import { useWants3d } from "../display";
@@ -14,12 +14,21 @@ interface Given {
   shown: (cell: number) => number;
   picked: number | string | null;
   targets: Set<number>;
+  /** A stone shown where it would go, and the piece it would be. */
+  ghost: number | null;
+  mine: BoardPiece | undefined;
+  /** A piece's or a seat's colour by name. */
+  toneOf: (piece: BoardPiece) => string;
+  seatTone: (seat: number) => string;
 }
+
+/** A full-size Go board has its crossings too close together, once tipped back, for a finger: it stays flat. */
+const MOST_CROSSINGS = 13;
 
 export function useBoard3d(el: RefObject<HTMLDivElement | null>, given: Given) {
   const { game, grid } = given;
-  // Only a plain board of squares with pieces that have ids to follow: no crossings, nothing that falls.
-  const wanted = useWants3d(game) && hasBoard3d(game) && !grid.points && !grid.gravity && !grid.blocks;
+  // A plain board, one piece to a square: not boards within a board, and not the biggest boards of crossings.
+  const wanted = useWants3d(game) && hasBoard3d(game) && !grid.blocks && !(grid.points && grid.cols > MOST_CROSSINGS);
   const canvas = useRef<HTMLCanvasElement>(null);
   const scene = useRef<Board3d | null>(null);
   const [up, setUp] = useState(false);
@@ -33,20 +42,29 @@ export function useBoard3d(el: RefObject<HTMLDivElement | null>, given: Given) {
     const c = canvas.current;
     const board = el.current;
     if (!s || !c || !board) return;
-    const { grid: g, shown, picked, targets } = latest.current;
+    const { grid: g, shown, picked, targets, ghost, mine, toneOf, seatTone } = latest.current;
     const flipped = !!g.flip;
+    const size = g.cols * g.rows;
+    const shadeOf = (cell: number) => (g.shade === "checker" ? ((rowOf(g.cols, cell) + colOf(g.cols, cell)) % 2 === 0 ? "light" : "dark") : (g.shade?.[cell] ?? "plain"));
+    const coordsOff = !!g.points && document.documentElement.dataset.coords === "off";
     const frame: BoardFrame3d = {
+      game: latest.current.game,
       cols: g.cols,
       rows: g.rows,
+      points: !!g.points,
+      gravity: !!g.gravity,
+      shades: g.shade ? Array.from({ length: size }, (_, at) => shadeOf(shown(at))) : null,
       pieces: g.cells.flatMap((p, cell) => {
         if (!p) return [];
-        const light = p.tone === "light";
-        return [{ at: shown(cell), id: p.id ?? `at${cell}`, kind: p.kind, light, near: flipped ? !light : light, ...(p.span ? { span: p.span } : {}), name: p.label }];
+        const tone = toneOf(p);
+        const light = tone === "light";
+        return [{ at: shown(cell), id: p.id ?? `at${cell}`, kind: p.kind, light, near: flipped ? !light : light, tone, ...(p.span ? { span: p.span } : {}), name: p.label }];
       }),
-      marks: (g.marks ?? []).map((m) => ({ at: shown(m.cell), mark: m.mark })),
+      marks: (g.marks ?? []).map((m) => ({ at: shown(m.cell), mark: m.mark, ...(m.owner !== undefined ? { tone: seatTone(m.owner) } : {}) })),
+      ghost: ghost !== null && mine && !g.cells[ghost] ? { at: shown(ghost), kind: mine.kind, tone: toneOf(mine) } : null,
       targets: [...targets].map(shown),
       picked: typeof picked === "number" ? shown(picked) : null,
-      coords: g.coords ? { cols: flipped ? [...g.coords.cols].reverse() : g.coords.cols, rows: flipped ? [...g.coords.rows].reverse() : g.coords.rows } : null,
+      coords: g.coords && !coordsOff ? { cols: flipped ? [...g.coords.cols].reverse() : g.coords.cols, rows: flipped ? [...g.coords.rows].reverse() : g.coords.rows } : null,
       width: c.clientWidth,
       height: c.clientHeight,
       board: board.clientWidth,

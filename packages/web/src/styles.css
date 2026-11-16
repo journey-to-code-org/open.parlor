@@ -543,62 +543,103 @@ h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; }
   .palace-felt .center-info { grid-area: info; min-width: 0; padding: 0 8px; text-wrap: balance; }
 }
 /* Palace buttons live in the felt, not floating over your face-up cards. */
-/* Palace in 3-D. The felt becomes a table seen from your chair: it is tipped back about its near
+/* A card table in 3-D (Palace, and every game on the card kit). The felt becomes a table seen from your chair: it is tipped back about its near
    edge, the cards lie on it (a face-up card on its face-down one, the pile as high as it is deep,
    the deck as thick as what is left of it), and whatever is to be read (names, what just happened,
    the buttons) stands up off it to face you. All of it is the same page set out in space by CSS:
    nothing is drawn on a canvas, and every card is still the button it was. The hand stays flat to
    the screen, as cards held up in front of the table are. */
-.palace.three { --tip: 24deg; overflow-x: clip; }
-.palace.three .palace-felt {
+.table.three { --tip: 24deg; overflow-x: clip; }
+.table.three .palace-felt {
   transform: perspective(1500px) rotateX(var(--tip)); transform-origin: 50% 100%; transform-style: preserve-3d;
-  padding: 26px 74px 26px; margin: 0 10px 14px;
 }
+.palace.three .palace-felt { padding-block: 26px; margin-bottom: 14px; }
 /* The table itself: felt inside a wooden rail, and the edge of it towards you. */
-.palace.three .palace-felt::before {
-  content: ""; position: absolute; inset: 0; border-radius: 30px; transform: translateZ(-1px); pointer-events: none;
+.table.three .palace-felt::before {
+  /* A little bigger than the felt's own box, so the rail is outside everything that lies on it. */
+  content: ""; position: absolute; inset: -8px -14px; border-radius: 30px; transform: translateZ(-1px); pointer-events: none;
   background: radial-gradient(ellipse at 50% 40%, #2f7d5c, #1d5a41 60%, #154633);
   border: 12px solid #6a4526; box-shadow: inset 0 0 0 2px #3d2716, inset 0 0 46px rgba(0, 0, 0, 0.45), 0 0 0 2px #3d2716;
 }
-.palace.three .palace-felt::after {
-  content: ""; position: absolute; left: 14px; right: 14px; top: 100%; height: 26px; pointer-events: none;
+.table.three .palace-felt::after {
+  content: ""; position: absolute; left: 0; right: 0; top: calc(100% + 8px); height: 26px; pointer-events: none;
   transform-origin: 50% 0; transform: rotateX(-90deg); border-radius: 0 0 10px 10px;
   background: linear-gradient(#5a3a20, #3a2414); box-shadow: 0 30px 40px 6px rgba(0, 0, 0, 0.5);
 }
-.palace.three .palace-felt :is(.opp-area, .opp, .opp-cards, .mini-slot, .mini-stack, .center, .pile-area, .deck, .pile, .pile-stack, .mine-on-table, .my-table, .table-slot) { transform-style: preserve-3d; }
+.table.three .palace-felt :is(.opp-area, .opp, .opp-cards, .mini-slot, .mini-stack, .center, .pile-area, .deck, .pile, .pile-stack, .mine-on-table, .my-table, .table-slot, .kit-trick, .kit-fan-area, .kit-fan, .pile-spread-area, .pile-spread, .pile-spread-row, .kit-melds, .kit-team-melds, .kit-meld, .kit-meld-cards, .cross, .pairs-area, .card-grid) { transform-style: preserve-3d; }
 /* What is read stands up to face you. */
-.palace.three .palace-felt :is(.opp > :first-child, .center-info, .pile-area small) { transform: rotateX(calc(-1 * var(--tip))); transform-origin: 50% 100%; }
-.palace.three .palace-felt .opp > :first-child { filter: drop-shadow(0 10px 6px rgba(0, 0, 0, 0.35)); }
+/* (Each line of what is said stands up by itself. Standing the whole block up would make it the
+   thing its status line is placed against, and on the kit tables that line is placed against the felt.) */
+.table.three .palace-felt :is(.opp > :first-child, .center-info > *, .pile-area small) { transform: rotateX(calc(-1 * var(--tip))); transform-origin: 50% 100%; }
+.table.three .palace-felt .opp > :first-child { filter: drop-shadow(0 10px 6px rgba(0, 0, 0, 0.35)); }
 /* Cards on the table have an edge and a shadow, and one on top of another is higher. */
-.palace.three :is(.mini-down, .mini-up, .down-card, .up-card, .pile-card) { border-radius: var(--card-radius, 8px); box-shadow: 0 1px 0 #d9d0bf, 0 2px 0 #b8ae9b, 0 5px 7px rgba(0, 0, 0, 0.4); }
-.palace.three .mini-up { transform: translateZ(4px); }
-.palace.three .up-card { transform: translateZ(7px); transition: transform 140ms var(--ease-out, ease-out); }
-.palace.three .down-card { transform: translateZ(1px); }
-@media (hover: hover) { .palace.three .up-card:hover { transform: translateZ(22px); } }
-/* The deck: as thick as what is left to draw. */
-.palace.three .deck playing-card { transform: translateZ(calc(var(--depth, 0) * 4px)); filter: none; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); border-radius: var(--card-radius, 8px); }
-.palace.three .deck { position: relative; }
-.palace.three .deck::before, .palace.three .deck::after, .palace.three .pile-stack::before, .palace.three .pile-stack::after {
+.table.three :is(.mini-down, .mini-up, .down-card, .up-card, .pile-card) { border-radius: var(--card-radius, 8px); box-shadow: 0 1px 0 #d9d0bf, 0 2px 0 #b8ae9b, 0 5px 7px rgba(0, 0, 0, 0.4); }
+.table.three .mini-up { transform: translateZ(4px); }
+.table.three .up-card { transform: translateZ(7px); transition: transform 140ms var(--ease-out, ease-out); }
+.table.three .down-card { transform: translateZ(1px); }
+@media (hover: hover) { .table.three .up-card:hover { transform: translateZ(22px); } }
+/* The deck: as thick as what is left to draw. (The block under it, and under the pile, is drawn
+   before the cards and never after: on a table where something between flattens the stack, what
+   is drawn last would lie over the top card.) */
+.table.three .deck > :is(playing-card, button) { transform: translateZ(calc(var(--depth, 0) * 4px + 3px)); }
+.table.three .deck playing-card { filter: none; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); border-radius: var(--card-radius, 8px); }
+.table.three .deck { position: relative; }
+.table.three .deck::before, .table.three .pile-stack::before {
   content: ""; position: absolute; width: var(--trick-w); height: var(--trick-h); border-radius: var(--card-radius, 8px); pointer-events: none;
   background: repeating-linear-gradient(#f4eddc 0 1px, #cdc3ae 1px 2px); box-shadow: 0 0 0 1px #a89e8a, 0 8px 12px rgba(0, 0, 0, 0.45);
 }
-.palace.three .deck::before { top: 0; left: calc(50% - var(--trick-w) / 2); transform: translateZ(0.5px); }
-.palace.three .deck::after { top: 0; left: calc(50% - var(--trick-w) / 2); transform: translateZ(calc(var(--depth, 0) * 2px)); box-shadow: 0 0 0 1px #a89e8a; }
-.palace.three .deck:has(.empty-slot)::before, .palace.three .deck:has(.empty-slot)::after { display: none; }
+.table.three .deck::before { top: 0; left: calc(50% - var(--trick-w) / 2); transform: translateZ(0.5px); }
+.table.three .deck:has(.empty-slot)::before, .table.three .deck:not(:has(playing-card))::before { display: none; }
 /* The pile: the cards under the top few are a block as high as the pile is deep, and the top few
    lie on it, fanned as they always were. */
-.palace.three .pile-stack::before { left: var(--fan); top: 2px; transform: translateZ(0.5px); }
-.palace.three .pile-stack::after { left: var(--fan); top: 2px; transform: translateZ(calc(var(--tall, 0) * 0.6px)); box-shadow: 0 0 0 1px #a89e8a; }
-.palace.three .pile-card { transform: translateZ(calc(var(--tall, 0) * 1.2px + var(--i) * 3px + 2px)); }
-.palace.three .empty-slot { transform: translateZ(1px); }
+.table.three .pile-stack::before { left: var(--fan); top: 2px; transform: translateZ(0.5px); }
+.table.three .pile-card { transform: translateZ(calc(var(--tall, 0) * 1.2px + var(--i) * 3px + 2px)); }
+.table.three .empty-slot { transform: translateZ(1px); }
 /* Something to press on the table is easier to hit when it stands a little off it. */
-.palace.three .table-slot .flip { transform-style: preserve-3d; }
+.table.three .table-slot .flip { transform-style: preserve-3d; }
 @media (max-width: 599px) {
-  .palace.three { --tip: 18deg; }
-  .palace.three .palace-felt { padding: 16px 18px 16px; margin: 0 4px 12px; }
-  .palace.three .palace-felt::before { border-width: 7px; border-radius: 20px; }
-  .palace.three .palace-felt::after { height: 16px; left: 8px; right: 8px; }
+  .table.three { --tip: 18deg; }
+  .palace.three .palace-felt { padding-block: 16px; margin-bottom: 12px; }
+  .table.three .palace-felt::before { inset: -6px -8px; border-width: 7px; border-radius: 20px; }
+  .table.three .palace-felt::after { height: 16px; top: calc(100% + 6px); }
 }
+
+/* Spades in 3-D: the same table, for a felt whose seats and trick are placed by hand. The badges
+   stand up at their places, the four cards of the trick lie in their diamond with a shadow under
+   each, and the buttons in the corners face you as they did. */
+.spades.three { --tip: 22deg; }
+.spades.three .felt { transform: perspective(1500px) rotateX(var(--tip)); transform-origin: 50% 100%; transform-style: preserve-3d; margin: 14px 18px 22px; }
+.spades.three .felt::before {
+  content: ""; position: absolute; inset: -8px -12px; border-radius: 30px; transform: translateZ(-1px); pointer-events: none;
+  background: radial-gradient(ellipse at 50% 40%, #2f7d5c, #1d5a41 60%, #154633);
+  border: 12px solid #6a4526; box-shadow: inset 0 0 0 2px #3d2716, inset 0 0 46px rgba(0, 0, 0, 0.45), 0 0 0 2px #3d2716;
+}
+.spades.three .felt::after {
+  content: ""; position: absolute; left: 0; right: 0; top: calc(100% + 8px); height: 24px; pointer-events: none;
+  transform-origin: 50% 0; transform: rotateX(-90deg); border-radius: 0 0 10px 10px;
+  background: linear-gradient(#5a3a20, #3a2414); box-shadow: 0 30px 40px 6px rgba(0, 0, 0, 0.5);
+}
+.spades.three .seat-slot { transform-origin: 50% 100%; filter: drop-shadow(0 10px 6px rgba(0, 0, 0, 0.35)); }
+.spades.three .seat-slot.top { transform: translateX(-50%) rotateX(calc(-1 * var(--tip))); }
+.spades.three .seat-slot:is(.left, .right) { transform: translateY(-50%) rotateX(calc(-1 * var(--tip))); }
+.spades.three .played { filter: drop-shadow(0 2px 0 #b8ae9b) drop-shadow(0 7px 6px rgba(0, 0, 0, 0.45)); }
+.spades.three .took { transform: translateX(-50%) rotateX(calc(-1 * var(--tip))); transform-origin: 50% 100%; }
+.spades.three .status { transform: rotateX(calc(-1 * var(--tip))); transform-origin: 50% 100%; }
+.spades.three .felt > :is(button, .sound-toggle, .settings-toggle, .table-settings) { transform: translateZ(2px) rotateX(calc(-1 * var(--tip))); transform-origin: 50% 100%; }
+@media (max-width: 599px) {
+  .spades.three { --tip: 16deg; }
+  .spades.three .felt { margin: 10px 10px 16px; }
+  .spades.three .felt::before { inset: -6px -8px; border-width: 7px; border-radius: 20px; }
+}
+
+/* The card kit's own things on the table: the cards of a trick each lie where they were played, a
+   little off the felt; melds and spreads lie flat with an edge and a shadow. */
+.table.three :is(.kit-played, .kit-fan-card, .kit-meld-cards > *, .pile-spread-row > *) { border-radius: var(--card-radius, 8px); box-shadow: 0 1px 0 #d9d0bf, 0 2px 0 #b8ae9b, 0 5px 7px rgba(0, 0, 0, 0.4); }
+.table.three .kit-played { transform: translateZ(calc(4px + var(--i, 0) * 2px)); }
+.table.three .palace-felt :is(.kit-lead, .took) { transform: rotateX(calc(-1 * var(--tip))); transform-origin: 50% 100%; }
+/* A table for one (the patiences) is all columns of cards that are dragged about: it is tipped
+   only a little, so a long column stays as easy to get hold of as it was. */
+.table.three:has(.kit-felt.solo) { --tip: 9deg; }
 
 .felt-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
 .felt-actions p { margin: 0; width: 100%; text-align: center; }
@@ -1487,6 +1528,7 @@ html[data-motion="off"] .board-grid .cell.mark-must::before { animation: none; }
 .board-wrap.three .board-grid .cell, .board-wrap.three .board-grid .cell:hover { background: none !important; background-image: none !important; box-shadow: none; }
 .board-wrap.three .board-grid .cell > .piece, .board-wrap.three .board-grid .cell::after, .board-wrap.three .board-grid .cell::before { opacity: 0; }
 .board-wrap.three .board-grid .cell.can:hover { background: rgba(255, 255, 255, 0.14) !important; }
+.board-wrap.three .board-grid .board-lines, .board-wrap.three .board-grid .board-blocks { visibility: hidden; }
 /* The letters and numbers are painted on the board's frame in the scene. */
 .board-wrap.three .coords { visibility: hidden; }
 .looking-back .board-wrap.three .board-grid { outline: none; }
@@ -1556,6 +1598,23 @@ html[data-motion="off"] .board-grid .cell.mark-must::before { animation: none; }
   padding: calc(var(--u) * 0.42) calc(var(--u) * 0.12);
   background: var(--wood); border-radius: 10px; box-shadow: var(--elev-2); color: var(--ink);
 }
+/* The board in 3-D: tipped back about its near edge, with CSS alone. It has a thick edge towards
+   you, and each checker is a disc with a side to it, a little higher than the one it lies against. */
+.track.three {
+  transform: perspective(1600px) rotateX(20deg); transform-origin: 50% 100%; transform-style: preserve-3d; margin-bottom: 18px;
+  box-shadow: inset 0 0 0 2px #3a2414, 0 0 0 2px #3a2414;
+}
+.track.three::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 20px; pointer-events: none;
+  transform-origin: 50% 0; transform: rotateX(-90deg); border-radius: 0 0 8px 8px;
+  background: linear-gradient(#4a2e1a, #2c1b0f); box-shadow: 0 26px 30px 4px rgba(0, 0, 0, 0.5);
+}
+.track.three .spot { transform-style: preserve-3d; }
+.track.three .checker { transform: translateZ(calc(2px + var(--k, 0) * 1.5px)); }
+.track.three .checker.tone-light { box-shadow: inset 0 0 0 calc(var(--d) * 0.08) rgba(128, 96, 52, 0.38), 0 calc(var(--d) * 0.06) 0 #b7a37c, 0 calc(var(--d) * 0.12) calc(var(--d) * 0.1) rgba(0, 0, 0, 0.5); }
+.track.three .checker.tone-dark { box-shadow: inset 0 0 0 calc(var(--d) * 0.08) rgba(255, 255, 255, 0.13), 0 calc(var(--d) * 0.06) 0 #0c0a08, 0 calc(var(--d) * 0.12) calc(var(--d) * 0.1) rgba(0, 0, 0, 0.5); }
+.track.three.tall { transform: perspective(1600px) rotateX(12deg); }
+
 /* The strip between the rows: playing surface, with the bar and the rail running through it. */
 .track-mid { grid-row: 2; grid-column: 1 / 14; background: var(--surface); position: relative; display: grid; pointer-events: none; }
 .track::before { content: ""; grid-row: 2; grid-column: 7; background: var(--wood); z-index: 1; }

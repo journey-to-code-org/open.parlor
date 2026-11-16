@@ -37,7 +37,7 @@ export interface Arcade3d {
 }
 
 /** The games that have a scene. */
-const SCENES = new Set<ArcadeGameId>(["skyfire", "bulwark"]);
+const SCENES = new Set<ArcadeGameId>(["skyfire", "bulwark", "chipstack"]);
 export const hasArcade3d = (game: ArcadeGameId) => SCENES.has(game);
 
 let loading: Promise<typeof import("./scene3d-gl") | null> | null = null;

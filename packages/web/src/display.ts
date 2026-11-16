@@ -111,7 +111,9 @@ export const useWants3d = (game: string) => useSyncExternalStore(watchDisplay, (
 /** Games whose flat, angled drawing is the better one, and so is what "auto" gives. */
 const BEST_FLAT = new Set(["minigolf"]);
 /** Is this game drawn in 3-D, going by the setting? */
-export const wants3d = (game: string, depth: Depth = depthSetting()) => depth === "3d" || (depth === "auto" && !BEST_FLAT.has(game));
+export const wants3d = (game: string, depth: Depth = depthSetting()) => !flatForNow() && (depth === "3d" || (depth === "auto" && !BEST_FLAT.has(game)));
+/** `?flat` in the address: everything is drawn flat for this visit, whatever the setting (a way out if a 3-D look misbehaves on some device). */
+const flatForNow = () => typeof location !== "undefined" && /[?&]flat\b/.test(location.search);
 
 /** How stones are put down, as it stands on the page. */
 export const placingSetting = (): Placing => {

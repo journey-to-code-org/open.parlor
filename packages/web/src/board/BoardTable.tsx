@@ -425,7 +425,7 @@ export function BoardTable({ view, names, act, onLeave, banner, watching, chat, 
         <span className="bar-buttons">
           {/* Resign, offer a draw, ask to take a move back: whatever the view says this seat may do. */}
           {view.offers && !watching && <OffersMenu can={view.offers.can} onSend={(move) => void send(move, true)} />}
-          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} stones={stones} depth={hasBoard3d(view.game)} />}
+          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} stones={stones} depth={hasBoard3d(view.game) || view.grids.some(isPointsTrack)} />}
           <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>
       </header>
@@ -629,15 +629,14 @@ function Grid({ grid, view, names, mine, side, titled, picked, asking, onChoose,
   };
   const canTap = (cell: number) => targets.has(cell) || (quiet && picked !== null) || !!sourceAt(grid, cell) || (tapCols ? tapCols.has(colOf(grid.cols, cell)) : !!grid.tap?.cells.includes(cell));
 
-  // In three dimensions, where this game's pieces have been modelled and the device can: the
-  // scene is drawn under the grid, and the grid's own squares and pieces are made see-through.
-  const three = useBoard3d(el, { game: view.game, grid, shown, picked, targets });
-
   // A stone shown where it would go, before it is put down (see the top of this file). It is
   // forgotten when the board moves on.
   const [ghost, setGhost] = useState<number | null>(null);
   const stonesDown = grid.cells.reduce((n, p) => n + (p ? 1 : 0), 0);
   useEffect(() => setGhost(null), [view.phase, view.turn, stonesDown, grid.tap?.type]);
+  // In three dimensions, where this game has a board in the scene and the device can: the scene is
+  // drawn under the grid, and the grid's own squares and pieces are made see-through.
+  const three = useBoard3d(el, { game: view.game, grid, shown, picked, targets, ghost, mine, toneOf, seatTone });
   /** What the last press on the board was made with: a finger needs more care than a mouse. */
   const pointer = useRef("mouse");
   function careful(): boolean {
