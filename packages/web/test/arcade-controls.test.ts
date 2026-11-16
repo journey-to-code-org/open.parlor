@@ -102,3 +102,33 @@ describe("Tower of Ryan's controls (bulwark)", () => {
     expect(bulwark.view(state).build!.built).toHaveLength(1);
   });
 });
+
+describe("Chip Stack's controls (chipstack)", () => {
+  it("turns keys and list keys into commands, one a tick, and taps as fast as counts while Space is held", async () => {
+    const { chipStackControls } = await import("../src/arcade/controls");
+    const { chipStack } = await import("@journey-to-code/games");
+    const c = chipStackControls();
+    expect(c.read()).toEqual(chipStack.idle);
+    c.order!("buy:3");
+    c.order!("boost:2");
+    c.order!("power");
+    c.order!("nonsense");
+    expect(c.read()).toEqual({ n: 1, cmd: "buy", item: 3 });
+    expect(c.read()).toEqual({ n: 2, cmd: "boost", item: 2 });
+    expect(c.read()).toMatchObject({ n: 3, cmd: "power" });
+    expect(c.read().n).toBe(3);
+    c.key("0", true);
+    expect(c.read()).toEqual({ n: 4, cmd: "buy", item: 9 });
+    c.key("g", true);
+    expect(c.read()).toMatchObject({ cmd: "catch" });
+    // Held, Space earns exactly what the game allows: fifteen taps in a second.
+    const state = chipStack.newGame(chipStack.normalize({ id: "purist" }), 1, 1);
+    const held = chipStackControls();
+    held.key(" ", true);
+    for (let t = 0; t < 60; t++) chipStack.step(state, [held.read()]);
+    expect(state.taps[0]).toBe(15);
+    held.key(" ", false);
+    for (let t = 0; t < 60; t++) chipStack.step(state, [held.read()]);
+    expect(state.taps[0]).toBe(15);
+  });
+});

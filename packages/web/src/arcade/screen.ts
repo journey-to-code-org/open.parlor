@@ -68,6 +68,8 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
   let shake = 0;
   let flash = 0;
   let streak = 0;
+  /** How much the big chip is squashed by a tap just now. */
+  let bump = 0;
   let scale = 1;
   let dpr = 1;
 
@@ -326,6 +328,33 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
           case "wave":
             if (!quiet) notes([330, 330, 440], 120, 0.12);
             break;
+          // A game with a market: taps, purchases, and the golden chip.
+          case "tap":
+            bump = 1;
+            if (!quiet && e.seat === me) blip(700 + Math.random() * 120, 0.035, "triangle", 0.03, -250);
+            break;
+          case "buy":
+            if (!quiet) notes([520, 700], 50, 0.07);
+            break;
+          case "boost":
+            if (!quiet) notes([520, 780, 1040], 60, 0.09);
+            break;
+          case "golden":
+            ring(e.x, e.y, 60, 40, 20, "#ffd166");
+            if (!quiet) notes([1320, 1760, 2090], 70, 0.1);
+            break;
+          case "frenzy":
+          case "lucky":
+            burst(e.x, e.y, 40, "#ffd166", 120, 40);
+            ring(e.x, e.y, 100, 80, 24, "#ffd166");
+            flash = Math.max(flash, 0.35);
+            if (!quiet) notes([660, 880, 1100, 1320, 1760], 60, 0.12);
+            break;
+          case "cashout":
+            burst(e.x, e.y, 80, "#b08cff", 150, 60);
+            flash = 0.8;
+            if (!quiet) notes([523, 659, 784, 1046, 1318, 1568], 80, 0.16);
+            break;
           case "send":
           case "pay":
           case "interest":
@@ -337,7 +366,7 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
         if (e.text && words.length < 40 && e.kind !== "boom") {
           const big = e.kind === "perfect" || e.kind === "extend" || e.kind === "medal-lost";
           const colour = e.kind === "medal" || e.kind === "pop" || e.kind === "sold" || e.kind === "pay" || e.kind === "interest" || e.kind === "send" ? "#ffd166" : e.kind === "medal-lost" || e.kind === "leak" || e.kind === "nope" ? "#ff8a8a" : "#ffffff";
-          const slow = big || e.kind === "pay" || e.kind === "interest" || e.kind === "send" || e.kind === "nope";
+          const slow = big || e.kind === "pay" || e.kind === "interest" || e.kind === "send" || e.kind === "nope" || e.kind === "frenzy" || e.kind === "lucky" || e.kind === "cashout";
           words.push({ x: e.x, y: e.y, text: e.text, life: slow ? 110 : 46, max: slow ? 110 : 46, big, colour });
         }
       }
@@ -358,6 +387,7 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
       beams = beams.filter((b) => --b.life > 0);
       shake *= 0.86;
       flash *= 0.86;
+      bump *= 0.8;
     },
     draw(view, frame, pointer) {
       const W = canvas.width;
@@ -399,6 +429,13 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
           ctx.lineWidth = 34;
           ctx.strokeRect(col * build.cell + 30, row * build.cell + 30, build.cell - 60, build.cell - 60);
         }
+      } else if (view.market) {
+        // A card table's felt under the chip.
+        const felt = ctx.createRadialGradient(FW / 2, FH / 2, 200, FW / 2, FH / 2, FW * 0.7);
+        felt.addColorStop(0, "#2b6a50");
+        felt.addColorStop(1, "#143628");
+        ctx.fillStyle = felt;
+        ctx.fillRect(0, 0, FW, FH);
       } else {
         for (const st of stars) {
           ctx.globalAlpha = 0.25 + st.z * 0.2;
@@ -475,6 +512,49 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
             ctx.fillRect(t.x - t.r, t.y - t.r - 110, t.r * 2, 36);
             ctx.fillStyle = colour;
             ctx.fillRect(t.x - t.r, t.y - t.r - 110, (t.r * 2 * t.health) / 1000, 36);
+          }
+        } else if (t.kind === "chip" || t.kind === "golden") {
+          const big = t.kind === "chip";
+          const r = big ? t.r * (1 - bump * 0.06) : t.r * (1 + (reduced ? 0 : Math.sin(frame / 6) * 0.06));
+          const face = big ? colour : "#ffd166";
+          const edge = big ? "#fbf6ec" : "#fff3c4";
+          if (big && t.health) {
+            // Heat: a glow round the chip that grows with it.
+            ctx.globalAlpha = (t.health / 1000) * 0.55;
+            ctx.drawImage(stamp("#ff5a6e", false), t.x - r * 1.6, t.y - r * 1.6, r * 3.2, r * 3.2);
+            ctx.globalAlpha = 1;
+          }
+          if (!big) ctx.drawImage(stamp("#ffd166", false), t.x - r * 2, t.y - r * 2, r * 4, r * 4);
+          ctx.fillStyle = "rgba(0,0,0,0.3)";
+          ctx.beginPath();
+          ctx.arc(t.x + r * 0.05, t.y + r * 0.08, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = face;
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
+          ctx.fill();
+          // The stripes round a chip's edge.
+          ctx.strokeStyle = edge;
+          ctx.lineWidth = r * 0.16;
+          ctx.setLineDash([r * 0.3, (r * 2 * Math.PI * 0.92) / 8 - r * 0.3]);
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, r * 0.92, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.lineWidth = r * 0.04;
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, r * 0.68, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = edge;
+          ctx.font = `700 ${r * 0.7}px Georgia, 'Times New Roman', serif`;
+          ctx.fillText(big ? "♠\uFE0E" : "★", t.x, t.y + r * 0.04);
+          if (!big && t.health !== undefined) {
+            // How long it has left.
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 36;
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, r * 1.25, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * t.health) / 1000);
+            ctx.stroke();
           }
         } else if (t.kind.startsWith("tower:")) {
           const kind = t.kind.slice(6);

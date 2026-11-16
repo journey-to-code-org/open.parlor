@@ -24,7 +24,7 @@ export interface ChooserGame {
   /** A board game shows a little board instead of cards. */
   board?: { cols: number; cells: ({ glyph: string; tone: string; shade?: string } | null)[]; shade?: string };
   /** An arcade game shows a little screen: a ship, what it is up against, and what is coming at it (in a 100 × 100 box). */
-  screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][] };
+  screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][]; chip?: boolean };
   /** A dice game shows a few dice: the face each one shows. */
   dice?: number[];
   /** A table sport shows a little table from above: its surface, a hole, a ball or two (in a 100 × 100 box). */
@@ -178,6 +178,13 @@ const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spa
                   <rect class="plinth" :x="t[0] - 7" :y="t[1] - 7" width="14" height="14" rx="3" />
                   <circle class="turret" :class="`n${i}`" :cx="t[0]" :cy="t[1]" r="4" />
                 </g>
+              </svg>
+              <svg v-else-if="g.screen.chip" viewBox="0 0 100 100">
+                <rect class="felt" x="3" y="3" width="94" height="94" rx="14" />
+                <circle v-for="(b, i) in g.screen.bullets" :key="`s${i}`" class="coin" :cx="b[0]" :cy="b[1]" r="7" />
+                <circle class="bigchip" cx="50" cy="44" r="27" />
+                <circle class="bigchip-edge" cx="50" cy="44" r="23.5" />
+                <text class="bigchip-mark" x="50" y="53" text-anchor="middle">♠&#xFE0E;</text>
               </svg>
               <svg v-else viewBox="0 0 100 100">
                 <rect class="glass" x="3" y="3" width="94" height="94" rx="14" />
@@ -397,6 +404,11 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .mini-screen .turret { fill: #5ee6a0; }
 .mini-screen .turret.n1 { fill: #3fe0d0; }
 .mini-screen .turret.n2 { fill: #ffd166; }
+.mini-screen .felt { fill: #1f4d3a; stroke: #e8c46a; stroke-width: 2; }
+.mini-screen .coin { fill: #ffd166; stroke: #8a6a14; stroke-width: 1.6; }
+.mini-screen .bigchip { fill: #c8323c; stroke: #5b1420; stroke-width: 1.6; }
+.mini-screen .bigchip-edge { fill: none; stroke: #fbf6ec; stroke-width: 4; stroke-dasharray: 8 10.45; }
+.mini-screen .bigchip-mark { fill: #fbf6ec; font-size: 26px; font-family: Georgia, serif; }
 .tile:hover .mini-screen, .tile:focus-visible .mini-screen { rotate: 0deg; scale: 1.06; }
 @media (max-width: 560px) {
   .tile { padding-right: clamp(14px, 1.8vw, 22px); padding-top: calc(var(--tile-card) * 1.2); }

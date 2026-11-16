@@ -4,8 +4,10 @@
 //
 // A game that is steered (Shitstorm) is played with the keys and a finger on the field. A game that
 // builds on a grid (Tower of Ryan) says so in its view (`build`), and gets a shop under the field: pick
-// something and tap a square to build it, or tap what stands there to upgrade or sell it.
-import { arcadeGame, points, type ArcadeBuild, type ArcadeGameId, type ArcadeView } from "@journey-to-code/games";
+// something and tap a square to build it, or tap what stands there to upgrade or sell it. A game
+// with things to buy that are built nowhere (Chip Stack) says so too (`market`): its field is
+// shorter, a tap on it is a tap, and everything on offer is listed underneath.
+import { arcadeGame, points, shortly, type ArcadeBuild, type ArcadeGameId, type ArcadeMarket, type ArcadeView } from "@journey-to-code/games";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadFeedbackSettings, saveFeedbackSettings } from "../feedback/sounds";
 import { loadArcadeBest, saveArcadeBest, type ArcadeRules } from "../storage";
@@ -29,6 +31,7 @@ interface Hud {
   lives: number;
   stats: ArcadeView["pilots"][number]["stats"];
   build: ArcadeBuild | null;
+  market: ArcadeMarket | null;
 }
 interface Ending {
   score: number;
@@ -47,10 +50,11 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
   const game = arcadeGame(id)!;
   const canvas = useRef<HTMLCanvasElement>(null);
   const scoreEl = useRef<HTMLElement>(null);
+  const bankEl = useRef<HTMLElement>(null);
   const [run, setRun] = useState(0);
   const [paused, setPaused] = useState(false);
   const [ending, setEnding] = useState<Ending | null>(null);
-  const [hud, setHud] = useState<Hud>({ stage: "", lives: 0, stats: [], build: null });
+  const [hud, setHud] = useState<Hud>({ stage: "", lives: 0, stats: [], build: null, market: null });
   // Building: what is picked in the shop, and which square is picked out on the field.
   const [pick, setPick] = useState<string | null>(null);
   const [chosen, setChosen] = useState<[number, number] | null>(null);
@@ -131,13 +135,18 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
       }
       screen.draw(view, frame, pointer);
       const me = view.pilots[0];
-      if (scoreEl.current) scoreEl.current.textContent = points(view.score);
+      const market = view.market;
+      if (scoreEl.current) scoreEl.current.textContent = market ? shortly(view.score) : points(view.score);
+      if (bankEl.current && market) bankEl.current.textContent = shortly(market.bank);
       if (me) {
         const building = build ? `|${build.bank}|${build.lives}|${build.next ? `${build.next.wave}:${Math.ceil(build.next.inTicks / game.rate)}:${build.next.bonus}` : ""}|${build.built.map((b) => `${b.id}:${b.level}`).join(",")}` : "";
-        const key = `${view.stage}|${me.lives}|${me.stats.map((s) => (s.max && s.max >= 100 ? Math.round((s.value * 20) / s.max) : s.value)).join(",")}${building}`;
+        // The bank is written straight to the page; the list is drawn again only when what it says changes.
+        const selling = market ? `|${market.perSecond}|${market.perTap}|${market.items.map((i) => `${i.key}:${i.cost}:${i.owned ?? ""}:${i.can ? 1 : 0}:${i.label}`).join(",")}|${market.badges.map((b) => b.label).join(",")}` : "";
+        const stats = market ? "" : me.stats.map((s) => (s.max && s.max >= 100 ? Math.round((s.value * 20) / s.max) : s.value)).join(",");
+        const key = `${view.stage}|${me.lives}|${stats}${building}${selling}`;
         if (key !== hudKey) {
           hudKey = key;
-          setHud({ stage: view.stage, lives: me.lives, stats: me.stats, build: build ?? null });
+          setHud({ stage: view.stage, lives: me.lives, stats: me.stats, build: build ?? null, market: market ?? null });
         }
       }
     }
@@ -192,7 +201,16 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
     };
     const down = (e: PointerEvent) => {
       wakeArcadeSound();
-      const build = game.view(state).build;
+      const seen = game.view(state);
+      if (seen.market && !over && !pausedRef.current) {
+        // A tap on the field is a tap on the chip, unless it lands on something to catch.
+        const box = el.getBoundingClientRect();
+        const x = ((e.clientX - box.left) / Math.max(1, box.width)) * seen.field.width;
+        const y = ((e.clientY - box.top) / Math.max(1, box.height)) * seen.field.height;
+        const gold = seen.things.find((t) => t.kind === "golden" && Math.hypot(t.x - x, t.y - y) <= t.r * 1.5);
+        return controls.order?.(gold ? "catch" : "tap");
+      }
+      const build = seen.build;
       const cell = cellAt(e);
       if (build && cell && !over && !pausedRef.current) {
         const { pick: picked } = pointing.current;
@@ -255,6 +273,8 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
     else if (!isMeter) cells.push({ stat });
   }
 
+  const market = hud.market;
+  const groups = market ? [...new Set(market.items.map((i) => i.group))] : [];
   const build = hud.build;
   const standing = build && chosen ? build.built.find((b) => b.col === chosen[0] && b.row === chosen[1]) : undefined;
   // The first thing in the shop is picked to begin with, so the first tap on the field builds.
@@ -280,7 +300,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
           </div>
           <div className="arcade-cell">
             <small>Best</small>
-            <b className="arcade-best">{points(best)}</b>
+            <b className="arcade-best">{market ? shortly(best) : points(best)}</b>
           </div>
           <span className="arcade-grow" />
           <div className="arcade-cell right">
@@ -288,7 +308,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
             <b>{hud.stage}</b>
           </div>
         </div>
-        <div className="arcade-stage">
+        <div className={`arcade-stage ${market ? "short" : ""}`}>
           <canvas ref={canvas} tabIndex={0} aria-label={`${game.name}: the field`} />
           {paused && !ending && (
             <section className="arcade-sheet" aria-label="Paused">
@@ -316,9 +336,14 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
                 <h2>Game over</h2>
                 <div className="arcade-final">{points(ending.score)}</div>
                 <p>{ending.isBest ? "A new best on this device." : `Your best: ${points(ending.best)}`}</p>
+                {market && <p>Every chip earned in the run.</p>}
                 <dl className="arcade-stats">
-                  <dt>Reached</dt>
-                  <dd>{ending.stage}</dd>
+                  {!market && (
+                    <>
+                      <dt>Reached</dt>
+                      <dd>{ending.stage}</dd>
+                    </>
+                  )}
                   <dt>Time</dt>
                   <dd>{ending.time}</dd>
                   {ending.scores.length > 1 &&
@@ -341,6 +366,51 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
             </section>
           )}
         </div>
+        {market && (
+          <div className="arcade-market">
+            <div className="arcade-till">
+              <div className="arcade-cell">
+                <small>In the bank</small>
+                <b className="arcade-bank" ref={bankEl}>
+                  0
+                </b>
+              </div>
+              <div className="arcade-cell">
+                <small>A second</small>
+                <b>{shortly(market.perSecond)}</b>
+              </div>
+              <div className="arcade-cell">
+                <small>A tap</small>
+                <b>{shortly(market.perTap)}</b>
+              </div>
+              <span className="arcade-grow" />
+              {market.badges.map((b) => (
+                <span key={b.key} className="arcade-badge" data-tone={b.tone}>
+                  {b.label}
+                </span>
+              ))}
+            </div>
+            <div className="arcade-goods">
+              {groups.map((group) => (
+                <section key={group} aria-label={group}>
+                  <h3>{group}</h3>
+                  {market.items
+                    .filter((i) => i.group === group)
+                    .map((item) => (
+                      <button key={item.key} type="button" className="arcade-good" disabled={!item.can || !!ending} onClick={() => controls.order?.(item.key)}>
+                        <span className="arcade-good-name">
+                          <b>{item.label}</b>
+                          <small>{item.hint}</small>
+                        </span>
+                        {item.owned !== undefined && <span className="arcade-owned">{item.owned}</span>}
+                        {item.cost > 0 && <span className="arcade-cost">{shortly(item.cost)}</span>}
+                      </button>
+                    ))}
+                </section>
+              ))}
+            </div>
+          </div>
+        )}
         {build && !ending && (
           <div className="arcade-shop">
             {standing ? (
@@ -402,13 +472,13 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
                 </button>
               )}
             </>
-          ) : (
+          ) : market ? null : (
             <div className="arcade-cell">
               <small>Ships</small>
               <b className="arcade-lives">{"▲".repeat(Math.max(0, hud.lives - 1)) || "–"}</b>
             </div>
           )}
-          {!build && cells.map(({ stat: s, meter }) => (
+          {!build && !market && cells.map(({ stat: s, meter }) => (
             <div className="arcade-cell" key={s.key}>
               <small>{s.label}</small>
               {s.key === "multiplier" ? (
