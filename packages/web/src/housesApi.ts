@@ -139,7 +139,8 @@ export const houses = {
   saveKit: (slug: string, game: GameId, preset: KitRules, makeDefault = false) => call<House>(at(slug, "presets"), { game, preset, makeDefault }),
   deleteKit: (slug: string, game: GameId, id: string) => call<House>(at(slug, "presets/delete"), { game, id }),
   defaultKit: (slug: string, game: GameId, id: string) => call<House>(at(slug, "default"), { game, id }),
-  openTable: (slug: string, presetId?: string, game: GameId = "spades", seats?: number, settings?: TableSettings) => call<{ id: string }>(at(slug, "tables"), { presetId, game, seats, settings }),
+  /** `rules` is for an arcade game played live, which has no house rules: its table takes them as the player set them. */
+  openTable: (slug: string, presetId?: string, game: GameId = "spades", seats?: number, settings?: TableSettings, rules?: unknown) => call<{ id: string }>(at(slug, "tables"), { presetId, game, seats, settings, rules }),
   rename: (slug: string, name: string) => call<House>(at(slug, "me"), { name }),
   savePreset: (slug: string, preset: RulePreset, makeDefault = false) => call<House>(at(slug, "presets"), { preset, makeDefault }),
   deletePreset: (slug: string, id: string) => call<House>(at(slug, "presets/delete"), { id }),

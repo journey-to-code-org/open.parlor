@@ -3,13 +3,16 @@
 import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
 import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { useEffect, useState } from "react";
-import { GAME_LIST } from "./GamePicker";
+import { ARCADE_LIST, GAME_LIST } from "./GamePicker";
+import { isLiveArcade } from "./arcade/ArcadeTable";
 import { lobby, lobbyProblem, waited, whoIsThere, type OpenTable } from "./lobbyApi";
 import { NotifyButton } from "./NotifyButton";
 import { loadSavedName, saveName } from "./storage";
 
 const REFRESH_MS = 4000;
-const about = (id: string) => GAME_LIST.find((g) => g.id === id) ?? GAME_LIST[0]!;
+/** The games a table can be opened of: the table games, and the arcade games that are played live. */
+const TABLE_GAMES = [...GAME_LIST, ...ARCADE_LIST.filter((g) => isLiveArcade(g.id))] as { id: string; name: string; emoji: string; blurb: string }[];
+const about = (id: string) => TABLE_GAMES.find((g) => g.id === id) ?? GAME_LIST[0]!;
 
 export function LobbyPage({ onOpenTable, onLeave }: { onOpenTable: (id: string) => void; onLeave: () => void }) {
   const [tables, setTables] = useState<OpenTable[] | null>(null);
@@ -23,7 +26,7 @@ export function LobbyPage({ onOpenTable, onLeave }: { onOpenTable: (id: string) 
     lobby.alerts().then(setAlerts, () => undefined);
   }, []);
   const buzzFor = alerts?.games[0] ?? "off";
-  const buzzChoices = [{ value: "off", label: "Don't buzz me" }, { value: "any", label: "Any game" }, ...GAME_LIST.map((g) => ({ value: g.id, label: g.name }))];
+  const buzzChoices = [{ value: "off", label: "Don't buzz me" }, { value: "any", label: "Any game" }, ...TABLE_GAMES.map((g) => ({ value: g.id, label: g.name }))];
 
   useEffect(() => {
     let live = true;
@@ -67,7 +70,7 @@ export function LobbyPage({ onOpenTable, onLeave }: { onOpenTable: (id: string) 
   }
 
   const playing = [...new Set((tables ?? []).map((t) => t.game))];
-  const filters = [{ value: "all", label: "Any game" }, ...GAME_LIST.filter((g) => playing.includes(g.id) || g.id === game).map((g) => ({ value: g.id, label: g.name }))];
+  const filters = [{ value: "all", label: "Any game" }, ...TABLE_GAMES.filter((g) => playing.includes(g.id as never) || g.id === game).map((g) => ({ value: g.id, label: g.name }))];
   const shown = (tables ?? []).filter((t) => game === "all" || t.game === game);
 
   return (

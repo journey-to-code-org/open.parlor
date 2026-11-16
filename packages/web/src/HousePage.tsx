@@ -1,3 +1,5 @@
+import { isLiveArcade } from "./arcade/ArcadeTable";
+import { ARCADE_LIST } from "./GamePicker";
 import { validatePreset, type RulePreset } from "@journey-to-code/rules";
 import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { HouseAiBlock } from "./HouseAi";
@@ -536,6 +538,14 @@ function PalaceRulesEditor(props: {
 }
 
 function tableTitle(t: HouseTable): string {
+  if (isLiveArcade(t.game)) {
+    const emoji = ARCADE_LIST.find((g) => g.id === (t.game as string))?.emoji ?? "🕹️";
+    const s = t.summary as { over?: boolean; score?: number; stage?: string } | null;
+    if (s?.over) return `${emoji} Finished · ${(s.score ?? 0).toLocaleString()} · ${s.stage ?? ""}`;
+    if (t.started) return `${emoji} Playing · ${s?.stage ?? ""}`;
+    const seated = t.seats.filter((x) => x.name).length;
+    return seated === 0 ? `${emoji} Waiting for players` : `${emoji} ${seated} of ${t.seats.length} seated`;
+  }
   if (isKitGame(t.game)) {
     const emoji = GAME_LIST.find((g) => g.id === t.game)?.emoji ?? "🃏";
     const s = t.summary as { over?: boolean; scoreLine?: string; hand?: number } | null;
