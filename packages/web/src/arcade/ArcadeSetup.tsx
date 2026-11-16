@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { KitRulesFields, KitRulesSheet } from "../kit/KitRules";
 import { Choice, Toggle } from "../RulesEditor";
 import { SetupLayout } from "../SetupLayout";
+import { OFFLINE_LINE, useOnline } from "../offline";
 import { arcadeSays, arcadeTagline } from "./flavour";
 import { loadArcadeBest, loadArcadeCrew, loadArcadeHouse, loadArcadeRules, loadAutofire, loadMyHouses, saveArcadeCrew, saveArcadeHouse, saveArcadeRules, saveAutofire, type ArcadeRules } from "../storage";
 import { boardOf, fetchRuns, type HouseRun } from "./scores";
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export function ArcadeSetup({ game: id, onHome, onPlay, onTogether }: Props) {
+  const online = useOnline();
   const game = arcadeGame(id)!;
   const [rules, setRules] = useState<ArcadeRules>(() => loadArcadeRules(id));
   const [crew, setCrew] = useState(() => loadArcadeCrew(id));
@@ -148,7 +150,7 @@ export function ArcadeSetup({ game: id, onHome, onPlay, onTogether }: Props) {
               <button
                 type="button"
                 className="secondary"
-                disabled={errors.length > 0 || opening === ""}
+                disabled={errors.length > 0 || opening === "" || !online}
                 onClick={() => {
                   saveArcadeRules(id, rules);
                   setOpening("");
@@ -157,6 +159,7 @@ export function ArcadeSetup({ game: id, onHome, onPlay, onTogether }: Props) {
               >
                 {opening === "" ? "Opening a table…" : where === "lobby" ? "Find players" : "Open a table"}
               </button>
+              {!online && <p className="fine">{OFFLINE_LINE}</p>}
               {opening && <p className="error">{opening}</p>}
             </section>
           )}

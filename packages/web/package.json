@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && zubra build --embed ../ui/embed --out dist/embed --name cardroom && node scripts/embed-titles.mjs && node scripts/openblog-component.mjs",
+    "build": "vite build && zubra build --embed ../ui/embed --out dist/embed --name cardroom && node scripts/embed-titles.mjs && node scripts/openblog-component.mjs && node scripts/precache.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"

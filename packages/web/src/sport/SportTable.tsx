@@ -40,6 +40,8 @@ export interface SportTableProps {
   onLeave: () => void;
   banner?: React.ReactNode;
   chat?: ChatProps;
+  /** Several people share this screen and take turns at it: say whose turn it is by name, not "your". */
+  together?: boolean;
   settings?: {
     value: TableSettings;
     change: (next: TableSettings) => Promise<void> | void;
@@ -115,7 +117,7 @@ function aimWords(v: SportView, aim: AimAt): { short: string; long: string } {
   return { short: `${where} · ${percent}%`, long: `${where.replace("°", " degrees")}, power ${percent} percent. ${hole[0]!.toUpperCase()}${hole.slice(1)} is ${metres(pocket.far)} away.` };
 }
 
-export function SportTable({ view, names, act, onLeave, banner, chat, settings }: SportTableProps) {
+export function SportTable({ view, names, act, onLeave, banner, chat, together, settings }: SportTableProps) {
   const game = kitGame(view.game)!;
   const me = view.me;
   const pace = settings?.value.pace;
@@ -781,9 +783,9 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
   const status = error ? (
     <span className="error">{error}</span>
   ) : shooter !== null ? (
-    shooter === me ? "There it goes…" : `${names[shooter] ?? "Someone"} ${shown.game === "bowling" ? "bowls" : shown.game === "billiards" ? "shoots" : "putts"}…`
+    shooter === me && !together ? "There it goes…" : `${names[shooter] ?? "Someone"} ${shown.game === "bowling" ? "bowls" : shown.game === "billiards" ? "shoots" : "putts"}…`
   ) : shown.over || shown.result ? null : canShoot ? (
-    <span className="mine">{shown.game === "bowling" ? "Drag sideways to stand, swipe up to bowl" : shown.shoot?.place && shown.game === "billiards" ? "Place the cue ball, then pull back and let go" : shown.seats > 1 ? "Your shot" : "Pull back and let go"}</span>
+    <span className="mine">{together ? `${names[shown.me] ?? "Someone"}: ` : ""}{shown.game === "bowling" ? "Drag sideways to stand, swipe up to bowl" : shown.shoot?.place && shown.game === "billiards" ? "Place the cue ball, then pull back and let go" : shown.seats > 1 && !together ? "Your shot" : "Pull back and let go"}</span>
   ) : sending ? (
     "…"
   ) : shown.turn !== null ? (
@@ -963,8 +965,8 @@ export function SportTable({ view, names, act, onLeave, banner, chat, settings }
       {won && <Confetti />}
       {shown.over && (
         <div className="sheet won-sheet sport-sheet sport-over">
-          <h2>{won ? "You won! 🏆" : named(shown.over.title, names)}</h2>
-          {won && !shown.over.title.includes(`{${me}}`) && <p className="won-line">{named(shown.over.title, names)}</p>}
+          <h2>{won && !together ? "You won! 🏆" : named(shown.over.title, names)}</h2>
+          {won && !together && !shown.over.title.includes(`{${me}}`) && <p className="won-line">{named(shown.over.title, names)}</p>}
           {shown.card ? <Scorecard card={shown.card} names={names} me={me} /> : shown.result && <ResultTable result={shown.result} names={names} me={me} untitled />}
           <button type="button" className="primary" onClick={onLeave}>
             Play again

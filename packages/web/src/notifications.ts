@@ -8,7 +8,7 @@ const base = import.meta.env.BASE_URL;
 const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const standalone = () => matchMedia("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true;
 
-/** Called once at start-up. The service worker does nothing until a notification arrives. */
+/** Called once at start-up. The service worker keeps a copy of the app for playing offline, and shows notifications when they arrive. */
 export function registerServiceWorker() {
   if ("serviceWorker" in navigator) navigator.serviceWorker.register(`${base}sw.js`, { scope: base }).catch(() => {});
 }

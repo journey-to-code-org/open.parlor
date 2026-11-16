@@ -2841,3 +2841,16 @@ button.mj-slot { cursor: pointer; }
 .sr-laptop ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
 .sr-laptop li { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 8px 10px; background: #fff; border: 1px solid #c7d0db; }
 .sr-laptop li div { display: grid; }
+
+/* ---------- Offline ---------- */
+/* A note that floats over the top of any screen: no connection, or (once) that the games are kept here now. */
+.offline-note {
+  position: fixed; top: calc(6px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 60;
+  margin: 0; padding: 5px 12px; border-radius: 999px; pointer-events: none;
+  max-width: calc(100vw - 24px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 0.8rem; font-weight: 600; color: var(--cream); background: rgba(10, 28, 20, 0.92); border: 1px solid rgba(251, 246, 236, 0.35);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+.offline-note.ready { color: var(--ink, #1c1c1c); background: var(--gold); border-color: transparent; }
+/* A table has no room to spare, and a game that is running needs no telling: the note is for the screens that lead to one. */
+body:has(main.table) .offline-note { display: none; }
