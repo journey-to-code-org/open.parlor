@@ -6,13 +6,14 @@
 // alone against the clock or against one of the locals for money. What a run did to the car comes
 // back with it.
 import {
-  CAR_MODELS, GARAGE_STAKE, PINKSLIPS_PRESETS, afterRace, garageAct, garageView, loadGarage, newDay, newGarage, pinkSlips, safeBuild, settleUp, timeslip,
+  CAR_MODELS, GARAGE_STAKE, MOUNTAIN_ROAD_PRESETS, PINKSLIPS_PRESETS, afterRace, carValue, garageAct, garageView, loadGarage, mountainRoad, newDay, newGarage, pinkSlips, safeBuild, settleUp, timeslip,
   type Build, type GarageState, type GarageView,
 } from "@journey-to-code/games";
 import type { PlayStyle } from "@journey-to-code/rules";
 import { useMemo, useState } from "react";
 import { blip, notes, wakeArcadeSound } from "../arcade/sounds";
 import { loadDrive, loadDriveStrip, saveDrive, saveDriveStrip } from "../storage";
+import { Road, type RoadOutcome } from "./Road";
 import { Strip, type Rival, type StripOutcome } from "./Strip";
 
 const today = () => {
@@ -67,7 +68,7 @@ function localsFor(mine: Build, value: number, day: number): Local[] {
   });
 }
 
-type Racing = { car: number; carName: string; build: Build; rival: Rival | null; key: number };
+type Racing = { car: number; carName: string; build: Build; rival: Rival | null; key: number; road: boolean };
 
 export function PinkSlips({ onHome }: { onHome: () => void }) {
   const [garage, setGarage] = useState(openGarage);
@@ -76,6 +77,7 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
   const [toast, setToast] = useState<{ text: string; ok: boolean; key: number } | null>(null);
   const [strip, setStrip] = useState(loadDriveStrip);
   const [racing, setRacing] = useState<Racing | null>(null);
+  const [route, setRoute] = useState("sunday");
   const [naming, setNaming] = useState<string | null>(null);
 
   const view: GarageView = useMemo(() => garageView(garage), [garage]);
@@ -99,11 +101,29 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
   };
   const act = (command: Record<string, unknown>) => change((g) => garageAct(g, command));
 
-  const race = (rival: Rival | null) => {
+  const race = (rival: Rival | null, road = false) => {
     if (!car) return;
     wakeArcadeSound();
     saveDriveStrip(strip);
-    setRacing({ car: car.id, carName: car.name, build: car.build, rival, key: Date.now() });
+    setRacing({ car: car.id, carName: car.name, build: car.build, rival, key: Date.now(), road });
+  };
+  /** Back from the mountain: the wear, the fines, the bodywork, and the bet if there was one. */
+  const downFromTheMountain = (outcome: RoadOutcome | null) => {
+    const was = racing;
+    setRacing(null);
+    if (!was || !outcome) return;
+    change((g) => {
+      const stake = was.rival?.stake ?? 0;
+      const won = !!was.rival && outcome.mine.won;
+      const lost = !!was.rival && (outcome.forfeit || !!outcome.theirs?.won);
+      const owned = g.cars.find((c) => c.id === was.car);
+      // Bodywork is four tenths of the car for a wreck, and less for less.
+      const body = owned ? Math.round((carValue(owned) * outcome.mine.damage * 4) / 10_000 / 10) * 10 : 0;
+      afterRace(g, was.car, { ...outcome.mine, won });
+      settleUp(g, (won ? stake : lost ? -stake : 0) - outcome.mine.fines - body);
+      const bills = [outcome.mine.fines ? `${dollars(outcome.mine.fines)} in fines` : "", body ? `${dollars(body)} of bodywork` : ""].filter(Boolean).join(" and ");
+      return { ok: won || (!was.rival && outcome.mine.out === "finished"), message: `${won ? `${was.rival!.name} pays up: ${dollars(stake)}. ` : lost ? `${was.rival!.name} takes ${dollars(stake)}. ` : ""}${bills ? `It cost you ${bills}.` : outcome.mine.out === "finished" ? "Home without a scratch." : "Nothing to pay."}` };
+    });
   };
   const home = (outcome: StripOutcome | null) => {
     const was = racing;
@@ -121,6 +141,7 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
     });
   };
 
+  if (racing?.road) return <Road key={racing.key} rules={mountainRoad.normalize({ id: route })} build={racing.build} carName={racing.carName} rival={racing.rival} onDone={downFromTheMountain} />;
   if (racing) return <Strip key={racing.key} rules={rules} build={racing.build} carName={racing.carName} rival={racing.rival} onDone={home} />;
 
   const cheapest = Math.min(...view.listings.map((l) => l.price));
@@ -240,6 +261,28 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
               )}
             </div>
 
+            {car.runs && (
+              <div className="pinks-card">
+                <div className="row">
+                  <h3>The mountain road</h3>
+                  <label className="pinks-where">Which run <select value={route} onChange={(e) => setRoute(e.target.value)}>{MOUNTAIN_ROAD_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+                </div>
+                <p className="facts">{mountainRoad.describe(mountainRoad.normalize({ id: route }))[0]} Fines and bodywork come out of your cash when you get back.</p>
+                <ul className="pinks-locals">
+                  <li>
+                    <div><b>Take it out</b><small>The road, the traffic and the law. Nobody to beat but the clock.</small></div>
+                    <button type="button" className="yes" onClick={() => race(null, true)}>Drive</button>
+                  </li>
+                  {locals[1] && (
+                    <li>
+                      <div><b>Run it against {locals[1].name}</b> <span className="has">{locals[1].car}</span><small>Same road, same traffic. First to the far end.</small></div>
+                      <button type="button" className="yes" disabled={view.cash < locals[1].stake} onClick={() => race(locals[1]!, true)}>Race for {dollars(locals[1].stake)}</button>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
+
             <button type="button" className="pinks-sell" onClick={() => { if (window.confirm(`Sell ${car.name} to the dealer for ${dollars(car.sells)}?`)) { act({ cmd: "sell", car: car.id }); setPicked(null); } }}>Sell to the dealer for {dollars(car.sells)}</button>
           </section>
         )}
@@ -254,6 +297,7 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
           </ol>
           <h3>Keys</h3>
           <p><kbd>W</kbd> or <kbd>↑</kbd> throttle · <kbd>S</kbd> or <kbd>↓</kbd> half throttle · <kbd>Space</kbd> or <kbd>D</kbd> shift up · <kbd>A</kbd> shift down · <kbd>C</kbd> get in or step back</p>
+          <p>On the road: <kbd>A</kbd> <kbd>D</kbd> or <kbd>←</kbd> <kbd>→</kbd> steer · <kbd>W</kbd> throttle · <kbd>S</kbd> brake · <kbd>E</kbd> shift up · <kbd>Q</kbd> shift down</p>
           <p className="facts">On a phone there is a pedal and a shifter on the screen. Slide your thumb down the pedal to lift.</p>
         </aside>
       </div>

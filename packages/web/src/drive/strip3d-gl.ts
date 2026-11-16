@@ -54,7 +54,7 @@ const shapeOf = (pts: Pt[]) => {
   return s;
 };
 
-interface Car {
+export interface Car {
   group: Group;
   body: Group;
   wheels: Object3D[];
@@ -66,7 +66,7 @@ interface Car {
   pitch: number;
 }
 
-function buildCar(key: string, tone: string, poolTexture: Texture, shadeTexture: Texture): Car {
+export function buildCar(key: string, tone: string, poolTexture: Texture, shadeTexture: Texture): Car {
   const spec = CARS[key] ?? CARS.sparrow!;
   const style = STYLES[spec.style]!;
   const L = style.profile.reduce((m, p) => Math.max(m, p[0]), 0);
@@ -153,7 +153,7 @@ function buildCar(key: string, tone: string, poolTexture: Texture, shadeTexture:
 
 // ---- Textures --------------------------------------------------------------------------------------
 
-function canvasTexture(w: number, h: number, paint: (g: CanvasRenderingContext2D) => void): CanvasTexture {
+export function canvasTexture(w: number, h: number, paint: (g: CanvasRenderingContext2D) => void): CanvasTexture {
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
@@ -194,7 +194,7 @@ function roadTexture(lanes: number, width: number): CanvasTexture {
   return t;
 }
 
-const glow = (inner: string, outer: string) =>
+export const glow = (inner: string, outer: string) =>
   canvasTexture(128, 128, (g) => {
     const r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
     r.addColorStop(0, inner);
@@ -232,11 +232,12 @@ function boardTexture() {
 // What you see from inside: the hood, the pillars and the roof, a dash with the gauges drawn on it,
 // the wheel, and a shifter that goes through the gate. It is built once and moved with your car.
 
-type Lane = Frame3d["race"]["lanes"][number];
+/** What the dash shows: the gauges of whoever is at the wheel. */
+export type Lane = Pick<Frame3d["race"]["lanes"][number], "rpm" | "redline" | "mph" | "gear" | "auto" | "boost" | "heat" | "spinning" | "blown">;
 /** Where the knob sits for each gear: across the gate, and along it. Neutral is the middle. */
 const GATE: [x: number, z: number][] = [[0, 0], [-1, -1], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 1]];
 
-function buildCockpit(tone: string) {
+export function buildCockpit(tone: string) {
   const rig = new Group();
   const paint = new MeshStandardMaterial({ color: new Color(tone), metalness: 0.12, roughness: 0.4 });
   const vinyl = new MeshStandardMaterial({ color: 0x17181d, roughness: 0.85 });
@@ -357,10 +358,11 @@ function buildCockpit(tone: string) {
   };
   return {
     rig,
-    update(me: Lane, time: number, dt: number, still: boolean) {
+    /** `steer` is how far the wheel is turned, -1 to 1, on a road that has bends in it. */
+    update(me: Lane, time: number, dt: number, still: boolean, steer = 0) {
       draw(me);
       // The wheel is never quite still, and saws when the tyres let go.
-      wheel.rotation.z = still ? 0 : Math.sin(time * 0.004) * 0.015 + (me.spinning ? Math.sin(time * 0.03) * 0.12 : 0);
+      wheel.rotation.z = -steer * 1.9 + (still ? 0 : Math.sin(time * 0.004) * 0.015 + (me.spinning ? Math.sin(time * 0.03) * 0.12 : 0));
       const [gx, gz] = me.auto ? [0, me.gear > 0 ? 1 : 0] : GATE[Math.min(me.gear, GATE.length - 1)]!;
       const ease = Math.min(1, dt * 18);
       knobX += (gx - knobX) * ease;
