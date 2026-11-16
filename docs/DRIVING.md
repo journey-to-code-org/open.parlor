@@ -211,10 +211,10 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
 - [x] **Rix Racing**: used parts for less than new, when they have the one you need.
 - [x] **Spec sheets**: a listing laid out like a magazine page.
 - [x] **Bodywork and write-offs**: a bent car stays home, and a wrecked one is scrap or parts.
-- [ ] **Parts as things**: taken off, kept on a shelf, sold on. Today a part is a level on a car.
-- [ ] **Tearing a car down**: a parts car into the parts it is made of.
+- [x] **Parts as things**: taken off, kept on a shelf, fitted to another car, sold on.
+- [x] **Tearing a car down**: a parts car into the parts it is made of.
 - [ ] **A marketplace of players**, on the server: listings for parts, cars and parts cars.
-- [ ] **The scrappers**: Ricky at Rix Racing and the rest, buying and selling against you.
+- [x] **The scrappers**: Ricky at Rix Racing and the rest, flooding the market and beating you to parts cars. Against other players too, once listings are on the server.
 - [x] **The dyno in Morgantown, and the remote tune** with its deer. The drive to Morgantown waits for the town.
 - [ ] **The performance sites** as places of their own.
 - [ ] **Cosmetics**, and a car that looks like its build on the strip.

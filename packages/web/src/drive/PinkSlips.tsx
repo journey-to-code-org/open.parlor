@@ -68,6 +68,9 @@ function localsFor(mine: Build, value: number, day: number): Local[] {
   });
 }
 
+/** What each kind of piece is called when the talk is of the market for them: a gearbox off a car is not a gearbox upgrade. */
+const KINDS: Record<string, string> = { intake: "intakes", exhaust: "exhausts", cam: "cams", boost: "boost parts", tyres: "tyre upgrades", weight: "weight parts", trans: "gearbox upgrades", block: "engines", gearbox: "gearboxes", panels: "body panels", interior: "interiors", wheels: "wheels", glass: "glass" };
+
 type Racing = { car: number; carName: string; build: Build; rival: Rival | null; key: number; road: boolean; tune: boolean };
 
 export function PinkSlips({ onHome }: { onHome: () => void }) {
@@ -191,11 +194,24 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
             {view.rix.map((r) => <div key={r.id} className="row"><div><b>{r.name}</b><small>{r.label} · off a {r.tier.toLowerCase()}</small></div><span className="cash">{dollars(r.price)}</span></div>)}
             <p className="facts">Fit one from a car's parts list, when it is the next step for that car.</p>
           </div>
+          <div className="pinks-card pinks-tools pinks-shelf">
+            <h3>Your shelf <small>{view.shelf.length} of {view.shelfSpace}</small></h3>
+            {view.gluts.length > 0 && <p className="facts">Flooded today: {view.gluts.map((x) => `${KINDS[x.kind] ?? x.label.toLowerCase()} (${x.by})`).join(", ")}. Those go for a little over half.</p>}
+            {view.shelf.length === 0 && <p className="empty">Nothing on it. Pull a part off a car, or tear a parts car down.</p>}
+            {view.shelf.map((x) => (
+              <div key={x.id} className="row">
+                <div><b>{x.name}</b><small>off a {x.from} · {Math.round(x.cond / 10)}%{x.glut ? ` · ${x.glut} has flooded these` : ""}</small></div>
+                <button type="button" className={x.glut ? "low" : ""} onClick={() => act({ cmd: "sellPiece", piece: x.id })}>Sell {dollars(x.value)}</button>
+              </div>
+            ))}
+            {view.shelf.length > 1 && <button type="button" onClick={() => change((g) => { let made = 0; for (const x of [...g.shelf]) { const was = g.cash; if (garageAct(g, { cmd: "sellPiece", piece: x.id }).ok) made += g.cash - was; } return { ok: true, message: `The lot went for ${dollars(made)}.` }; })}>Sell the lot for {dollars(view.shelf.reduce((sum, x) => sum + x.value, 0))}</button>}
+          </div>
         </nav>
 
         {tab === "ads" || !car ? (
           <section className="pinks-ads" aria-label="Classifieds">
             <h2>Marketplace <small>New listings tomorrow. A seller's word is a seller's word.</small></h2>
+            {view.news && <p className="pinks-news">{view.news}</p>}
             {broke && (
               <div className="pinks-card cousin">
                 <p>No car and not enough for one. Your cousin will front you the money for a shitbox, this once more.</p>
@@ -204,9 +220,9 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
             )}
             <ul>
               {view.listings.map((l) => (
-                <li key={l.id} className={`pinks-page tier${CAR_MODELS.find((m) => m.name === l.sheet.model)?.tier ?? 0}`}>
+                <li key={l.id} className={`pinks-page tier${CAR_MODELS.find((m) => m.name === l.sheet.model)?.tier ?? 0}${l.partsCar ? " parts" : ""}`}>
                   <header>
-                    <span>{l.sheet.tier}</span>
+                    <span>{l.partsCar ? "Parts car" : l.sheet.tier}</span>
                     <b className="cash">{dollars(l.price)}</b>
                   </header>
                   <h3><small>{l.sheet.year}</small> {l.sheet.model}</h3>
@@ -219,6 +235,8 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
                     <div><dt>Drive</dt><dd>{l.sheet.drive.replace(" drive", "")}</dd></div>
                     <div><dt>Gearbox</dt><dd>{l.sheet.gearbox}</dd></div>
                   </dl>
+                  {l.partsCar && <p className="apart">Bent {Math.round(l.body / 10)}%. In pieces it comes to about <b>{dollars(l.teardown)}</b>, on a good day.</p>}
+                  {l.watching && <p className="watching">{l.watching} is looking at this one. {l.movesLeft <= 1 ? "It will be gone the next thing you do." : `Gone in ${l.movesLeft} moves.`}</p>}
                   <p className="says">The seller says</p>
                   <Wear label="Engine" value={l.engine} />
                   <Wear label="Tyres" value={l.rubber} />
@@ -291,10 +309,14 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
                 {car.parts.map((p) => (
                   <li key={p.slot}>
                     <div><b>{p.label}</b> <span className="has">{p.has}</span><small>{p.hint}</small></div>
-                    {p.next ? (
+                    {p.next || p.level > 0 ? (
                       <span className="pinks-buy">
+                        {p.shelf !== null && !p.needs && <button type="button" className="yes" onClick={() => act({ cmd: "bolt", car: car.id, piece: p.shelf })}>Fit the one on your shelf<i>Free</i></button>}
+                        {p.level > 0 && !p.needs && <button type="button" className="off" onClick={() => act({ cmd: "pull", car: car.id, slot: p.slot })}>Take it off</button>}
+                        {p.next && <>
                         <button type="button" disabled={!p.next.can} onClick={() => act({ cmd: "fit", car: car.id, slot: p.slot, level: p.next!.level })}>{p.next.label}<i>{p.needs ? `Needs ${p.needs === "jack" ? "a jack" : "wrenches"}` : dollars(p.next.cost)}</i></button>
                         {p.next.rix && !p.needs && <button type="button" className="rix" disabled={view.cash < p.next.rix.price} onClick={() => act({ cmd: "fit", car: car.id, slot: p.slot, level: p.next!.level, rix: p.next!.rix!.id })}>Used, from Rix Racing<i>{dollars(p.next.rix.price)}</i></button>}
+                        </>}
                       </span>
                     ) : <span className="maxed">Maxed</span>}
                   </li>
@@ -352,6 +374,7 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
               </div>
             )}
 
+            <button type="button" className="pinks-sell" disabled={!tools.wrenches || !tools.jack} onClick={() => { if (window.confirm(`Tear ${car.name} down for parts? It comes to about ${dollars(car.teardown)} in pieces today, and there is no putting it back.`)) { act({ cmd: "strip", car: car.id }); setPicked(null); } }}>{tools.wrenches && tools.jack ? `Tear it down for parts: about ${dollars(car.teardown)} today` : "Tearing it down needs wrenches and a jack"}</button>
             <button type="button" className="pinks-sell" onClick={() => { if (window.confirm(`Sell ${car.name} to the dealer for ${dollars(car.sells)}?`)) { act({ cmd: "sell", car: car.id }); setPicked(null); } }}>Sell to the dealer for {dollars(car.sells)}</button>
           </section>
         )}
