@@ -20,7 +20,7 @@ import { isArcadeGame, isIdleGame, isKitGame, type ArcadeGameId, type KitGameId 
 import { IdleTable } from "./idle/IdleTable";
 import type { SoloGameId } from "./GamePicker";
 import { ArcadeSetup } from "./arcade/ArcadeSetup";
-import { ArcadeTable } from "./arcade/ArcadeTable";
+import { ArcadeTable, isLiveArcade } from "./arcade/ArcadeTable";
 import { KitSetup } from "./kit/KitSetup";
 import { CourseEditor } from "./golf/CourseEditor";
 import { onCourse } from "./golf/CoursePicker";
@@ -235,7 +235,7 @@ export function App() {
   if (screen.kind === "arcade") return <ArcadeTable key={`${screen.seed}:${screen.rival?.name ?? ""}`} {...screen} onLeave={() => setScreen({ kind: "setup" })} />;
   if (isIdleGame(game)) return <IdleTable key={game} game={game} onHome={home} />;
   if (isArcadeGame(game)) {
-    return <ArcadeSetup key={game} game={game} onHome={home} onPlay={(rules, seats, autofire, rival) => setScreen({ kind: "arcade", game, rules, seats, autofire, seed: rival ? rival.seed : Math.floor(Math.random() * 2 ** 31), rival })} />;
+    return <ArcadeSetup key={game} game={game} onHome={home} onPlay={(rules, seats, autofire, rival) => setScreen({ kind: "arcade", game, rules, seats, autofire, seed: rival ? rival.seed : Math.floor(Math.random() * 2 ** 31), rival })} onTogether={isLiveArcade(game) ? async (rules, seats) => openTable(await createRoom({ game, rules, seats }, { settings: loadTableSettings() }), null) : undefined} />;
   }
   if (isKitGame(game)) {
     return (

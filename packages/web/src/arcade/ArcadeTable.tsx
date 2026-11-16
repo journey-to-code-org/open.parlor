@@ -16,6 +16,40 @@ import { controlsFor } from "./controls";
 import { createArcadeScreen, type ArcadePointer } from "./screen";
 import { notes, setArcadeSound, wakeArcadeSound } from "./sounds";
 
+/** What the server's room says of an arcade game played live (see the server's arcade.ts). */
+export interface LiveView {
+  live: true;
+  game: ArcadeGameId;
+  seats: number;
+  seat: number;
+  rate: number;
+  /** The whole game, as the arcade game itself keeps it. */
+  arcade: unknown;
+  /** Thousandths of a tick the game is behind (or, below zero, ahead of) the time it was reached. */
+  owed: number;
+  /** When it was reached, by the server's clock (ms); 0 before the first move. */
+  at: number;
+  /** How many of each seat's orders have been carried out. */
+  done: number[];
+  over: boolean;
+}
+/**
+ * A game played live at a table on the server, with other people. The server's game is the real
+ * one: this page is handed all of it every so often, plays it forward itself in between (the game
+ * is deterministic), and sends its own orders to the table. An order shows here at once, and is
+ * put back on top of each newer game from the server until the server's own count says it landed.
+ */
+export interface LiveDriver {
+  seat: number;
+  names: string[];
+  /** The newest view from the room, and a number that changes when it does. */
+  view: () => LiveView;
+  version: () => number;
+  serverNow: () => number;
+  /** `gaps`: how many ticks each order waited after the one before it. */
+  send: (inputs: unknown[], gaps: number[]) => Promise<unknown>;
+}
+
 interface Props {
   game: ArcadeGameId;
   rules: ArcadeRules;
@@ -24,6 +58,8 @@ interface Props {
   autofire: boolean;
   /** A housemate's run being taken on: this is their seed, and that is their score. */
   rival?: { name: string; score: number };
+  /** Played live at a table on the server, instead of here. */
+  live?: LiveDriver;
   /** Back to the game's setup screen. */
   onLeave: () => void;
 }
@@ -51,7 +87,11 @@ type Posted = { state: "sending" } | { state: "failed" } | { state: "done"; kept
 const WINGMAN = { skill: 0.75, sloppy: 0.04 };
 const clock = (ticks: number, rate: number) => `${Math.floor(ticks / rate / 60)}:${String(Math.floor(ticks / rate) % 60).padStart(2, "0")}`;
 
-export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, onLeave }: Props) {
+/** How often saved-up orders go to the table, and how many at once (the server takes no more). */
+const SEND_EVERY_MS = 350;
+const SEND_AT_MOST = 24;
+
+export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, live: table, onLeave }: Props) {
   const game = arcadeGame(id)!;
   const canvas = useRef<HTMLCanvasElement>(null);
   const scoreEl = useRef<HTMLElement>(null);
@@ -59,7 +99,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, onL
   const [run, setRun] = useState(0);
   const [paused, setPaused] = useState(false);
   const [ending, setEnding] = useState<Ending | null>(null);
-  const [house] = useState(loadArcadeHouse);
+  const [house] = useState(() => (table ? null : loadArcadeHouse()));
   const [posted, setPosted] = useState<Posted | null>(null);
   const [hud, setHud] = useState<Hud>({ stage: "", lives: 0, stats: [], build: null, market: null });
   // Building: what is picked in the shop, and which square is picked out on the field.
@@ -79,7 +119,63 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, onL
     const normal = game.normalize(rules);
     // Play again: a new game from a new seed, unless a housemate's run is being taken on, which is always the same game.
     const playing = run === 0 || rival ? seed : Math.floor(Math.random() * 2 ** 31);
-    const state = game.newGame(normal, seats, playing);
+    let state = table ? structuredClone(table.view().arcade) : game.newGame(normal, seats, playing);
+    const mySeat = table?.seat ?? 0;
+    // Live: every seat holding still, which is all this page knows of anyone else between the server's words.
+    const held = (): { n: number }[] => {
+      const seen = (state as { seen?: number[] }).seen ?? [];
+      return Array.from({ length: seats }, (_, seat) => ({ ...(game.idle as object), n: seen[seat] ?? 0 }));
+    };
+    /** One of my orders carried out on the game here, as the server will: this seat's next, in a tick of its own. */
+    const carryOut = (order: { gap: number }, spaced = true) => {
+      for (let i = 0; spaced && i < order.gap; i++) game.step(state, held());
+      const inputs = held();
+      inputs[mySeat] = { ...order, n: inputs[mySeat]!.n + 1 };
+      game.step(state, inputs);
+    };
+    // My orders the server has not said it carried out, oldest first; and those not sent yet.
+    let pending: { gap: number }[] = [];
+    let outbox: { gap: number }[] = [];
+    let sinceOrder = 0;
+    let landedBefore = table ? (table.view().done[mySeat] ?? 0) : 0;
+    let lastRead = -1;
+    let seenVersion = -1;
+    /** Take up the server's newest game: played forward to now, with my own orders that have not landed put back on top. */
+    function adopt() {
+      if (!table) return;
+      const v = table.view();
+      seenVersion = table.version();
+      state = structuredClone(v.arcade);
+      const landed = (v.done[mySeat] ?? 0) - landedBefore;
+      if (landed > 0) pending = pending.slice(landed);
+      landedBefore = v.done[mySeat] ?? 0;
+      const behind = v.at ? Math.max(0, table.serverNow() - v.at) : 0;
+      let ticks = Math.min(v.rate * 5, Math.floor((behind * v.rate + v.owed) / 1000));
+      while (ticks-- > 0) game.step(state, held());
+      for (const order of pending) carryOut(order);
+      owed = 0;
+      if (v.over && !over) {
+        over = true;
+        const sum = game.summary(state);
+        setEnding({ score: sum.score, best: 0, isBest: false, stage: game.view(state).stage, time: clock(sum.ticks, game.rate), scores: sum.scores });
+      }
+    }
+    let sending = false;
+    const post = table
+      ? setInterval(() => {
+          if (sending || !outbox.length || over) return;
+          const batch = outbox.splice(0, SEND_AT_MOST);
+          sending = true;
+          table.send(batch, batch.map((o) => o.gap)).then(
+            () => (sending = false),
+            () => {
+              // The table never got these: they are nobody's orders now.
+              sending = false;
+              pending = pending.filter((o) => !batch.includes(o));
+            },
+          );
+        }, SEND_EVERY_MS)
+      : null;
     // The run is written down as it is played, for the house to play back.
     const rec = recorder(game, seats);
     let live = true;
@@ -99,7 +195,27 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, onL
     let raf = 0;
     const stepMs = 1000 / game.rate;
 
+    function liveTick() {
+      const read = controls.read() as { n: number; cmd?: string };
+      if (read.n !== lastRead && read.cmd && read.cmd !== "none") {
+        lastRead = read.n;
+        // How long since my last order goes with it, so the table can space them as they were given.
+        const order = { ...read, gap: Math.min(sinceOrder, 30) };
+        sinceOrder = 0;
+        pending.push(order);
+        outbox.push(order);
+        carryOut(order, false);
+      } else {
+        lastRead = read.n;
+        sinceOrder++;
+        game.step(state, held());
+      }
+      screen.hear(game.view(state).events, false, 0);
+      screen.settle();
+    }
+
     function tick() {
+      if (table) return liveTick();
       const inputs: unknown[] = [controls.read()];
       for (let seat = 1; seat < seats; seat++) inputs.push(game.bot(state, seat, WINGMAN));
       game.step(state, rec.tick(inputs));
@@ -131,7 +247,8 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, onL
       raf = requestAnimationFrame(loop);
       const dt = Math.min(100, now - last);
       last = now;
-      if (!pausedRef.current && !over) {
+      if (table && table.version() !== seenVersion) adopt();
+      if ((table || !pausedRef.current) && !over) {
         owed += dt;
         // Catch up a few ticks at most: after a long stall the game carries on from where it was.
         let steps = 0;
@@ -156,7 +273,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, onL
         else if (item && hover) pointer = { cell: hover, range: item.range, tone: item.tone, open: !build.closed.includes(hover[1] * build.cols + hover[0]) && !build.built.some((b) => b.col === hover[0] && b.row === hover[1]) };
       }
       screen.draw(view, frame, pointer);
-      const me = view.pilots[0];
+      const me = view.pilots[mySeat] ?? view.pilots[0];
       const market = view.market;
       if (scoreEl.current) scoreEl.current.textContent = market ? shortly(view.score) : points(view.score);
       if (bankEl.current && market) bankEl.current.textContent = shortly(market.bank);
@@ -174,14 +291,15 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, onL
     }
     raf = requestAnimationFrame(loop);
 
-    const pause = () => !over && setPaused(true);
+    // A game at a table is everyone's: it does not stop for one of them.
+    const pause = () => !over && !table && setPaused(true);
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
       const key = e.key.toLowerCase();
       const down = e.type === "keydown";
       if (["arrowleft", "arrowright", "arrowup", "arrowdown", " "].includes(key)) e.preventDefault();
       if (down) wakeArcadeSound();
-      if (down && !e.repeat && over && key === "enter") return setRun((n) => n + 1);
+      if (down && !e.repeat && over && key === "enter" && !table) return setRun((n) => n + 1);
       const build = game.view(state).build;
       if (build && down && !e.repeat && !over) {
         // Building by keyboard: a number picks from the shop, U and S are for the tower picked out, Space sends the wave.
@@ -202,7 +320,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, onL
         }
         if (key === " ") return controls.order?.("send");
       }
-      if (down && !e.repeat && !over && (key === "p" || key === "escape")) return setPaused((p) => !p);
+      if (down && !e.repeat && !over && !table && (key === "p" || key === "escape")) return setPaused((p) => !p);
       controls.key(key, down);
     };
     const onBlur = () => {
@@ -224,7 +342,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, onL
     const down = (e: PointerEvent) => {
       wakeArcadeSound();
       const seen = game.view(state);
-      if (seen.market && !over && !pausedRef.current) {
+      if (seen.market && !over && (table || !pausedRef.current)) {
         // A tap on the field is a tap on the chip, unless it lands on something to catch.
         const box = el.getBoundingClientRect();
         const x = ((e.clientX - box.left) / Math.max(1, box.width)) * seen.field.width;
@@ -234,7 +352,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, onL
       }
       const build = seen.build;
       const cell = cellAt(e);
-      if (build && cell && !over && !pausedRef.current) {
+      if (build && cell && !over && (table || !pausedRef.current)) {
         const { pick: picked } = pointing.current;
         pointing.current.hover = cell;
         if (build.built.some((b) => b.col === cell[0] && b.row === cell[1])) setChosen(cell);
@@ -272,6 +390,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, onL
     wakeArcadeSound();
     return () => {
       live = false;
+      if (post) clearInterval(post);
       cancelAnimationFrame(raf);
       removeEventListener("keydown", onKey);
       removeEventListener("keyup", onKey);
@@ -358,7 +477,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, onL
               <div className="arcade-card">
                 <h2>Game over</h2>
                 <div className="arcade-final">{points(ending.score)}</div>
-                <p>{ending.isBest ? "A new best on this device." : `Your best: ${points(ending.best)}`}</p>
+                {table ? <p>Everyone at the table, together.</p> : <p>{ending.isBest ? "A new best on this device." : `Your best: ${points(ending.best)}`}</p>}
                 {rival && (
                   <p className="arcade-rival">
                     {ending.score > rival.score ? `You beat ${rival.name} (${points(rival.score)}) at the very same game.` : ending.score === rival.score ? `Level with ${rival.name} at the very same game.` : `${rival.name === "your best" ? "Your best" : rival.name} had ${points(rival.score)} at this same game.`}
@@ -398,17 +517,19 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, onL
                   {ending.scores.length > 1 &&
                     ending.scores.map((n, seat) => (
                       <div key={seat} className="arcade-pair">
-                        <dt>{seat === 0 ? "You" : `Computer ${seat}`}</dt>
+                        <dt>{table ? (seat === table.seat ? `${table.names[seat] ?? "You"} (you)` : (table.names[seat] ?? `Seat ${seat + 1}`)) : seat === 0 ? "You" : `Computer ${seat}`}</dt>
                         <dd>{points(n)}</dd>
                       </div>
                     ))}
                 </dl>
                 <div className="arcade-row">
-                  <button type="button" className="primary" autoFocus onClick={() => setRun((n) => n + 1)}>
-                    {rival ? "Try that game again" : "Play again"}
-                  </button>
-                  <button type="button" className="secondary" onClick={onLeave}>
-                    Change the rules
+                  {!table && (
+                    <button type="button" className="primary" autoFocus onClick={() => setRun((n) => n + 1)}>
+                      {rival ? "Try that game again" : "Play again"}
+                    </button>
+                  )}
+                  <button type="button" className={table ? "primary" : "secondary"} onClick={onLeave}>
+                    {table ? "Leave the table" : "Change the rules"}
                   </button>
                 </div>
               </div>
@@ -546,7 +667,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, onL
               {controls.specialLabel}
             </button>
           )}
-          <button type="button" className="arcade-btn" onClick={() => !ending && setPaused((p) => !p)}>
+          <button type="button" className="arcade-btn" hidden={!!table} onClick={() => !ending && !table && setPaused((p) => !p)}>
             {paused ? "Carry on" : "Pause"}
           </button>
           <button type="button" className="arcade-btn" aria-pressed={sound} aria-label={sound ? "Turn sounds off" : "Turn sounds on"} onClick={toggleSound}>
@@ -556,4 +677,27 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, onL
       </div>
     </main>
   );
+}
+
+/** The arcade games that can be played live at a table on the server: the ones played by giving orders. */
+export const LIVE_ARCADE: ArcadeGameId[] = ["bulwark", "chipstack"];
+export const isLiveArcade = (id: unknown): id is ArcadeGameId => LIVE_ARCADE.includes(id as ArcadeGameId);
+
+/** An arcade game at a table on the server: the room's views in, this seat's orders out. */
+export function LiveArcade({ view, seat, names, serverNow, act, onLeave }: { view: LiveView; seat: number; names: string[]; serverNow: () => number; act: (move: unknown) => Promise<unknown>; onLeave: () => void }) {
+  const latest = useRef({ view, version: 0 });
+  if (latest.current.view !== view) latest.current = { view, version: latest.current.version + 1 };
+  const driver = useMemo<LiveDriver>(
+    () => ({
+      seat,
+      names,
+      view: () => latest.current.view,
+      version: () => latest.current.version,
+      serverNow,
+      send: (inputs, gaps) => act({ type: "cmd", inputs, gaps }),
+    }),
+    [seat, names.join("|")],
+  );
+  const game = arcadeGame(view.game)!;
+  return <ArcadeTable game={view.game} rules={game.presets[0] as ArcadeRules} seats={view.seats} seed={0} autofire={false} live={driver} onLeave={onLeave} />;
 }

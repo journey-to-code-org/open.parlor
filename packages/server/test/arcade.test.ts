@@ -56,6 +56,23 @@ describe("an arcade game at a table", () => {
     expect(arcadeGame("chipstack")!.view(s.arcade as never).pilots[0]!.score).toBeGreaterThanOrEqual(score);
   });
 
+  it("spaces a move's orders as they were given, so taps saved up all count", () => {
+    const taps = (gaps?: number[]) => {
+      const s = arcadeRoom.act(table("chipstack"), 0, { type: "cmd", inputs: Array.from({ length: 6 }, () => ({ cmd: "tap" })), gaps }, at(500));
+      return { s, counted: (s.arcade as { taps: number[] }).taps[0], ticks: ticks(s) };
+    };
+    // In a row, a tick apart, the game takes most of them for one tap.
+    expect(taps().counted).toBeLessThan(6);
+    // Spaced as a hand taps, every one counts, and the game is no further on: the wait covered them.
+    const spaced = taps([0, 4, 4, 4, 4, 4]);
+    expect(spaced.counted).toBe(6);
+    expect(spaced.s.done).toEqual([6, 0]);
+    expect(spaced.ticks).toBe(30);
+    expect(spaced.ticks).toBe(taps().ticks);
+    // Nonsense for a gap is no gap, and a gap is only so long.
+    expect(taps(["x", -3, 1.5, null, {}, 1e9] as never).s.owed).toBe(taps([0, 0, 0, 0, 0, 30]).s.owed);
+  });
+
   it("gives every seat the whole game, and keeps moving until it is over", () => {
     let s = table("chipstack", 2);
     const view = arcadeRoom.view(s, 1);
