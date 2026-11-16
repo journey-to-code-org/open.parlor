@@ -17,6 +17,8 @@ export interface Frame3d {
   time: number;
   /** The person has asked for less motion: no smoke, no shake. */
   still: boolean;
+  /** From behind the car, or from the driver's seat. */
+  seat: "chase" | "cockpit";
 }
 
 export interface Strip3d {

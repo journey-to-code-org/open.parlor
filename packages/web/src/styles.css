@@ -2467,6 +2467,9 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .pinks-strip-top { position: absolute; top: 30px; left: 12px; right: 12px; display: flex; gap: 12px; align-items: center; font-size: 0.85rem; text-shadow: 0 1px 3px #000; }
 .pinks-strip-top button { padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(10, 10, 20, 0.6); }
 .pinks-strip-top button:disabled { opacity: 0.4; }
+.pinks-strip-top button { white-space: nowrap; flex: none; }
+.pinks-strip-top span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+@media (max-width: 560px) { .pinks-strip-top { top: 96px; } }
 .pinks-banner { position: absolute; top: 24%; left: 0; right: 0; text-align: center; font-size: clamp(1.4rem, 6vw, 3rem); font-weight: 800; letter-spacing: 0.04em; text-shadow: 0 2px 12px #000; pointer-events: none; animation: pinks-pop 240ms var(--ease-back, ease-out); }
 @keyframes pinks-pop { from { scale: 0.7; opacity: 0; } }
 .pinks-pads { position: absolute; inset: auto 10px 10px 10px; display: flex; justify-content: space-between; align-items: flex-end; pointer-events: none; }

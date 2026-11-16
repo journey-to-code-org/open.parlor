@@ -10,7 +10,7 @@
 import {
   AdditiveBlending, AmbientLight, BoxGeometry, BufferGeometry, CanvasTexture, Color, CylinderGeometry, DirectionalLight, DoubleSide, ExtrudeGeometry, Float32BufferAttribute, Fog, Group, HemisphereLight,
   Material, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, PerspectiveCamera, PlaneGeometry, Points, PointsMaterial, RepeatWrapping, Scene, Shape, SphereGeometry, SpotLight, Sprite, SpriteMaterial,
-  SRGBColorSpace, Texture, WebGLRenderer,
+  SRGBColorSpace, Texture, TorusGeometry, WebGLRenderer,
 } from "three";
 import type { Frame3d, Strip3d } from "./strip3d";
 
@@ -228,6 +228,149 @@ function boardTexture() {
   };
 }
 
+// ---- The driver's seat -----------------------------------------------------------------------------
+// What you see from inside: the hood, the pillars and the roof, a dash with the gauges drawn on it,
+// the wheel, and a shifter that goes through the gate. It is built once and moved with your car.
+
+type Lane = Frame3d["race"]["lanes"][number];
+/** Where the knob sits for each gear: across the gate, and along it. Neutral is the middle. */
+const GATE: [x: number, z: number][] = [[0, 0], [-1, -1], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 1]];
+
+function buildCockpit(tone: string) {
+  const rig = new Group();
+  const paint = new MeshStandardMaterial({ color: new Color(tone), metalness: 0.12, roughness: 0.4 });
+  const vinyl = new MeshStandardMaterial({ color: 0x17181d, roughness: 0.85 });
+  const black = new MeshStandardMaterial({ color: 0x0b0c0f, roughness: 0.6 });
+  const part = (w: number, h: number, d: number, x: number, y: number, z: number, m: Material, rx = 0, rz = 0) => {
+    const mesh = new Mesh(new BoxGeometry(w, h, d), m);
+    mesh.position.set(x, y, z);
+    mesh.rotation.set(rx, 0, rz);
+    rig.add(mesh);
+    return mesh;
+  };
+  // The driver sits on the left, at the origin of the rig: x is across the car from there.
+  part(1.56, 0.05, 1.7, 0.36, -0.31, -1.8, paint, -0.05);
+  part(1.6, 0.34, 0.4, 0.36, -0.35, -0.76, vinyl);
+  part(1.6, 0.05, 0.6, 0.36, 0.36, -0.1, vinyl, -0.12);
+  for (const x of [-0.45, 1.17]) part(0.045, 0.7, 0.05, x, 0.09, -0.6, vinyl, -0.62);
+  for (const x of [-0.48, 1.2]) part(0.06, 0.3, 1.4, x, -0.36, 0.1, vinyl);
+  part(0.26, 0.2, 0.5, 0.3, -0.52, -0.4, vinyl);
+  // The gauges, drawn on a little canvas and laid on the dash.
+  const face = document.createElement("canvas");
+  face.width = 512;
+  face.height = 256;
+  const dial = new CanvasTexture(face);
+  dial.colorSpace = SRGBColorSpace;
+  const cluster = new Mesh(new PlaneGeometry(0.44, 0.22), new MeshBasicMaterial({ map: dial, fog: false }));
+  cluster.position.set(0, -0.2, -0.54);
+  cluster.rotation.x = -0.12;
+  rig.add(cluster);
+  // The wheel.
+  const wheel = new Group();
+  wheel.add(new Mesh(new TorusGeometry(0.185, 0.017, 10, 36), black));
+  for (const turn of [0, 2.1, -2.1]) {
+    const spoke = new Mesh(new BoxGeometry(0.03, 0.18, 0.02), black);
+    spoke.rotation.z = turn + Math.PI;
+    spoke.position.set(Math.sin(turn) * 0.09, -Math.cos(turn) * 0.09, 0);
+    wheel.add(spoke);
+  }
+  wheel.add(new Mesh(new CylinderGeometry(0.05, 0.05, 0.03, 16).rotateX(Math.PI / 2), black));
+  wheel.position.set(0, -0.31, -0.4);
+  wheel.rotation.x = -0.32;
+  rig.add(wheel);
+  // The shifter.
+  const stick = new Group();
+  const shaft = new Mesh(new CylinderGeometry(0.008, 0.008, 0.16, 8), new MeshStandardMaterial({ color: 0xb9bec9, metalness: 0.8, roughness: 0.3 }));
+  shaft.position.y = 0.08;
+  const knob = new Mesh(new SphereGeometry(0.028, 14, 10), new MeshStandardMaterial({ color: 0xe9e6dc, roughness: 0.4 }));
+  knob.position.y = 0.17;
+  stick.add(shaft, knob);
+  stick.position.set(0.28, -0.42, -0.46);
+  rig.add(stick);
+  let knobX = 0, knobZ = 0;
+
+  const g = face.getContext("2d")!;
+  let drawn = "";
+  const draw = (me: Lane) => {
+    const key = `${Math.round(me.rpm / 40)}|${me.mph}|${me.gear}|${me.boost === null ? "" : Math.round(me.boost / 25)}|${Math.round(me.heat / 25)}|${me.spinning}|${me.blown}`;
+    if (key === drawn) return;
+    drawn = key;
+    g.fillStyle = "#07080b";
+    g.fillRect(0, 0, 512, 256);
+    const top = me.redline + 1200;
+    const dialAt = (cx: number, cy: number, r: number, value: number, max: number, red: number | null, step: number, label: (n: number) => string) => {
+      const angle = (v: number) => Math.PI * 0.8 + (Math.min(v, max) / max) * Math.PI * 1.4;
+      g.lineWidth = 9;
+      g.strokeStyle = "#566078";
+      g.beginPath();
+      g.arc(cx, cy, r, angle(0), angle(red ?? max));
+      g.stroke();
+      if (red !== null) {
+        g.strokeStyle = "#ff3b3b";
+        g.beginPath();
+        g.arc(cx, cy, r, angle(red), angle(max));
+        g.stroke();
+      }
+      g.fillStyle = "#dfe4ee";
+      g.font = "600 17px system-ui, sans-serif";
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      for (let v = 0; v <= max; v += step) g.fillText(label(v), cx + Math.cos(angle(v)) * (r - 22), cy + Math.sin(angle(v)) * (r - 22));
+      g.strokeStyle = "#ffb627";
+      g.lineWidth = 5;
+      g.lineCap = "round";
+      g.beginPath();
+      g.moveTo(cx, cy);
+      g.lineTo(cx + Math.cos(angle(value)) * (r - 8), cy + Math.sin(angle(value)) * (r - 8));
+      g.stroke();
+      g.lineCap = "butt";
+    };
+    dialAt(132, 132, 104, me.blown ? 0 : me.rpm, top, me.redline, 1000, (v) => String(v / 1000));
+    dialAt(380, 132, 104, me.mph, 160, null, 20, String);
+    g.fillStyle = "#eef1f6";
+    g.font = "700 46px system-ui, sans-serif";
+    g.fillText(me.gear === 0 ? "N" : me.auto ? "D" : String(me.gear), 132, 190);
+    g.font = "700 34px system-ui, sans-serif";
+    g.fillText(String(me.mph), 380, 190);
+    // The shift light, and the small gauges between the dials.
+    const due = !me.blown && me.gear > 0 && me.rpm >= me.redline - 350;
+    g.fillStyle = due ? (me.rpm > me.redline ? "#ff3b3b" : "#ffcf3f") : "#22262f";
+    g.beginPath();
+    g.arc(256, 44, 20, 0, Math.PI * 2);
+    g.fill();
+    const bar = (y: number, share: number, colour: string, name: string) => {
+      g.fillStyle = "#98a2b6";
+      g.font = "600 13px system-ui, sans-serif";
+      g.fillText(name, 256, y - 12);
+      g.fillStyle = "#22262f";
+      g.fillRect(226, y, 60, 9);
+      g.fillStyle = colour;
+      g.fillRect(226, y, (60 * Math.min(1000, share)) / 1000, 9);
+    };
+    bar(110, me.heat, me.heat > 600 ? "#ff3b3b" : "#55d68a", "HEAT");
+    if (me.boost !== null) bar(160, me.boost, "#4cc9ff", "BOOST");
+    if (me.spinning) {
+      g.fillStyle = "#ffcf3f";
+      g.fillText("SPIN", 256, 215);
+    }
+    dial.needsUpdate = true;
+  };
+  return {
+    rig,
+    update(me: Lane, time: number, dt: number, still: boolean) {
+      draw(me);
+      // The wheel is never quite still, and saws when the tyres let go.
+      wheel.rotation.z = still ? 0 : Math.sin(time * 0.004) * 0.015 + (me.spinning ? Math.sin(time * 0.03) * 0.12 : 0);
+      const [gx, gz] = me.auto ? [0, me.gear > 0 ? 1 : 0] : GATE[Math.min(me.gear, GATE.length - 1)]!;
+      const ease = Math.min(1, dt * 18);
+      knobX += (gx - knobX) * ease;
+      knobZ += (gz - knobZ) * ease;
+      stick.rotation.z = -knobX * 0.24;
+      stick.rotation.x = knobZ * 0.3;
+    },
+  };
+}
+
 // ---- The scene -------------------------------------------------------------------------------------
 
 export function makeStrip3d(canvas: HTMLCanvasElement): Strip3d | null {
@@ -257,6 +400,7 @@ export function makeStrip3d(canvas: HTMLCanvasElement): Strip3d | null {
   let built = "";
   let cars: Car[] = [];
   let boards: ReturnType<typeof boardTexture>[] = [];
+  let cockpit: ReturnType<typeof buildCockpit> | null = null;
   const smoke: { sprite: Sprite; life: number; vx: number; vy: number; vz: number }[] = [];
   let last = 0;
   let camX = 0;
@@ -389,6 +533,8 @@ export function makeStrip3d(canvas: HTMLCanvasElement): Strip3d | null {
       block(0.3, 4.4, 0.3, steel, x, 2.2, -line - 30);
     }
 
+    cockpit = buildCockpit(frame.tones[0] ?? "#4cc9ff");
+    world.add(cockpit.rig);
     frame.race.lanes.forEach((_, seat) => {
       const car = buildCar(frame.cars[seat] ?? "sparrow", frame.tones[seat] ?? "#4cc9ff", poolTexture, shadeTexture);
       car.group.position.x = laneX(seat, lanes);
@@ -424,6 +570,7 @@ export function makeStrip3d(canvas: HTMLCanvasElement): Strip3d | null {
       const dt = Math.min(0.05, last ? (frame.time - last) / 1000 : 0.016);
       last = frame.time;
       const race = frame.race;
+      const inside = frame.seat === "cockpit";
       const lanes = race.lanes.length;
       const me = race.lanes[0]!;
       const myZ = -me.distance / 1000;
@@ -432,6 +579,8 @@ export function makeStrip3d(canvas: HTMLCanvasElement): Strip3d | null {
         const car = cars[seat];
         if (!car) return;
         car.group.visible = lane.staged;
+        // From the driver's seat your own car is the rig round the camera, not the car out there.
+        car.body.visible = !(inside && seat === 0);
         const speed = lane.speed / 1000;
         const accel = dt > 0 ? (speed - car.speed) / dt : 0;
         car.speed = speed;
@@ -478,11 +627,26 @@ export function makeStrip3d(canvas: HTMLCanvasElement): Strip3d | null {
       camX += ((tall ? 0 : mine * 0.62) - camX) * Math.min(1, dt * 4 + (last ? 0 : 1));
       const speed = me.speed / 1000;
       const shake = frame.still ? 0 : Math.min(0.05, speed * 0.0007);
-      camera.fov = (tall ? 70 : 46) + Math.min(14, speed * 0.22);
+      camera.fov = inside ? (tall ? 84 : 62) + Math.min(8, speed * 0.12) : (tall ? 70 : 46) + Math.min(14, speed * 0.22);
       camera.aspect = aspect;
       camera.position.set(camX + Math.sin(frame.time * 0.037) * shake, (tall ? 4.2 : 3.3) + Math.sin(frame.time * 0.051) * shake, myZ + (tall ? 11 : 9.2));
       // Looking down a little, so the car rides above the gauges.
       camera.lookAt(tall ? 0 : mine * 0.75, tall ? -3.4 : -2.6, myZ - 13);
+      if (cockpit) {
+        cockpit.rig.visible = inside;
+        if (inside) {
+          // The driver's eyes: left of the middle, and they go back in the seat when the car leaves.
+          const mineCar = cars[0];
+          const eyeX = mine - 0.36;
+          const eyeY = 1.1 + Math.sin(frame.time * 0.051) * shake;
+          const eyeZ = myZ + 0.25 + (mineCar ? mineCar.pitch * 1.2 : 0);
+          cockpit.rig.position.set(eyeX, eyeY, eyeZ);
+          cockpit.rig.rotation.x = mineCar ? mineCar.pitch * 0.8 : 0;
+          cockpit.update(me, frame.time, dt, frame.still);
+          camera.position.set(eyeX, eyeY, eyeZ);
+          camera.lookAt(eyeX + 0.25, eyeY - (tall ? 2.4 : 1.3) + (mineCar ? mineCar.pitch * 30 : 0), myZ - 24);
+        }
+      }
       camera.updateProjectionMatrix();
       lamps.position.set(mine, 1.1, myZ - 1.5);
       lamps.target.position.set(mine, 0, myZ - 26);

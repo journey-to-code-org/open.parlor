@@ -56,6 +56,32 @@ An engine is something you watch, not a number that goes down.
   part that changes how the engine breathes moves the tune, so a new part means tuning again.
 - **Plugs, oil and the rest.** Small things that wear, cost little, and end a night when ignored.
 
+## From the driver's seat
+
+The other half of what this is after: the road games of the same years, played from behind the
+wheel on a real road with other cars on it.
+
+- **The cockpit.** The view from the driver's seat: the dash with its gauges, the wheel, the hood,
+  and a shifter that moves through the gate. The chase view stays for whoever prefers it.
+- **A road with steering.** A run from one end of a mountain road to the other, with a rock face
+  on one side and a drop on the other.
+- **Traffic.** Slow cars in your lane and oncoming ones in the other, and the choice of when to
+  pull out.
+- **The law.** A radar detector on the dash that chirps before you see them. Then it is yours to
+  decide: slow down, pull over and take the ticket, or run.
+- **Stages and gas.** The run is in legs, each ending at a gas station with your time and average
+  speed. The tank is not bottomless.
+- **A rival on the same road.** One other car out there with you, trading places, rather than a
+  lane each.
+- **Damage you feel.** A hit cracks the glass and takes something off the car before it ends the
+  run.
+- **Your own way across town.** A race from one place to another by any streets you like, with a
+  map. This one waits for the town.
+- **Spec sheets.** A car for sale laid out like a magazine page.
+
+The mountain road is also where the steering model is first built, and the town and the autocross
+are built on that.
+
 ## The town
 
 An open world that is the lobby: you drive it to get anywhere.
@@ -150,6 +176,7 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
       [#179](https://github.com/journey-to-code-org/open.parlor/pull/179).
 - [ ] **Garages on the server**, one a player.
 - [ ] **The strip in 3D**, with the flat view kept for whoever wants it.
+- [ ] **The cockpit view** on the strip.
 
 ### Phase 2: the phone
 
@@ -159,23 +186,35 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
 - [ ] **The marketplace**: sellers, deals, and condition you only learn afterwards.
 - [ ] **The performance sites and the used-parts seller.**
 - [ ] **Cosmetics**, and a car that looks like its build on the strip.
+- [ ] **Spec sheets**: a listing laid out like a magazine page.
 
-### Phase 3: money
+### Phase 3: the road
+
+- [ ] **A driving model with steering**, in whole numbers like the rest.
+- [ ] **The mountain road**: one run, end to end, alone against the clock.
+- [ ] **Traffic**, both ways.
+- [ ] **The law**: the radar detector, pulling over, running.
+- [ ] **Stages and gas stations**, with a time and an average speed for each leg.
+- [ ] **Damage you feel**, from the first scrape to the end of the run.
+- [ ] **A rival** on the road with you: a computer driver first, then another player.
+- [ ] **The road from the cockpit**, with mirrors.
+
+### Phase 4: money
 
 - [ ] **Races on the server**, so nobody can see when the flashlight will drop.
 - [ ] **Flashlight drags and roll races** between players, with the stake held and paid out:
       cash, or the cars themselves.
 - [ ] **Index racing**, ahead of the Shootout.
 
-### Phase 4: the town
+### Phase 5: the town
 
-- [ ] **A driving model with steering**, in whole numbers like the rest.
 - [ ] **The town** as the lobby: cruising, other players, places to go.
 - [ ] **Challenges** between players who meet.
+- [ ] **Races across town** by any route, with a map.
 - [ ] **The poker run.**
 - [ ] **Crashes**: damage, repair bills, totaled cars, scrap and salvage.
 
-### Phase 5: the Shootout
+### Phase 6: the Shootout
 
 - [ ] **Autocross**: courses as data, cones, and an editor.
 - [ ] **The show**: judging and votes.
