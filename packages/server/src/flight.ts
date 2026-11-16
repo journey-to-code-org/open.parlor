@@ -191,8 +191,17 @@ export function createFlights(options: { every?: number; now?: () => number } = 
     for (const f of s.flyers) f.send(text);
   }
 
-  const timer = options.every
-    ? setInterval(() => {
+  // The clock only runs while there is a game for it to play.
+  let timer: ReturnType<typeof setInterval> | null = null;
+  const rest = () => {
+    if (timer && ![...sessions.values()].some((s) => !s.over)) {
+      clearInterval(timer);
+      timer = null;
+    }
+  };
+  const wake = () => {
+    if (timer || !options.every) return;
+    timer = setInterval(() => {
         const at = now();
         for (const [id, s] of sessions) {
           if (s.over) continue;
@@ -209,9 +218,10 @@ export function createFlights(options: { every?: number; now?: () => number } = 
           s.owed -= ticks * step;
           advance(id, ticks);
         }
-      }, options.every)
-    : null;
-  timer?.unref?.();
+        rest();
+      }, options.every);
+    timer.unref?.();
+  };
 
   return {
     /** A room has started: put its game in the air. Seats that are computer players fly themselves. */
@@ -233,6 +243,7 @@ export function createFlights(options: { every?: number; now?: () => number } = 
         last: at,
         emptySince: at,
       });
+      wake();
     },
     /**
      * Put a page on a game: it is sent the game as it stands, and from then on every tick. `seat`
