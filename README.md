@@ -596,7 +596,10 @@ its own **3D** switch, remembered for that game; `?flat` in the address turns it
   and two neighbours that do something to each other are joined by a green or a red bar on the
   floor. The crew are themselves in both (`idle/people3d.ts`), from what the game says of each:
   Tommy's tie and clipboard, Pluto's cap and rabbit, B-Rice and his pasta, Ricky outside the
-  bathroom on his phone when that is where he is. The payday board counts down and hands go up
+  bathroom on his phone when that is where he is. The inspector is in both as well: a grey suit, a hat
+  and a clipboard, with the county's car across the back door from the minute's warning, pacing the
+  end of the counter during the visit and walking the room's aisle with the count so far held up
+  ("3 of 4"); a clean sheet leaves a PASSED sticker on the counter for as long as it is fresh. The payday board counts down and hands go up
   when the wages go out; a Store Move sends the boxes past and repaints the walls; and whatever
   has just gone in the incident log is said over the picture for a few seconds. The lists are as
   they were.

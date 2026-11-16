@@ -33,7 +33,7 @@ import {
   type Material,
 } from "three";
 import type { Counter3d, CounterLook } from "./counter3d";
-import { anybody, ball, box, crewPerson, delbie as makeDelbie, drum, paint, put, SKINS, type Person } from "./people3d";
+import { anybody, ball, box, crewPerson, delbie as makeDelbie, drum, paint, put, SKINS, type Person, inspector } from "./people3d";
 
 function rng(seed: number) {
   let s = seed >>> 0;
@@ -250,6 +250,22 @@ export function build(canvas: HTMLCanvasElement): Counter3d | null {
     put(scene, t, 4.5 - i * 0.5, 0, -3.7 - i * 1.3);
     return t;
   });
+  // The inspector's car, parked across the back door, and the inspector, at the end of the counter.
+  const car = new Group();
+  put(car, box(1.7, 0.42, 0.74, paint("#22262d", 0.35, 0.5)), 0, 0.44, 0);
+  put(car, box(0.9, 0.34, 0.68, paint("#2c3138", 0.3, 0.5)), -0.1, 0.8, 0);
+  put(car, box(0.86, 0.24, 0.7, paint("#9fc4dc", 0.2, 0.3)), -0.1, 0.8, 0);
+  for (const x of [-0.55, 0.55]) put(car, drum(0.18, 0.18, 0.78, paint("#1d1f24", 0.9), 14), x, 0.18, 0).rotation.x = Math.PI / 2;
+  put(car, new Mesh(new PlaneGeometry(0.5, 0.2), new MeshBasicMaterial({ map: sign("COUNTY", 256, 96, "#f1f1ea", "#22262d", "#22262d") })), 0.45, 0.46, 0.375);
+  car.visible = false;
+  put(scene, car, 4.1, 0, -3.0);
+  const suit = inspector();
+  suit.group.visible = false;
+  put(scene, suit.group, 2.9, 0, 1.1);
+  const sticker = new Mesh(new PlaneGeometry(0.62, 0.62), new MeshBasicMaterial({ map: sign("PASSED", 256, 256, "#2f8a4f", "#ffffff", "#ffffff"), transparent: true }));
+  sticker.rotation.z = -0.08;
+  sticker.visible = false;
+  put(scene, sticker, 1.9, 0.56, 0.39);
   const pile: Mesh[] = [];
   const stack = rng(31);
   for (let i = 0; i < 12; i++) {
@@ -415,6 +431,20 @@ export function build(canvas: HTMLCanvasElement): Counter3d | null {
           truck.position.y = still ? 0 : Math.abs(Math.sin(t * 9 + i)) * 0.012;
         });
         pile.forEach((carton, i) => (carton.visible = i < Math.round(look.clutter * pile.length)));
+        car.visible = look.inspector !== null;
+        suit.group.visible = look.inspector === "here";
+        if (suit.group.visible) {
+          // Up and down the end of the counter, looking at everything and writing it down.
+          const walk = still ? 0 : Math.sin(t * 0.5);
+          suit.group.position.x = 2.9 + walk * 0.4;
+          suit.group.rotation.y = Math.PI + (still ? -0.3 : -0.3 + Math.sin(t * 0.5 + 1.2) * 0.5);
+          suit.group.position.y = still ? 0 : Math.abs(Math.sin(t * 4)) * 0.015;
+          suit.head.rotation.y = still ? 0 : Math.sin(t * 1.3) * 0.5;
+          suit.arms[0].rotation.x = -1.1;
+          suit.arms[1].rotation.x = still ? -1.2 : -1.2 + Math.sin(t * 11) * 0.12;
+          suit.arms[1].rotation.z = -0.5;
+        }
+        sticker.visible = look.sticker;
         const flash = look.panic ? (still ? 1 : 0.5 + Math.sin(t * 7) * 0.5) : 0;
         alarm.intensity = flash * 14;
         (beacon.material as MeshBasicMaterial).color.set(look.panic ? (flash > 0.5 ? "#ff3b30" : "#8a1f1a") : "#5a1512");

@@ -3,10 +3,18 @@ import { arcadeBlurb } from "./arcade/flavour";
 import { arranged } from "./catalogue";
 import type { GameId } from "./storage";
 
+/**
+ * Games the engine has that the parlor can't draw properly yet, kept off every list until it can.
+ * Billiards now has its cue-ball placing, call-your-shot and button, but it has not been seen on a
+ * screen yet: the sports table drew it as a putting green would be (the rails over the balls). It
+ * comes off this list once it has been looked at in a browser.
+ */
+const NOT_YET = new Set<string>(["billiards"]);
+
 export const GAME_LIST: { id: GameId; name: string; emoji: string; blurb: string }[] = [
   { id: "spades", name: "Spades", emoji: "♠\uFE0E", blurb: "Partners, bids and nils" },
   { id: "palace", name: "Palace", emoji: "🏰", blurb: "First to shed every card wins" },
-  ...KIT_GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, blurb: g.blurb })),
+  ...KIT_GAMES.filter((g) => !NOT_YET.has(g.id)).map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, blurb: g.blurb })),
 ];
 
 /**

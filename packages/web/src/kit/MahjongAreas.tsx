@@ -2,7 +2,7 @@
 // Riichi (each seat's discards, the dora indicators and the wall).
 import type { Center, KCard } from "@journey-to-code/games";
 import type { CSSProperties } from "react";
-import CardFace from "./CardFace";
+import CardFace from "@open-parlor/ui/playing-card.zb";
 
 type Tiles = Extract<Center, { kind: "tiles" }>;
 type Rivers = Extract<Center, { kind: "rivers" }>;
