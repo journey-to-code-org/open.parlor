@@ -17,7 +17,8 @@ interface Props {
   /** `rival` is a housemate's run to take on: the same seed, and their score to beat. */
   onPlay: (rules: ArcadeRules, seats: number, autofire: boolean, rival?: { name: string; score: number; seed: number }) => void;
   /** Open a table on the server for this many people (and computer players), to play the same game together. */
-  onTogether?: (rules: ArcadeRules, seats: number) => Promise<void>;
+  /** `where`: "link" for people sent the link, "lobby" for anyone looking for this game, or a house's slug for a table at that house. */
+  onTogether?: (rules: ArcadeRules, seats: number, where: string) => Promise<void>;
 }
 
 export function ArcadeSetup({ game: id, onHome, onPlay, onTogether }: Props) {
@@ -27,6 +28,7 @@ export function ArcadeSetup({ game: id, onHome, onPlay, onTogether }: Props) {
   const [autofire, setAutofire] = useState(loadAutofire);
   const [showRules, setShowRules] = useState(false);
   const [together, setTogether] = useState(2);
+  const [where, setWhere] = useState("link");
   const [opening, setOpening] = useState<string | null>(null);
   const houses = loadMyHouses();
   const [house, setHouse] = useState(loadArcadeHouse);
@@ -135,7 +137,13 @@ export function ArcadeSetup({ game: id, onHome, onPlay, onTogether }: Props) {
           {onTogether && (
             <section className="arcade-together" aria-label="Play together">
               <h3>Play together</h3>
-              <p>Open a table and send the link: everyone plays the same game, live, on the same side.</p>
+              <p>Everyone at the table plays the same game, live, on the same side.</p>
+              <SelectField
+                label="Who with"
+                value={where}
+                options={[{ value: "link", label: "People I send the link to" }, { value: "lobby", label: "Anyone looking for a game" }, ...houses.map((h) => ({ value: h.slug, label: `${h.name}: a table at the house` }))]}
+                onValueChange={(e: CustomEvent<string>) => setWhere(e.detail || "link")}
+              />
               <Choice label="Seats" value={together} options={Array.from({ length: game.seats.max - 1 }, (_, i) => [String(i + 2), `${i + 2} players`] as [string, string])} onChange={(v) => setTogether(Number(v))} />
               <button
                 type="button"
@@ -144,10 +152,10 @@ export function ArcadeSetup({ game: id, onHome, onPlay, onTogether }: Props) {
                 onClick={() => {
                   saveArcadeRules(id, rules);
                   setOpening("");
-                  onTogether(rules, together).catch((e: Error) => setOpening(e.message || "The table could not be opened."));
+                  onTogether(rules, together, where).catch((e: Error) => setOpening(e.message || "The table could not be opened."));
                 }}
               >
-                {opening === "" ? "Opening a table…" : "Open a table"}
+                {opening === "" ? "Opening a table…" : where === "lobby" ? "Find players" : "Open a table"}
               </button>
               {opening && <p className="error">{opening}</p>}
             </section>

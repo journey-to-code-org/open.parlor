@@ -469,7 +469,7 @@ function Lobby(props: {
               {copied ? "Link copied" : "Invite people"}
             </button>
           )}
-          {mySeat !== null && !doc.locked && doc.seats.length > 1 && !full && !arcade && (
+          {mySeat !== null && !doc.locked && doc.seats.length > 1 && !full && (
             <button type="button" className="secondary" aria-pressed={Boolean(doc.open)} onClick={() => attempt(() => lobby.setOpen(room.id, !doc.open))}>
               {doc.open ? "Close the table (invited people only)" : "Open the table to everyone"}
             </button>

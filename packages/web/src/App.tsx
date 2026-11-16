@@ -151,6 +151,19 @@ export function App() {
     go({ table: id, house });
     setScreen({ kind: "room", id, house });
   };
+  /** A live arcade table: for people sent the link, for anyone looking for the game, or at one of the player's houses. */
+  const openTogether = async (game: ArcadeGameId, rules: ArcadeRules, seats: number, where: string) => {
+    const settings = loadTableSettings();
+    if (where === "link") return openTable(await createRoom({ game, rules, seats }, { settings }), null);
+    if (where === "lobby") {
+      // Someone the parlor knows by name is seated at a waiting table straight away, or at a new one
+      // everyone can see. Someone it doesn't opens a table and can open it to everyone once seated.
+      const name = loadName().trim();
+      if (!name) return openTable(await createRoom({ game, rules, seats }, { settings }), null);
+      return openTable((await lobby.join({ game: game as never, name, rules, seats, settings })).id, null);
+    }
+    return openTable((await houses.openTable(where, undefined, game as never, seats, settings, rules)).id, where);
+  };
   const openLobby = () => {
     go({ lobby: "1" });
     setScreen({ kind: "lobby" });
@@ -238,7 +251,7 @@ export function App() {
   // Road to the Shootout has a garage in front of its races, so it has a screen of its own.
   if (game === "pinkslips") return <PinkSlips key={game} onHome={home} />;
   if (isArcadeGame(game)) {
-    return <ArcadeSetup key={game} game={game} onHome={home} onPlay={(rules, seats, autofire, rival) => setScreen({ kind: "arcade", game, rules, seats, autofire, seed: rival ? rival.seed : Math.floor(Math.random() * 2 ** 31), rival })} onTogether={isLiveArcade(game) ? async (rules, seats) => openTable(await createRoom({ game, rules, seats }, { settings: loadTableSettings() }), null) : undefined} />;
+    return <ArcadeSetup key={game} game={game} onHome={home} onPlay={(rules, seats, autofire, rival) => setScreen({ kind: "arcade", game, rules, seats, autofire, seed: rival ? rival.seed : Math.floor(Math.random() * 2 ** 31), rival })} onTogether={isLiveArcade(game) ? (rules, seats, where) => openTogether(game, rules, seats, where) : undefined} />;
   }
   if (isKitGame(game)) {
     return (

@@ -15,7 +15,7 @@ import { leaderboard, palaceLeaderboard, placesLeaderboard, type FinishedGame, t
 import { KIT_GAMES, isKitGame, kitGame, type KitGameId, type KitSummary } from "@journey-to-code/games";
 import { kitOptions } from "./kit.js";
 import type { Push } from "./push.js";
-import { GAMES, gameName, isGameId, type GameId, type TableOptions } from "./games.js";
+import { GAMES, gameEmoji, gameName, isGameId, isLiveGame, liveOptions, type GameId, type TableOptions } from "./games.js";
 import { palaceOptions, palaceRulesFrom, type PalaceSummary } from "./palace.js";
 import { CONTEXT_LIMIT, DAILY_LINES, TABLE_LINES, createAi, defaultModel, isProvider, type Ai, type HouseAi } from "./ai.js";
 
@@ -379,12 +379,17 @@ export function createHouses(
     const canManage = me.role === "owner" || me.role === "admin";
 
     // POST /houses/:slug/tables { game?, presetId?, seats?, settings? } → a new table with house rules
+    // An arcade game played live has no house rules: its table takes { rules } as the player set them.
     if (action === "tables") {
-      const game = gameOf(input.game);
+      const game = isLiveGame(input.game) ? input.game : gameOf(input.game);
       if (!(await gameOn(game))) return json({ error: `${gameName(game)} is switched off in this parlor.` }, 403);
       let id: string;
       let rulesName: string;
-      if (isKitGame(game)) {
+      if (isLiveGame(game)) {
+        const options = liveOptions(game, input.rules, input.seats);
+        id = await rooms.create(options, input.settings);
+        rulesName = (options as { rules: { name: string } }).rules.name;
+      } else if (isKitGame(game)) {
         const { presets, default: fallback } = kitRulesOf(house, game);
         const rules = presets.find((p) => p.id === (input.presetId ?? fallback)) ?? presets[0]!;
         id = await rooms.create(kitOptions(kitGame(game)!, rules, input.seats), input.settings);
@@ -399,11 +404,11 @@ export function createHouses(
         rulesName = preset.name;
       }
       // The house's cards, to start with: the players can still pick others before the deal.
-      if (house.deck) await rooms.setDeck(id, house.deck);
+      if (house.deck && !isLiveGame(game)) await rooms.setDeck(id, house.deck);
       house.tables.push({ id, game, rules: rulesName, created: Date.now() });
       await save(house);
       // Let the rest of the house know there's a seat waiting.
-      const emoji = GAMES.find((g) => g.id === game)?.emoji ?? "🃏";
+      const emoji = gameEmoji(game);
       for (const m of house.members) {
         if (m.player === me.player) continue;
         void push?.notify(m.player, { title: `${me.name} opened a ${gameName(game)} table at ${house.name} ${emoji}`, body: `${rulesName}. Tap to pull up a chair.`, url: `/?table=${id}&house=${house.slug}`, tag: `table-${id}` });

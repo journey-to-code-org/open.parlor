@@ -150,4 +150,42 @@ describe("an arcade table on the server", () => {
     // Someone who is not at the table can't give orders.
     expect((await phone()(`/rooms/${id}/act`, { move: { type: "beat" } })).status).not.toBe(200);
   });
+
+  it("is found in the lobby, and opened at a house, like any other table", async () => {
+    const app = createCardRoom({ log: memoryLog({ keep: "latest" }), botDelay: 5, talk: false });
+    open.push(app);
+    const phone = () => {
+      let cookie = "";
+      return async (path: string, body?: unknown) => {
+        const response = (await app.fetch(new Request("http://test" + path, { method: body ? "POST" : "GET", headers: { "content-type": "application/json", cookie }, body: body ? JSON.stringify(body) : undefined })))!;
+        const set = response.headers.get("set-cookie");
+        if (set) cookie = set.split(";")[0]!;
+        return { status: response.status, body: await response.json() };
+      };
+    };
+    const a = phone();
+    const b = phone();
+    // Looking for players: a new open table, which the next person looking is seated at.
+    const mine = await a("/lobby/join", { game: "bulwark", name: "McMikey", rules: arcadeGame("bulwark")!.presets[0], seats: 2 });
+    expect(mine.status).toBe(201);
+    expect(mine.body).toMatchObject({ seat: 0, waiting: true });
+    const listed = (await b("/lobby?game=bulwark")).body.tables;
+    expect(listed).toMatchObject([{ id: mine.body.id, game: "bulwark", rules: arcadeGame("bulwark")!.presets[0]!.name }]);
+    expect((await b("/lobby?game=hearts")).body.tables).toEqual([]);
+    const theirs = await b("/lobby/join", { game: "bulwark", name: "Dubs", seats: 2 });
+    expect(theirs.body).toMatchObject({ id: mine.body.id, seat: 1, waiting: false });
+    // Shitstorm too; and a game for one is nobody's to look for.
+    expect((await a("/lobby/join", { game: "skyfire", name: "McMikey", seats: 3 })).status).not.toBe(400);
+    expect((await a("/lobby/join", { game: "delbies", name: "McMikey" })).status).toBe(400);
+
+    // At a house: a table with the rules the player set, on the house's list.
+    const house = (await a("/houses", { name: "The Parts Store", you: "McMikey" })).body;
+    const rules = { ...arcadeGame("chipstack")!.presets[0], name: "Friday shift" };
+    const made = await a(`/houses/${house.slug}/tables`, { game: "chipstack", rules, seats: 3 });
+    expect(made.status).toBe(201);
+    const room = (await a(`/rooms/${made.body.id}`)).body;
+    expect(room.info).toEqual({ game: "chipstack", rules: "Friday shift" });
+    expect(room.seats).toHaveLength(3);
+    expect((await a(`/houses/${house.slug}`)).body.tables[0]).toMatchObject({ id: made.body.id, game: "chipstack", rules: "Friday shift" });
+  });
 });

@@ -37,6 +37,19 @@ const gameOf = (x: unknown): GameId => {
   const g = (x as { game?: string } | null)?.game;
   return g === "palace" || isKitGame(g) || isLiveArcade(g) || isFlight(g) ? (g as GameId) : "spades";
 };
+/** Whether this is an arcade game that can be played live at a table: one that is not in GAMES, but has a room. */
+export const isLiveGame = (id: unknown): id is GameId => isLiveArcade(id) || isFlight(id);
+/** A game somebody can open a table of: one of GAMES, or an arcade game played live. */
+export const isTableId = (id: unknown): id is GameId => isGameId(id) || isLiveGame(id);
+/** A live arcade table's options from what a page sent: checked, falling back to the game's own rules. */
+export const liveOptions = (game: GameId, rules: unknown, seats: unknown): TableOptions => (isFlight(game) ? flightOptions(game, rules, seats) : arcadeOptions(game, rules, seats));
+/** A table game's name and how many it seats, whichever kind it is. */
+export function aboutTable(id: GameId): { name: string; emoji: string; seats: [number, number] } | undefined {
+  const listed = GAMES.find((g) => g.id === id);
+  if (listed) return { name: listed.name, emoji: listed.emoji, seats: [listed.seats[0], listed.seats[1]] };
+  const arcade = isLiveGame(id) ? arcadeGame(id) : undefined;
+  return arcade ? { name: arcade.name, emoji: arcade.emoji, seats: [arcade.seats.min, arcade.seats.max] } : undefined;
+}
 /** Whether a room's game is an arcade game played live. */
 const live = (id: GameId): boolean => isLiveArcade(id) || isFlight(id);
 /** The room for an arcade game played live: by orders through the room itself, or flown beside it (flight.ts). */

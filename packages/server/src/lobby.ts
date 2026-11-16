@@ -25,7 +25,7 @@
 import { kitGame, isKitGame } from "@journey-to-code/games";
 import { familyTable, pickPersonas, validatePreset, type RulePreset } from "@journey-to-code/rules";
 import { newPlayerId, playerCookie, playerOf, type RoomDoc } from "@journey-to-code/rooms/server";
-import { GAMES, gameEmoji, gameName, gameOfOptions, isGameId, type GameId, type TableOptions } from "./games.js";
+import { aboutTable, gameEmoji, gameName, gameOfOptions, isLiveGame, isTableId, liveOptions, type GameId, type TableOptions } from "./games.js";
 import { kitOptions } from "./kit.js";
 import { maskText, nameOk } from "./names.js";
 import { palaceOptions } from "./palace.js";
@@ -104,6 +104,7 @@ const NEW_TABLE_GAP_MS = 3000;
 
 /** A game's table options from what a page sent: checked, falling back to the game's own rules. */
 function optionsFor(game: GameId, rules: unknown, seats: unknown): TableOptions {
+  if (isLiveGame(game)) return liveOptions(game, rules, seats);
   if (isKitGame(game)) return kitOptions(kitGame(game)!, rules, seats);
   if (game === "palace") return palaceOptions(rules, seats);
   const preset = rules && typeof rules === "object" ? ({ ...familyTable, ...(rules as RulePreset) } as RulePreset) : familyTable;
@@ -144,7 +145,7 @@ export function createLobby(rooms: Rooms, { mount = "/lobby", quietAfter = 90_00
     const found: Record<string, Entry> = {};
     for (const [id, value] of Object.entries(doc)) {
       const e = value as Entry | null;
-      if (e && typeof e === "object" && isGameId(e.game)) found[id] = e;
+      if (e && typeof e === "object" && isTableId(e.game)) found[id] = e;
     }
     return found;
   }
@@ -327,7 +328,7 @@ export function createLobby(rooms: Rooms, { mount = "/lobby", quietAfter = 90_00
     // GET /lobby[?game=hearts] → every open table: its game, who's there, and since when
     if (parts.length === 0 && method === "GET") {
       const asked = new URL(request.url).searchParams.get("game");
-      const tables = await inTurn(() => list(player, isGameId(asked) ? asked : undefined));
+      const tables = await inTurn(() => list(player, isTableId(asked) ? asked : undefined));
       return json({ tables: tables.map(({ match: _match, host: _host, removed: _removed, muted: _muted, ...t }) => t) });
     }
     // GET /lobby/alerts → the games this player asked to hear about
@@ -341,7 +342,7 @@ export function createLobby(rooms: Rooms, { mount = "/lobby", quietAfter = 90_00
 
     // POST /lobby/alerts { games } → buzz me when a table opens for these games ("any" for every game; none to stop)
     if (parts.length === 1 && parts[0] === "alerts") {
-      const games = [...new Set((Array.isArray(input.games) ? input.games : []).filter((g): g is string => g === ANY || isGameId(g)))];
+      const games = [...new Set((Array.isArray(input.games) ? input.games : []).filter((g): g is string => g === ANY || isTableId(g)))];
       await rooms.sync.write("lobby", "alerts", { [me]: games.length ? games : null });
       return json({ games, notifications: Boolean(push?.enabled) }, 200, cookie);
     }
@@ -351,8 +352,8 @@ export function createLobby(rooms: Rooms, { mount = "/lobby", quietAfter = 90_00
     // `sameRules`, only a table with exactly these rules and this many seats will do.
     if (parts.length === 1 && parts[0] === "join") {
       const game = input.game;
-      const about = GAMES.find((g) => g.id === game);
-      if (!isGameId(game) || !about) return json({ error: "Pick a game first." }, 400);
+      const about = isTableId(game) ? aboutTable(game) : undefined;
+      if (!isTableId(game) || !about) return json({ error: "Pick a game first." }, 400);
       if (about.seats[1] < 2) return json({ error: `${about.name} is a game for one.` }, 400);
       const name = cleanName(input.name);
       if (!okName(name)) return json({ error: BAD_NAME }, 400);
