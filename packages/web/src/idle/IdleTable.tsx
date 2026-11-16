@@ -437,7 +437,7 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
               {standings.length > 0 && (
                 <ol>
                   {standings.map((st) => (
-                    <li key={st.id} className={st.me ? "me" : ""}>
+                    <li key={st.id} className={st.me ? "mine" : ""}>
                       <b>{st.me ? `${st.name} (you)` : st.name}</b>
                       <span>
                         {dollars(st.score * 100)} taken in · {dollars(st.perSecond)} a second · {st.crew} on the payroll{st.moves > 0 ? ` · ${st.moves} ${st.moves === 1 ? "move" : "moves"}` : ""}
