@@ -31,6 +31,7 @@ import { fiveFrames, nineHoles } from "@journey-to-code/games";
 import { LocalKit } from "./kit/LocalKit";
 import { WifiHost } from "./wifi/WifiHost";
 import { WifiJoin } from "./wifi/WifiJoin";
+import { MoveDevice } from "./MoveDevice";
 import { TournamentPage } from "./TournamentPage";
 import { loadGame, loadLastGame, loadName, loadSameRules, loadTableSettings, rememberHouse, saveGame, type ArcadeRules, type GameId } from "./storage";
 
@@ -43,6 +44,7 @@ type Screen =
   | { kind: "local-kit"; game: KitGameId; name: string; /** The other people playing at this device, after `name`. */ others?: string[]; rules: unknown; seats: number; seed: number; /** Leaving goes back to the course (or lane) editor, at this one. */ back?: string }
   | { kind: "wifi-host"; game: KitGameId; name: string; rules: unknown; seats: number; seed: number }
   | { kind: "wifi-join" }
+  | { kind: "move" }
   | { kind: "arcade"; game: ArcadeGameId; rules: ArcadeRules; seats: number; seed: number; autofire: boolean; rival?: { name: string; score: number } }
   | { kind: "golf"; id: string }
   | { kind: "lane"; id: string }
@@ -65,6 +67,8 @@ function fromUrl(): Screen {
   if (q.get("lobby")) return { kind: "lobby" };
   // A table on this wifi: the host's QR code is a link here, with their offer after the #.
   if (q.get("wifi")) return { kind: "wifi-join" };
+  // The same player on another device: its QR code is a link here, with the code after the #.
+  if (q.get("me")) return { kind: "move" };
   const golf = q.get("golf");
   if (golf) return { kind: "golf", id: golf };
   const lane = q.get("lane");
@@ -210,6 +214,11 @@ export function App() {
           onPick={pickGame}
           onOpenHouse={openHouse}
           onLobby={openLobby}
+          onMove={() => {
+            go({ me: "move" });
+            setScreen({ kind: "move" });
+            scrollTo(0, 0);
+          }}
           onWifi={() => {
             go({ wifi: "join" });
             setScreen({ kind: "wifi-join" });
@@ -223,6 +232,7 @@ export function App() {
   if (screen.kind === "local-palace") return <LocalPalace key={screen.seed} {...screen} onLeave={home} />;
   if (screen.kind === "wifi-host") return <WifiHost key={screen.seed} {...screen} onLeave={() => setScreen({ kind: "setup" })} />;
   if (screen.kind === "wifi-join") return <WifiJoin onLeave={home} />;
+  if (screen.kind === "move") return <MoveDevice onLeave={home} onOpenHouse={openHouse} />;
   if (screen.kind === "local-kit") return <LocalKit key={screen.seed} {...screen} onLeave={screen.back ? () => (screen.game === "bowling" ? editLane : editCourse)(screen.back!) : home} />;
   if (screen.kind === "lane")
     return (

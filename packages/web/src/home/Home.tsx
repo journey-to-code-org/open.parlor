@@ -144,11 +144,11 @@ const SEATS: Record<string, { seats: [number, number]; teams: boolean }> = {
 /** An open table as the front page shows it: one line. */
 const brief = (t: OpenTable) => ({ id: t.id, game: t.game, who: whoIsThere(t), free: t.free });
 
-export function Home({ last, onPick, onOpenHouse, onLobby, onWifi }: { last: GameId | null; onPick: (game: GameId | SoloGameId) => void; onOpenHouse: (slug: string) => void; onLobby: () => void; /** Join a table someone is hosting on this wifi. */ onWifi: () => void }) {
+export function Home({ last, onPick, onOpenHouse, onLobby, onWifi, onMove }: { last: GameId | null; onPick: (game: GameId | SoloGameId) => void; onOpenHouse: (slug: string) => void; onLobby: () => void; /** Join a table someone is hosting on this wifi. */ onWifi: () => void; /** Be the same player on another device. */ onMove: () => void }) {
   const el = useRef<HTMLDivElement>(null);
   const [catalogue, setCatalogue] = useState(0);
-  const handlers = useRef({ onPick, onOpenHouse, onLobby, onWifi });
-  handlers.current = { onPick, onOpenHouse, onLobby, onWifi };
+  const handlers = useRef({ onPick, onOpenHouse, onLobby, onWifi, onMove });
+  handlers.current = { onPick, onOpenHouse, onLobby, onWifi, onMove };
 
   useEffect(() => {
     // The games the parlor's host offers, in their order (every game, where there's no server).
@@ -165,6 +165,7 @@ export function Home({ last, onPick, onOpenHouse, onLobby, onWifi }: { last: Gam
       open: [] as ReturnType<typeof brief>[],
       onLobby: () => handlers.current.onLobby(),
       onWifi: () => handlers.current.onWifi(),
+      onMove: () => handlers.current.onMove(),
       // "Ask for a game" in the footer, where the parlor takes requests.
       canAsk: false,
       onAsk: openGameRequest,

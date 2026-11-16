@@ -5,6 +5,7 @@ import type { Log } from "@zubra/sync/server";
 import { createRooms, type RoomDoc } from "@journey-to-code/rooms/server";
 import { createCatalogue } from "./catalogue.js";
 import { createChallenges } from "./challenges.js";
+import { createDevices } from "./devices.js";
 import { createSpectate } from "./spectate.js";
 import type { Backups } from "./backup.js";
 import { createCourses } from "./courses.js";
@@ -153,6 +154,8 @@ export function createCardRoom(
   const designs = createDesigns(rooms.sync, { tables: rooms });
   const houses = createHouses(rooms, { push, ai, gameOn: catalogue.isOn, deckFor: designs.deckFor });
   const challenges = createChallenges(rooms, push, { gameOn: catalogue.isOn });
+  // The same player on another device: the houses they are told about are the ones they belong to.
+  const devices = createDevices({ housesOf: async (player) => (await houses.all()).filter((h) => h.members.some((m) => m.player === player)).map((h) => ({ slug: h.slug, name: h.name })) });
   const lobby = createLobby(rooms, { push, gameOn: catalogue.isOn, ...options.lobby });
   const spectate = createSpectate(rooms, catalogue, options.spectate);
   const moderation = createModeration(rooms, designs, { token: options.adminToken, houses, catalogue, backups: options.backups, bots: bots ? () => bots.stats() : undefined, courses });
@@ -185,7 +188,7 @@ export function createCardRoom(
   }
 
   /** Everything a blocked player may not do: sit, move, talk, make houses, challenges or designs. Reading is left alone. */
-  const ACTS = ["/rooms", "/houses", "/challenges", "/lobby", "/designs", "/courses", "/push", "/spectate", "/bugs"];
+  const ACTS = ["/rooms", "/houses", "/challenges", "/lobby", "/designs", "/courses", "/push", "/spectate", "/bugs", "/me"];
   const under = (pathname: string, mounts: string[]) => mounts.some((m) => pathname === m || pathname.startsWith(`${m}/`));
   async function refusal(request: Request): Promise<Response | null> {
     if (request.method === "GET" || request.method === "HEAD" || !under(new URL(request.url).pathname, ACTS)) return null;
@@ -193,7 +196,7 @@ export function createCardRoom(
   }
   /** The routes that aren't the rooms kit's own. */
   const ours = async (request: Request) =>
-    (await refusal(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await designs.fetch(request)) ?? (await courses.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await spectate.fetch(request)) ?? (await challenges.fetch(request)) ?? (await lobby.fetch(request)) ?? (await houses.fetch(request));
+    (await refusal(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await designs.fetch(request)) ?? (await courses.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await spectate.fetch(request)) ?? (await challenges.fetch(request)) ?? (await devices.fetch(request)) ?? (await lobby.fetch(request)) ?? (await houses.fetch(request));
 
   return {
     rooms,
@@ -229,7 +232,7 @@ export function createCardRoom(
         res.writeHead(response.status, Object.fromEntries(response.headers));
         return response.arrayBuffer().then((body) => (res.end(Buffer.from(body)), true));
       };
-      if (under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/spectate", "/bugs"])) {
+      if (under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/spectate", "/bugs", "/me"])) {
         const chunks: Buffer[] = [];
         let size = 0;
         for await (const chunk of req) {

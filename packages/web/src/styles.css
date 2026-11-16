@@ -2870,3 +2870,5 @@ main.setup.wifi { max-width: 520px; }
 .wifi-seats { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .wifi-seats li { padding: 4px 12px; border-radius: 999px; background: rgba(0, 0, 0, 0.25); }
 .wifi-gone { margin: 0; padding: 6px 12px; text-align: center; font-size: 0.85rem; background: rgba(120, 30, 20, 0.85); color: var(--cream); }
+/* The code that makes another device you (MoveDevice.tsx): big enough to read across a table. */
+.move-code { margin: 0; font-size: 2.2rem; font-weight: 700; letter-spacing: 0.12em; font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--gold); user-select: all; }
