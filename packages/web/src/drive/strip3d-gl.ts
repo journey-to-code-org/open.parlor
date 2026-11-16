@@ -569,7 +569,9 @@ export function makeStrip3d(canvas: HTMLCanvasElement): Strip3d | null {
 
   return {
     render(frame) {
-      const sig = `${frame.cars.join()}|${frame.tones.join()}|${frame.race.distance}`;
+      // In a roll race the line moves with the cars until the signal, so the strip is laid out again once it is fixed.
+      const settled = frame.race.phase === "racing" || frame.race.phase === "over";
+      const sig = `${frame.cars.join()}|${frame.tones.join()}|${settled ? frame.race.distance : `to-${Math.round(frame.race.distance / 2_000_000)}`}`;
       if (sig !== built) {
         built = sig;
         build(frame);

@@ -6,7 +6,7 @@
 // alone against the clock or against one of the locals for money. What a run did to the car comes
 // back with it.
 import {
-  CAR_MODELS, GARAGE_STAKE, MOUNTAIN_ROAD_PRESETS, PINKSLIPS_PRESETS, afterRace, carValue, garageAct, garageView, loadGarage, mountainRoad, newDay, newGarage, pinkSlips, safeBuild, settleUp, timeslip,
+  CAR_MODELS, DYNO_COST, GARAGE_STAKE, MOUNTAIN_ROAD_PRESETS, REMOTE_TUNE_COST, PINKSLIPS_PRESETS, afterRace, carValue, garageAct, garageView, loadGarage, mountainRoad, newDay, newGarage, pinkSlips, safeBuild, settleUp, timeslip,
   type Build, type GarageState, type GarageView,
 } from "@journey-to-code/games";
 import type { PlayStyle } from "@journey-to-code/rules";
@@ -68,7 +68,7 @@ function localsFor(mine: Build, value: number, day: number): Local[] {
   });
 }
 
-type Racing = { car: number; carName: string; build: Build; rival: Rival | null; key: number; road: boolean };
+type Racing = { car: number; carName: string; build: Build; rival: Rival | null; key: number; road: boolean; tune: boolean };
 
 export function PinkSlips({ onHome }: { onHome: () => void }) {
   const [garage, setGarage] = useState(openGarage);
@@ -102,11 +102,11 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
   };
   const act = (command: Record<string, unknown>) => change((g) => garageAct(g, command));
 
-  const race = (rival: Rival | null, road = false) => {
+  const race = (rival: Rival | null, road = false, tune = false) => {
     if (!car) return;
     wakeArcadeSound();
     saveDriveStrip(strip);
-    setRacing({ car: car.id, carName: car.name, build: car.build, rival, key: Date.now(), road });
+    setRacing({ car: car.id, carName: car.name, build: car.build, rival, key: Date.now(), road, tune });
   };
   /** Back from the mountain: the wear, the fines, the bodywork, and the bet if there was one. */
   const downFromTheMountain = (outcome: RoadOutcome | null) => {
@@ -121,6 +121,11 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
       afterRace(g, was.car, { ...outcome.mine, won });
       settleUp(g, (won ? stake : lost ? -stake : 0) - outcome.mine.fines);
       const bent = g.cars.find((c) => c.id === was.car)?.body ?? 0;
+      if (was.tune) {
+        // The tuner is paid when he has had his pulls, and not before.
+        const done = outcome.mine.tuned ? garageAct(g, { cmd: "remote", car: was.car }) : null;
+        return { ok: !!done?.ok, message: done ? (done.ok ? `${done.message}${bent ? " Shame about the bodywork." : ""}` : done.message) : `He did not get his pulls: ${outcome.mine.pulls} of 3. No tune, and nothing to pay.${bent ? " The car has something to show for it, though." : ""}` };
+      }
       const bills = [outcome.mine.fines ? `${dollars(outcome.mine.fines)} in fines` : "", bent >= 1000 ? "the car, which is a write-off" : bent >= 300 ? "bodywork before it goes out again" : bent ? "a few dents" : ""].filter(Boolean).join(" and ");
       return { ok: won || (!was.rival && outcome.mine.out === "finished"), message: `${won ? `${was.rival!.name} pays up: ${dollars(stake)}. ` : lost ? `${was.rival!.name} takes ${dollars(stake)}. ` : ""}${bills ? `It cost you ${bills}.` : outcome.mine.out === "finished" ? "Home without a scratch." : "Nothing to pay."}` };
     });
@@ -141,7 +146,7 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
     });
   };
 
-  if (racing?.road) return <Road key={racing.key} rules={mountainRoad.normalize({ id: route })} build={racing.build} carName={racing.carName} rival={racing.rival} onDone={downFromTheMountain} />;
+  if (racing?.road) return <Road key={racing.key} rules={mountainRoad.normalize({ id: racing.tune ? "remote" : route })} build={racing.build} carName={racing.carName} rival={racing.rival} onDone={downFromTheMountain} />;
   if (racing) return <Strip key={racing.key} rules={rules} build={racing.build} carName={racing.carName} rival={racing.rival} onDone={home} />;
 
   const cheapest = Math.min(...view.listings.map((l) => l.price));
@@ -268,6 +273,16 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
                 <div className="scale" aria-hidden="true">{Array.from({ length: car.fuelMax + 1 }, (_, i) => <i key={i} className={i === car.fuel ? "on" : ""} />)}</div>
                 <button type="button" disabled={car.fuel >= car.fuelMax} onClick={() => act({ cmd: "fuel", car: car.id, fuel: car.fuel + 1 })} aria-label="More fuel">Richer</button>
               </div>
+              <ul className="pinks-locals">
+                <li>
+                  <div><b>The dyno, in Morgantown</b><small>Three pulls on the rollers and it comes back right.</small></div>
+                  <button type="button" disabled={view.cash < DYNO_COST || car.mixture === "right"} onClick={() => act({ cmd: "dyno", car: car.id })}>{car.mixture === "right" ? "It's right" : dollars(DYNO_COST)}</button>
+                </li>
+                <li>
+                  <div><b>A remote tune</b><small>A tuner on a laptop, and you on a dark road: three pulls, foot flat, no lifting. There are deer. You pay if he gets his pulls.</small></div>
+                  <button type="button" disabled={view.cash < REMOTE_TUNE_COST || !car.runs || car.mixture === "right"} onClick={() => race(null, true, true)}>{car.mixture === "right" ? "It's right" : dollars(REMOTE_TUNE_COST)}</button>
+                </li>
+              </ul>
             </div>
 
             <div className="pinks-card">
@@ -319,7 +334,7 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
               <div className="pinks-card">
                 <div className="row">
                   <h3>The mountain road</h3>
-                  <label className="pinks-where">Which run <select value={route} onChange={(e) => setRoute(e.target.value)}>{MOUNTAIN_ROAD_PRESETS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+                  <label className="pinks-where">Which run <select value={route} onChange={(e) => setRoute(e.target.value)}>{MOUNTAIN_ROAD_PRESETS.filter((p) => p.id !== "remote").map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
                 </div>
                 <p className="facts">{mountainRoad.describe(mountainRoad.normalize({ id: route }))[0]} Fines come out of your cash, and whatever you hit comes home on the car.</p>
                 <ul className="pinks-locals">

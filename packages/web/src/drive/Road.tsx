@@ -53,7 +53,7 @@ function drawFlat(g: CanvasRenderingContext2D, w: number, h: number, road: Arcad
   road.drivers.forEach((d, seat) => d.staged && car(d.along, d.across, TONES[seat]!));
 }
 
-function drawOver(g: CanvasRenderingContext2D, w: number, h: number, road: ArcadeRoad, tick: number, gauges: boolean) {
+function drawOver(g: CanvasRenderingContext2D, w: number, h: number, road: ArcadeRoad, tick: number, gauges: boolean, tuning: boolean) {
   const me = road.drivers[0]!;
   // Glass that has been hit: cracks from where it was struck, more of them the worse it is.
   if (me.damage >= 150) {
@@ -111,6 +111,23 @@ function drawOver(g: CanvasRenderingContext2D, w: number, h: number, road: Arcad
   bar(1, "DAMAGE", me.damage, me.damage > 600 ? "#ff3b3b" : "#c9ccd2");
   const starved = oilStarved(me.oil, me.rpm);
   bar(2, `OIL ${me.oil}`, me.oil * 10, starved ? "#ff3b3b" : "#ffb627");
+  if (tuning) {
+    // The laptop: how many pulls he has, and how far through this one you are.
+    g.fillStyle = "rgba(8, 9, 14, 0.82)";
+    g.beginPath();
+    g.roundRect(w / 2 - 130, 34, 260, 40, 10);
+    g.fill();
+    g.fillStyle = me.pulls >= 3 ? "#55d68a" : "#eef1f6";
+    g.textAlign = "center";
+    g.font = "700 14px system-ui, sans-serif";
+    g.fillText(me.pulls >= 3 ? "TUNED. Get it home in one piece." : `PULL ${Math.min(3, me.pulls + 1)} OF 3: foot flat, do not lift`, w / 2, 51);
+    g.fillStyle = "rgba(255, 255, 255, 0.14)";
+    g.fillRect(w / 2 - 110, 60, 220, 6);
+    g.fillStyle = "#4cc9ff";
+    g.fillRect(w / 2 - 110, 60, (220 * (me.pulls >= 3 ? 1000 : me.pull)) / 1000, 6);
+    g.textAlign = "left";
+    g.font = "600 12px system-ui, sans-serif";
+  }
   // The detector, and the law.
   const rx = 12, ry = 212;
   g.fillStyle = "rgba(8, 9, 14, 0.72)";
@@ -205,6 +222,8 @@ export function Road({ rules, build, carName, rival, onDone }: { rules: Mountain
   const [solidShown, setSolidShown] = useState(false);
   const spec = specOf(build);
   const topGear = spec.auto ? 1 : spec.gears.length;
+  /** A remote tune: at night, with a tuner counting pulls. */
+  const tuning = rules.id === "remote";
   const swapSeat = () => setSeat((was) => {
     const next = was === "chase" ? "cockpit" : "chase";
     saveDriveSeat(next);
@@ -246,9 +265,13 @@ export function Road({ rules, build, carName, rival, onDone }: { rules: Mountain
     const hear = (view: ArcadeView, now: number) => {
       for (const e of view.events) {
         if (e.seat !== undefined && e.seat !== 0) continue;
-        if (e.kind === "crash" || e.kind === "scrape") {
-          crash(e.kind === "crash" ? 0.7 : 0.25, 0.12);
-          jolt = e.kind === "crash" ? 1 : 0.4;
+        if (e.kind === "crash" || e.kind === "scrape" || e.kind === "deer") {
+          crash(e.kind === "scrape" ? 0.25 : 0.7, 0.12);
+          jolt = e.kind === "scrape" ? 0.4 : 1;
+          if (e.kind === "deer") {
+            setNote("Deer!");
+            noteUntil = now + 2500;
+          }
         } else if (e.kind === "siren") blip(700, 0.5, "square", 0.06);
         else if (e.kind === "shift") blip(180, 0.05, "square", 0.04);
         else if (e.kind === "station" || e.kind === "home") notes([523, 659, 784], 70, 0.12);
@@ -292,12 +315,12 @@ export function Road({ rules, build, carName, rival, onDone }: { rules: Mountain
       }
       jolt = Math.max(0, jolt - 0.04);
       const inside = seatNow.current === "cockpit";
-      const solid = !!gl && gl.render({ road, cars: models, tones: TONES, width: cv.clientWidth, height: cv.clientHeight, dpr: Math.min(2, window.devicePixelRatio || 1), time: now, still: motionSetting() !== "on", seat: seatNow.current, steer: c.steer / 100, jolt });
+      const solid = !!gl && gl.render({ road, cars: models, tones: TONES, width: cv.clientWidth, height: cv.clientHeight, dpr: Math.min(2, window.devicePixelRatio || 1), time: now, still: motionSetting() !== "on", seat: seatNow.current, steer: c.steer / 100, jolt, night: tuning });
       setSolidShown((was) => (was === solid ? was : solid));
       if (glCanvas.current) glCanvas.current.style.visibility = solid ? "visible" : "hidden";
       g.clearRect(0, 0, cv.clientWidth, cv.clientHeight);
       if (!solid) drawFlat(g, cv.clientWidth, cv.clientHeight, road);
-      drawOver(g, cv.clientWidth, cv.clientHeight, road, s.tick, !(solid && inside));
+      drawOver(g, cv.clientWidth, cv.clientHeight, road, s.tick, !(solid && inside), tuning);
     };
     frame = requestAnimationFrame(loop);
 
@@ -365,7 +388,7 @@ export function Road({ rules, build, carName, rival, onDone }: { rules: Mountain
 
   const mine = results?.[0];
   const theirs = results?.[1] ?? null;
-  const ended = { finished: "Made it", wrecked: "Wrecked", edge: "Over the edge", fuel: "Out of gas" } as const;
+  const ended = { finished: "Made it", wrecked: "Wrecked", edge: "Over the edge", fuel: "Out of gas", arrested: "Arrested" } as const;
   return (
     <div className="pinks-strip pinks-road">
       <canvas ref={glCanvas} className="gl" />
@@ -395,7 +418,7 @@ export function Road({ rules, build, carName, rival, onDone }: { rules: Mountain
       )}
       {mine && (
         <div className="pinks-slip" role="dialog" aria-label="Result">
-          <h2 className={mine.out === "finished" ? "won" : ""}>{rival ? (mine.won ? "You win" : theirs?.won ? "You lose" : "Nobody wins") : ended[mine.out ?? "wrecked"]}</h2>
+          <h2 className={mine.out === "finished" ? "won" : ""}>{tuning ? (mine.tuned ? "Tuned" : "No tune") : rival ? (mine.won ? "You win" : theirs?.won ? "You lose" : "Nobody wins") : ended[mine.out ?? "wrecked"]}</h2>
           {rival && rival.stake > 0 && <p className="money">{mine.won ? `+$${rival.stake.toLocaleString("en-US")}` : theirs?.won ? `-$${rival.stake.toLocaleString("en-US")}` : "Stakes back"}</p>}
           <table>
             <tbody>
@@ -403,6 +426,7 @@ export function Road({ rules, build, carName, rival, onDone }: { rules: Mountain
               <tr><th>Distance</th><td>{(mine.distance / 1000).toFixed(1)} km</td></tr>
               <tr><th>Time</th><td>{clock(mine.time)}</td></tr>
               {mine.legs.map((leg, i) => <tr key={i}><th>Leg {i + 1}</th><td>{clock(leg)} · {Math.round((rules.stageLength / (leg / 1000)) * 2.237)} mph</td></tr>)}
+              {tuning && <tr><th>The tune</th><td>{mine.tuned ? "Done" : `${mine.pulls} of 3 pulls`}</td></tr>}
               <tr><th>Fines</th><td>${mine.fines}</td></tr>
               <tr><th>Damage</th><td>{Math.round(mine.damage / 10)}%</td></tr>
             </tbody>

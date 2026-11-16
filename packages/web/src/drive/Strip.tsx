@@ -436,6 +436,11 @@ export function Strip({ rules, build, carName, rival, onDone }: { rules: PinkSli
       while (owed >= 1 && !done) {
         owed -= 1;
         const c = controls.current;
+        // From a roll the car is already in a gear: the shifter starts from there, not from neutral.
+        if (rules.tree === "roll" && c.gear === 0 && s.lanes[0]!.car.gear > 0) {
+          c.gear = s.lanes[0]!.car.gear;
+          setGearShown(c.gear);
+        }
         const mine: PinkSlipsInput = { gas: c.gas, gear: c.gear, stage: true, build };
         const theirs = rival ? (s.lanes[1]!.staged ? pinkSlips.bot(s, 1, rival.style) : { gas: 0, gear: 0, stage: true, build: rival.build }) : null;
         pinkSlips.step(s, theirs ? [mine, theirs] : [mine]);
@@ -450,7 +455,7 @@ export function Strip({ rules, build, carName, rival, onDone }: { rules: PinkSli
       note ??= engineNote();
       const me = view.race!.lanes[0]!;
       note?.set(me.rpm, controls.current.gas, !done && !me.blown);
-      const words = view.race!.phase === "ready" ? "Staged. Bring the revs up." : view.race!.phase === "tree" ? "" : view.race!.phase === "racing" && me.reaction === null && !me.blown ? "GO" : me.foul && !done ? "Red light" : me.blown && !done ? "Blown" : "";
+      const words = rules.tree === "roll" && (view.race!.phase === "ready" || view.race!.phase === "tree") ? `Rolling at ${rules.roll}. Pick your gear, and wait for it.` : view.race!.phase === "ready" ? "Staged. Bring the revs up." : view.race!.phase === "tree" ? "" : view.race!.phase === "racing" && me.reaction === null && !me.blown ? "GO" : me.foul && !done ? "Red light" : me.blown && !done ? "Blown" : "";
       setBanner((was) => (was === words ? was : words));
       const solid = !!gl && gl.render({ race: view.race!, cars: models, tones: TONES, width: cv.clientWidth, height: cv.clientHeight, dpr: Math.min(2, window.devicePixelRatio || 1), time: now, still: motionSetting() !== "on", seat: seatNow.current });
       setSolidShown((was) => (was === solid ? was : solid));
@@ -517,7 +522,7 @@ export function Strip({ rules, build, carName, rival, onDone }: { rules: PinkSli
   const mine = results?.[0];
   const theirs = results?.[1] ?? null;
   const push = !!mine && !!theirs && !mine.won && !theirs.won;
-  const headline = !mine ? "" : !rival ? (mine.finished && !mine.foul ? "Timeslip" : mine.foul ? "Red light" : "Did not finish") : mine.won ? "You win" : push ? "Nobody wins" : "You lose";
+  const headline = !mine ? "" : !rival ? (mine.breakout ? "Breakout" : mine.finished && !mine.foul ? "Timeslip" : mine.foul ? "Red light" : "Did not finish") : mine.won ? "You win" : push ? "Nobody wins" : mine.breakout ? "You broke out" : "You lose";
 
   return (
     <div className="pinks-strip">
@@ -563,6 +568,7 @@ export function Strip({ rules, build, carName, rival, onDone }: { rules: PinkSli
               <tr><th>Reaction</th><td>{mine.foul ? "Red light" : slip(mine.reaction)}</td>{theirs && <td>{theirs.foul ? "Red light" : slip(theirs.reaction)}</td>}</tr>
               <tr><th>Time</th><td>{mine.blown && !mine.finished ? "Blown" : slip(mine.time)}</td>{theirs && <td>{theirs.blown && !theirs.finished ? "Blown" : slip(theirs.time)}</td>}</tr>
               <tr><th>MPH</th><td>{mine.mph}</td>{theirs && <td>{theirs.mph}</td>}</tr>
+              {rules.index > 0 && <tr><th>Index {(rules.index / 100).toFixed(2)}</th><td>{mine.breakout ? "Broke out" : mine.time === null ? "—" : `+${((mine.time - rules.index * 10) / 1000).toFixed(3)}`}</td>{theirs && <td>{theirs.breakout ? "Broke out" : theirs.time === null ? "—" : `+${((theirs.time - rules.index * 10) / 1000).toFixed(3)}`}</td>}</tr>}
             </tbody>
           </table>
           {mine.blown && <p className="bad">The engine let go. It needs a rebuild before it runs again.</p>}

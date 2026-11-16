@@ -10,7 +10,7 @@
 // own side of the road positive.
 import {
   AmbientLight, BoxGeometry, BufferGeometry, Color, ConeGeometry, DirectionalLight, DoubleSide, Float32BufferAttribute, Fog, Group, HemisphereLight, InstancedMesh, Material, Matrix4, Mesh, MeshBasicMaterial,
-  MeshStandardMaterial, PerspectiveCamera, PlaneGeometry, RepeatWrapping, Scene, SRGBColorSpace, Vector3, WebGLRenderTarget, WebGLRenderer,
+  MeshStandardMaterial, PerspectiveCamera, PlaneGeometry, RepeatWrapping, Scene, SpotLight, SRGBColorSpace, Vector3, WebGLRenderTarget, WebGLRenderer,
 } from "three";
 import type { RoadFrame3d, Road3d } from "./road3d";
 import { buildCar, buildCockpit, canvasTexture, glow, type Car } from "./strip3d-gl";
@@ -33,9 +33,33 @@ export function makeRoad3d(canvas: HTMLCanvasElement): Road3d | null {
   scene.fog = new Fog(0xf0c39a, 120, 900);
   const camera = new PerspectiveCamera(60, 1, 0.3, 2200);
   const rear = new PerspectiveCamera(38, 3.4, 0.5, 900);
-  scene.add(new AmbientLight(0xfff0e0, 0.9), new HemisphereLight(0xbcd4ff, 0x6a5a44, 1.3));
+  const ambient = new AmbientLight(0xfff0e0, 0.9);
+  const sky = new HemisphereLight(0xbcd4ff, 0x6a5a44, 1.3);
   const sun = new DirectionalLight(0xffe0b0, 2.2);
-  scene.add(sun);
+  // Headlamps, for a road after dark.
+  const beams = new SpotLight(0xfff2d6, 0, 140, 0.42, 0.5, 1.2);
+  scene.add(ambient, sky, sun, beams, beams.target);
+  const day = { back: new Color(0xf0b98a), fog: new Color(0xf0c39a) };
+  const dark = { back: new Color(0x0b0d18), fog: new Color(0x0d1020) };
+  const herd: { deer: Group; eyes: MeshBasicMaterial }[] = [];
+  /** A deer, from boxes: a body, a neck and head, four legs, and eyes that catch the light. */
+  const makeDeer = () => {
+    const deer = new Group();
+    const hide = new MeshStandardMaterial({ color: 0x8a6a48, roughness: 1 });
+    const eyes = new MeshBasicMaterial({ color: 0x111111 });
+    const bit = (w: number, h: number, d: number, x: number, y: number, z: number, m: Material = hide) => {
+      const mesh = new Mesh(new BoxGeometry(w, h, d), m);
+      mesh.position.set(x, y, z);
+      deer.add(mesh);
+    };
+    bit(1.3, 0.5, 0.42, 0, 1.0, 0);
+    bit(0.22, 0.6, 0.22, 0.62, 1.4, 0);
+    bit(0.42, 0.22, 0.22, 0.78, 1.72, 0);
+    for (const x of [-0.5, 0.5]) for (const z of [-0.14, 0.14]) bit(0.1, 0.78, 0.1, x, 0.39, z);
+    for (const z of [-0.09, 0.09]) bit(0.05, 0.05, 0.05, 0.96, 1.76, z, eyes);
+    bit(0.12, 0.16, 0.12, -0.7, 1.2, 0, new MeshStandardMaterial({ color: 0xf1ece0 }));
+    return { deer, eyes };
+  };
   const mirrorTarget = new WebGLRenderTarget(384, 112);
   const world = new Group();
   scene.add(world);
@@ -315,6 +339,33 @@ export function makeRoad3d(canvas: HTMLCanvasElement): Road3d | null {
         p.bar[1]!.color.setHex(seenNow.lit && !blink ? 0x3a6cff : 0x101c4a);
       });
 
+      // Deer: on the verge, or on their way across. Their eyes show first.
+      while (herd.length < road.deer.length) {
+        const made = makeDeer();
+        scene.add(made.deer);
+        herd.push(made);
+      }
+      herd.forEach((h, i) => {
+        const seenNow = road.deer[i];
+        h.deer.visible = !!seenNow;
+        if (!seenNow) return;
+        const w = at(seenNow.along / 1000, seenNow.across / 1000);
+        h.deer.position.set(w.x, w.y + (seenNow.running ? Math.abs(Math.sin(frame.time * 0.012)) * 0.25 : 0), w.z);
+        // Side on to the road, facing the way it is going or would go.
+        h.deer.rotation.y = -w.h + (seenNow.across > 0 ? Math.PI : 0);
+        h.eyes.color.setHex(frame.night ? 0xd8ffb0 : 0x111111);
+      });
+
+      // Day or night.
+      const tone = frame.night ? dark : day;
+      (scene.background as Color).copy(tone.back);
+      scene.fog!.color.copy(tone.fog);
+      (scene.fog as Fog).far = frame.night ? 420 : 900;
+      ambient.intensity = frame.night ? 0.22 : 0.9;
+      sky.intensity = frame.night ? 0.3 : 1.3;
+      sun.intensity = frame.night ? 0.25 : 2.2;
+      beams.intensity = frame.night ? 900 : 0;
+
       // The camera.
       const aspect = frame.width / Math.max(1, frame.height);
       const tall = aspect < 0.9;
@@ -358,6 +409,10 @@ export function makeRoad3d(canvas: HTMLCanvasElement): Road3d | null {
         camera.lookAt(ahead.x, ahead.y - 0.6, ahead.z);
       }
       camera.updateProjectionMatrix();
+      beams.position.set(here.x, here.y + 0.8, here.z);
+      const lit = at(along + 45, across * 0.5);
+      beams.target.position.set(lit.x, lit.y, lit.z);
+      beams.target.updateMatrixWorld();
       sun.position.set(here.x - 80, here.y + 70, here.z - 60);
       sun.target.position.set(here.x, here.y, here.z);
       sun.target.updateMatrixWorld();
