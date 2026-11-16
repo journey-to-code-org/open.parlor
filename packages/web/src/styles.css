@@ -2453,6 +2453,20 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .delbies-grid button.piece span { font-size: 1.15rem; line-height: 1; }
 .delbies-grid button small { font-size: 0.56rem; line-height: 1.1; text-align: center; color: #c5ccda; overflow-wrap: anywhere; }
 .delbies-grid button.fixed { background: #3a3220; border-color: #6b5a2a; cursor: default; }
+/* The floor plan as a room (idle/floor3d.ts). The scene's canvas is behind the grid, a little
+   bigger than it (for the walls, and for what stands up past the far edge); the grid's squares
+   stay the buttons they were, see-through and tipped back onto the picture, each with its name
+   lying at the front of its square. */
+.delbies-room { position: relative; }
+.delbies-room-gl { position: absolute; left: -8%; top: -32%; width: 116%; height: 164%; pointer-events: none; visibility: hidden; }
+.delbies-room.up { margin-block: 9% 2%; }
+.delbies-room.up .delbies-room-gl { visibility: visible; }
+.delbies-room.up .delbies-grid { position: relative; gap: 0; padding: 0; border: 0; background: none; }
+.delbies-room.up .delbies-grid button, .delbies-room.up .delbies-grid button.piece, .delbies-room.up .delbies-grid button.fixed { border: 0; background: none; justify-content: flex-end; overflow: visible; }
+.delbies-room.up .delbies-grid button span { display: none; }
+.delbies-room.up .delbies-grid button small { font-size: 0.6rem; font-weight: 700; color: #fff; padding: 1px 4px; border-radius: 5px; background: rgba(14, 17, 22, 0.72); margin-bottom: 2px; }
+.delbies-room.up .delbies-grid button.held small { background: var(--yellow); color: #14171c; }
+@media (hover: hover) { .delbies-room.up .delbies-grid button:not(.fixed):hover { background: rgba(255, 255, 255, 0.12); } }
 .delbies-grid button.empty { opacity: 0.45; }
 .delbies-grid button.held { border: 2px solid var(--yellow); background: rgba(255, 207, 63, 0.18); }
 .delbies-grid button:hover:not(.fixed) { border-color: var(--yellow); }

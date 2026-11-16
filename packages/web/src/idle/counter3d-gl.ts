@@ -81,12 +81,12 @@ function sign(text: string, w: number, h: number, ground: string, ink: string, e
   return t;
 }
 
-const SKINS = ["#f1c9a5", "#e0ac84", "#c68a5e", "#9a6a45", "#f4d6ba"];
-const SHIRTS = ["#3f78b5", "#b5483f", "#4c8a4a", "#8a5bb5", "#c98a2c", "#3a9a9a", "#6a6f7a", "#b53f7a"];
+export const SKINS = ["#f1c9a5", "#e0ac84", "#c68a5e", "#9a6a45", "#f4d6ba"];
+export const SHIRTS = ["#3f78b5", "#b5483f", "#4c8a4a", "#8a5bb5", "#c98a2c", "#3a9a9a", "#6a6f7a", "#b53f7a"];
 
-interface Person { group: Group; arms: [Group, Group]; head: Mesh; phase: number }
+export interface Person { group: Group; arms: [Group, Group]; head: Mesh; phase: number }
 /** Somebody, standing: a shirt, a head, two arms that swing from the shoulder, and perhaps a cap. */
-function person(shirt: string, skin: string, cap: string | null, seed: number): Person {
+export function person(shirt: string, skin: string, cap: string | null, seed: number): Person {
   const g = new Group();
   const cloth = paint(shirt, 0.85);
   const flesh = paint(skin, 0.7);
@@ -111,7 +111,14 @@ function person(shirt: string, skin: string, cap: string | null, seed: number): 
 export function build(canvas: HTMLCanvasElement): Counter3d | null {
   let renderer: WebGLRenderer;
   try {
-    renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer = new WebGLRenderer({
+      canvas,
+      alpha: true,
+      antialias: true,
+      // Not every frame is drawn (thirty a second is plenty here), so the last one is kept: a
+      // browser that composes the page again in between must find the picture still there.
+      preserveDrawingBuffer: true,
+    });
   } catch {
     return null;
   }

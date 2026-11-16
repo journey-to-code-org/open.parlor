@@ -590,7 +590,11 @@ its own **3D** switch, remembered for that game; `?flat` in the address turns it
   counter is chaotic and the phones ring with it, whoever has been taken on stands at the counter,
   a truck is out the back for each driver, the back room's boxes pile up, a red light turns when
   the books are full, and there is a sign on the counter when Delbie has the afternoon off. The
-  lists under it are as they were.
+  floor plan is a room with its roof off (`idle/floor3d*.ts`), under the same see-through grid of
+  buttons the boards use: a desk and a screen for each terminal and whoever has been taken on at
+  it, the office, the bathroom, the microwave, the bench; what is picked up hangs over its square,
+  and two neighbours that do something to each other are joined by a green or a red bar on the
+  floor. The lists are as they were.
 
 Still flat: a 19×19 Go board, whose crossings would be too close together to tap once tipped back.
 

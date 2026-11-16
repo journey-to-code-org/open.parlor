@@ -2,12 +2,14 @@
 // date from the clock, and if that was a while it says what happened. While the page is open it is
 // brought up to date a few times a second, and saved every few seconds and whenever the page is
 // put away.
-import { dollars, idleGame, type DelbiesCommand, type DelbiesPieceId, type DelbiesState, type DelbiesView, type IdleClock, type IdleGameId, type IdleReport } from "@journey-to-code/games";
+import { DELBIES_FLOOR_RULES, DELBIES_PIECES, dollars, idleGame, type DelbiesCommand, type DelbiesPieceId, type DelbiesState, type DelbiesView, type IdleClock, type IdleGameId, type IdleReport } from "@journey-to-code/games";
 import { useEffect, useRef, useState } from "react";
 import { blip, notes, wakeArcadeSound } from "../arcade/sounds";
 import { useWants3d } from "../display";
 import { loadIdle, saveIdle } from "../storage";
+import { BOARD_TRANSFORM } from "../board/board3d";
 import { loadCounter3d, type Counter3d, type CounterLook } from "./counter3d";
+import { loadFloor3d, type Floor3d, type FloorLook } from "./floor3d";
 
 /** The time, as the game wants it: the second, and the time of day on this device. */
 export function clockNow(): IdleClock {
@@ -59,7 +61,67 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
       minute: clockNow().minute,
     };
   }
+  // The floor plan as a room (floor3d.ts), under its own grid of squares.
+  const roomCanvas = useRef<HTMLCanvasElement>(null);
+  const roomGrid = useRef<HTMLDivElement>(null);
+  const room = useRef<Floor3d | null>(null);
+  const [roomUp, setRoomUp] = useState(false);
+  const floorLook = useRef<FloorLook | null>(null);
+  if (view) {
+    const who = (name: string) => [...name].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 7);
+    const at = new Map(view.floor.pieces.map((p) => [p.id, p.square]));
+    const { cols } = view.floor;
+    const beside = (a: number, b: number) => (Math.abs(a - b) === 1 && Math.floor(a / cols) === Math.floor(b / cols)) || Math.abs(a - b) === cols;
+    floorLook.current = {
+      cols,
+      rows: view.floor.rows,
+      pieces: view.floor.pieces.map((p) => ({ id: p.id, square: p.square, fixed: p.fixed, empty: p.empty })),
+      holding,
+      // A rule in effect joins the two things it is about, wherever they now stand side by side.
+      links: view.floor.rules
+        .filter((r) => r.active)
+        .flatMap((r) => {
+          const rule = DELBIES_FLOOR_RULES.find((x) => x.id === r.id);
+          const a = rule && at.get(rule.a);
+          if (!rule || a === undefined) return [];
+          return rule.b.flatMap((id) => {
+            const b = at.get(id);
+            return b !== undefined && beside(a, b) ? [{ a, b, good: r.good }] : [];
+          });
+        }),
+      drivers: view.crew.filter((c) => c.hired && c.role === "driver").length,
+      who: Object.fromEntries(DELBIES_PIECES.filter((p) => p.crew).map((p) => [p.id, who(p.crew!)])),
+    };
+  }
   const ready = !!view;
+  useEffect(() => {
+    const el = roomCanvas.current;
+    const grid = roomGrid.current;
+    if (!three || !ready || !el || !grid) return setRoomUp(false);
+    let alive = true;
+    let raf = 0;
+    const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const draw = (time: number) => {
+      raf = requestAnimationFrame(draw);
+      const r = room.current;
+      if (!r || !floorLook.current || document.hidden) return;
+      // The camera is set by the grid's width on the page, in the scene and in the CSS alike.
+      grid.parentElement?.style.setProperty("--board-s", `${grid.clientWidth}px`);
+      setRoomUp(r.render(floorLook.current, time, el.clientWidth, el.clientHeight, grid.clientWidth, Math.min(2, window.devicePixelRatio || 1), still));
+    };
+    loadFloor3d(el).then((r) => {
+      if (!alive || !r) return r?.dispose();
+      room.current = r;
+      raf = requestAnimationFrame(draw);
+    });
+    return () => {
+      alive = false;
+      cancelAnimationFrame(raf);
+      room.current?.dispose();
+      room.current = null;
+      setRoomUp(false);
+    };
+  }, [three, ready]);
   useEffect(() => {
     const el = sceneCanvas.current;
     if (!three || !ready || !el) return setSceneUp(false);
@@ -355,7 +417,9 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
           <h2>
             The floor plan <small>{holding ? "Now tap where it goes." : "Tap something, then tap where it goes. Who sits next to what matters."}</small>
           </h2>
-          <div className="delbies-grid" style={{ gridTemplateColumns: `repeat(${view.floor.cols}, 1fr)` }}>
+          <div className={`delbies-room${roomUp ? " up" : ""}`}>
+          {three && <canvas ref={roomCanvas} className="delbies-room-gl" aria-hidden="true" />}
+          <div ref={roomGrid} className="delbies-grid" style={{ gridTemplateColumns: `repeat(${view.floor.cols}, 1fr)`, ...(roomUp ? { transform: BOARD_TRANSFORM } : {}) }}>
             {Array.from({ length: view.floor.cols * view.floor.rows }, (_, square) => {
               const piece = view.floor.pieces.find((p) => p.square === square);
               const held = piece && piece.id === holding;
@@ -383,6 +447,7 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
                 </button>
               );
             })}
+          </div>
           </div>
           <ul className="delbies-rules">
             {view.floor.rules.map((r) => (

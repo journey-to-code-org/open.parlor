@@ -200,7 +200,14 @@ const SOOT = new Color("#15171a");
 export function build(canvas: HTMLCanvasElement): Board3d | null {
   let renderer: WebGLRenderer;
   try {
-    renderer = new WebGLRenderer({ canvas, alpha: true, antialias: true });
+    renderer = new WebGLRenderer({
+      canvas,
+      alpha: true,
+      antialias: true,
+      // Not every frame is drawn (thirty a second is plenty here), so the last one is kept: a
+      // browser that composes the page again in between must find the picture still there.
+      preserveDrawingBuffer: true,
+    });
   } catch {
     return null;
   }
