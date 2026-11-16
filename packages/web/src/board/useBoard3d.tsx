@@ -41,7 +41,7 @@ export function useBoard3d(el: RefObject<HTMLDivElement | null>, given: Given) {
       pieces: g.cells.flatMap((p, cell) => {
         if (!p) return [];
         const light = p.tone === "light";
-        return [{ at: shown(cell), id: p.id ?? `at${cell}`, kind: p.kind, light, near: flipped ? !light : light }];
+        return [{ at: shown(cell), id: p.id ?? `at${cell}`, kind: p.kind, light, near: flipped ? !light : light, ...(p.span ? { span: p.span } : {}), name: p.label }];
       }),
       marks: (g.marks ?? []).map((m) => ({ at: shown(m.cell), mark: m.mark })),
       targets: [...targets].map(shown),

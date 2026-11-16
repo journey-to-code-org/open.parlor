@@ -571,6 +571,9 @@ its own **3D** switch, remembered for that game; `?flat` in the address turns it
 - **Chess** (`board/board3d*.ts`): a turned set on a walnut board. The board's grid of buttons is
   still what is tapped, dragged and read out: it is made see-through and tipped back by a CSS
   transform that is the scene's camera, so each button lies on its square.
+- **Combat** (`board/sea3d-gl.ts`): the same trick as Chess, over a tray of rolling water. Ships
+  are models that ride the swell, burn where they are hit and lie over black when sunk; a miss
+  leaves a white float, and a shot that has just landed throws up spray or flame.
 - **Palace** (`.palace.three` in `styles.css`): no canvas at all. The felt becomes a table seen
   from your chair, set out in space with CSS: the cards lie on it, the pile stands as high as it
   is deep, and what is read stands up to face you.

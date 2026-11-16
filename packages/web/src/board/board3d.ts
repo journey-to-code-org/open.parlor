@@ -23,8 +23,8 @@ export const CANVAS = { wide: 1.16, high: 1.3 };
 /** The transform that lays the grid of buttons over the picture; `--board-s` is the board's width. */
 export const BOARD_TRANSFORM = `perspective(calc(var(--board-s) * ${PERSPECTIVE})) translateY(calc(var(--board-s) * ${SHIFT})) rotateX(${TILT}deg) scale(${SCALE})`;
 
-/** The games whose pieces have been modelled. */
-const SETS = new Set(["chess"]);
+/** The games whose pieces have been modelled: a chess set, and Combat's fleets on their sea. */
+const SETS = new Set(["chess", "combat"]);
 export const hasBoard3d = (game: string) => SETS.has(game);
 
 export interface Piece3d {
@@ -36,6 +36,10 @@ export interface Piece3d {
   light: boolean;
   /** It is one of the pieces of whoever sits at the near side: it faces up the board. */
   near: boolean;
+  /** A piece that covers several squares (a ship) is one of these per square, all with the same `span`. */
+  span?: string;
+  /** What it is called ("Submarine"), where two pieces of a kind differ only in that. */
+  name?: string;
 }
 
 export interface BoardFrame3d {
@@ -69,13 +73,15 @@ export interface Board3d {
   dispose(): void;
 }
 
-let loading: Promise<typeof import("./board3d-gl") | null> | null = null;
+/** Each look is a file of its own, fetched the first time a game that has it is played. */
+const loading = new Map<string, Promise<{ build(canvas: HTMLCanvasElement): Board3d | null } | null>>();
 
 /** The 3-D board on `canvas`, or null where it can't be (no WebGL, or no document at all). */
 export function loadBoard3d(canvas: HTMLCanvasElement, game: string): Promise<Board3d | null> {
   if (!hasBoard3d(game)) return Promise.resolve(null);
   if (typeof document === "undefined" || /jsdom/i.test(navigator.userAgent)) return Promise.resolve(null);
   if (/[?&]flat\b/.test(location.search)) return Promise.resolve(null);
-  loading ??= import("./board3d-gl").catch(() => null);
-  return loading.then((m) => m?.build(canvas) ?? null).catch(() => null);
+  const look = game === "combat" ? "sea" : "set";
+  if (!loading.has(look)) loading.set(look, (look === "sea" ? import("./sea3d-gl") : import("./board3d-gl")).catch(() => null));
+  return loading.get(look)!.then((m) => m?.build(canvas) ?? null).catch(() => null);
 }
