@@ -5,6 +5,8 @@
 //
 // Settings are CARDROOM_*; the older SPADES_* names still work (CARDROOM_* wins if both are set).
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
+import { WebSocketServer } from "ws";
+import { playerOf } from "@journey-to-code/rooms/server";
 import { createServer } from "node:http";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -130,6 +132,29 @@ const server = createServer(async (req, res) => {
     res.end();
   }
 });
+// A table's live game (Shitstorm): pages hold a socket open at /live/<table>. Controls come in on it,
+// and what every seat's controls did on each tick goes out.
+const sockets = new WebSocketServer({ noServer: true, maxPayload: 4096 });
+server.on("upgrade", (req, socket, head) => {
+  const match = /^\/live\/([A-Za-z0-9_-]{1,40})$/.exec(new URL(req.url ?? "/", "http://x").pathname);
+  if (!match) return socket.destroy();
+  sockets.handleUpgrade(req, socket, head, (ws) => {
+    const player = playerOf(new Request("http://x/", { headers: { cookie: req.headers.cookie ?? "" } }));
+    void cardRoom.fly(match[1]!, player, { send: (text) => ws.readyState === ws.OPEN && ws.send(text) }).then((flying) => {
+      if (!flying) return ws.close(4404, "No game in the air at this table.");
+      ws.on("message", (data) => {
+        try {
+          flying.input(JSON.parse(String(data)));
+        } catch {
+          /* not controls: nothing to do with it */
+        }
+      });
+      ws.on("close", () => flying.leave());
+      ws.on("error", () => flying.leave());
+    }, () => ws.close(1011));
+  });
+});
+
 server.listen(port, () => {
   console.log(`open.parlor on http://localhost:${port}`);
   backups?.start();
