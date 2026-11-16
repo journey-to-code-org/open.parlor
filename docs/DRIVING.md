@@ -1,7 +1,7 @@
-# Roadmap: the driving game
+# Roadmap: Road to the Shootout
 
 The garage-and-street-race games of around 1990, where the wrenching mattered as much as the
-driving, but set now and with other people in it. Working name: **Pink Slips**.
+driving, but set now and with other people in it. It is called **Road to the Shootout**.
 
 You find a tired car on a marketplace app, wrench on it in your garage, cruise a town full of other
 players, race for fun or for money, and try not to wreck it. The year builds to one weekend: the
@@ -16,7 +16,7 @@ Shootout.
 2. **The garage.** Fix what is worn, bolt on what you found, set it up.
 3. **The town.** Cruise an open world that is also the lobby. Everyone you pass is a player.
 4. **The challenge.** Pull up next to someone and race them for fun.
-5. **The money.** Flashlight drags and roll races, for cash.
+5. **The money.** Flashlight drags and roll races, for cash or for the car.
 6. **The risk.** Crash and the car is hurt. Hurt enough and it is gone.
 7. **The Shootout.** Once a year. Win an event there.
 
@@ -28,19 +28,33 @@ Everything you buy comes through it, the way it does now.
 | --- | --- | --- |
 | Marketplace | Cars and parts from sellers. Prices all over the place, and the occasional steal. | Listings go. Sellers lie. A car's real condition shows once it is in your garage. |
 | Performance sites | New parts, every level, always in stock. | Full price. |
-| The used-parts seller | Parts pulled off other cars, cheap. | What they have is what they have, and a used part is a worn part. |
+| Rix Racing | Used parts, pulled off other cars, cheap. | What they have is what they have, and a used part is a worn part. |
 
 Parts become things you own, with a condition of their own, so a part can be bought used, taken off
 a car, sold on, or salvaged from a wreck.
 
 ## The garage
 
-As it is in phase 1, and then:
+A garage belongs to a player. As it is in phase 1, and then:
 
+- **Tools.** The garage starts empty, and a job needs its tool: a jack to change tyres, wrenches
+  to swap parts, a hammer to beat out damage. Buy each once and it is yours. It is a small thing,
+  there to make the first hour feel like starting from nothing.
 - **Parts on and off.** What comes off goes on a shelf, to sell or to fit to the next car.
 - **Cosmetics.** Paint, wheels, body kits, wings, tint, stickers. They do nothing for the timeslip
   and everything for the show.
 - **Damage.** Bodywork, suspension and engine, each with a bill.
+
+## Keeping it alive
+
+An engine is something you watch, not a number that goes down.
+
+- **Oil pressure.** A gauge on the dash. It sags when the oil is old or low, when the engine is
+  worn, and when it is revved hard and hot. Drive on with it low and the engine goes.
+- **Tuning.** Fuel and boost are yours to set, and the air-fuel ratio says whether you got it
+  right. Lean makes power until it melts something. Rich is safe, slow, and fouls the plugs. Every
+  part that changes how the engine breathes moves the tune, so a new part means tuning again.
+- **Plugs, oil and the rest.** Small things that wear, cost little, and end a night when ignored.
 
 ## The town
 
@@ -50,6 +64,8 @@ An open world that is the lobby: you drive it to get anywhere.
 - Places to go: your garage, the parts counter, the spot where the flashlight drags are, the
   highway where the roll races are.
 - Traffic, and somewhere to hit.
+- **The poker run.** A route round the town with stops. Draw a card at each, and the best hand at
+  the last stop wins. It is a cruise with a reason, and the card games are already here.
 
 This is the biggest new piece: real-time driving with steering, on new netcode. It is also what
 autocross needs, so the two are built on the same driving model.
@@ -59,8 +75,8 @@ autocross needs, so the two are built on the same driving model.
 | Kind | What it is | For |
 | --- | --- | --- |
 | A challenge | Two players who met in town, from a stop | Fun |
-| Flashlight drags | From a stop, on a back road. No tree: somebody drops a flashlight when they feel like it. | Money |
-| Roll races | Side by side at an agreed speed, and go on the signal. No launch, so it is power and gearing. | Money |
+| Flashlight drags | From a stop, on a back road. No tree: somebody drops a flashlight when they feel like it. | Money, or the car |
+| Roll races | Side by side at an agreed speed, and go on the signal. No launch, so it is power and gearing. | Money, or the car |
 | The strip | A prepared surface and a tree | Test and tune, and the Shootout |
 
 The engine has the flashlight start already (the Back road preset's arm drop). Roll races need a
@@ -102,10 +118,12 @@ are cheap and tired.
 
 ### Names
 
-The cars are ours: a car can be a clear nod to a real one and still be its own car. The same goes
-for businesses and events. A real parts seller or a real event would need their say-so to appear by
-name, so until someone has asked them, they appear as nods with our own names. Asking is worth
-doing: the real names would mean a lot to the people this is for.
+The cars are ours: a car can be a clear nod to a real one and still be its own car.
+
+Real businesses and events appear by name only with their say-so. **Rix Racing** has given it, so
+the used-parts seller is Rix Racing. The event the game builds to is called the Shootout here; the
+real weekend's organisers are a separate party, and using their name or branding beyond that word
+is theirs to agree to.
 
 ## What open.parlor already has for it
 
@@ -131,10 +149,13 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
 - [ ] **The screens**: the garage, and the strip from behind the car, against the locals.
       [#179](https://github.com/journey-to-code-org/open.parlor/pull/179).
 - [ ] **Garages on the server**, one a player.
+- [ ] **The strip in 3D**, with the flat view kept for whoever wants it.
 
 ### Phase 2: the phone
 
 - [ ] **Parts as things**: owned, worn, taken off, sold on.
+- [ ] **Tools**: a jack, wrenches, a hammer, and jobs that need them.
+- [ ] **Oil pressure and the tune**: gauges to watch, an air-fuel ratio to get right, plugs to foul.
 - [ ] **The marketplace**: sellers, deals, and condition you only learn afterwards.
 - [ ] **The performance sites and the used-parts seller.**
 - [ ] **Cosmetics**, and a car that looks like its build on the strip.
@@ -142,7 +163,8 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
 ### Phase 3: money
 
 - [ ] **Races on the server**, so nobody can see when the flashlight will drop.
-- [ ] **Flashlight drags and roll races** between players, with the stake held and paid out.
+- [ ] **Flashlight drags and roll races** between players, with the stake held and paid out:
+      cash, or the cars themselves.
 - [ ] **Index racing**, ahead of the Shootout.
 
 ### Phase 4: the town
@@ -150,6 +172,7 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
 - [ ] **A driving model with steering**, in whole numbers like the rest.
 - [ ] **The town** as the lobby: cruising, other players, places to go.
 - [ ] **Challenges** between players who meet.
+- [ ] **The poker run.**
 - [ ] **Crashes**: damage, repair bills, totaled cars, scrap and salvage.
 
 ### Phase 5: the Shootout
@@ -160,7 +183,11 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
 
 ## Decided
 
+- It is called Road to the Shootout.
 - Set now. The cars are old because they are cheap.
+- A garage belongs to a player, and starts with no tools in it.
+- Cars can be wagered.
+- The used-parts seller is Rix Racing, with their say-so.
 - It starts in a shitbox. The all-wheel-drive turbo coupe is one of the sought-after cars.
 - Racing someone you meet in town is for fun. Money is at the flashlight drags and the roll races.
 - Crashing costs you the car until it is fixed, and a totaled one is scrap or parts.
@@ -168,11 +195,8 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
 
 ## Open questions
 
-1. **The name.** Pink Slips is a working name, and with no pink-slip racing in this plan it may no
-   longer fit.
-2. **Are cars ever wagered,** or is it only ever cash?
-3. **What the town looks like.** Flat and angled like mini golf, or three.js. It decides how much
+1. **What the town looks like.** Flat and angled like mini golf, or three.js. It decides how much
    work phase 4 is.
-4. **How long a year is.** A real year between Shootouts is a long wait. A month or a season is
+2. **How long a year is.** A real year between Shootouts is a long wait. A month or a season is
    the proposal.
-5. **The real names.** Whether to ask the parts seller and the event for theirs.
+3. **The event's name.** Whether the real weekend's organisers are happy with more than a nod.
