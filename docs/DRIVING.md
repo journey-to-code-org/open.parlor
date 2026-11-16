@@ -33,6 +33,20 @@ Everything you buy comes through it, the way it does now.
 Parts become things you own, with a condition of their own, so a part can be bought used, taken off
 a car, sold on, or salvaged from a wreck.
 
+### The marketplace is other players
+
+What is for sale is what players are selling: parts they took off, cars they are done with, and
+whole parts cars. That makes parting out a way to play:
+
+- **Buy a parts car, tear it down, sell the pieces.** A car nobody would drive can be worth more in
+  boxes than it cost on a trailer, if you have the tools and the patience.
+- **You are not the only one who knows that.** Ricky at Rix Racing is in the same market, and so
+  are a handful of other scrappers, all of them computer players. They see a cheap parts car as
+  soon as you do, they know what every piece is worth, and they undercut. Beating them means being
+  quicker to a listing, knowing what they miss, or selling what they do not have.
+- The scrappers also keep the market alive when few players are on: there is always something for
+  sale, and always somebody who will buy a part at a price.
+
 ## The garage
 
 A garage belongs to a player. As it is in phase 1, and then:
@@ -55,6 +69,17 @@ An engine is something you watch, not a number that goes down.
   right. Lean makes power until it melts something. Rich is safe, slow, and fouls the plugs. Every
   part that changes how the engine breathes moves the tune, so a new part means tuning again.
 - **Plugs, oil and the rest.** Small things that wear, cost little, and end a night when ignored.
+
+### Getting it tuned
+
+Setting the fuel yourself is guesswork with a gauge. There are two ways to have it done properly.
+
+- **The dyno, in Morgantown.** Drive out there, pay, and it comes back right. It is a drive, and
+  it is not cheap.
+- **A remote tune.** A tuner logs in to a laptop on the passenger seat, and you do the pulls for
+  him on the road: foot flat, through the gears, while he changes things. It costs less. It is
+  also a public road at night, and there are deer on it. Lift, and the pull is wasted. Hit one,
+  and you have a different problem.
 
 ## From the driver's seat
 
@@ -187,7 +212,11 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
 - [x] **Spec sheets**: a listing laid out like a magazine page.
 - [x] **Bodywork and write-offs**: a bent car stays home, and a wrecked one is scrap or parts.
 - [ ] **Parts as things**: taken off, kept on a shelf, sold on. Today a part is a level on a car.
-- [ ] **Parts on the marketplace**, and the performance sites as places of their own.
+- [ ] **Tearing a car down**: a parts car into the parts it is made of.
+- [ ] **A marketplace of players**, on the server: listings for parts, cars and parts cars.
+- [ ] **The scrappers**: Ricky at Rix Racing and the rest, buying and selling against you.
+- [ ] **The dyno in Morgantown, and the remote tune** with its deer.
+- [ ] **The performance sites** as places of their own.
 - [ ] **Cosmetics**, and a car that looks like its build on the strip.
 
 ### Phase 3: the road
@@ -200,14 +229,14 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
 - [x] **Damage you feel**: less power, a car that pulls, cracked glass, and the end of the run.
 - [x] **A rival** on the road with you: a computer driver. Another player waits for races on the server.
 - [x] **The road from the cockpit**, with a mirror.
-- [ ] **Tuning by hand**: computer drivers that pass more boldly, traffic that reacts, a patrol car you can hit.
+- [x] **Tuning by hand**: computer drivers that pass more readily, traffic that reacts, a patrol car you can hit. In the engine; the screen has them once it is on games 0.1.21.
 
 ### Phase 4: money
 
+- [x] **Flashlight drags, roll races and index racing**, in the engine.
+- [ ] **Screens for them**: a roll start, and a board that shows the index and a breakout.
 - [ ] **Races on the server**, so nobody can see when the flashlight will drop.
-- [ ] **Flashlight drags and roll races** between players, with the stake held and paid out:
-      cash, or the cars themselves.
-- [ ] **Index racing**, ahead of the Shootout.
+- [ ] **Between players**, with the stake held and paid out: cash, or the cars themselves.
 
 ### Phase 5: the town
 
@@ -229,7 +258,9 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
 - Set now. The cars are old because they are cheap.
 - A garage belongs to a player, and starts with no tools in it.
 - Cars can be wagered.
-- The used-parts seller is Rix Racing, with their say-so.
+- The used-parts seller is Rix Racing, with their say-so, and Ricky is one of the scrappers you compete with.
+- The marketplace is other players, with computer scrappers in it.
+- A proper tune is the dyno in Morgantown, or a remote tune on the road.
 - It starts in a shitbox. The all-wheel-drive turbo coupe is one of the sought-after cars.
 - Racing someone you meet in town is for fun. Money is at the flashlight drags and the roll races.
 - Crashing costs you the car until it is fixed, and a totaled one is scrap or parts.
