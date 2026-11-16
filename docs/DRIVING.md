@@ -199,7 +199,7 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
       [open.games#15](https://github.com/journey-to-code-org/open.games/pull/15).
 - [x] **The screens**: the garage, and the strip from behind the car, against the locals.
       [#179](https://github.com/journey-to-code-org/open.parlor/pull/179).
-- [ ] **Garages on the server**, one a player.
+- [x] **Garages kept by a house**, one a member, the same on every device. A garage outside a house stays in its browser.
 - [x] **The strip in 3D**, with the flat view kept for whoever wants it.
 - [x] **The cockpit view** on the strip.
 
@@ -213,7 +213,7 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
 - [x] **Bodywork and write-offs**: a bent car stays home, and a wrecked one is scrap or parts.
 - [x] **Parts as things**: taken off, kept on a shelf, fitted to another car, sold on.
 - [x] **Tearing a car down**: a parts car into the parts it is made of.
-- [ ] **A marketplace of players**, on the server: listings for parts, cars and parts cars.
+- [x] **A marketplace of players**, in each house: pieces and whole cars listed, bought and taken back, with the scrappers selling into it and buying what is priced low.
 - [x] **The scrappers**: Ricky at Rix Racing and the rest, flooding the market and beating you to parts cars. Against other players too, once listings are on the server.
 - [x] **The dyno in Morgantown, and the remote tune** with its deer. The drive to Morgantown waits for the town.
 - [ ] **The performance sites** as places of their own.

@@ -2748,3 +2748,8 @@ button.mj-slot { cursor: pointer; }
 .pinks-page .watching { font-size: 0.82rem; font-weight: 700; color: #a3221c; }
 .pinks-news { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--red); background: #3a2a2c; font-size: 0.9rem; }
 .pinks-buy .off { background: transparent; color: var(--dim); font-size: 0.78rem; padding: 4px 8px; }
+
+/* A garage kept in a house, and the house's market. */
+.pinks-lots { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+.pinks-lots .mine { border-color: var(--amber); }
+.pinks-lots button { padding: 6px 12px; font-size: 0.85rem; }

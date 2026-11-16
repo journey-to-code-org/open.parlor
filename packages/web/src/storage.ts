@@ -198,3 +198,9 @@ export const saveDriveStrip = (id: string) => write("cardroom:pinkslips:strip", 
 /** Where the player watches a race from: behind the car, or the driver's seat. */
 export const loadDriveSeat = (): "chase" | "cockpit" => (read<string>("cardroom:pinkslips:seat", "chase") === "cockpit" ? "cockpit" : "chase");
 export const saveDriveSeat = (seat: "chase" | "cockpit") => write("cardroom:pinkslips:seat", seat);
+/** The house this browser's garage is kept in, and the save the two last agreed on; null when it stays here. */
+export const loadDriveHouse = (): { slug: string; name: string; rev: number } | null => {
+  const kept = read<{ slug?: unknown; name?: unknown; rev?: unknown } | null>("cardroom:pinkslips:house", null);
+  return kept && typeof kept.slug === "string" && typeof kept.name === "string" ? { slug: kept.slug, name: kept.name, rev: typeof kept.rev === "number" ? kept.rev : 0 } : null;
+};
+export const saveDriveHouse = (house: { slug: string; name: string; rev: number } | null) => write("cardroom:pinkslips:house", house);
