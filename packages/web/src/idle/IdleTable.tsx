@@ -5,7 +5,9 @@
 import { dollars, idleGame, type DelbiesCommand, type DelbiesPieceId, type DelbiesState, type DelbiesView, type IdleClock, type IdleGameId, type IdleReport } from "@journey-to-code/games";
 import { useEffect, useRef, useState } from "react";
 import { blip, notes, wakeArcadeSound } from "../arcade/sounds";
+import { useWants3d } from "../display";
 import { loadIdle, saveIdle } from "../storage";
+import { loadCounter3d, type Counter3d, type CounterLook } from "./counter3d";
 
 /** The time, as the game wants it: the second, and the time of day on this device. */
 export function clockNow(): IdleClock {
@@ -32,6 +34,59 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
   const [moving, setMoving] = useState(false);
   // The floor plan: the piece picked up, waiting for a square to be put down on.
   const [holding, setHolding] = useState<DelbiesPieceId | null>(null);
+
+  // The counter, drawn in 3-D in the big button where the face was (counter3d.ts): a picture of
+  // what the numbers already say. Where it can't be drawn, or isn't wanted, the face is still there.
+  const three = useWants3d(id);
+  const sceneCanvas = useRef<HTMLCanvasElement>(null);
+  const scene = useRef<Counter3d | null>(null);
+  const [sceneUp, setSceneUp] = useState(false);
+  const look = useRef<CounterLook | null>(null);
+  if (view) {
+    const who = (name: string) => [...name].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 7);
+    look.current = {
+      chaos: view.chaos / 1000,
+      stress: view.stress / 1000,
+      dream: view.fever > 0,
+      away: view.vacation > 0,
+      panic: view.panic,
+      clutter: Math.min(1, view.clutter / 1000),
+      asking: !!view.request,
+      radio: !!view.radio,
+      counter: view.crew.filter((c) => c.hired && c.role === "counter").map((c) => ({ who: who(c.id), level: c.level })),
+      drivers: view.crew.filter((c) => c.hired && c.role === "driver").length,
+      desk: view.desk.hired && view.desk.on,
+      minute: clockNow().minute,
+    };
+  }
+  const ready = !!view;
+  useEffect(() => {
+    const el = sceneCanvas.current;
+    if (!three || !ready || !el) return setSceneUp(false);
+    let alive = true;
+    let raf = 0;
+    const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const draw = (time: number) => {
+      raf = requestAnimationFrame(draw);
+      const s = scene.current;
+      if (!s || !look.current || document.hidden) return;
+      // Until it has drawn once the canvas takes no room: it is sized from the button it will sit in.
+      const width = el.clientWidth || Math.max(0, (el.parentElement?.clientWidth ?? 0) - 16);
+      setSceneUp(s.render(look.current, time, width, el.clientHeight || Math.round(width / 2.3), Math.min(2, window.devicePixelRatio || 1), still));
+    };
+    loadCounter3d(el).then((s) => {
+      if (!alive || !s) return s?.dispose();
+      scene.current = s;
+      raf = requestAnimationFrame(draw);
+    });
+    return () => {
+      alive = false;
+      cancelAnimationFrame(raf);
+      scene.current?.dispose();
+      scene.current = null;
+      setSceneUp(false);
+    };
+  }, [three, ready]);
 
   const refresh = () => {
     const s = state.current;
@@ -77,6 +132,7 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
   function hustle() {
     const result = act({ cmd: "hustle" }, true);
     if (result?.ok) {
+      scene.current?.ring();
       if (result.message) notes([523, 659, 784, 1046], 70, 0.12);
       else blip(600 + Math.random() * 140, 0.04, "triangle", 0.03, -200);
     }
@@ -136,10 +192,13 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
 
       <div className="delbies-floor">
         <section className="delbies-desk" aria-label="Delbie">
-          <button type="button" className={`delbies-delbie ${view.fever > 0 ? "dream" : ""} ${view.vacation > 0 ? "away" : ""}`} onClick={hustle}>
-            <span className="face" aria-hidden="true">
-              {view.vacation > 0 ? "🎣" : view.fever > 0 ? "😁" : view.chaos >= 500 ? "😤" : "🙂"}
-            </span>
+          <button type="button" className={`delbies-delbie ${view.fever > 0 ? "dream" : ""} ${view.vacation > 0 ? "away" : ""} ${sceneUp ? "scened" : ""}`} onClick={hustle}>
+            {three && <canvas ref={sceneCanvas} className={`delbies-scene${sceneUp ? " up" : ""}`} aria-hidden="true" />}
+            {!sceneUp && (
+              <span className="face" aria-hidden="true">
+                {view.vacation > 0 ? "🎣" : view.fever > 0 ? "😁" : view.chaos >= 500 ? "😤" : "🙂"}
+              </span>
+            )}
             <span className="shout">{view.shout}</span>
             <small>
               {view.vacation > 0 ? `Back in ${minutesAndSeconds(view.vacation)}. The store is doing fine.` : `Hustle: ${dollars(view.perClick)} a click${view.fever > 0 ? ` · ${view.fever}s of the dream left` : ""}`}

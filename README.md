@@ -585,8 +585,14 @@ its own **3D** switch, remembered for that game; `?flat` in the address turns it
 - **Backgammon** (`.track.three`): the board tipped back the same way, with checkers that have an
   edge, and the dice it always had.
 
-Still flat: Delbie's Daycare & Geriatrics, which is all lists and has no table to draw, and a
-19×19 Go board, whose crossings would be too close together to tap once tipped back.
+- **Delbie's Daycare & Geriatrics** (`idle/counter3d*.ts`): the counter, in the big button where
+  the face was. It is a picture of what the numbers already say: the line is as long as the
+  counter is chaotic and the phones ring with it, whoever has been taken on stands at the counter,
+  a truck is out the back for each driver, the back room's boxes pile up, a red light turns when
+  the books are full, and there is a sign on the counter when Delbie has the afternoon off. The
+  lists under it are as they were.
+
+Still flat: a 19×19 Go board, whose crossings would be too close together to tap once tipped back.
 
 ## Making a bowling lane
 
