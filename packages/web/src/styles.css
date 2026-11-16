@@ -2123,6 +2123,29 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .arcade-controls { margin: 0; padding-left: 1.1rem; display: grid; gap: 5px; font-size: 0.88rem; color: #aab6d6; line-height: 1.35; }
 .arcade-how { margin: 14px 0 6px; font-size: 1rem; color: var(--gold); }
 .arcade-best-line { margin: 0; color: #d6e6dc; font-size: 0.95rem; }
+/* A game with a market: a short field, and everything on offer in a list that scrolls under it. */
+.arcade-stage.short { flex: none; aspect-ratio: 5 / 3; max-height: 42%; width: 100%; }
+.arcade-market { flex: 1; min-height: 0; display: flex; flex-direction: column; background: #0e1530; border-top: 1px solid var(--arc-line); }
+.arcade-till { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 8px 14px; border-bottom: 1px solid var(--arc-line); font-variant-numeric: tabular-nums; }
+.arcade-bank { font-size: 1.5rem !important; color: var(--gold); }
+.arcade-badge { font-size: 0.78rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); white-space: nowrap; }
+.arcade-badge[data-tone="gold"] { background: var(--gold); color: #1d1a16; }
+.arcade-badge[data-tone="purple"] { background: #b08cff; color: #150c2e; }
+.arcade-badge[data-tone="red"] { background: var(--arc-hot); color: #1d0508; }
+.arcade-goods { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 10px 12px; -webkit-user-select: none; user-select: none; }
+.arcade-goods h3 { margin: 10px 4px 4px; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--arc-dim); font-weight: 600; }
+.arcade-good {
+  width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; font: inherit; color: inherit; cursor: pointer;
+  padding: 8px 10px; margin-top: 4px; border-radius: 10px; border: 1px solid var(--arc-line); background: rgba(255, 255, 255, 0.06);
+}
+.arcade-good:hover:not(:disabled) { border-color: var(--gold); background: rgba(232, 196, 106, 0.12); }
+.arcade-good:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.arcade-good:disabled { opacity: 0.45; cursor: default; }
+.arcade-good-name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.arcade-good-name b { font-size: 0.95rem; }
+.arcade-good-name small { color: var(--arc-dim); font-size: 0.74rem; }
+.arcade-owned { font-size: 1.2rem; font-weight: 700; color: var(--arc-cyan); font-variant-numeric: tabular-nums; }
+.arcade-cost { min-width: 62px; text-align: right; font-weight: 700; color: var(--gold); font-variant-numeric: tabular-nums; }
 /* A game that builds: the shop under the field, or what is known about the tower picked out. */
 .arcade-shop { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: #0e1530; border-top: 1px solid var(--arc-line); min-height: 62px; }
 .arcade-btn:disabled { opacity: 0.4; cursor: default; }

@@ -1,7 +1,7 @@
 // Keys and fingers turned into a pilot's controls for a tick. Each arcade game has its own idea
 // of an input, so each has its own controls here; the arcade table asks for the ones that go with
 // its game.
-import { SKYFIRE_SPEED, type ArcadeGameId, type BulwarkInput, type SkyfireInput, type TowerKind } from "@journey-to-code/games";
+import { SKYFIRE_SPEED, type ArcadeGameId, type BulwarkInput, type ChipStackInput, type SkyfireInput, type TowerKind } from "@journey-to-code/games";
 
 export interface ArcadeControls<I> {
   /** What the controls are doing now. Called once a tick: it uses up what a finger has moved since the last. */
@@ -19,7 +19,8 @@ export interface ArcadeControls<I> {
   specialLabel: string;
   /**
    * For a game that is played by giving orders (building on a grid): queue one. The table turns
-   * taps on the field and on the shop into these, going by the view's `build`.
+   * taps on the field and on the shop into these, going by the view's `build`. For a game with a
+   * market, `cmd` is the key of the item bought, or "tap" or "catch".
    */
   order?(cmd: string, col?: number, row?: number, key?: string): void;
 }
@@ -126,11 +127,62 @@ export function bulwarkControls(): ArcadeControls<BulwarkInput> {
   };
 }
 
+/**
+ * Chip Stack: taps and purchases wait in a line and go out one a tick, each with the next number.
+ * Holding Space taps as fast as counts; 1 to 9 and 0 buy the earners in order; G catches the gold.
+ */
+export function chipStackControls(): ArcadeControls<ChipStackInput> {
+  const waiting: Omit<ChipStackInput, "n">[] = [];
+  let last: ChipStackInput = { n: 0, cmd: "none", item: 0 };
+  let holding = false;
+  let since = 0;
+  const order = (cmd: string) => {
+    if (waiting.length >= 12) return;
+    const [what, which] = cmd.split(":");
+    const item = Number(which) || 0;
+    if (what === "tap" || what === "catch" || what === "power" || what === "cashout" || what === "buy" || what === "boost") waiting.push({ cmd: what, item });
+  };
+  return {
+    specialLabel: "",
+    read() {
+      // A held key taps every fourth tick: as fast as the game counts.
+      if (holding && ++since >= 4 && !waiting.some((w) => w.cmd === "tap")) {
+        since = 0;
+        order("tap");
+      }
+      const next = waiting.shift();
+      if (next) last = { ...next, n: last.n + 1 };
+      return last;
+    },
+    order,
+    key(key, down) {
+      if (key === " ") {
+        if (down && !holding) order("tap");
+        holding = down;
+        return;
+      }
+      if (!down) return;
+      if (key === "g") order("catch");
+      else if (key >= "0" && key <= "9") order(`buy:${key === "0" ? 9 : Number(key) - 1}`);
+    },
+    pointerDown() {},
+    pointerMove() {},
+    pointerUp() {},
+    special() {},
+    clear() {
+      waiting.length = 0;
+      holding = false;
+    },
+  };
+}
+
 export function controlsFor(game: ArcadeGameId, options: { autofire: () => boolean }): ArcadeControls<unknown> {
   switch (game) {
     case "skyfire":
       return skyfireControls(options);
     case "bulwark":
       return bulwarkControls();
+    case "chipstack":
+      return chipStackControls();
   }
 }
