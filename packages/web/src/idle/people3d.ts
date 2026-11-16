@@ -5,9 +5,9 @@
 // shoulder. What tells them apart is taken from what the game itself says about each of them: a
 // build, a head of hair or a cap, a beard, and one thing of their own. Tommy has his tie and his
 // clipboard; Pluto his old cap (and, where there is a desk to put it on, a rabbit); B-Rice is big
-// and has his pasta; Ricky is in his mechanic's blues with his phone out; McMikey has the hood and
+// and has his pasta; Ricky is in his mechanic's blues with his phone out; McMikey has the beanie and
 // the headset; Dubs is broad, with a beard; Snowcap is tall, with the hair; Two-Thirty has her
-// blazer and her bun; Storytime his flat cap, Wheels his beanie, Ears his cap on backwards (and the
+// blazer and her bun; Storytime his flat cap, Wheels his cap, Ears his cap on backwards (and the
 // ears), Red the hair, the beard and the sunglasses.
 import { BoxGeometry, CylinderGeometry, Group, Mesh, MeshStandardMaterial, Object3D, SphereGeometry, type Material } from "three";
 
@@ -140,10 +140,12 @@ export function crewPerson(id: string): Person {
       return p;
     }
     case "mcmikey": {
-      // The Tech Wizard: the hood up, glasses, and a headset.
-      const p = person({ shirt: "#6a4fb5", skin: SKINS[0]!, hair: "#3a2a1c", glasses: "#15171c" }, 25);
-      put(p.head, solid(new Mesh(new SphereGeometry(0.235, 16, 10, 0, Math.PI * 2, 0, Math.PI / 1.7), paint("#6a4fb5", 0.9))), 0, 0.0, -0.05);
-      put(p.head, box(0.44, 0.03, 0.03, dark), 0, 0.2, 0);
+      // The Tech Wizard: the beanie (always), glasses, and a headset over it.
+      const p = person({ shirt: "#6a4fb5", skin: SKINS[0]!, hair: null, glasses: "#15171c" }, 25);
+      const wool = paint("#2f3a52", 0.95);
+      put(p.head, solid(new Mesh(new SphereGeometry(0.215, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), wool)), 0, 0.03, 0).scale.set(1, 1.12, 1);
+      put(p.head, drum(0.218, 0.218, 0.07, paint("#3a4766", 0.95), 18), 0, 0.055, 0);
+      put(p.head, box(0.46, 0.03, 0.03, dark), 0, 0.27, 0);
       for (const side of [-1, 1]) put(p.head, drum(0.06, 0.06, 0.04, dark, 10), side * 0.21, 0, 0).rotation.z = Math.PI / 2;
       return p;
     }
@@ -163,7 +165,7 @@ export function crewPerson(id: string): Person {
       // The Storyteller: a flat cap, a cardigan, and all day.
       return person({ shirt: "#8a6a4a", skin: SKINS[0]!, cap: "#6a5a4a", beard: "#d8d8d2" }, 29);
     case "wheels":
-      // The Reluctant Driver: a beanie pulled down, and no wish to be here.
+      // The Reluctant Driver: a cap, peak to the front, and no wish to be here.
       return person({ shirt: "#5a5f6a", skin: SKINS[2]!, cap: "#2a2d33" }, 30);
     case "ears": {
       // The Speed Demon: the cap on backwards, and the ears.
