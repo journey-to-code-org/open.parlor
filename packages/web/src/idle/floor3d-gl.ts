@@ -117,7 +117,8 @@ function pieceModel(id: string, empty: boolean, who: string | undefined, doing: 
     return { group: g, people, steam };
   } else if (id === "warranty") {
     // The warranty desk, under what has come back.
-    put(g, box(0.7, 0.3, 0.34, paint("#7a5a3a", 0.8)), 0, 0.15, -0.05);
+    put(g, box(1.0, 0.3, 0.3, paint("#7a5a3a", 0.8)), 0, 0.15, 0.12);
+    put(g, box(1.0, 0.03, 0.36, paint("#d8cdb6", 0.5)), 0, 0.315, 0.12);
     put(g, box(0.24, 0.18, 0.22, paint("#c9a36b", 0.95)), -0.2, 0.39, -0.05);
     put(g, box(0.2, 0.14, 0.2, paint("#b98a55", 0.95)), -0.18, 0.55, -0.04).rotation.y = 0.3;
     put(g, box(0.22, 0.16, 0.2, paint("#c9a36b", 0.95)), 0.14, 0.38, -0.08);
@@ -140,8 +141,9 @@ function pieceModel(id: string, empty: boolean, who: string | undefined, doing: 
     });
   } else {
     // A terminal: a stretch of counter, a screen that is on when somebody sits at it, and them.
-    put(g, box(0.78, 0.3, 0.3, paint("#a33a30", 0.7)), 0, 0.15, 0.12);
-    put(g, box(0.82, 0.03, 0.36, paint("#d8cdb6", 0.5)), 0, 0.315, 0.12);
+    // (A square wide, so that a row of them is one counter.)
+    put(g, box(1.0, 0.3, 0.3, paint("#a33a30", 0.7)), 0, 0.15, 0.12);
+    put(g, box(1.0, 0.03, 0.36, paint("#d8cdb6", 0.5)), 0, 0.315, 0.12);
     put(g, box(0.22, 0.17, 0.02, dark), 0, 0.44, 0.06);
     put(g, new Mesh(new PlaneGeometry(0.19, 0.14), new MeshBasicMaterial({ color: empty ? "#16191e" : "#7dffb0" })), 0, 0.44, 0.048).rotation.y = Math.PI;
     put(g, box(0.03, 0.06, 0.03, dark), 0, 0.35, 0.06);

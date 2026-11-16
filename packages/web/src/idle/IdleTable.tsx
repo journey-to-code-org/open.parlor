@@ -23,6 +23,9 @@ export function clockNow(): IdleClock {
   return { now: Math.floor(d.getTime() / 1000), minute: d.getHours() * 60 + d.getMinutes(), day: d.getDay() };
 }
 
+/** What a piece is called on its square, where there is only room for a word. */
+const SHORT: Partial<Record<DelbiesPieceId, string>> = { door: "Door", office: "Office", warranty: "Returns", bench: "Bench", microwave: "Pasta", bathroom: "WC" };
+
 const hoursAndMinutes = (minutes: number) => (minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes}m`);
 const minutesAndSeconds = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 const GROUPS: [role: string, name: string, about: string][] = [
@@ -219,7 +222,12 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
       clutter: Math.min(1, view.clutter / 1000),
       asking: !!view.request,
       radio: !!view.radio,
-      counter: view.crew.filter((c) => (c.role === "counter" || c.id === "snowcap") && here(c)).map((c) => ({ who: c.id })),
+      // Along the counter in the order the floor plan seats them: its front row, left to right.
+      counter: view.floor.pieces.flatMap((p) => {
+        const who = DELBIES_PIECES.find((x) => x.id === p.id)?.crew;
+        const c = who && view.crew.find((x) => x.id === who);
+        return c && here(c) && p.square >= view.floor.cols ? [{ who: c.id, seat: p.square - view.floor.cols }] : [];
+      }),
       // A truck in the yard for each driver who is in, less the one out on a hotshot run.
       trucks: Math.max(0, driversIn.length - (view.network.hotshot.outSeconds > 0 ? 1 : 0)),
       desk: view.desk.hired && view.desk.on,
@@ -575,7 +583,7 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
               )}
               {view.breakroom.cinnamon && (
                 <>
-                  <p>There is a cinnamon roll on the table. Ricky Roost will not come near the counter.</p>
+                  <p>There is a cinnamon roll on the table. Ricky Barry will not come near the counter.</p>
                   <button type="button" className="yes" onClick={() => act({ cmd: "toss" })}>
                     Throw it out
                   </button>
@@ -638,7 +646,7 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
 
         <section className="delbies-floorplan" aria-label="The floor plan">
           <h2>
-            The floor plan <small>{holding ? "Now tap where it goes." : "Tap something, then tap where it goes. Who sits next to what matters."}</small>
+            The counter <small>{holding ? "Now tap where it goes, in the same row." : "Tap somebody, then tap the place they take. Who sits next to whom, and in front of what, matters."}</small>
           </h2>
           <div className={`delbies-room${roomUp ? " up" : ""}`}>
           {three && <canvas ref={roomCanvas} className="delbies-room-gl" aria-hidden="true" />}
@@ -646,12 +654,16 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
             {Array.from({ length: view.floor.cols * view.floor.rows }, (_, square) => {
               const piece = view.floor.pieces.find((p) => p.square === square);
               const held = piece && piece.id === holding;
+              const back = square < view.floor.cols;
+              // What is picked up only goes along its own row: the counter, or the wall behind it.
+              const holdingBack = holding ? (view.floor.pieces.find((p) => p.id === holding)?.square ?? 0) < view.floor.cols : back;
+              const no = !!holding && (holdingBack !== back || !!piece?.fixed);
               return (
                 <button
                   key={square}
                   type="button"
-                  className={`${piece ? "piece" : ""} ${piece?.fixed ? "fixed" : ""} ${piece?.empty ? "empty" : ""} ${held ? "held" : ""}`}
-                  aria-label={piece ? `${piece.label}${piece.fixed ? ", part of the building" : ""}${held ? ", picked up" : ""}` : `Empty square ${square + 1}`}
+                  className={`${piece ? "piece" : ""} ${piece?.fixed ? "fixed" : ""} ${piece?.empty ? "empty" : ""} ${held ? "held" : ""} ${back ? "back" : ""} ${no ? "no" : ""}`}
+                  aria-label={piece ? `${piece.label}${piece.fixed ? ", part of the building" : ""}${held ? ", picked up" : ""}` : `Empty place ${(square % view.floor.cols) + 1} ${back ? "on the back wall" : "at the counter"}`}
                   aria-pressed={held || undefined}
                   onClick={() => {
                     if (holding) {
@@ -664,7 +676,7 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
                   {piece && (
                     <>
                       <span aria-hidden="true">{piece.emoji}</span>
-                      <small>{piece.label.replace("'s terminal", "").replace("' terminal", "")}</small>
+                      <small>{SHORT[piece.id] ?? piece.label.replace("'s terminal", "").replace("' terminal", "")}</small>
                     </>
                   )}
                 </button>

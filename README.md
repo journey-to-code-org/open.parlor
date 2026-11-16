@@ -590,11 +590,14 @@ its own **3D** switch, remembered for that game; `?flat` in the address turns it
   counter is chaotic and the phones ring with it, whoever has been taken on stands at the counter,
   a truck is out the back for each driver, the back room's boxes pile up, a red light turns when
   the books are full, and there is a sign on the counter when Delbie has the afternoon off. The
-  floor plan is a room with its roof off (`idle/floor3d*.ts`), under the same see-through grid of
-  buttons the boards use: a desk and a screen for each terminal and whoever has been taken on at
-  it, the office, the bathroom, the microwave, the bench; what is picked up hangs over its square,
-  and two neighbours that do something to each other are joined by a green or a red bar on the
-  floor. The crew are themselves in both (`idle/people3d.ts`), from what the game says of each:
+  store is a bar, one counter with everybody along it, and the crew stand behind it in the order
+  the floor plan seats them, each at a screen that is lit while they are there, with Delbie in the
+  middle. The floor plan is that same counter with the roof off (`idle/floor3d*.ts`), under the
+  same see-through grid of buttons the boards use: the front row is the counter, a terminal and
+  whoever has been taken on at it for each place and the door at the right-hand end; the back row
+  is the wall behind, with the office, the bathroom, the microwave and the bench. What is picked
+  up hangs over its square and only goes along its own row, and two neighbours that do something
+  to each other are joined by a green or a red bar on the floor. The crew are themselves in both (`idle/people3d.ts`), from what the game says of each:
   Tommy's tie and clipboard, Pluto's cap and rabbit, B-Rice and his pasta, Ricky outside the
   bathroom on his phone when that is where he is. The inspector is in both as well: a grey suit, a hat
   and a clipboard, with the county's car across the back door from the minute's warning, pacing the
