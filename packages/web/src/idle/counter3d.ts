@@ -22,11 +22,17 @@ export interface CounterLook {
   /** A customer is asking for something on account, or Ears is on the radio. */
   asking: boolean;
   radio: boolean;
-  /** Who is on the counter beside Delbie: a number each that is always the same for the same person, and their level. */
-  counter: { who: number; level: number }[];
-  /** How many drivers are on the road, and whether anyone is at the billing desk. */
-  drivers: number;
+  /** Who is on the counter beside Delbie just now, by their id in the game (anybody who has stepped away isn't). */
+  counter: { who: string }[];
+  /** How many trucks are in the yard: a driver taken on and not out on a run. */
+  trucks: number;
+  /** Somebody is at the billing desk. */
   desk: boolean;
+  /** Seconds until the wages are due. */
+  payroll: number;
+  /** How many times the store has moved, and what the newest building brought with it. */
+  moves: number;
+  department: string | null;
   /** The time of day where the player is, in minutes since midnight: it is dark out after closing. */
   minute: number;
 }

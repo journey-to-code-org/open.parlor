@@ -33,27 +33,8 @@ import {
   type Material,
 } from "three";
 import type { Counter3d, CounterLook } from "./counter3d";
+import { anybody, ball, box, crewPerson, delbie as makeDelbie, drum, paint, put, SKINS, type Person } from "./people3d";
 
-const paints = new Map<string, MeshStandardMaterial>();
-function paint(color: string, rough = 0.8, metal = 0): MeshStandardMaterial {
-  const key = `${color}/${rough}/${metal}`;
-  let m = paints.get(key);
-  if (!m) paints.set(key, (m = new MeshStandardMaterial({ color, roughness: rough, metalness: metal })));
-  return m;
-}
-function put<T extends Object3D>(parent: Object3D, o: T, x = 0, y = 0, z = 0): T {
-  o.position.set(x, y, z);
-  parent.add(o);
-  return o;
-}
-const solid = <T extends Mesh>(o: T) => {
-  o.castShadow = true;
-  o.receiveShadow = true;
-  return o;
-};
-const box = (w: number, h: number, d: number, m: Material) => solid(new Mesh(new BoxGeometry(w, h, d), m));
-const drum = (top: number, bottom: number, h: number, m: Material, sides = 14) => solid(new Mesh(new CylinderGeometry(top, bottom, h, sides), m));
-const ball = (r: number, m: Material) => solid(new Mesh(new SphereGeometry(r, 16, 12), m));
 function rng(seed: number) {
   let s = seed >>> 0;
   return () => {
@@ -79,33 +60,6 @@ function sign(text: string, w: number, h: number, ground: string, ink: string, e
   const t = new CanvasTexture(c);
   t.colorSpace = SRGBColorSpace;
   return t;
-}
-
-export const SKINS = ["#f1c9a5", "#e0ac84", "#c68a5e", "#9a6a45", "#f4d6ba"];
-export const SHIRTS = ["#3f78b5", "#b5483f", "#4c8a4a", "#8a5bb5", "#c98a2c", "#3a9a9a", "#6a6f7a", "#b53f7a"];
-
-export interface Person { group: Group; arms: [Group, Group]; head: Mesh; phase: number }
-/** Somebody, standing: a shirt, a head, two arms that swing from the shoulder, and perhaps a cap. */
-export function person(shirt: string, skin: string, cap: string | null, seed: number): Person {
-  const g = new Group();
-  const cloth = paint(shirt, 0.85);
-  const flesh = paint(skin, 0.7);
-  put(g, drum(0.2, 0.24, 0.5, paint("#2b3240", 0.9)), 0, 0.25, 0);
-  put(g, drum(0.25, 0.22, 0.62, cloth), 0, 0.82, 0);
-  put(g, ball(0.25, cloth), 0, 1.12, 0).scale.set(1, 0.5, 0.9);
-  const head = put(g, ball(0.2, flesh), 0, 1.42, 0);
-  if (cap) {
-    put(g, solid(new Mesh(new SphereGeometry(0.21, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), paint(cap, 0.7))), 0, 1.46, 0);
-    put(g, box(0.26, 0.03, 0.2, paint(cap, 0.7)), 0, 1.48, 0.2);
-  } else put(g, solid(new Mesh(new SphereGeometry(0.205, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2.4), paint(["#3a2a1c", "#1d1a18", "#8a8a8a", "#6a4a2a"][seed % 4]!, 0.9))), 0, 1.45, -0.01);
-  const arms = [-1, 1].map((side) => {
-    const arm = new Group();
-    put(arm, drum(0.07, 0.06, 0.5, cloth, 8), 0, -0.25, 0);
-    put(arm, ball(0.075, flesh), 0, -0.52, 0);
-    put(g, arm, side * 0.3, 1.1, 0);
-    return arm;
-  }) as [Group, Group];
-  return { group: g, arms, head, phase: (seed % 100) / 16 };
 }
 
 export function build(canvas: HTMLCanvasElement): Counter3d | null {
@@ -154,7 +108,9 @@ export function build(canvas: HTMLCanvasElement): Counter3d | null {
   const tile = paint("#7b766c", 0.9);
   for (let x = -13; x < 13; x++) for (let z = -2; z < 7; z++) if ((x + z) % 2 === 0) put(scene, new Mesh(new PlaneGeometry(1, 1).rotateX(-Math.PI / 2), tile), x + 0.5, 0.002, z + 0.5).receiveShadow = true;
   // The back wall, with the door on the right standing open on the yard.
-  const wall = paint("#d9d2c2", 0.95);
+  // (Its own paint, not the shared pot: every building is a different colour.)
+  const wall = paint("#d9d2c2", 0.95).clone();
+  const WALLS = ["#d9d2c2", "#cfd9c9", "#c9d3df", "#e0cfc0", "#d6cbe0", "#d9d9bf"];
   put(scene, box(18.05, 8, 0.2, wall), -5.975, 4, -2.5);
   put(scene, box(9.65, 8, 0.2, wall), 10.175, 4, -2.5);
   put(scene, box(2.3, 5.5, 0.2, wall), 4.2, 5.25, -2.5);
@@ -178,6 +134,40 @@ export function build(canvas: HTMLCanvasElement): Counter3d | null {
   for (const x of [-3.8, -0.6, 2.6]) put(scene, box(0.07, 2.6, 0.5, paint("#6a7078", 0.6, 0.4)), x, 1.3, -2.18);
   const board = new Mesh(new PlaneGeometry(3.6, 0.62), new MeshBasicMaterial({ map: sign("DELBIE'S AUTO PARTS", 1024, 176, "#1f2a3a", "#f2c230", "#f2c230") }));
   put(scene, board, -0.6, 3.2, -2.38);
+  // The payday board, over the billing desk: how long until the wages are due.
+  const payCanvas = document.createElement("canvas");
+  payCanvas.width = 256;
+  payCanvas.height = 128;
+  const payMap = new CanvasTexture(payCanvas);
+  payMap.colorSpace = SRGBColorSpace;
+  put(scene, new Mesh(new PlaneGeometry(1.2, 0.6), new MeshBasicMaterial({ map: payMap })), -4.55, 2.4, -2.38);
+  let payText = "";
+  function writePayday(text: string, soon: boolean) {
+    if (text === payText) return;
+    payText = text;
+    const g = payCanvas.getContext("2d")!;
+    g.fillStyle = soon ? "#f2c230" : "#1f2a3a";
+    g.fillRect(0, 0, 256, 128);
+    g.fillStyle = soon ? "#1f2a3a" : "#f2c230";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.font = "900 34px 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
+    g.fillText("PAYDAY IN", 128, 36);
+    g.font = "900 58px 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
+    g.fillText(text, 128, 88);
+    payMap.needsUpdate = true;
+  }
+  // Over the back door: what the newest building brought with it.
+  const banner = new Mesh(new PlaneGeometry(2.3, 0.42), new MeshBasicMaterial({ color: "#ffffff" }));
+  banner.visible = false;
+  put(scene, banner, 4.2, 2.95, -2.38);
+  let bannerText = "";
+  // Moving day: everything the store owns, going past in boxes.
+  const crates = Array.from({ length: 22 }, (_, i) => {
+    const s = 0.4 + (i % 4) * 0.08;
+    const crate = put(scene, box(s * 1.2, s, s, paint(i % 3 ? "#c9a36b" : "#b98a55", 0.95)), 0, -9, 0);
+    return crate;
+  });
   // The counter, its top worn pale, with a kick plate.
   put(scene, box(7.2, 1.0, 0.75, paint("#a33a30", 0.7)), 0, 0.5, 0);
   put(scene, box(7.4, 0.07, 0.9, paint("#d8cdb6", 0.5)), 0, 1.035, 0);
@@ -206,8 +196,8 @@ export function build(canvas: HTMLCanvasElement): Counter3d | null {
   put(scene, drum(0.015, 0.015, 0.4, paint("#2c2f36", 0.5, 0.5), 6), -4.6, 0.95, -1.55);
   const deskGlow = new PointLight(0xffd9a0, 0, 3.5);
   put(scene, deskGlow, -4.6, 1.1, -1.4);
-  const clerk = person("#8a5bb5", SKINS[0]!, null, 3);
-  clerk.group.scale.setScalar(0.92);
+  const clerk = crewPerson("twothirty");
+  clerk.group.scale.multiplyScalar(0.92);
   put(scene, clerk.group, -5.1, -0.25, -2.0);
   // The light that turns when the books are full.
   const beacon = put(scene, new Mesh(new SphereGeometry(0.12, 12, 10), new MeshBasicMaterial({ color: "#5a1512" })), 2.9, 3.1, -2.3);
@@ -215,7 +205,7 @@ export function build(canvas: HTMLCanvasElement): Counter3d | null {
   put(scene, alarm, 2.9, 3.0, -1.6);
 
   // ---- The people, and what comes and goes ----------------------------------------------------
-  const delbie = person("#1f2a3a", SKINS[1]!, "#f2c230", 1);
+  const delbie = makeDelbie();
   delbie.group.scale.setScalar(1.12);
   put(scene, delbie.group, 0, 0, -0.75);
   // What he gets like: a red face, and steam.
@@ -233,13 +223,14 @@ export function build(canvas: HTMLCanvasElement): Counter3d | null {
   rod.rotation.z = 0.25;
   scene.add(gone);
 
-  const crew: { key: number; who: Person }[] = [];
-  const CREW_AT = [-1.9, 1.9, -3.3, 3.2];
+  const crew: { key: string; who: Person }[] = [];
+  // Four places at the counter, and two more behind it, by the shelves, for a full house.
+  const CREW_AT: [number, number][] = [[-1.9, -0.75], [1.9, -0.75], [-3.3, -0.75], [3.2, -0.75], [-1.0, -1.6], [1.25, -1.6]];
   const line: Person[] = [];
   // (Nobody stands straight in front of Delbie: he is who the picture is of.)
   const QUEUE: [number, number][] = [[-0.85, 1.0], [1.75, 1.15], [-1.9, 1.7], [0.9, 1.95], [2.8, 2.0], [-0.6, 2.5], [-3.0, 2.5], [2.0, 2.9]];
   QUEUE.forEach(([x, z], i) => {
-    const p = person(SHIRTS[(i * 3 + 1) % SHIRTS.length]!, SKINS[(i * 2) % SKINS.length]!, i % 3 === 1 ? "#33383f" : null, i + 11);
+    const p = anybody(i);
     p.group.rotation.y = Math.PI + (i % 2 ? 0.25 : -0.2);
     p.group.scale.setScalar(0.95 + (i % 3) * 0.05);
     p.group.visible = false;
@@ -270,6 +261,10 @@ export function build(canvas: HTMLCanvasElement): Counter3d | null {
   }
 
   let rung = -1e9;
+  let paidAt = -1e9;
+  let lastPay = -1;
+  let lastMoves = -1;
+  let movedAt = -1e9;
   let crewKey = "";
   let now = 0;
   let size = "";
@@ -309,16 +304,48 @@ export function build(canvas: HTMLCanvasElement): Counter3d | null {
         yard.color.set("#16233a").lerp(new Color("#bfe0f5"), day);
         room.intensity = 1.25 + day * 0.35;
 
+        // Payday: the board counts down, and when the wages go out everybody's hands go up.
+        const due = Math.max(0, look.payroll);
+        writePayday(`${Math.floor(due / 60)}:${String(due % 60).padStart(2, "0")}`, due <= 30);
+        if (lastPay >= 0 && due > lastPay + 30 && !still) {
+          paidAt = time;
+          coins.forEach((c, i) => {
+            c.born = time + i * 40;
+            c.vx = (i / (coins.length - 1) - 0.5) * 7;
+            c.vz = -0.6;
+          });
+        }
+        lastPay = due;
+        // A new building: the boxes go past, and by the time they have gone the walls are another colour.
+        if (lastMoves >= 0 && look.moves > lastMoves && !still) movedAt = time;
+        const moving = (time - movedAt) / 2600;
+        const shown = moving < 0.5 && lastMoves >= 0 ? Math.max(0, look.moves - 1) : look.moves;
+        lastMoves = look.moves;
+        wall.color.set(WALLS[shown % WALLS.length]!);
+        crates.forEach((crate, i) => {
+          const at = moving * 1.6 - i * 0.03;
+          if (moving >= 1 || at < 0 || at > 1) return crate.position.set(0, -9, 0);
+          crate.position.set(-7 + at * 14, 0.3 + Math.abs(Math.sin(at * 9 + i)) * (0.5 + (i % 3) * 0.4), 0.8 + (i % 5) * 0.55);
+          crate.rotation.set(at * 7 + i, at * 5, i);
+        });
+        const brought = shown > 0 && look.department ? `NOW WITH A ${look.department.toUpperCase()}` : "";
+        if (brought !== bannerText) {
+          bannerText = brought;
+          banner.visible = !!brought;
+          if (brought) (banner.material as MeshBasicMaterial).map = sign(brought, 1024, 188, "#a33a30", "#fff4d6", "#f2c230");
+          (banner.material as MeshBasicMaterial).needsUpdate = true;
+        }
+
         // Who is on the counter: made again only when that changes.
-        const key = look.counter.map((c) => `${c.who}.${c.level}`).join(",");
+        const key = look.counter.map((c) => c.who).join(",");
         if (key !== crewKey) {
           crewKey = key;
           for (const c of crew) scene.remove(c.who.group);
           crew.length = 0;
           look.counter.slice(0, CREW_AT.length).forEach((c, i) => {
-            const who = person(SHIRTS[c.who % SHIRTS.length]!, SKINS[(c.who >> 3) % SKINS.length]!, c.who % 2 ? ["#a33a30", "#2f6fd0", "#3f9a55"][c.who % 3]! : null, c.who);
-            who.group.scale.setScalar(0.94 + Math.min(3, c.level) * 0.03);
-            put(scene, who.group, CREW_AT[i]!, 0, -0.75);
+            const who = crewPerson(c.who);
+            who.group.scale.multiplyScalar(0.96);
+            put(scene, who.group, CREW_AT[i]![0], 0, CREW_AT[i]![1]);
             crew.push({ key: c.who, who });
           });
         }
@@ -327,7 +354,11 @@ export function build(canvas: HTMLCanvasElement): Counter3d | null {
           p.arms[0].rotation.x = Math.sin(t * rate + p.phase) * 0.25;
           p.arms[1].rotation.x = -Math.sin(t * rate + p.phase) * 0.25;
         };
-        for (const c of crew) sway(c.who, 2.2, 0.02);
+        const cheer = !still && time - paidAt < 1400;
+        for (const c of crew) {
+          sway(c.who, cheer ? 9 : 2.2, cheer ? 0.1 : 0.02);
+          if (cheer) c.who.arms[0].rotation.x = c.who.arms[1].rotation.x = -2.6;
+        }
         // The line: as long as the counter is chaotic, and less patient the longer it gets.
         const waiting = look.away ? Math.min(2, Math.ceil(look.chaos * line.length)) : Math.ceil(look.chaos * line.length);
         line.forEach((p, i) => {
@@ -363,7 +394,7 @@ export function build(canvas: HTMLCanvasElement): Counter3d | null {
         drawer.position.z = 0.02 + (since < 0.5 ? Math.sin((since / 0.5) * Math.PI) * 0.26 : 0);
         coins.forEach((c) => {
           const age = (time - c.born) / 1000;
-          if (age > 0.9 || still) return c.mesh.position.set(0, -5, 0);
+          if (age < 0 || age > 0.9 || still) return c.mesh.position.set(0, -5, 0);
           c.mesh.position.set(0.95 + c.vx * age, 1.3 + 2.6 * age - 4.2 * age * age, 0.2 + c.vz * age);
           c.mesh.rotation.set(age * 14, age * 9, 0);
         });
@@ -380,7 +411,7 @@ export function build(canvas: HTMLCanvasElement): Counter3d | null {
         (shade.material as MeshBasicMaterial).color.set(look.desk ? "#ffd9a0" : "#3a3d42");
         clerk.group.visible = look.desk;
         trucks.forEach((truck, i) => {
-          truck.visible = look.drivers > i;
+          truck.visible = look.trucks > i;
           truck.position.y = still ? 0 : Math.abs(Math.sin(t * 9 + i)) * 0.012;
         });
         pile.forEach((carton, i) => (carton.visible = i < Math.round(look.clutter * pile.length)));

@@ -16,10 +16,16 @@ export interface FloorLook {
   holding: DelbiesPieceId | null;
   /** Rules in effect: the two squares each joins, and whether it helps. */
   links: { a: number; b: number; good: boolean }[];
-  /** How many drivers have been taken on: they sit on the bench. */
-  drivers: number;
-  /** A number for whoever sits at each piece, always the same for the same person. */
-  who: Partial<Record<DelbiesPieceId, number>>;
+  /** The drivers on the bench just now, by their id in the game: taken on, and not out on a run or off. */
+  drivers: string[];
+  /** Whose terminal or desk each piece is, by their id in the game. */
+  who: Partial<Record<DelbiesPieceId, string>>;
+  /** Who has been taken on and is somewhere else just now (the restroom, picking things up, home). */
+  away: string[];
+  /** The breakroom: B-Rice needs feeding, there is a cinnamon roll about, Pluto has had a shock. */
+  hungry: boolean;
+  cinnamon: boolean;
+  shocked: boolean;
 }
 
 export interface Floor3d {
