@@ -186,3 +186,12 @@ export const loadArcadeHouse = (): { slug: string; name: string } | null => {
   return loadMyHouses().find((h) => h.slug === slug) ?? null;
 };
 export const saveArcadeHouse = (slug: string | null) => write("cardroom:arcade:house", slug);
+
+// ---- Pink Slips ----------------------------------------------------------------------------------
+
+/** The garage, as the game saved it: it checks it over itself when it is opened. */
+export const loadDrive = (): unknown => read<unknown>("cardroom:pinkslips:garage", null);
+export const saveDrive = (garage: unknown) => write("cardroom:pinkslips:garage", garage);
+/** The strip the player last raced on. */
+export const loadDriveStrip = (): string => read<string>("cardroom:pinkslips:strip", "strip");
+export const saveDriveStrip = (id: string) => write("cardroom:pinkslips:strip", id);
