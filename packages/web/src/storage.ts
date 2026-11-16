@@ -179,3 +179,10 @@ export const loadIdleHouse = (game: IdleGameId): { slug: string; name: string; r
   return kept && typeof kept.slug === "string" && typeof kept.name === "string" ? { slug: kept.slug, name: kept.name, rev: typeof kept.rev === "number" ? kept.rev : 0 } : null;
 };
 export const saveIdleHouse = (game: IdleGameId, house: { slug: string; name: string; rev: number } | null) => write(`cardroom:${game}:house`, house);
+
+/** The house this browser's arcade runs are sent to, or null when they stay here. */
+export const loadArcadeHouse = (): { slug: string; name: string } | null => {
+  const slug = read<string | null>("cardroom:arcade:house", null);
+  return loadMyHouses().find((h) => h.slug === slug) ?? null;
+};
+export const saveArcadeHouse = (slug: string | null) => write("cardroom:arcade:house", slug);

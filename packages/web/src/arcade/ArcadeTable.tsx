@@ -7,10 +7,11 @@
 // something and tap a square to build it, or tap what stands there to upgrade or sell it. A game
 // with things to buy that are built nowhere (Chip Stack) says so too (`market`): its field is
 // shorter, a tap on it is a tap, and everything on offer is listed underneath.
-import { arcadeGame, points, shortly, type ArcadeBuild, type ArcadeGameId, type ArcadeMarket, type ArcadeView } from "@journey-to-code/games";
+import { arcadeGame, points, recorder, shortly, type ArcadeBuild, type ArcadeGameId, type ArcadeMarket, type ArcadeView } from "@journey-to-code/games";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadFeedbackSettings, saveFeedbackSettings } from "../feedback/sounds";
-import { loadArcadeBest, saveArcadeBest, type ArcadeRules } from "../storage";
+import { loadArcadeBest, loadArcadeHouse, saveArcadeBest, type ArcadeRules } from "../storage";
+import { boardOf, sendRun, type HouseRun } from "./scores";
 import { controlsFor } from "./controls";
 import { createArcadeScreen, type ArcadePointer } from "./screen";
 import { notes, setArcadeSound, wakeArcadeSound } from "./sounds";
@@ -21,6 +22,8 @@ interface Props {
   seats: number;
   seed: number;
   autofire: boolean;
+  /** A housemate's run being taken on: this is their seed, and that is their score. */
+  rival?: { name: string; score: number };
   /** Back to the game's setup screen. */
   onLeave: () => void;
 }
@@ -41,12 +44,14 @@ interface Ending {
   time: string;
   scores: number[];
 }
+/** What the house made of the run: still on its way, kept or not, or never got there. */
+type Posted = { state: "sending" } | { state: "failed" } | { state: "done"; kept: boolean; best: number; place: number; top: HouseRun[] };
 
 /** The computer players: steady, and not quite perfect. */
 const WINGMAN = { skill: 0.75, sloppy: 0.04 };
 const clock = (ticks: number, rate: number) => `${Math.floor(ticks / rate / 60)}:${String(Math.floor(ticks / rate) % 60).padStart(2, "0")}`;
 
-export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }: Props) {
+export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, onLeave }: Props) {
   const game = arcadeGame(id)!;
   const canvas = useRef<HTMLCanvasElement>(null);
   const scoreEl = useRef<HTMLElement>(null);
@@ -54,6 +59,8 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
   const [run, setRun] = useState(0);
   const [paused, setPaused] = useState(false);
   const [ending, setEnding] = useState<Ending | null>(null);
+  const [house] = useState(loadArcadeHouse);
+  const [posted, setPosted] = useState<Posted | null>(null);
   const [hud, setHud] = useState<Hud>({ stage: "", lives: 0, stats: [], build: null, market: null });
   // Building: what is picked in the shop, and which square is picked out on the field.
   const [pick, setPick] = useState<string | null>(null);
@@ -70,8 +77,13 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
   useEffect(() => {
     const el = canvas.current!;
     const normal = game.normalize(rules);
-    // Play again: a new game from a new seed.
-    const state = game.newGame(normal, seats, run === 0 ? seed : Math.floor(Math.random() * 2 ** 31));
+    // Play again: a new game from a new seed, unless a housemate's run is being taken on, which is always the same game.
+    const playing = run === 0 || rival ? seed : Math.floor(Math.random() * 2 ** 31);
+    const state = game.newGame(normal, seats, playing);
+    // The run is written down as it is played, for the house to play back.
+    const rec = recorder(game, seats);
+    let live = true;
+    setPosted(null);
     const screen = createArcadeScreen(el, game.view(state).field);
     screen.resize();
     controls.clear();
@@ -90,7 +102,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
     function tick() {
       const inputs: unknown[] = [controls.read()];
       for (let seat = 1; seat < seats; seat++) inputs.push(game.bot(state, seat, WINGMAN));
-      game.step(state, inputs);
+      game.step(state, rec.tick(inputs));
       const view = game.view(state);
       screen.hear(view.events, false, 0);
       screen.settle();
@@ -102,6 +114,16 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
         setBest(now);
         setEnding({ score: sum.score, best: now, isBest, stage: view.stage, time: clock(sum.ticks, game.rate), scores: sum.scores });
         if (isBest && sum.score > 0) notes([523, 659, 784, 1046, 1318]);
+        if (house) {
+          setPosted({ state: "sending" });
+          const board = boardOf(id, rules, seats);
+          void sendRun(house.slug, { game: id, rules: normal, seats, seed: playing, log: rec.log, score: sum.score }).then((got) => {
+            if (!live) return;
+            if (!got) return setPosted({ state: "failed" });
+            const top = got.runs.filter((r) => r.board === board);
+            setPosted({ state: "done", kept: got.kept, best: got.best, place: top.findIndex((r) => r.me) + 1, top: top.slice(0, 5) });
+          });
+        }
       }
     }
 
@@ -249,6 +271,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
     if (el.parentElement) watcher?.observe(el.parentElement);
     wakeArcadeSound();
     return () => {
+      live = false;
       cancelAnimationFrame(raf);
       removeEventListener("keydown", onKey);
       removeEventListener("keyup", onKey);
@@ -336,6 +359,32 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
                 <h2>Game over</h2>
                 <div className="arcade-final">{points(ending.score)}</div>
                 <p>{ending.isBest ? "A new best on this device." : `Your best: ${points(ending.best)}`}</p>
+                {rival && (
+                  <p className="arcade-rival">
+                    {ending.score > rival.score ? `You beat ${rival.name} (${points(rival.score)}) at the very same game.` : ending.score === rival.score ? `Level with ${rival.name} at the very same game.` : `${rival.name === "your best" ? "Your best" : rival.name} had ${points(rival.score)} at this same game.`}
+                  </p>
+                )}
+                {house && posted && (
+                  <div className="arcade-house">
+                    {posted.state === "sending" ? (
+                      <p>Sending the run to {house.name}…</p>
+                    ) : posted.state === "failed" ? (
+                      <p>{house.name} could not be reached, so this run stays here.</p>
+                    ) : (
+                      <>
+                        <p>{posted.kept ? `That is your best in ${house.name}${posted.place ? `: number ${posted.place} with these rules.` : "."}` : `Your best in ${house.name} is still ${points(posted.best)}.`}</p>
+                        <ol>
+                          {posted.top.map((r) => (
+                            <li key={r.name + r.at} className={r.me ? "mine" : ""}>
+                              <b>{r.me ? `${r.name} (you)` : r.name}</b>
+                              <span>{points(r.score)}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      </>
+                    )}
+                  </div>
+                )}
                 {market && <p>Every chip earned in the run.</p>}
                 <dl className="arcade-stats">
                   {!market && (
@@ -356,7 +405,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, onLeave }:
                 </dl>
                 <div className="arcade-row">
                   <button type="button" className="primary" autoFocus onClick={() => setRun((n) => n + 1)}>
-                    Play again
+                    {rival ? "Try that game again" : "Play again"}
                   </button>
                   <button type="button" className="secondary" onClick={onLeave}>
                     Change the rules

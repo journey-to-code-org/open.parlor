@@ -2209,6 +2209,16 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 /* ---- Delbie's Daycare & Geriatrics ---------------------------------------------------------------
    A parts store: shop-floor grey, a counter-top yellow for what matters, and a till you can read
    from across the room. Three columns on a wide screen (Delbie, the crew, the log), one on a phone. */
+.arcade-house { display: grid; gap: 6px; margin: 8px 0 0; text-align: left; }
+.arcade-house h3 { margin: 0; font-size: 0.95rem; font-family: inherit; }
+.arcade-house p { margin: 0; font-size: 0.86rem; line-height: 1.4; opacity: 0.85; }
+.arcade-house ol { margin: 0; padding: 0; list-style: none; counter-reset: place; display: grid; gap: 4px; }
+.arcade-house li { counter-increment: place; display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.06); font-size: 0.88rem; }
+.arcade-house li::before { content: counter(place); font-weight: 700; opacity: 0.7; min-width: 1.1em; }
+.arcade-house li.mine { outline: 1px solid rgba(255, 255, 255, 0.45); }
+.arcade-house li span { margin-left: auto; font-variant-numeric: tabular-nums; opacity: 0.85; }
+.arcade-house li button { padding: 4px 10px; border-radius: 8px; border: 1px solid currentColor; background: transparent; color: inherit; font-size: 0.78rem; font-weight: 600; }
+.arcade-rival { font-weight: 600; }
 .delbies {
   --shop: #171b22;
   --panel: #222833;
