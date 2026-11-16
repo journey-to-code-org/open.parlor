@@ -1,4 +1,5 @@
 import { createTournaments } from "./tournaments.js";
+import { createGarages } from "./garages.js";
 import { createStores } from "./stores.js";
 import { createScores } from "./scores.js";
 // Houses: a family's own corner of the parlor. A house has members (who joined with its invite
@@ -179,6 +180,7 @@ export function createHouses(
   };
   const tournaments = createTournaments(rooms, { push, saveHouse: (h) => save(h as HouseDoc) });
   const stores = createStores(rooms.sync);
+  const garages = createGarages(rooms.sync);
   const scores = createScores(rooms.sync);
 
   /** What a member sees. No player secrets; the invite code, since members share the link. */
@@ -333,6 +335,13 @@ export function createHouses(
     if (action === "store" || action === "stores" || action === "network") {
       if (!me) return json({ error: "Join the house first." }, 403);
       const reply = await stores.handle(house, me, action, method, input, new URL(request.url).searchParams);
+      return json(reply.body, reply.status);
+    }
+
+    // /houses/:slug/garage, /garages, /market → a member's Road to the Shootout garage kept here, and the house's marketplace
+    if (action === "garage" || action === "garages" || action === "market") {
+      if (!me) return json({ error: "Join the house first." }, 403);
+      const reply = await garages.handle(house, me, action, method, input);
       return json(reply.body, reply.status);
     }
 

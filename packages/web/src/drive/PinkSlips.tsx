@@ -10,9 +10,10 @@ import {
   type Build, type GarageState, type GarageView,
 } from "@journey-to-code/games";
 import type { PlayStyle } from "@journey-to-code/rules";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { blip, notes, wakeArcadeSound } from "../arcade/sounds";
-import { loadDrive, loadDriveStrip, saveDrive, saveDriveStrip } from "../storage";
+import { loadDrive, loadDriveHouse, loadDriveStrip, loadMyHouses, saveDrive, saveDriveHouse, saveDriveStrip } from "../storage";
+import { fetchGarage, fetchGarages, fetchMarket, marketDo, sendGarage, type HouseGarage, type MarketLook } from "./house";
 import { Road, type RoadOutcome } from "./Road";
 import { Strip, type Rival, type StripOutcome } from "./Strip";
 
@@ -76,7 +77,67 @@ type Racing = { car: number; carName: string; build: Build; rival: Rival | null;
 export function PinkSlips({ onHome }: { onHome: () => void }) {
   const [garage, setGarage] = useState(openGarage);
   const [picked, setPicked] = useState<number | null>(() => garage.cars[0]?.id ?? null);
-  const [tab, setTab] = useState<"car" | "ads">(() => (garage.cars.length ? "car" : "ads"));
+  const [tab, setTab] = useState<"car" | "ads" | "house">(() => (garage.cars.length ? "car" : "ads"));
+  // The house this garage is kept in: sent there after every change, and where the trading is.
+  const [house, setHouse] = useState(loadDriveHouse);
+  const houseRef = useRef(house);
+  houseRef.current = house;
+  const garageRef = useRef(garage);
+  garageRef.current = garage;
+  const [market, setMarket] = useState<MarketLook | null>(null);
+  const [club, setClub] = useState<HouseGarage[]>([]);
+  const myHouses = loadMyHouses();
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const keepHouse = (next: { slug: string; name: string; rev: number } | null) => {
+    saveDriveHouse(next);
+    houseRef.current = next;
+    setHouse(next);
+  };
+  /** Take up the house's copy in place of the one here. */
+  const adopt = (state: unknown, rev: number) => {
+    const theirs = loadGarage(state);
+    const at = houseRef.current;
+    if (!theirs || !at) return;
+    newDay(theirs, today());
+    garageRef.current = theirs;
+    setGarage(theirs);
+    saveDrive(theirs);
+    keepHouse({ ...at, rev });
+  };
+  /** Send the garage to its house, one save at a time; take the house's up instead when that one is newer. */
+  const push = () => {
+    queue.current = queue.current.then(async () => {
+      const at = houseRef.current;
+      if (!at) return;
+      const sent = await sendGarage(at.slug, garageRef.current, at.rev);
+      if (houseRef.current?.slug !== at.slug) return;
+      if (sent.kind === "saved") keepHouse({ ...at, rev: sent.rev });
+      else if (sent.kind === "newer") adopt(sent.state, sent.rev);
+      else if (sent.kind === "gone") keepHouse(null);
+    });
+    return queue.current;
+  };
+  const lookAround = () => {
+    const at = houseRef.current;
+    if (!at) return;
+    void fetchMarket(at.slug).then((look) => look && houseRef.current?.slug === at.slug && setMarket(look));
+    void fetchGarages(at.slug).then((all) => houseRef.current?.slug === at.slug && setClub(all));
+  };
+  useEffect(() => {
+    if (!house) {
+      setMarket(null);
+      setClub([]);
+      return;
+    }
+    // On opening, the house's copy is taken up if it was changed somewhere else since this browser last agreed with it.
+    void fetchGarage(house.slug).then((theirs) => {
+      if (!theirs || houseRef.current?.slug !== house.slug) return;
+      if (theirs.state && theirs.rev !== house.rev) adopt(theirs.state, theirs.rev);
+      else if (!theirs.state) void push();
+      lookAround();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [house?.slug]);
   const [toast, setToast] = useState<{ text: string; ok: boolean; key: number } | null>(null);
   const [strip, setStrip] = useState(loadDriveStrip);
   const [racing, setRacing] = useState<Racing | null>(null);
@@ -94,8 +155,10 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
     wakeArcadeSound();
     const next = structuredClone(garage);
     const said = work(next);
+    garageRef.current = next;
     setGarage(next);
     saveDrive(next);
+    void push();
     if (said) {
       setToast({ text: said.message, ok: said.ok, key: Date.now() });
       if (said.ok) notes([523, 784], 70, 0.1);
@@ -104,6 +167,34 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
     return next;
   };
   const act = (command: Record<string, unknown>) => change((g) => garageAct(g, command));
+  const say = (text: string, ok = false) => setToast({ text, ok, key: Date.now() });
+  /** Put the garage in a house: straight in when the house has none of this player's, a choice when it has. */
+  const moveIn = async (slug: string) => {
+    const chosen = myHouses.find((h) => h.slug === slug);
+    if (!chosen) return;
+    const theirs = await fetchGarage(slug);
+    if (!theirs) return say("That house can't be reached just now.");
+    keepHouse({ ...chosen, rev: theirs.rev });
+    if (theirs.state && window.confirm(`${chosen.name} already keeps a garage of yours. Use that one? (Cancel puts this browser's garage there in its place.)`)) adopt(theirs.state, theirs.rev);
+    else await push();
+    lookAround();
+  };
+  /** Something done in the house's market: the garage is sent first, and comes back as it now stands. */
+  const trade = async (input: Record<string, unknown>, done: (d: Awaited<ReturnType<typeof marketDo>>) => string) => {
+    await push();
+    const at = houseRef.current;
+    if (!at) return;
+    const d = await marketDo(at.slug, { ...input, rev: at.rev });
+    if (d.state !== undefined && d.rev !== undefined) adopt(d.state, d.rev);
+    if (d.look) setMarket(d.look);
+    say(d.ok ? done(d) : (d.error ?? "The house can't be reached just now."), d.ok);
+    if (!d.ok) lookAround();
+  };
+  const priceFor = (what: string, suggested: number): number | null => {
+    const asked = window.prompt(`What do you want for the ${what}?`, String(suggested));
+    const price = asked === null ? NaN : Math.round(Number(asked.replace(/[^0-9.]/g, "")));
+    return Number.isFinite(price) && price >= 5 ? price : null;
+  };
 
   const race = (rival: Rival | null, road = false, tune = false) => {
     if (!car) return;
@@ -180,6 +271,28 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
             <b>Marketplace</b>
             <span>{view.listings.length} cars for sale today</span>
           </button>
+          {house && (
+            <button type="button" className={tab === "house" ? "bay ads on" : "bay ads"} onClick={() => { setTab("house"); lookAround(); }}>
+              <b>{house.name}'s market</b>
+              <span>{market ? `${market.lots.length} for sale${market.waiting ? ` · ${dollars(market.waiting)} waiting for you` : ""}` : "Pieces and cars, between you"}</span>
+            </button>
+          )}
+          <div className="pinks-card pinks-tools">
+            <h3>Where it is kept</h3>
+            {house ? (
+              <>
+                <p className="facts">In <b>{house.name}</b>. It is the same garage on any device you are in that house on, and the house can see what you have built.</p>
+                <button type="button" onClick={() => keepHouse(null)}>Keep it in this browser only</button>
+              </>
+            ) : myHouses.length > 0 ? (
+              <>
+                <p className="facts">In this browser. Keep it in a house to have it on every device, and to trade with the people in it.</p>
+                {myHouses.map((h) => <button key={h.slug} type="button" onClick={() => void moveIn(h.slug)}>Keep it in {h.name}</button>)}
+              </>
+            ) : (
+              <p className="facts">In this browser. Join a house to keep it there, have it on every device, and trade with the people in it.</p>
+            )}
+          </div>
           <div className="pinks-card pinks-tools">
             <h3>The tool wall</h3>
             {view.tools.map((t) => (
@@ -201,14 +314,55 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
             {view.shelf.map((x) => (
               <div key={x.id} className="row">
                 <div><b>{x.name}</b><small>off a {x.from} · {Math.round(x.cond / 10)}%{x.glut ? ` · ${x.glut} has flooded these` : ""}</small></div>
-                <button type="button" className={x.glut ? "low" : ""} onClick={() => act({ cmd: "sellPiece", piece: x.id })}>Sell {dollars(x.value)}</button>
+                <span className="pinks-buy">
+                  <button type="button" className={x.glut ? "low" : ""} onClick={() => act({ cmd: "sellPiece", piece: x.id })}>Sell {dollars(x.value)}</button>
+                  {house && <button type="button" className="off" onClick={() => { const price = priceFor(x.name, x.worth); if (price) void trade({ do: "list", piece: x.id, price }, () => `Up for sale in ${house.name} at ${dollars(price)}.`); }}>List it in the house</button>}
+                </span>
               </div>
             ))}
             {view.shelf.length > 1 && <button type="button" onClick={() => change((g) => { let made = 0; for (const x of [...g.shelf]) { const was = g.cash; if (garageAct(g, { cmd: "sellPiece", piece: x.id }).ok) made += g.cash - was; } return { ok: true, message: `The lot went for ${dollars(made)}.` }; })}>Sell the lot for {dollars(view.shelf.reduce((sum, x) => sum + x.value, 0))}</button>}
           </div>
         </nav>
 
-        {tab === "ads" || !car ? (
+        {tab === "house" && house ? (
+          <section className="pinks-ads" aria-label="House market">
+            <h2>{house.name}'s market <small>What the house is selling, and what the scrappers have up today.</small></h2>
+            {market && market.waiting > 0 && (
+              <div className="pinks-card cousin">
+                <p>Something of yours sold. {dollars(market.waiting)} is waiting for you.</p>
+                <button type="button" className="yes" onClick={() => void trade({ do: "collect" }, (d) => (d.sales?.length ? d.sales.map((x) => `${x.from} bought your ${x.what.toLowerCase()} for ${dollars(x.amount)}.`).join(" ") : "Nothing was waiting."))}>Collect it</button>
+              </div>
+            )}
+            {!market && <p className="empty">Asking the house…</p>}
+            <ul className="pinks-lots">
+              {market?.lots.map((l) => (
+                <li key={l.id} className={`pinks-card${l.mine ? " mine" : ""}`}>
+                  <div className="row"><b>{l.piece ? l.piece.name : l.car?.name}</b><b className="cash">{dollars(l.price)}</b></div>
+                  <p className="facts">
+                    {l.piece ? `Off a ${l.piece.from} · ${Math.round(l.piece.cond / 10)}% · worth about ${dollars(l.piece.worth)}` : l.car ? `${l.car.model} · engine ${Math.round(l.car.engine / 10)}% · ${l.car.runs ? "runs" : "does not run"} · about ${dollars(l.car.teardown)} in pieces` : ""}
+                  </p>
+                  <div className="row">
+                    <span className="has">{l.mine ? "Yours" : l.scrapper ? l.seller : `From ${l.seller}`}</span>
+                    {l.mine ? <button type="button" onClick={() => void trade({ do: "unlist", id: l.id }, () => "Back in your garage.")}>Take it back</button> : <button type="button" className="yes" disabled={view.cash < l.price} onClick={() => void trade({ do: "buy", id: l.id }, (d) => `${d.bought ?? "It"} is yours.`)}>{view.cash < l.price ? "Can't afford it" : "Buy it"}</button>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {club.length > 0 && (
+              <div className="pinks-card">
+                <h3>Who has what</h3>
+                <ul className="pinks-locals">
+                  {club.map((m) => (
+                    <li key={m.id}>
+                      <div><b>{m.name}{m.me ? " (you)" : ""}</b><small>{m.cars.length ? m.cars.map((c) => `${c.name}${c.quarter ? ` ${seconds(c.quarter)}` : ""}`).join(" · ") : "An empty garage"}</small></div>
+                      <span className="has">{m.wins} of {m.races}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+        ) : tab === "ads" || !car ? (
           <section className="pinks-ads" aria-label="Classifieds">
             <h2>Marketplace <small>New listings tomorrow. A seller's word is a seller's word.</small></h2>
             {view.news && <p className="pinks-news">{view.news}</p>}
@@ -375,6 +529,7 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
             )}
 
             <button type="button" className="pinks-sell" disabled={!tools.wrenches || !tools.jack} onClick={() => { if (window.confirm(`Tear ${car.name} down for parts? It comes to about ${dollars(car.teardown)} in pieces today, and there is no putting it back.`)) { act({ cmd: "strip", car: car.id }); setPicked(null); } }}>{tools.wrenches && tools.jack ? `Tear it down for parts: about ${dollars(car.teardown)} today` : "Tearing it down needs wrenches and a jack"}</button>
+            {house && <button type="button" className="pinks-sell" onClick={() => { const price = priceFor(car.name, car.value); if (price) { void trade({ do: "list", car: car.id, price }, () => `${car.name} is up for sale in ${house.name} at ${dollars(price)}.`); setPicked(null); } }}>Put it up for sale in {house.name}</button>}
             <button type="button" className="pinks-sell" onClick={() => { if (window.confirm(`Sell ${car.name} to the dealer for ${dollars(car.sells)}?`)) { act({ cmd: "sell", car: car.id }); setPicked(null); } }}>Sell to the dealer for {dollars(car.sells)}</button>
           </section>
         )}
