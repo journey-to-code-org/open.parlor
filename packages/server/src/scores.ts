@@ -2,6 +2,7 @@
 // rules, the seed, and every change of the controls) and the server plays it again itself: only the
 // score that run really earns is kept. Each member's best is kept for each set of rules and crew,
 // with its seed, so anybody in the house can take on the very same run.
+import { gunzipSync } from "node:zlib";
 import { arcadeGame, isArcadeGame, replay, type ArcadeGameId, type ArcadeLog } from "@journey-to-code/games";
 
 interface Sync {
@@ -31,6 +32,21 @@ const LONGEST = 3 * 60 * 60;
 const MOST_CHANGES = 600_000;
 /** The most runs kept for a house and game. */
 const KEPT = 200;
+/** The most a packed log may open out to. */
+const MOST_BYTES = 60_000_000;
+
+/**
+ * A run's log as it was sent: as it is, or packed (`logz`: gzip, then base64). A long run is a few
+ * megabytes written out and a tenth of that packed, which is what gets it under what the server reads.
+ */
+function logFrom(input: Record<string, unknown>): ArcadeLog<unknown> | undefined {
+  if (typeof input.logz !== "string") return input.log as ArcadeLog<unknown> | undefined;
+  try {
+    return JSON.parse(gunzipSync(Buffer.from(input.logz, "base64"), { maxOutputLength: MOST_BYTES }).toString("utf8")) as ArcadeLog<unknown>;
+  } catch {
+    return undefined;
+  }
+}
 
 export function createScores(sync: Sync) {
   const runsOf = async (house: string, game: ArcadeGameId): Promise<Run[]> => {
@@ -47,7 +63,7 @@ export function createScores(sync: Sync) {
     /**
      * /houses/:slug/scores, for a member of the house.
      *   GET  ?game=                                     → { game, runs }: each member's best for each set of rules, best first
-     *   POST { game, rules, seats, seed, log, score }    → { kept, best, runs }, or 400 when the run does not earn that score
+     *   POST { game, rules, seats, seed, log | logz, score }    → { kept, best, runs }, or 400 when the run does not earn that score
      */
     async handle(house: { slug: string; members: Member[] }, me: Member, method: string, input: Record<string, unknown>, query: URLSearchParams, now = Date.now()): Promise<{ status: number; body: unknown }> {
       const asked = method === "POST" ? input.game : query.get("game");
@@ -58,7 +74,7 @@ export function createScores(sync: Sync) {
 
       const seats = input.seats;
       const seed = input.seed;
-      const log = input.log as ArcadeLog<unknown> | undefined;
+      const log = logFrom(input);
       const sound =
         typeof seats === "number" && Number.isInteger(seats) && seats >= game.seats.min && seats <= game.seats.max &&
         typeof seed === "number" && Number.isSafeInteger(seed) && seed >= 0 &&
