@@ -1,4 +1,4 @@
-import { ARCADE_GAMES, KIT_GAMES, type ArcadeGameId } from "@journey-to-code/games";
+import { ARCADE_GAMES, IDLE_GAMES, KIT_GAMES, type ArcadeGameId, type IdleGameId } from "@journey-to-code/games";
 import { arranged } from "./catalogue";
 import type { GameId } from "./storage";
 
@@ -14,8 +14,12 @@ export const GAME_LIST: { id: GameId; name: string; emoji: string; blurb: string
  * challenges and tournaments go by it).
  */
 export const ARCADE_LIST: { id: ArcadeGameId; name: string; emoji: string; blurb: string }[] = ARCADE_GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, blurb: g.blurb }));
+/** The idle games: they carry on while nobody is looking, one player each, kept in this browser. */
+export const IDLE_LIST: { id: IdleGameId; name: string; emoji: string; blurb: string }[] = IDLE_GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, blurb: g.blurb }));
+/** A game that is played on its own screen, with no table opened for it. */
+export type SoloGameId = ArcadeGameId | IdleGameId;
 /** Everything the front page offers. */
-export const EVERY_GAME: { id: GameId | ArcadeGameId; name: string; emoji: string; blurb: string }[] = [...GAME_LIST, ...ARCADE_LIST];
+export const EVERY_GAME: { id: GameId | SoloGameId; name: string; emoji: string; blurb: string }[] = [...GAME_LIST, ...ARCADE_LIST, ...IDLE_LIST];
 
 /** Which game: a row of big, plain buttons. */
 export function GamePicker({ game, onPick }: { game: GameId; onPick: (game: GameId) => void }) {

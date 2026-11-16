@@ -1,12 +1,12 @@
 // The open.parlor's start page: the Vue game chooser, mounted inside the React app.
-import { ARCADE_GAMES, isArcadeGame, isBoardGame, isSportGame, KIT_GAMES, type ArcadeGameId } from "@journey-to-code/games";
+import { ARCADE_GAMES, IDLE_GAMES, isArcadeGame, isBoardGame, isIdleGame, isSportGame, KIT_GAMES } from "@journey-to-code/games";
 import { createApp, h, reactive } from "vue";
 import { useEffect, useRef, useState } from "react";
 import { bugs } from "../bugReport";
 import { openGameRequest } from "../GameRequest";
 import { arranged, refreshCatalogue } from "../catalogue";
 import { categoryOf, GAME_CATEGORIES } from "../categories";
-import { EVERY_GAME } from "../GamePicker";
+import { EVERY_GAME, type SoloGameId } from "../GamePicker";
 import { lobby, whoIsThere, type OpenTable } from "../lobbyApi";
 import { loadMyHouses, loadName, type GameId } from "../storage";
 import GameChooser from "./GameChooser.vue";
@@ -121,7 +121,7 @@ const DICE: Record<string, number[]> = {
 };
 
 /** An arcade game's tile shows a little screen: a ship at the bottom, what it is up against, and what is coming at it. */
-type MiniScreen = { ship: [x: number, y: number]; foes: [x: number, y: number][]; bullets: [x: number, y: number][]; /** A game that builds: a road (an SVG path), and where towers stand beside it. */ road?: string; towers?: [x: number, y: number][]; /** A clicker: one big chip, and a few it has earned. */ chip?: boolean };
+type MiniScreen = { ship: [x: number, y: number]; foes: [x: number, y: number][]; bullets: [x: number, y: number][]; /** A game that builds: a road (an SVG path), and where towers stand beside it. */ road?: string; towers?: [x: number, y: number][]; /** A clicker: one big chip, and a few it has earned. */ chip?: boolean; /** A store: a shopfront with its sign. */ shop?: boolean };
 const SCREENS: Record<string, MiniScreen> = {
   // A row of drones, a fan of bullets on its way down, and a gap to fly through.
   skyfire: { ship: [50, 82], foes: [[22, 18], [50, 12], [78, 18]], bullets: [[30, 44], [44, 52], [62, 40], [72, 58], [18, 64]] },
@@ -129,18 +129,19 @@ const SCREENS: Record<string, MiniScreen> = {
 // A road winding down the field, three towers beside it, and a few on their way along it.
 SCREENS.bulwark = { ship: [0, 0], foes: [], road: "M34 3 V26 H74 V54 H24 V78 H62 V97", towers: [[54, 40], [44, 66], [78, 68]], bullets: [[34, 14], [50, 26], [74, 40]] };
 SCREENS.chipstack = { ship: [0, 0], foes: [], bullets: [[20, 80], [34, 86], [70, 84], [82, 76]], chip: true };
+SCREENS.delbies = { ship: [0, 0], foes: [], bullets: [], shop: true };
 const EMPTY_SCREEN: MiniScreen = { ship: [50, 82], foes: [], bullets: [] };
 
 const SEATS: Record<string, { seats: [number, number]; teams: boolean }> = {
   spades: { seats: [4, 4], teams: true },
   palace: { seats: [2, 6], teams: false },
-  ...Object.fromEntries([...KIT_GAMES, ...ARCADE_GAMES].map((g) => [g.id, { seats: [g.seats.min, g.seats.max] as [number, number], teams: g.teams }])),
+  ...Object.fromEntries([...KIT_GAMES, ...ARCADE_GAMES, ...IDLE_GAMES].map((g) => [g.id, { seats: [g.seats.min, g.seats.max] as [number, number], teams: g.teams }])),
 };
 
 /** An open table as the front page shows it: one line. */
 const brief = (t: OpenTable) => ({ id: t.id, game: t.game, who: whoIsThere(t), free: t.free });
 
-export function Home({ last, onPick, onOpenHouse, onLobby }: { last: GameId | null; onPick: (game: GameId | ArcadeGameId) => void; onOpenHouse: (slug: string) => void; onLobby: () => void }) {
+export function Home({ last, onPick, onOpenHouse, onLobby }: { last: GameId | null; onPick: (game: GameId | SoloGameId) => void; onOpenHouse: (slug: string) => void; onLobby: () => void }) {
   const el = useRef<HTMLDivElement>(null);
   const [catalogue, setCatalogue] = useState(0);
   const handlers = useRef({ onPick, onOpenHouse, onLobby });
@@ -148,14 +149,14 @@ export function Home({ last, onPick, onOpenHouse, onLobby }: { last: GameId | nu
 
   useEffect(() => {
     // The games the parlor's host offers, in their order (every game, where there's no server).
-    const games = () => arranged(EVERY_GAME).map((g) => ({ ...g, category: categoryOf(g.id), screen: isArcadeGame(g.id) ? (SCREENS[g.id] ?? EMPTY_SCREEN) : undefined, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: isBoardGame(g.id) && !DICE[g.id] ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
+    const games = () => arranged(EVERY_GAME).map((g) => ({ ...g, category: categoryOf(g.id), screen: isArcadeGame(g.id) || isIdleGame(g.id) ? (SCREENS[g.id] ?? EMPTY_SCREEN) : undefined, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: isBoardGame(g.id) && !DICE[g.id] ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
     const props = reactive({
       games: games(),
       categories: GAME_CATEGORIES,
       houses: loadMyHouses(),
       last,
       name: loadName(),
-      onPick: (id: string) => handlers.current.onPick(id as GameId | ArcadeGameId),
+      onPick: (id: string) => handlers.current.onPick(id as GameId | SoloGameId),
       onHouse: (slug: string) => handlers.current.onOpenHouse(slug),
       // Tables waiting for players, kept fresh while the page is in front.
       open: [] as ReturnType<typeof brief>[],
