@@ -1,9 +1,9 @@
 # Playing with no connection
 
 Three things, in the order they were asked for: the games work offline, some of them can be shared
-on one device, and what it would take for several devices on the same wifi to play together when
-the internet is out. The first two are built. The third is an investigation, with a recommendation
-at the end.
+on one device, and several devices on the same wifi can play together when the internet is out.
+The first two are built. The third has a first version, built to be tried on real phones: what it
+does, what it doesn't yet, and what to check are at the end.
 
 ## Offline
 
@@ -81,55 +81,84 @@ others reach it.
 
 ### Option A: one computer on the wifi runs the parlor
 
-Works today, with no code. The server is one small Node process: on a laptop or a Raspberry Pi,
-`npm start` (or the Docker image), and everyone opens `http://<that computer's address>:8787`.
-Everything works, houses and tournaments included, because it is the real server.
+Works with no changes to the games. The server is one small Node process: on a laptop or a
+Raspberry Pi, `npm start` (or the Docker image), and everyone opens the address it prints. Everything
+works, houses and tournaments included, because it is the real server.
+
+At start-up the server now prints where it is on the wifi, and in a terminal a QR code for it
+(`packages/server/src/lan.ts`):
+
+```
+open.parlor on http://localhost:8787
+on this wifi: http://192.168.1.20:8787
+```
 
 - Phones can't be the host; somebody needs a computer.
 - No install, notifications or offline copy on the guests (not a secure address). None is needed
   while the server is in the room.
-- Worth adding: the server printing its wifi address and a QR code for it at start-up, and a
-  "Play on this wifi" page that shows the same. Small.
 
-### Option B: one phone hosts in its browser, the others join by a link
+### Option B: one phone hosts in its browser, the others join by a QR code
 
-This is the "share a link" idea, and it is feasible. The offline copy is what makes it possible:
-a link to the parlor's own address opens the app from the copy with no connection.
+Built, as a first version: `packages/web/src/wifi/`. The offline copy is what makes it possible:
+the host's QR code is a link to the parlor's own address, which opens from the copy with no
+connection.
 
-1. The host opens a table "on this wifi". The page makes a WebRTC offer with no ICE servers and
-   shows it as a link in a QR code: `https://parlor…/?join#<offer>`.
-2. A guest scans it. The link opens their kept copy of the app, which makes the answer and shows
-   it as a QR code (or a short code).
-3. The host scans the answer. The channel opens, and stays open with no server anywhere.
-4. The host's page runs the room: it applies moves and sends each seat its own view, as the server
-   does. Hidden hands stay hidden from the other guests. (The host's device holds every hand; at a
-   family table that is a matter of trust, as it is for whoever runs the server.)
+1. The host picks a game and **Play on this wifi**. The page makes a WebRTC offer with no ICE
+   servers and shows it as a QR code of a link: `https://parlor…/?wifi=join#<offer>`.
+2. A guest scans it with their camera, or with **Join on this wifi** on the front page. Their page
+   makes the answer and shows it as a QR code.
+3. The host taps **Scan their code** and points at it. The channel opens. Each more guest is the
+   same two scans; computer players take the seats nobody did.
+4. The host's page runs the game (`kit/LocalKit.tsx`, the practice table, with seats played over
+   the channel): it applies everyone's moves and sends each guest their own seat's view, as the
+   server does. A hand stays hidden from the other guests. (The host's device holds every hand;
+   at a family table that is a matter of trust, as it is for whoever runs the server.)
 
-One scan each way per guest. With no internet a link can't travel by iMessage or WhatsApp, so it
-has to be a QR code, AirDrop or Quick Share, or a code read aloud.
+It is every kit game, card games included, not only the ones that can share a screen.
 
-Measured here, between two Chrome pages with no ICE servers and the offer and answer carried by
-hand: the channel opened in 0.3 seconds. The full offer is 587 bytes; the part that actually has to
-travel (two ICE secrets, the certificate fingerprint and one address) is about 150 to 200
-characters, which fits a link and a small QR code comfortably.
+What travels in a code (`wifi/signal.ts`) is only what the other browser can't guess: two ICE
+secrets, the certificate's fingerprint and where the device listens on the network. That is about
+130 characters, a link of about 170, and a QR code of 45 modules a side. With no internet a link
+can't go by iMessage or WhatsApp, so both screens also show the code as text for AirDrop or Quick
+Share.
 
-Not proven yet, and only two real phones on a router with its internet unplugged will settle it:
+Checked in Chrome, two separate browsers on one machine:
 
-- **Finding each other.** Browsers hide local addresses behind `.local` names, which are resolved
-  by multicast on the wifi. That works on a home router and a phone hotspot; guest networks and
-  "client isolation" block it. (In the sandbox this was written in there is no multicast, and the
-  handshake failed for exactly that reason until the pages were online.)
-- **Firefox** has long refused WebRTC when it believes it is offline. Chrome and Safari are the
-  targets.
-- **The permission prompt** Chrome plans for WebRTC on the local network: probably one "allow this
-  site to find devices on your network" tap per device.
-- **The host's phone sleeping or leaving** stops the table. The state can be handed to every guest
-  as it changes, so another device could take over; that is more work.
+- Joined by link and pasted code, and by the camera (a fake camera shown the guest's QR code): the
+  channel opens in under a tenth of a second.
+- Chess played both ways; Gin, Hearts (two people and two computer players) and Mini Golf start on
+  both screens, each seeing its own seat.
+- After the join link is made, neither page asks the server for anything.
+- The host leaving closes the guest's table with a message; a guest dropping shows on the host's.
 
-What it would take: a second transport in open.rooms' client (a room over a data channel instead
-of `/rooms` and the sync log), the room runner in the page (a worker, beside the bot worker), the
-QR screens (showing is easy; scanning uses the camera, `BarcodeDetector` on Android and a small
-decoder elsewhere), and reconnecting. Large, and mostly in open.rooms.
+**Not checked, and the reason this is a first version.** Only real devices will tell:
+
+- **Two phones on a router with its internet unplugged.** Browsers hide local addresses behind
+  `.local` names that are resolved by multicast on the wifi. That should work on a home router and
+  on a phone's hotspot; a guest network, or a router with "client isolation", keeps devices apart
+  and the join will fail with a message saying so.
+- **iPhones.** Safari should take the rebuilt offer (it is a plain data-channel SDP), but it hasn't
+  been tried. An app added to the home screen keeps its own offline copy apart from Safari's: a
+  QR code scanned with the camera opens Safari, so on an iPhone "Join on this wifi" inside the app
+  is the surer way.
+- **Firefox** has long refused WebRTC when it believes it is offline.
+- **Chrome's coming permission prompt** for WebRTC on the local network: probably one tap.
+
+What it doesn't do yet:
+
+- A guest who drops off can't come back to the same game. The host sees who dropped; the table
+  stays as it was.
+- The game stops if the host's device sleeps or leaves. The screen is kept awake while a table
+  runs. Handing the state to every guest as it changes, so another device can take over, is the
+  next piece.
+- Nothing is saved: no history, no scores to a house, no chat between devices, no table settings
+  on a guest's screen, and Spades and Palace (which aren't kit games) aren't offered.
+- A view is sent whole on every change, in one message (the limit is 256 KB). A long Mini Golf
+  course is well inside it; a much larger game would want its views sent in pieces.
+
+The fuller version of this is a second transport in open.rooms' client (a room over a data
+channel instead of `/rooms` and the sync log), which would bring history, reconnecting and every
+room feature with it. This version is what it takes to find out whether that is worth building.
 
 ### Option C: a real app
 
@@ -143,12 +172,9 @@ Web Bluetooth can't make a phone the thing others connect to and isn't on iPhone
 Android only. Pointing the public page at a server on the wifi runs into mixed content and the
 permission prompts above.
 
-### Recommendation
+### What to try next
 
-1. Do Option A's small polish now: the wifi address and a QR code at server start. It makes
-   "the internet is out at the cabin" a solved problem for anyone with a laptop.
-2. Before committing to Option B, a spike: Chess between two phones, joined by QR, on a router
-   with no internet. Chess has two seats and nothing hidden, so it needs no rooms work, and it
-   answers the questions above on real hardware.
-3. If the spike holds, build the data-channel transport in open.rooms, and every game gets it at
-   once, card games included.
+1. Two phones, the router's internet unplugged: host Chess on one, join from the other. Then the
+   same on a phone's hotspot, and with an iPhone on either side.
+2. If it holds: reconnecting, and the host handing the game over when it leaves.
+3. Then the data-channel transport in open.rooms, so a wifi table is a room like any other.

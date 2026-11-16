@@ -4,6 +4,11 @@
 // With `others`, more people sit at the same device (see sameDevice.ts): they take the seats after
 // yours, computer players fill whatever is left, and the screen shows the table of whoever's move
 // it is. Nothing here needs the server, so all of it works with no connection.
+//
+// With `guests`, this is also a table on the wifi (wifi/WifiHost.tsx): each guest has the seat after
+// the people here, played from their own device over a channel. This page is their server: it is
+// sent their moves and sends each of them their own seat's view, so a hand stays hidden from the
+// other guests exactly as it does at a family table.
 import { GameError, isBoardGame, kitGame, kitGreet, reactToKit, type KitGameId, type KitRemark } from "@journey-to-code/games";
 import { palaceReplyTo } from "@journey-to-code/palace";
 import type { ChatMessage } from "@journey-to-code/rooms/client";
@@ -16,17 +21,24 @@ import { GameTable } from "./GameTable";
 import { botMove, type BotJob } from "./botMove";
 import { THINK_BUDGET, thinkElsewhere, warmThinker } from "./botThinker";
 import { personName, seatAtScreen } from "./sameDevice";
+import type { PeerLink } from "../wifi/link";
 
 /** On a board the screen stays with the person who moved for a moment, so they see the piece land before the board turns to the next person. */
 const HANDOVER_MS = 900;
 
-export function LocalKit({ game: id, name, others, rules, seats, seed, onLeave }: { game: KitGameId; name: string; /** The other people at this device, in seat order after you. */ others?: string[]; rules: unknown; seats: number; seed: number; onLeave: () => void }) {
+export function LocalKit({ game: id, name, others, guests, rules, seats, seed, onLeave }: { game: KitGameId; name: string; /** The other people at this device, in seat order after you. */ others?: string[]; /** People on their own devices on this wifi, in seat order after the people here. */ guests?: { name: string; link: PeerLink }[]; rules: unknown; seats: number; seed: number; onLeave: () => void }) {
   const game = kitGame(id)!;
   /** Seats 0 to people - 1 are people at this device; the rest are computer players. */
   const people = Math.min(seats, 1 + (others?.length ?? 0));
-  const bots = useMemo(() => pickPersonas(seats - people, mulberry32(seed)).map((p) => p.name), [seats, people, seed]);
-  const names = useMemo(() => [people > 1 ? personName(name === "You" ? "" : name, 0) : name, ...(others ?? []).slice(0, people - 1).map((n, i) => personName(n, i + 1)), ...bots], [name, others, people, bots]);
-  const cast = useMemo(() => ({ bots: bots.map((n, i) => ({ seat: i + people, name: n })) }), [bots, people]);
+  /** Seats `people` to `humans - 1` are guests on the wifi; computer players start at `humans`. */
+  const away = useMemo(() => (guests ?? []).slice(0, seats - people), [guests, seats, people]);
+  const humans = people + away.length;
+  const bots = useMemo(() => pickPersonas(seats - humans, mulberry32(seed)).map((p) => p.name), [seats, humans, seed]);
+  const names = useMemo(
+    () => [people > 1 || away.length ? personName(name === "You" ? "" : name, 0) : name, ...(others ?? []).slice(0, people - 1).map((n, i) => personName(n, i + 1)), ...away.map((g, i) => personName(g.name, people + i)), ...bots],
+    [name, others, people, away, bots],
+  );
+  const cast = useMemo(() => ({ bots: bots.map((n, i) => ({ seat: i + humans, name: n })) }), [bots, humans]);
   const [state, setState] = useState(() => game.newGame(game.normalize(rules), seats, seed));
   const [settings, setSettings] = useState(loadTableSettings);
   const latest = useRef(state);
@@ -93,7 +105,7 @@ export function LocalKit({ game: id, name, others, rules, seats, seed, onLeave }
   const insideTheClock = (seat: number, delay: number) => (own && own.seat === seat ? Math.min(delay, Math.round(own.after * 0.6)) : delay);
   const [deadline, setDeadline] = useState<{ at: number; seat: number } | null>(null);
   useEffect(() => {
-    if (!own || (own.seat >= people && !own.strict)) return setDeadline(null);
+    if (!own || (own.seat >= humans && !own.strict)) return setDeadline(null);
     setDeadline({ at: since + own.after, seat: own.seat });
     const timer = setTimeout(() => {
       // Only if nothing has happened since: a move made as the clock ran out is the one that counts.
@@ -121,11 +133,11 @@ export function LocalKit({ game: id, name, others, rules, seats, seed, onLeave }
   }, []);
   useEffect(() => {
     if (game.summary(state).over || pending.current) return;
-    const style = (s: number) => styleFor(personaFor(bots[s - people]!).style, settings.skill);
+    const style = (s: number) => styleFor(personaFor(bots[s - humans]!).style, settings.skill);
     // A heavy think isn't done here just to find out whether there is one: the game says so itself.
-    const seat = bots.map((_, i) => i + people).find((s) => game.heavy?.(state, s) || game.bot(state, s, style(s)) !== null);
+    const seat = bots.map((_, i) => i + humans).find((s) => game.heavy?.(state, s) || game.bot(state, s, style(s)) !== null);
     if (seat === undefined) return;
-    const job = (of: unknown): BotJob => ({ game: id, state: of, seat, name: bots[seat - people]!, skill: settings.skill, budget: THINK_BUDGET });
+    const job = (of: unknown): BotJob => ({ game: id, state: of, seat, name: bots[seat - humans]!, skill: settings.skill, budget: THINK_BUDGET });
     const ask = (of: unknown) => (game.heavy?.(of, seat) ? thinkElsewhere(job(of)) : null);
     const mine = {};
     turn.current = mine;
@@ -172,7 +184,7 @@ export function LocalKit({ game: id, name, others, rules, seats, seed, onLeave }
       });
       setTick((t) => t + 1);
     };
-    pending.current = setTimeout(() => void play(), game.reactionTime?.(state, seat, style(seat)) ?? insideTheClock(seat, paceDelay(settings.pace, () => Math.round(game.thinkingTime(state, seat) * personaFor(bots[seat - people]!).pace * (0.8 + Math.random() * 0.5)))));
+    pending.current = setTimeout(() => void play(), game.reactionTime?.(state, seat, style(seat)) ?? insideTheClock(seat, paceDelay(settings.pace, () => Math.round(game.thinkingTime(state, seat) * personaFor(bots[seat - humans]!).pace * (0.8 + Math.random() * 0.5)))));
   }, [state, bots, settings, tick]);
   useEffect(
     () => () => {
@@ -219,6 +231,23 @@ export function LocalKit({ game: id, name, others, rules, seats, seed, onLeave }
     return null;
   };
 
+  // The guests on the wifi: each is sent their seat's view whenever the table changes, and their
+  // moves are made here, with the game's answer (a refusal, in words, or nothing) sent back.
+  const [gone, setGone] = useState<number[]>([]);
+  useEffect(() => {
+    away.forEach((guest, i) => guest.link.send({ t: "view", seat: people + i, names, view: game.view(state, people + i) }));
+  }, [state, names, away]);
+  useEffect(() => {
+    const stops = away.flatMap((guest, i) => [
+      guest.link.listen((message) => {
+        if (message.t !== "move" || !message.move || typeof message.move !== "object") return;
+        void moveAs(people + i, message.move).then((error) => guest.link.send({ t: "ack", id: message.id, error }));
+      }),
+      guest.link.closed(() => setGone((seats) => [...seats, people + i])),
+    ]);
+    return () => stops.forEach((stop) => stop());
+  }, [away]);
+
   const view = useMemo(() => game.view(state, here), [state, here]);
   return (
     <TableTime.Provider value={time}>
@@ -227,6 +256,7 @@ export function LocalKit({ game: id, name, others, rules, seats, seed, onLeave }
         names={names}
         act={act}
         onLeave={onLeave}
+        banner={gone.length > 0 ? <p className="wifi-gone" role="status">{gone.map((seat) => names[seat]).join(" and ")} dropped off the wifi. The table is as they left it.</p> : undefined}
         // People round one screen talk across it; the chat is for the computer players' table talk.
         chat={bots.length > 0 ? { messages, mySeat: here, send } : undefined}
         together={people > 1}

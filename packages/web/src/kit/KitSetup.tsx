@@ -41,6 +41,8 @@ interface Props {
   onHome: () => void;
   /** `others`: the other people playing at this device, when there are any (see sameDevice.ts). */
   onPractice: (name: string, rules: Rules, seats: number, others?: string[]) => void;
+  /** Host a table on this wifi, with no server (wifi/WifiHost.tsx). Not offered where it's left out (the blog embed). */
+  onWifi?: (name: string, rules: Rules, seats: number) => void;
   onFamilyTable: (rules: Rules, seats: number) => Promise<void>;
   /** Sit at an open table that's waiting for this game, or open one with these rules and wait. */
   onFindPlayers: (name: string, rules: Rules, seats: number) => Promise<void>;
@@ -54,7 +56,7 @@ interface Props {
 export function KitSetup({
   game: id,
   onHome,
-  onPractice,
+  onPractice, onWifi,
   onFamilyTable,
   onFindPlayers,
   onOpenHouse,
@@ -314,6 +316,19 @@ export function KitSetup({
           >
             {solo ? "Deal" : people > 1 ? "Play together on this device" : "Practice against the computer"}
           </button>
+          {!solo && onWifi && (
+            <button
+              type="button"
+              className="secondary"
+              disabled={errors.length > 0}
+              onClick={() => {
+                remember();
+                onWifi(name.trim() || "You", rules, tableSeats);
+              }}
+            >
+              📶 Play on this wifi
+            </button>
+          )}
           {!online && <p className="fine">{OFFLINE_LINE}</p>}
           {problem && <p className="error">{problem}</p>}
         </>

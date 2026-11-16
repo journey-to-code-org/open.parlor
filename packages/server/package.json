@@ -21,6 +21,7 @@
     "@journey-to-code/rules": "^0.1.0",
     "@open-parlor/courses": "*",
     "@zubra/sync": "^5.15.0",
+    "qrcode-generator": "^2.0.4",
     "web-push": "^4.0.0",
     "ws": "^8.23.0"
   },

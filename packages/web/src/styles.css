@@ -2854,3 +2854,19 @@ button.mj-slot { cursor: pointer; }
 .offline-note.ready { color: var(--ink, #1c1c1c); background: var(--gold); border-color: transparent; }
 /* A table has no room to spare, and a game that is running needs no telling: the note is for the screens that lead to one. */
 body:has(main.table) .offline-note { display: none; }
+
+/* ---------- A table on this wifi (wifi/) ---------- */
+main.setup.wifi { max-width: 520px; }
+.wifi-step { display: grid; gap: 10px; justify-items: center; text-align: center; margin: 18px 0; }
+.wifi-step h2 { margin: 6px 0 0; font-size: 1.15rem; }
+.wifi-step > button { width: 100%; }
+/* A QR code is read by a camera: black on white whatever the page's colours, and as big as the column allows. */
+.qr { width: min(100%, 320px); height: auto; border-radius: 10px; background: #fff; }
+.qr-scan { width: min(100%, 320px); }
+.qr-scan video { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; background: #000; }
+.wifi-paste { display: flex; gap: 8px; align-items: end; width: 100%; }
+.wifi-paste label, label.wifi-paste { display: grid; gap: 4px; flex: 1; text-align: left; }
+.wifi-paste input { width: 100%; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(0, 0, 0, 0.2); background: var(--cream); color: #1c1c1c; font: inherit; font-size: 0.85rem; }
+.wifi-seats { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.wifi-seats li { padding: 4px 12px; border-radius: 999px; background: rgba(0, 0, 0, 0.25); }
+.wifi-gone { margin: 0; padding: 6px 12px; text-align: center; font-size: 0.85rem; background: rgba(120, 30, 20, 0.85); color: var(--cream); }

@@ -144,11 +144,11 @@ const SEATS: Record<string, { seats: [number, number]; teams: boolean }> = {
 /** An open table as the front page shows it: one line. */
 const brief = (t: OpenTable) => ({ id: t.id, game: t.game, who: whoIsThere(t), free: t.free });
 
-export function Home({ last, onPick, onOpenHouse, onLobby }: { last: GameId | null; onPick: (game: GameId | SoloGameId) => void; onOpenHouse: (slug: string) => void; onLobby: () => void }) {
+export function Home({ last, onPick, onOpenHouse, onLobby, onWifi }: { last: GameId | null; onPick: (game: GameId | SoloGameId) => void; onOpenHouse: (slug: string) => void; onLobby: () => void; /** Join a table someone is hosting on this wifi. */ onWifi: () => void }) {
   const el = useRef<HTMLDivElement>(null);
   const [catalogue, setCatalogue] = useState(0);
-  const handlers = useRef({ onPick, onOpenHouse, onLobby });
-  handlers.current = { onPick, onOpenHouse, onLobby };
+  const handlers = useRef({ onPick, onOpenHouse, onLobby, onWifi });
+  handlers.current = { onPick, onOpenHouse, onLobby, onWifi };
 
   useEffect(() => {
     // The games the parlor's host offers, in their order (every game, where there's no server).
@@ -164,6 +164,7 @@ export function Home({ last, onPick, onOpenHouse, onLobby }: { last: GameId | nu
       // Tables waiting for players, kept fresh while the page is in front.
       open: [] as ReturnType<typeof brief>[],
       onLobby: () => handlers.current.onLobby(),
+      onWifi: () => handlers.current.onWifi(),
       // "Ask for a game" in the footer, where the parlor takes requests.
       canAsk: false,
       onAsk: openGameRequest,
