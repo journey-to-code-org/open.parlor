@@ -2675,3 +2675,27 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .pinks-road .pedal { width: 78px; height: 110px; }
 .pinks-road .pedal.brake { background: linear-gradient(rgba(120, 130, 150, 0.55), rgba(20, 18, 30, 0.55)); }
 @media (max-width: 560px) { .pinks-road .pinks-strip-top { top: 34px; } }
+
+
+/* Mahjong Shanghai: tiles placed by half-tile units; --u is half a tile's width. */
+.mj-stack { --u: min(22px, calc(94vw / var(--cols))); position: relative; width: calc(var(--u) * var(--cols)); height: calc(var(--u) * 1.3 * var(--rows) + var(--u) * 0.6); margin: 0 auto; }
+.mj-slot { position: absolute; left: calc(var(--u) * var(--x) + var(--u) * 0.3 * var(--z)); top: calc(var(--u) * 1.3 * var(--y) - var(--u) * 0.3 * var(--z) + var(--u) * 0.6); width: calc(var(--u) * 2); height: calc(var(--u) * 2.6); z-index: var(--z); padding: 0; border: 0; background: none; font: inherit; }
+.mj-tile { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; box-sizing: border-box; background: linear-gradient(#fffdf4, #e2d9bd); border: 1px solid #a99d78; border-radius: 12%; box-shadow: 1px 1px 0 #8f8460, 2px 2px 2px rgb(0 0 0 / 0.35); color: #1c3d2e; opacity: 0.62; }
+.mj-tile.red { color: #b3261e; }
+.mj-tile span { font-size: calc(var(--u) * 2.3); line-height: 1; font-family: "Noto Sans Symbols 2", "Segoe UI Symbol", "Apple Symbols", "Symbola", sans-serif; }
+.mj-tile.free { opacity: 1; }
+button.mj-slot { cursor: pointer; }
+.mj-tile.picked { outline: 3px solid #f2c14e; outline-offset: -1px; transform: translateY(-3px); }
+
+/* Mahjong Riichi: a river on each side, the dora indicators and the wall between. */
+.mj-rivers { display: grid; grid-template-areas: ". top ." "left core right" ". bottom ."; grid-template-columns: 1fr minmax(0, 2fr) 1fr; gap: 6px; width: 100%; max-width: 640px; margin: 0 auto; align-items: center; }
+.mj-river { display: flex; flex-direction: column; gap: 2px; align-items: center; min-width: 0; }
+.mj-river small { opacity: 0.75; }
+.mj-river.top { grid-area: top; } .mj-river.bottom { grid-area: bottom; } .mj-river.left { grid-area: left; } .mj-river.right { grid-area: right; }
+.mj-river-tiles { display: grid; grid-template-columns: repeat(6, auto); gap: 2px; justify-content: center; }
+.mj-river.left .mj-river-tiles, .mj-river.right .mj-river-tiles { grid-template-columns: repeat(3, auto); }
+.mj-river-tile.riichi { transform: rotate(90deg); margin: 0 6px; }
+.mj-river-tile.claimed { opacity: 0.3; }
+.mj-river-tile.last { filter: drop-shadow(0 0 4px #f2c14e); }
+.mj-core { grid-area: core; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.mj-dora { display: flex; gap: 3px; }

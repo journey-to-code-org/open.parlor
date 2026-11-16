@@ -38,11 +38,12 @@ describe("the parlor's words for Shitstorm", () => {
 });
 
 describe("games the parlor can't draw yet", () => {
-  it("keeps Mahjong Riichi and billiards off the lists until each has a table", () => {
-    for (const id of ["mahjongriichi", "billiards"]) {
-      expect(KIT_GAMES.some((g) => g.id === id), id).toBe(true);
-      expect(GAME_LIST.some((g) => g.id === id), id).toBe(false);
-    }
+  it("keeps billiards off the lists until it has been seen on a screen", () => {
+    expect(KIT_GAMES.some((g) => g.id === "billiards")).toBe(true);
+    expect(GAME_LIST.some((g) => g.id === "billiards")).toBe(false);
+  });
+  it("lists Mahjong Riichi now that it has a table", () => {
+    expect(GAME_LIST.some((g) => g.id === "mahjongriichi")).toBe(true);
   });
   it("leaves a rack of tiles in the order the engine gave it", () => {
     const tile = { kind: "tile" as const };
