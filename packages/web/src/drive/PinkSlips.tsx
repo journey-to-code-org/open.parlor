@@ -1,4 +1,4 @@
-// Pink Slips: the garage, and the way out of it to the strip. The garage is the engine's
+// Road to the Shootout (`pinkslips` in code): the garage, and the way out of it to the strip. The garage is the engine's
 // (`pinkslipsgarage` in open.games), kept in this browser: the cash, the cars, and today's
 // classifieds, which change with the day on this device.
 //
@@ -130,7 +130,7 @@ export function PinkSlips({ onHome }: { onHome: () => void }) {
     <div className="pinks">
       <header className="pinks-top">
         <button type="button" className="pinks-back" onClick={onHome}>← Games</button>
-        <h1>🏁 Pink Slips</h1>
+        <h1>🏁 Road to the Shootout</h1>
         <div className="pinks-till">
           <div><small>Cash</small><b className="cash">{dollars(view.cash)}</b></div>
           <div><small>Races</small><b>{view.record.wins} of {view.record.races}</b></div>

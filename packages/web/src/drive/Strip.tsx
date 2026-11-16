@@ -5,10 +5,12 @@
 //
 // The race is the engine's (`pinkSlips` from open.games), stepped here sixty times a second. Your
 // lane is seat 0; the other lane, when there is one, is a computer driver in seat 1.
-import { pinkSlips, pinkSlipsResults, specOf, type ArcadeView, type Build, type PinkSlipsInput, type PinkSlipsResult, type PinkSlipsRules, type PinkSlipsState } from "@journey-to-code/games";
+import { CAR_MODELS, pinkSlips, pinkSlipsResults, specOf, type ArcadeView, type Build, type PinkSlipsInput, type PinkSlipsResult, type PinkSlipsRules, type PinkSlipsState } from "@journey-to-code/games";
 import type { PlayStyle } from "@journey-to-code/rules";
 import { useEffect, useRef, useState } from "react";
 import { arcadeAudio, blip, crash, notes, wakeArcadeSound } from "../arcade/sounds";
+import { motionSetting, wants3d } from "../display";
+import { loadStrip3d, type Strip3d } from "./strip3d";
 
 export interface Rival {
   name: string;
@@ -35,7 +37,12 @@ const slip = (ms: number | null) => (ms === null ? "—" : (ms / 1000).toFixed(3
 
 type Lane = NonNullable<ArcadeView["race"]>["lanes"][number];
 
-function draw(g: CanvasRenderingContext2D, w: number, h: number, view: ArcadeView, tick: number) {
+/**
+ * Draw a frame. When the road has been drawn in 3-D underneath (`solid`), only what lies over it is
+ * drawn here: how far along everyone is, the start lights and the dashboard.
+ */
+function draw(g: CanvasRenderingContext2D, w: number, h: number, view: ArcadeView, tick: number, solid: boolean) {
+  g.clearRect(0, 0, w, h);
   const race = view.race!;
   const me = race.lanes[0]!;
   const lanes = race.lanes.length;
@@ -54,6 +61,7 @@ function draw(g: CanvasRenderingContext2D, w: number, h: number, view: ArcadeVie
   const laneX = (seat: number) => (seat * 2 - (lanes - 1)) * (LANE / 2);
   const edge = (lanes * LANE) / 2 + 1.2;
 
+  if (!solid) {
   // The night, and a town a long way off.
   const sky = g.createLinearGradient(0, 0, 0, hor);
   sky.addColorStop(0, "#0b0a18");
@@ -180,6 +188,8 @@ function draw(g: CanvasRenderingContext2D, w: number, h: number, view: ArcadeVie
   };
   race.lanes.map((lane, seat) => ({ lane, seat })).filter((e) => e.lane.staged).sort((a, b) => b.lane.distance - a.lane.distance).forEach((e) => car(e.lane, e.seat));
 
+  }
+
   // How far along everyone is, across the top.
   const barW = Math.min(w - 40, 520);
   const bx = (w - barW) / 2;
@@ -220,8 +230,8 @@ function draw(g: CanvasRenderingContext2D, w: number, h: number, view: ArcadeVie
   const gy = h - r * 0.86;
   const dash = g.createLinearGradient(0, h - r * 2.3, 0, h);
   dash.addColorStop(0, "rgba(8, 9, 14, 0)");
-  dash.addColorStop(0.35, "rgba(8, 9, 14, 0.82)");
-  dash.addColorStop(1, "rgba(8, 9, 14, 0.96)");
+  dash.addColorStop(0.45, solid ? "rgba(8, 9, 14, 0.5)" : "rgba(8, 9, 14, 0.82)");
+  dash.addColorStop(1, solid ? "rgba(8, 9, 14, 0.85)" : "rgba(8, 9, 14, 0.96)");
   g.fillStyle = dash;
   g.fillRect(0, h - r * 2.3, w, r * 2.3);
   const top = me.redline + 1200;
@@ -334,6 +344,7 @@ function engineNote() {
 
 export function Strip({ rules, build, carName, rival, onDone }: { rules: PinkSlipsRules; build: Build; carName: string; rival: Rival | null; onDone: (outcome: StripOutcome | null) => void }) {
   const canvas = useRef<HTMLCanvasElement | null>(null);
+  const glCanvas = useRef<HTMLCanvasElement | null>(null);
   const state = useRef<PinkSlipsState | null>(null);
   const controls = useRef({ gas: 0, gear: 0 });
   const [results, setResults] = useState<PinkSlipsResult[] | null>(null);
@@ -366,6 +377,16 @@ export function Strip({ rules, build, carName, rival, onDone }: { rules: PinkSli
     let last = performance.now();
     let owed = 0;
     let done = false;
+    // The road in 3-D, where the device can and the display setting asks for it.
+    let gl: Strip3d | null = null;
+    let gone = false;
+    if (wants3d("pinkslips") && glCanvas.current) {
+      void loadStrip3d(glCanvas.current).then((made) => {
+        if (gone) made?.dispose();
+        else gl = made;
+      });
+    }
+    const models = [build, ...(rival ? [rival.build] : [])].map((b) => CAR_MODELS[b[0]!]?.key ?? "sparrow");
 
     const size = () => {
       const ratio = Math.min(2, window.devicePixelRatio || 1);
@@ -413,7 +434,9 @@ export function Strip({ rules, build, carName, rival, onDone }: { rules: PinkSli
       note?.set(me.rpm, controls.current.gas, !done && !me.blown);
       const words = view.race!.phase === "ready" ? "Staged. Bring the revs up." : view.race!.phase === "tree" ? "" : view.race!.phase === "racing" && me.reaction === null && !me.blown ? "GO" : me.foul && !done ? "Red light" : me.blown && !done ? "Blown" : "";
       setBanner((was) => (was === words ? was : words));
-      draw(g, cv.clientWidth, cv.clientHeight, view, s.tick);
+      const solid = !!gl && gl.render({ race: view.race!, cars: models, tones: TONES, width: cv.clientWidth, height: cv.clientHeight, dpr: Math.min(2, window.devicePixelRatio || 1), time: now, still: motionSetting() !== "on" });
+      if (glCanvas.current) glCanvas.current.style.visibility = solid ? "visible" : "hidden";
+      draw(g, cv.clientWidth, cv.clientHeight, view, s.tick, solid);
     };
     frame = requestAnimationFrame(loop);
 
@@ -444,6 +467,8 @@ export function Strip({ rules, build, carName, rival, onDone }: { rules: PinkSli
     window.addEventListener("keyup", up);
     return () => {
       cancelAnimationFrame(frame);
+      gone = true;
+      gl?.dispose();
       note?.stop();
       window.removeEventListener("resize", size);
       window.removeEventListener("keydown", down);
@@ -476,6 +501,7 @@ export function Strip({ rules, build, carName, rival, onDone }: { rules: PinkSli
 
   return (
     <div className="pinks-strip">
+      <canvas ref={glCanvas} className="gl" />
       <canvas ref={canvas} />
       <div className="pinks-strip-top">
         <button type="button" onClick={leave} disabled={!!results}>{rival && rival.stake > 0 ? "Forfeit" : "Leave"}</button>
