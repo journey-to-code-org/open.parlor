@@ -12,6 +12,7 @@ import { useTableSounds } from "./feedback/useTableSounds";
 import { Bubble, TableChat, useBubbles, type ChatProps } from "./Chat";
 import { TRICK_HOLD_MS, type TableState } from "./useTable";
 import { TableSettingsButton } from "./TableSettings";
+import { useWants3d } from "./display";
 import { HandSortBar, useHandOrder } from "./HandSort";
 import { SoundButton } from "./SoundButton";
 
@@ -122,8 +123,11 @@ export function Table({ table: t, names, onLeave, banner, chat, settings }: Prop
     />
   );
 
+  // In 3-D the felt is a table seen from your chair, set out in space with CSS (".spades.three" in styles.css).
+  const three = useWants3d("spades");
+
   return (
-    <main className="table" ref={root}>
+    <main className={`table spades${three ? " three" : ""}`} ref={root}>
       <ScoreBoard
         us={{ name: `${names[me]} & ${names[partner]}`, ...view.scores[myTeam] }}
         them={{ name: `${names[left]} & ${names[right]}`, ...view.scores[(1 - myTeam) as Team] }}
@@ -135,7 +139,7 @@ export function Table({ table: t, names, onLeave, banner, chat, settings }: Prop
 
       <div className="felt">
         <SoundButton on={soundOn} toggle={toggleSound} />
-        {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} />}
+        {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} depth />}
         {[left, partner, right].map((s) => (
           <div key={s} className={`seat-slot ${side(s)}`}>
             {seat(s)}

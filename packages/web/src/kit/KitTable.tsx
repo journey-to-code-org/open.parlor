@@ -21,6 +21,7 @@ import {
 import { EASE_OUT, glideFrom, lift, motionScale, reducedMotion, useCardFlip, useFlash } from "../motion";
 import { seatAround } from "../palace/PalaceTable";
 import { TableSettingsButton } from "../TableSettings";
+import { useWants3d } from "../display";
 import { HandSortBar, useHandOrder } from "../HandSort";
 import { cardKey } from "../handOrder";
 import { SoundButton } from "../SoundButton";
@@ -258,9 +259,12 @@ export function KitTable({
     view.melds.filter((m) => !m.byTeam && m.owner === seat);
   const gridOf = (seat: number) => view.grids?.find((g) => g.owner === seat);
   const teamMelds = view.melds.filter((m) => m.byTeam);
+  // In 3-D the felt is a table seen from your chair, set out in space with CSS (".table.three" in
+  // styles.css): the same page, and every card still the button it was.
+  const three = useWants3d(view.game);
 
   return (
-    <main className={`table kit kit-${view.game}`} ref={root}>
+    <main className={`table kit kit-${view.game}${three ? " three" : ""}`} ref={root}>
       <header className="palace-bar kit-bar">
         <button
           type="button"
@@ -289,6 +293,7 @@ export function KitTable({
               settings={settings.value}
               onChange={settings.change}
               solo={view.seats === 1}
+              depth
             />
           )}
           <SoundButton on={soundOn} toggle={toggleSound} inline />

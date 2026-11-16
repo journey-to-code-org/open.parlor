@@ -34,7 +34,9 @@ import { named, ResultTable, sideName } from "../kit/KitTable";
 import { motionScale, useCardFlip } from "../motion";
 import { TableSettingsButton } from "../TableSettings";
 import { OfferBanner, OffersMenu } from "./Offers";
+import { hasBoard3d } from "./board3d";
 import { PieceSet, usePieceArt } from "./pieces";
+import { useBoard3d } from "./useBoard3d";
 import { RecordStrip } from "./Record";
 import { SeatClock } from "./SeatClock";
 import { Dice } from "./Dice";
@@ -423,7 +425,7 @@ export function BoardTable({ view, names, act, onLeave, banner, watching, chat, 
         <span className="bar-buttons">
           {/* Resign, offer a draw, ask to take a move back: whatever the view says this seat may do. */}
           {view.offers && !watching && <OffersMenu can={view.offers.can} onSend={(move) => void send(move, true)} />}
-          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} stones={stones} />}
+          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} stones={stones} depth={hasBoard3d(view.game) || view.grids.some(isPointsTrack)} />}
           <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>
       </header>
@@ -632,6 +634,9 @@ function Grid({ grid, view, names, mine, side, titled, picked, asking, onChoose,
   const [ghost, setGhost] = useState<number | null>(null);
   const stonesDown = grid.cells.reduce((n, p) => n + (p ? 1 : 0), 0);
   useEffect(() => setGhost(null), [view.phase, view.turn, stonesDown, grid.tap?.type]);
+  // In three dimensions, where this game has a board in the scene and the device can: the scene is
+  // drawn under the grid, and the grid's own squares and pieces are made see-through.
+  const three = useBoard3d(el, { game: view.game, grid, shown, picked, targets, ghost, mine, toneOf, seatTone });
   /** What the last press on the board was made with: a finger needs more care than a mouse. */
   const pointer = useRef("mouse");
   function careful(): boolean {
@@ -722,11 +727,14 @@ function Grid({ grid, view, names, mine, side, titled, picked, asking, onChoose,
     d.moved = true;
     e.currentTarget.classList.add("dragging");
     d.piece.style.translate = `${dx}px ${dy}px`;
+    // The solid piece follows the pointer too.
+    if (three.up) three.drag(shown(d.cell), e.clientX, e.clientY);
   }
   function onUp(e: React.PointerEvent<HTMLButtonElement>, cancelled = false) {
     const d = drag.current;
     drag.current = null;
     if (!d) return;
+    three.drag(null);
     const cellEl = e.currentTarget;
     const back = () => {
       if (d.piece) d.piece.style.translate = "";
@@ -775,7 +783,8 @@ function Grid({ grid, view, names, mine, side, titled, picked, asking, onChoose,
 
   const style = { "--cols": grid.cols, "--rows": grid.rows } as React.CSSProperties;
   return (
-    <div className={`board-wrap${side ? " side" : ""}${grid.coords ? " with-coords" : ""}`} style={style}>
+    <div className={`board-wrap${side ? " side" : ""}${grid.coords ? " with-coords" : ""}${three.up ? " three" : ""}`} style={style}>
+      {three.canvas}
       {titled && <h3 className="board-title">{named(grid.label, names)}</h3>}
       {grid.coords && (
         <div className="coords cols" aria-hidden>
@@ -794,6 +803,7 @@ function Grid({ grid, view, names, mine, side, titled, picked, asking, onChoose,
       <div
         ref={el}
         className={`board-grid${grid.points ? " points" : ""}${grid.gravity ? " gravity" : ""}${blocks ? " blocked" : ""}${grid.cols > 9 ? " fine-lines" : ""}${grid.points && mine && grid.tap ? ` plays-${toneOf(mine)}` : ""}`}
+        style={three.style}
         role="group"
         aria-label={`${named(grid.label, names)}, ${grid.rows} by ${grid.cols}. Arrow keys move around it.`}
         onKeyDown={onKey}

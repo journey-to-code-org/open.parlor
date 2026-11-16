@@ -10,7 +10,7 @@ const TONES: Record<string, string> = {
   blue: "#4cc9ff", red: "#ff5a6e", green: "#5ee6a0", gold: "#ffd166", pink: "#ff6ad5", orange: "#ff9f43",
   purple: "#b08cff", teal: "#3fe0d0", grey: "#b9c4d6", crimson: "#ff3355", white: "#ffffff",
 };
-const toneOf = (tone?: string) => (tone && TONES[tone]) || "#ffffff";
+export const toneOf = (tone?: string) => (tone && TONES[tone]) || "#ffffff";
 /** Whose something is, by seat: the same colours the games give their seats. */
 const TONES_BY_SEAT = ["blue", "red", "green", "gold"];
 const FONT = "'Trebuchet MS', 'Segoe UI', system-ui, sans-serif";
@@ -51,11 +51,18 @@ export interface ArcadeScreen {
   /** Move the sparks on by a tick. */
   settle(): void;
   draw(view: ArcadeView, frame: number, pointer?: ArcadePointer): void;
+  /**
+   * Only what lies over a field that something else has drawn (the 3-D scene, on a canvas under
+   * this one): the bars of what has been hurt, the words that float up, the banner, the boss's bar
+   * and the flash of a hit. `project` says where a spot of the field (and a height over it) is in
+   * that picture, in the field's units across the canvas.
+   */
+  drawOverlay(view: ArcadeView, frame: number, project: (x: number, y: number, lift?: number) => [number, number]): void;
   /** Clear what is left over from the last game. */
   reset(): void;
 }
 
-export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: number; height: number }): ArcadeScreen {
+export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: number; height: number }, says: (text: string) => string = (text) => text): ArcadeScreen {
   const ctx = canvas.getContext("2d")!;
   const FW = field.width;
   const FH = field.height;
@@ -177,6 +184,51 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
     ctx.fillStyle = colour;
     ctx.fill();
     ctx.globalAlpha = alpha;
+  }
+
+  /** The words that float up from where something happened; `at` says where that is in the picture. */
+  function sayWords(at: (x: number, y: number) => [number, number] = (x, y) => [x, y]) {
+    for (const w of words) {
+      const [x, y] = at(w.x, w.y);
+      ctx.globalAlpha = Math.min(1, (w.life / w.max) * 2);
+      ctx.fillStyle = w.colour;
+      ctx.font = `700 ${w.big ? 330 : 190}px ${FONT}`;
+      ctx.fillText(w.text, Math.max(900, Math.min(FW - 900, x)), y - (w.max - w.life) * 9);
+    }
+  }
+  /** What is written across the field: the banner, the boss's bar, and the white of a flash. */
+  function hud(view: ArcadeView, frame: number) {
+    const W = canvas.width;
+    const H = canvas.height;
+    if (view.banner && !view.over) {
+      ctx.fillStyle = view.banner === "Warning" && frame % 30 < 15 ? "#ff5a6e" : "#ffffff";
+      const banner = says(view.banner).toUpperCase();
+      ctx.font = `700 560px ${FONT}`;
+      // A long one is set smaller, to fit across.
+      const fits = Math.min(1, (FW - 500) / Math.max(1, ctx.measureText(banner).width));
+      if (fits < 1) ctx.font = `700 ${Math.floor(560 * fits)}px ${FONT}`;
+      ctx.textAlign = "center";
+      ctx.globalAlpha = 0.9;
+      ctx.fillText(banner, FW / 2, FH * 0.38);
+      ctx.globalAlpha = 1;
+    }
+    if (view.boss) {
+      ctx.fillStyle = "rgba(255,255,255,0.14)";
+      ctx.fillRect(500, 330, FW - 1000, 90);
+      ctx.fillStyle = "#ff3355";
+      ctx.fillRect(500, 330, ((FW - 1000) * view.boss.health) / 1000, 90);
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      for (const mark of [1 / 3, 2 / 3]) ctx.fillRect(500 + (FW - 1000) * mark - 8, 310, 16, 130);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `600 170px ${FONT}`;
+      ctx.textAlign = "left";
+      ctx.fillText(says(view.boss.name).toUpperCase(), 500, 540);
+    }
+    if (flash > 0.01) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = `rgba(255,255,255,${reduced ? flash * 0.2 : flash * 0.6})`;
+      ctx.fillRect(0, 0, W, H);
+    }
   }
 
   return {
@@ -367,7 +419,7 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
           const big = e.kind === "perfect" || e.kind === "extend" || e.kind === "medal-lost";
           const colour = e.kind === "medal" || e.kind === "pop" || e.kind === "sold" || e.kind === "pay" || e.kind === "interest" || e.kind === "send" ? "#ffd166" : e.kind === "medal-lost" || e.kind === "leak" || e.kind === "nope" ? "#ff8a8a" : "#ffffff";
           const slow = big || e.kind === "pay" || e.kind === "interest" || e.kind === "send" || e.kind === "nope" || e.kind === "frenzy" || e.kind === "lucky" || e.kind === "cashout";
-          words.push({ x: e.x, y: e.y, text: e.text, life: slow ? 110 : 46, max: slow ? 110 : 46, big, colour });
+          words.push({ x: e.x, y: e.y, text: says(e.text), life: slow ? 110 : 46, max: slow ? 110 : 46, big, colour });
         }
       }
     },
@@ -388,6 +440,29 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
       shake *= 0.86;
       flash *= 0.86;
       bump *= 0.8;
+    },
+    drawOverlay(view, frame, project) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalAlpha = 1;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      // How much is left of anything that has been hurt, over its head.
+      for (const t of view.things) {
+        if (t.health === undefined || t.health >= 1000) continue;
+        const foe = t.kind.startsWith("foe:");
+        if ((!foe && !t.kind.startsWith("creep:")) || t.kind.endsWith(":boss")) continue;
+        const [x, y] = project(t.x, t.y - (foe ? t.r : 0), foe ? 300 : t.kind === "creep:flyer" ? 900 : t.r * 3);
+        const w = Math.max(170, t.r * 1.7);
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        ctx.fillRect(x - w / 2 - 6, y - 76, w + 12, 44);
+        ctx.fillStyle = t.health > 500 ? "#5ee6a0" : t.health > 250 ? "#ffd166" : "#ff5a6e";
+        ctx.fillRect(x - w / 2, y - 70, (w * t.health) / 1000, 32);
+      }
+      sayWords((x, y) => project(x, y, 300));
+      ctx.globalAlpha = 1;
+      hud(view, frame);
     },
     draw(view, frame, pointer) {
       const W = canvas.width;
@@ -677,38 +752,10 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
         ctx.fillStyle = p.colour;
         ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
       }
-      for (const w of words) {
-        ctx.globalAlpha = Math.min(1, (w.life / w.max) * 2);
-        ctx.fillStyle = w.colour;
-        ctx.font = `700 ${w.big ? 330 : 190}px ${FONT}`;
-        ctx.fillText(w.text, Math.max(900, Math.min(FW - 900, w.x)), w.y - (w.max - w.life) * 9);
-      }
+      sayWords();
       ctx.globalAlpha = 1;
 
-      if (view.banner && !view.over) {
-        ctx.fillStyle = view.banner === "Warning" && frame % 30 < 15 ? "#ff5a6e" : "#ffffff";
-        ctx.font = `700 560px ${FONT}`;
-        ctx.globalAlpha = 0.9;
-        ctx.fillText(view.banner.toUpperCase(), FW / 2, FH * 0.38);
-        ctx.globalAlpha = 1;
-      }
-      if (view.boss) {
-        ctx.fillStyle = "rgba(255,255,255,0.14)";
-        ctx.fillRect(500, 330, FW - 1000, 90);
-        ctx.fillStyle = "#ff3355";
-        ctx.fillRect(500, 330, ((FW - 1000) * view.boss.health) / 1000, 90);
-        ctx.fillStyle = "rgba(255,255,255,0.5)";
-        for (const mark of [1 / 3, 2 / 3]) ctx.fillRect(500 + (FW - 1000) * mark - 8, 310, 16, 130);
-        ctx.fillStyle = "#ffffff";
-        ctx.font = `600 170px ${FONT}`;
-        ctx.textAlign = "left";
-        ctx.fillText(view.boss.name.toUpperCase(), 500, 540);
-      }
-      if (flash > 0.01) {
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.fillStyle = `rgba(255,255,255,${reduced ? flash * 0.2 : flash * 0.6})`;
-        ctx.fillRect(0, 0, W, H);
-      }
+      hud(view, frame);
     },
   };
 }

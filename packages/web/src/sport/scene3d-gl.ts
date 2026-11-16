@@ -20,6 +20,7 @@ import {
   DodecahedronGeometry,
   DoubleSide,
   ExtrudeGeometry,
+  Fog,
   Float32BufferAttribute,
   Group,
   HemisphereLight,
@@ -55,6 +56,7 @@ import type { SportBody, SportDecor, SportMaterial, SportSurface, SportTone } fr
 import { toneColour, type Disc } from "./draw";
 import { landOf } from "./paint/terrain";
 import type { Frame3d, Sport3d } from "./scene3d";
+import { buildAlley, type Alley } from "./alley3d";
 
 const K = 0.001;
 /** The way the light travels, in the flat drawing's frame (x right, y towards you, z up), and so here too. */
@@ -72,7 +74,7 @@ function rng(seed: number) {
     return s / 4294967296;
   };
 }
-function texture(size: number, paint: (g: CanvasRenderingContext2D, n: () => number) => void, seed = 7): Texture {
+export function texture(size: number, paint: (g: CanvasRenderingContext2D, n: () => number) => void, seed = 7): Texture {
   const c = document.createElement("canvas");
   c.width = c.height = size;
   const g = c.getContext("2d")!;
@@ -83,7 +85,7 @@ function texture(size: number, paint: (g: CanvasRenderingContext2D, n: () => num
   t.anisotropy = 4;
   return t;
 }
-const shade = (hex: string, by: number) => {
+export const shade = (hex: string, by: number) => {
   const c = new Color(hex);
   c.offsetHSL(0, 0, by);
   return `#${c.getHexString()}`;
@@ -165,7 +167,7 @@ const SOLIDS: Record<SportMaterial, string> = { timber: "#8a5a2b", brick: "#a952
 const BLOCKS: Record<string, string> = { rock: "#8b8a85", brick: "#a9523a", timber: "#8a5a2b", planter: "#7a5236", pot: "#c06a3c", stone: "#9a968c", castle: "#c9b48a", crate: "#a07a45" };
 
 const surfaces = new Map<SportSurface, MeshStandardMaterial>();
-function surfaceMaterial(s: SportSurface): MeshStandardMaterial {
+export function surfaceMaterial(s: SportSurface): MeshStandardMaterial {
   let m = surfaces.get(s);
   if (m) return m;
   const l = SURFACES[s] ?? SURFACES.green;
@@ -176,7 +178,7 @@ function surfaceMaterial(s: SportSurface): MeshStandardMaterial {
   return m;
 }
 const plain = new Map<string, MeshStandardMaterial>();
-function paint(color: string, rough = 0.8, metal = 0): MeshStandardMaterial {
+export function paint(color: string, rough = 0.8, metal = 0): MeshStandardMaterial {
   const key = `${color}/${rough}/${metal}`;
   let m = plain.get(key);
   if (!m) plain.set(key, (m = new MeshStandardMaterial({ color, roughness: rough, metalness: metal })));
@@ -191,30 +193,30 @@ function outline(s: Shape): Outline {
   return o;
 }
 /** A patch of the ground, in its top plane, facing up. */
-function patch(s: Shape): BufferGeometry {
+export function patch(s: Shape): BufferGeometry {
   return new ShapeGeometry(outline(s), 36).rotateX(-Math.PI / 2);
 }
 /** A shape stood up from the ground to `height`. */
 function prism(s: Shape, height: number): BufferGeometry {
   return new ExtrudeGeometry(outline(s), { depth: height, bevelEnabled: false, curveSegments: 36 }).rotateX(-Math.PI / 2);
 }
-function rectangle(x: number, y: number, w: number, h: number): Shape {
+export function rectangle(x: number, y: number, w: number, h: number): Shape {
   return { points: [[x, y], [x + w, y], [x + w, y + h], [x, y + h]] };
 }
 
-const mesh = (g: BufferGeometry, m: Material, shadows = true) => {
+export const mesh = (g: BufferGeometry, m: Material, shadows = true) => {
   const o = new Mesh(g, m);
   o.castShadow = shadows;
   o.receiveShadow = true;
   return o;
 };
-const at = (o: Object3D, x: number, y: number, z: number) => {
+export const at = (o: Object3D, x: number, y: number, z: number) => {
   o.position.set(x, y, z);
   return o;
 };
 
 /** How high the ground is at a point of the world: flat unless a table has terraces or slopes. */
-type Ground = (x: number, y: number) => number;
+export type Ground = (x: number, y: number) => number;
 const level: Ground = () => 0;
 /** Pieces a long rail is cut into, so it can stand on ground that changes height along it. */
 const RAIL_STEP = 400;
@@ -398,7 +400,7 @@ function ballSkin(tone: SportTone | undefined): Texture {
 
 let pinGeometry: BufferGeometry | null = null;
 /** A ten-pin: the real silhouette, white with two red bands on the neck. Radius 1, height 1. */
-function pinMesh(): BufferGeometry {
+export function pinMesh(): BufferGeometry {
   if (pinGeometry) return pinGeometry;
   const profile: [number, number][] = [[0, 0], [0.62, 0], [0.66, 0.02], [0.78, 0.1], [0.92, 0.22], [1, 0.3], [0.95, 0.38], [0.78, 0.5], [0.56, 0.62], [0.42, 0.72], [0.4, 0.78], [0.5, 0.86], [0.58, 0.93], [0.52, 0.98], [0, 1]];
   const g = new LatheGeometry(profile.map(([r, h]) => new Vector2(r, h)), 28);
@@ -416,7 +418,7 @@ function pinMesh(): BufferGeometry {
   g.computeVertexNormals();
   return (pinGeometry = g);
 }
-const pinMaterial = new MeshPhysicalMaterial({ vertexColors: true, emissive: "#3a3630", roughness: 0.3, clearcoat: 0.7, clearcoatRoughness: 0.2 });
+export const pinMaterial = new MeshPhysicalMaterial({ vertexColors: true, emissive: "#3a3630", roughness: 0.3, clearcoat: 0.7, clearcoatRoughness: 0.2 });
 
 interface Thing {
   group: Group;
@@ -670,31 +672,11 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
   // The near plane is well out from the camera (nothing comes closer than the ball at the bowler's
   // feet), so the lane laid a few units over the floor never fights it for depth on a phone.
   const chase = new PerspectiveCamera(40, 1, 3, 300);
+  /** The far end of the alley fades into the dark a little. */
+  const haze = new Fog("#0a0d18", 70, 260);
   /** Where the chasing camera is (world y) and when it was last moved, so it eases rather than jumps. */
   const chaseAt = { y: Number.NaN, time: 0 };
   const guideLayer = new Group();
-  /** Behind the pins, in the bowler's view: the alley's dark masking panel, with its lit stripe. */
-  let backdrop: { key: string; group: Group } | null = null;
-  function showBackdrop(table: Frame3d["table"] | null) {
-    if (backdrop && (!table || backdrop.key !== table.key)) {
-      clear(backdrop.group);
-      backdrop = null;
-    }
-    if (!table || backdrop) return;
-    const g = new Group();
-    const back = table.look.frame.y - 400;
-    const wall = mesh(new BoxGeometry(90000, 34000, 400), paint("#161c2c", 0.95), false);
-    wall.position.set(0, 17000, back);
-    g.add(wall);
-    // A band of light across it, and a fainter one above, the way an alley's masking unit glows.
-    const band = mesh(new BoxGeometry(90000, 900, 450), new MeshBasicMaterial({ color: "#f2b84b" }), false);
-    band.position.set(0, 7600, back + 20);
-    const glow = mesh(new BoxGeometry(90000, 300, 450), new MeshBasicMaterial({ color: "#5ad1e6" }), false);
-    glow.position.set(0, 9600, back + 20);
-    g.add(band, glow);
-    turn.add(g);
-    backdrop = { key: table.key, group: g };
-  }
   let guideShown: Point[] | null = null;
   const guideMaterial = new MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0.85, depthWrite: false });
   const guideShadow = new MeshBasicMaterial({ color: "#000000", transparent: true, opacity: 0.28, depthWrite: false });
@@ -721,6 +703,8 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
   let cupFlags: Object3D[] = [];
   /** How high the ground of the table being shown is, at a point. */
   let ground: Ground = level;
+  /** The bowling alley round the lane, when the table is seen from behind the bowler. */
+  let alley: Alley | null = null;
 
   function clear(group: Group) {
     group.traverse((o) => {
@@ -730,7 +714,7 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
     group.removeFromParent();
   }
 
-  function buildStatic(table: Frame3d["table"]) {
+  function buildStatic(table: Frame3d["table"], bowling: boolean) {
     if (stat) clear(stat);
     cupFlags = [];
     const { look, world } = table;
@@ -740,10 +724,19 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
     const g = new Group();
     const f = look.frame;
     const pad = Math.max(f.w, f.h) * 1.5;
-    // Everything stands on one base that runs on as far as the screen does.
-    const base = mesh(patch(rectangle(f.x - pad, f.y - pad, f.w + 2 * pad, f.h + 2 * pad)), surfaceMaterial(look.base), false);
-    base.receiveShadow = true;
-    g.add(base);
+    // Seen from behind the bowler, the lane stands in a bowling alley: gutters that are really
+    // sunk, the lanes either side, the pit and the masking units, a ceiling. The alley is built
+    // round the lane; what the lane itself has on it (bumpers, sand, blocks) is still laid here.
+    alley = bowling ? buildAlley(table) : null;
+    if (alley) {
+      g.add(alley.group);
+      ground = alley.ground;
+    } else {
+      // Everything stands on one base that runs on as far as the screen does.
+      const base = mesh(patch(rectangle(f.x - pad, f.y - pad, f.w + 2 * pad, f.h + 2 * pad)), surfaceMaterial(look.base), false);
+      base.receiveShadow = true;
+      g.add(base);
+    }
     let layer = 1;
     const lay = (shape: Shape, surface: SportSurface, level = 0, on: Ground | null = null) => {
       // A patch with no level of its own lies on the ground under it (sand on a terrace).
@@ -755,10 +748,16 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
       if (surface === "water") m.renderOrder = 2;
       g.add(m);
     };
-    for (const p of look.ground) lay(p.shape, p.surface, p.level);
+    for (const p of look.ground) {
+      // The alley has its own floor under the gutters.
+      if (alley && p.surface === "deck") continue;
+      lay(p.shape, p.surface, p.level);
+    }
     for (const r of look.regions) {
       const region = world.regions.find((x) => x.id === r.id);
       if (!region) continue;
+      // The gutters and the pit are the alley's, sunk below the lane and not painted on it.
+      if (alley && (r.id === "pit" || r.id.startsWith("gutter"))) continue;
       // A slope that rises is laid as a tilted plane; the rest lie flat on what they're set in.
       if (land.ramps.some((x) => x.id === r.id)) {
         const m = mesh(tilted(region.shape, ground, layer++ * 3), surfaceMaterial(r.surface), false);
@@ -945,7 +944,8 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
       chase.updateProjectionMatrix();
       turn.rotation.y = 0;
       showGuide(frame.bowler.guide);
-      showBackdrop(table);
+      scene.fog = haze;
+      alley?.play(frame.time, frame.still);
       const f = table.look.frame;
       const centre = new Vector3((f.x + f.w / 2) * K, 0, (f.y + f.h / 2) * K);
       const radius = Math.hypot(f.w, f.h) * 0.52 * K + 2;
@@ -962,7 +962,7 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
       return true;
     }
     showGuide(null);
-    showBackdrop(null);
+    scene.fog = null;
     // The camera is projection.ts, in three's terms: a point of the world is where `project` puts it.
     const s = proj.scale;
     camera.left = (-proj.ox / s) * K;
@@ -1009,11 +1009,13 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
       // is left to the flat drawing, and not tried again until the table changes.
       if (broken === table.key) return false;
       try {
-        if (built !== table.key) {
-          built = table.key;
+        // The same lane is built differently from behind the bowler (an alley round it) and from above.
+        const want = `${table.key}|${frame.bowler ? "alley" : ""}`;
+        if (built !== want) {
+          built = want;
           things.clear();
           dynamic.clear();
-          buildStatic(table);
+          buildStatic(table, !!frame.bowler);
         }
         return draw(frame);
       } catch {

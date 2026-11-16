@@ -543,6 +543,104 @@ h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; }
   .palace-felt .center-info { grid-area: info; min-width: 0; padding: 0 8px; text-wrap: balance; }
 }
 /* Palace buttons live in the felt, not floating over your face-up cards. */
+/* A card table in 3-D (Palace, and every game on the card kit). The felt becomes a table seen from your chair: it is tipped back about its near
+   edge, the cards lie on it (a face-up card on its face-down one, the pile as high as it is deep,
+   the deck as thick as what is left of it), and whatever is to be read (names, what just happened,
+   the buttons) stands up off it to face you. All of it is the same page set out in space by CSS:
+   nothing is drawn on a canvas, and every card is still the button it was. The hand stays flat to
+   the screen, as cards held up in front of the table are. */
+.table.three { --tip: 24deg; overflow-x: clip; }
+.table.three .palace-felt {
+  transform: perspective(1500px) rotateX(var(--tip)); transform-origin: 50% 100%; transform-style: preserve-3d;
+}
+.palace.three .palace-felt { padding-block: 26px; margin-bottom: 14px; }
+/* The table itself: felt inside a wooden rail, and the edge of it towards you. */
+.table.three .palace-felt::before {
+  /* A little bigger than the felt's own box, so the rail is outside everything that lies on it. */
+  content: ""; position: absolute; inset: -8px -14px; border-radius: 30px; transform: translateZ(-1px); pointer-events: none;
+  background: radial-gradient(ellipse at 50% 40%, #2f7d5c, #1d5a41 60%, #154633);
+  border: 12px solid #6a4526; box-shadow: inset 0 0 0 2px #3d2716, inset 0 0 46px rgba(0, 0, 0, 0.45), 0 0 0 2px #3d2716;
+}
+.table.three .palace-felt::after {
+  content: ""; position: absolute; left: 0; right: 0; top: calc(100% + 8px); height: 26px; pointer-events: none;
+  transform-origin: 50% 0; transform: rotateX(-90deg); border-radius: 0 0 10px 10px;
+  background: linear-gradient(#5a3a20, #3a2414); box-shadow: 0 30px 40px 6px rgba(0, 0, 0, 0.5);
+}
+.table.three .palace-felt :is(.opp-area, .opp, .opp-cards, .mini-slot, .mini-stack, .center, .pile-area, .deck, .pile, .pile-stack, .mine-on-table, .my-table, .table-slot, .kit-trick, .kit-fan-area, .kit-fan, .pile-spread-area, .pile-spread, .pile-spread-row, .kit-melds, .kit-team-melds, .kit-meld, .kit-meld-cards, .cross, .pairs-area, .card-grid) { transform-style: preserve-3d; }
+/* What is read stands up to face you. */
+/* (Each line of what is said stands up by itself. Standing the whole block up would make it the
+   thing its status line is placed against, and on the kit tables that line is placed against the felt.) */
+.table.three .palace-felt :is(.opp > :first-child, .center-info > *, .pile-area small) { transform: rotateX(calc(-1 * var(--tip))); transform-origin: 50% 100%; }
+.table.three .palace-felt .opp > :first-child { filter: drop-shadow(0 10px 6px rgba(0, 0, 0, 0.35)); }
+/* Cards on the table have an edge and a shadow, and one on top of another is higher. */
+.table.three :is(.mini-down, .mini-up, .down-card, .up-card, .pile-card) { border-radius: var(--card-radius, 8px); box-shadow: 0 1px 0 #d9d0bf, 0 2px 0 #b8ae9b, 0 5px 7px rgba(0, 0, 0, 0.4); }
+.table.three .mini-up { transform: translateZ(4px); }
+.table.three .up-card { transform: translateZ(7px); transition: transform 140ms var(--ease-out, ease-out); }
+.table.three .down-card { transform: translateZ(1px); }
+@media (hover: hover) { .table.three .up-card:hover { transform: translateZ(22px); } }
+/* The deck: as thick as what is left to draw. (The block under it, and under the pile, is drawn
+   before the cards and never after: on a table where something between flattens the stack, what
+   is drawn last would lie over the top card.) */
+.table.three .deck > :is(playing-card, button) { transform: translateZ(calc(var(--depth, 0) * 4px + 3px)); }
+.table.three .deck playing-card { filter: none; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); border-radius: var(--card-radius, 8px); }
+.table.three .deck { position: relative; }
+.table.three .deck::before, .table.three .pile-stack::before {
+  content: ""; position: absolute; width: var(--trick-w); height: var(--trick-h); border-radius: var(--card-radius, 8px); pointer-events: none;
+  background: repeating-linear-gradient(#f4eddc 0 1px, #cdc3ae 1px 2px); box-shadow: 0 0 0 1px #a89e8a, 0 8px 12px rgba(0, 0, 0, 0.45);
+}
+.table.three .deck::before { top: 0; left: calc(50% - var(--trick-w) / 2); transform: translateZ(0.5px); }
+.table.three .deck:has(.empty-slot)::before, .table.three .deck:not(:has(playing-card))::before { display: none; }
+/* The pile: the cards under the top few are a block as high as the pile is deep, and the top few
+   lie on it, fanned as they always were. */
+.table.three .pile-stack::before { left: var(--fan); top: 2px; transform: translateZ(0.5px); }
+.table.three .pile-card { transform: translateZ(calc(var(--tall, 0) * 1.2px + var(--i) * 3px + 2px)); }
+.table.three .empty-slot { transform: translateZ(1px); }
+/* Something to press on the table is easier to hit when it stands a little off it. */
+.table.three .table-slot .flip { transform-style: preserve-3d; }
+@media (max-width: 599px) {
+  .table.three { --tip: 18deg; }
+  .palace.three .palace-felt { padding-block: 16px; margin-bottom: 12px; }
+  .table.three .palace-felt::before { inset: -6px -8px; border-width: 7px; border-radius: 20px; }
+  .table.three .palace-felt::after { height: 16px; top: calc(100% + 6px); }
+}
+
+/* Spades in 3-D: the same table, for a felt whose seats and trick are placed by hand. The badges
+   stand up at their places, the four cards of the trick lie in their diamond with a shadow under
+   each, and the buttons in the corners face you as they did. */
+.spades.three { --tip: 22deg; }
+.spades.three .felt { transform: perspective(1500px) rotateX(var(--tip)); transform-origin: 50% 100%; transform-style: preserve-3d; margin: 14px 18px 22px; }
+.spades.three .felt::before {
+  content: ""; position: absolute; inset: -8px -12px; border-radius: 30px; transform: translateZ(-1px); pointer-events: none;
+  background: radial-gradient(ellipse at 50% 40%, #2f7d5c, #1d5a41 60%, #154633);
+  border: 12px solid #6a4526; box-shadow: inset 0 0 0 2px #3d2716, inset 0 0 46px rgba(0, 0, 0, 0.45), 0 0 0 2px #3d2716;
+}
+.spades.three .felt::after {
+  content: ""; position: absolute; left: 0; right: 0; top: calc(100% + 8px); height: 24px; pointer-events: none;
+  transform-origin: 50% 0; transform: rotateX(-90deg); border-radius: 0 0 10px 10px;
+  background: linear-gradient(#5a3a20, #3a2414); box-shadow: 0 30px 40px 6px rgba(0, 0, 0, 0.5);
+}
+.spades.three .seat-slot { transform-origin: 50% 100%; filter: drop-shadow(0 10px 6px rgba(0, 0, 0, 0.35)); }
+.spades.three .seat-slot.top { transform: translateX(-50%) rotateX(calc(-1 * var(--tip))); }
+.spades.three .seat-slot:is(.left, .right) { transform: translateY(-50%) rotateX(calc(-1 * var(--tip))); }
+.spades.three .played { filter: drop-shadow(0 2px 0 #b8ae9b) drop-shadow(0 7px 6px rgba(0, 0, 0, 0.45)); }
+.spades.three .took { transform: translateX(-50%) rotateX(calc(-1 * var(--tip))); transform-origin: 50% 100%; }
+.spades.three .status { transform: rotateX(calc(-1 * var(--tip))); transform-origin: 50% 100%; }
+.spades.three .felt > :is(button, .sound-toggle, .settings-toggle, .table-settings) { transform: translateZ(2px) rotateX(calc(-1 * var(--tip))); transform-origin: 50% 100%; }
+@media (max-width: 599px) {
+  .spades.three { --tip: 16deg; }
+  .spades.three .felt { margin: 10px 10px 16px; }
+  .spades.three .felt::before { inset: -6px -8px; border-width: 7px; border-radius: 20px; }
+}
+
+/* The card kit's own things on the table: the cards of a trick each lie where they were played, a
+   little off the felt; melds and spreads lie flat with an edge and a shadow. */
+.table.three :is(.kit-played, .kit-fan-card, .kit-meld-cards > *, .pile-spread-row > *) { border-radius: var(--card-radius, 8px); box-shadow: 0 1px 0 #d9d0bf, 0 2px 0 #b8ae9b, 0 5px 7px rgba(0, 0, 0, 0.4); }
+.table.three .kit-played { transform: translateZ(calc(4px + var(--i, 0) * 2px)); }
+.table.three .palace-felt :is(.kit-lead, .took) { transform: rotateX(calc(-1 * var(--tip))); transform-origin: 50% 100%; }
+/* A table for one (the patiences) is all columns of cards that are dragged about: it is tipped
+   only a little, so a long column stays as easy to get hold of as it was. */
+.table.three:has(.kit-felt.solo) { --tip: 9deg; }
+
 .felt-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
 .felt-actions p { margin: 0; width: 100%; text-align: center; }
 .table-slot .flip { padding: 0; border: 0; background: none; cursor: pointer; border-radius: var(--card-radius); outline-offset: 3px; animation: nudge 2.4s ease-in-out infinite; }
@@ -1414,6 +1512,28 @@ html[data-motion="off"] .board-grid .cell.mark-must::before { animation: none; }
 .board-chess .me-badge { margin-bottom: 0; }
 .board-chess .kit-seat { flex-direction: row; align-items: center; gap: 8px; }
 
+/* The board in 3-D (board/board3d.ts). The scene's canvas sits in the board's own place, a little
+   bigger than it (for the frame, and for pieces that stand up past the far edge). The grid of
+   buttons stays where it is and stays what is pressed: it is made see-through and tipped back with
+   the same camera the scene has, so each button lies on its square of the picture. */
+.board-gl {
+  grid-area: grid; z-index: 0; pointer-events: none; visibility: hidden; display: block; max-width: none;
+  width: calc(100% * var(--gl-wide)); aspect-ratio: var(--gl-wide) / var(--gl-high);
+  margin: calc(-50% * (var(--gl-high) - 1)) calc(-50% * (var(--gl-wide) - 1));
+}
+.board-gl.up { visibility: visible; }
+.board-wrap.three .board-grid {
+  z-index: 1; overflow: visible; background: none; box-shadow: none;
+}
+.board-wrap.three .board-grid .cell, .board-wrap.three .board-grid .cell:hover { background: none !important; background-image: none !important; box-shadow: none; }
+.board-wrap.three .board-grid .cell > .piece, .board-wrap.three .board-grid .cell::after, .board-wrap.three .board-grid .cell::before { opacity: 0; }
+.board-wrap.three .board-grid .cell.can:hover { background: rgba(255, 255, 255, 0.14) !important; }
+.board-wrap.three .board-grid .board-lines, .board-wrap.three .board-grid .board-blocks { visibility: hidden; }
+/* The letters and numbers are painted on the board's frame in the scene. */
+.board-wrap.three .coords { visibility: hidden; }
+.looking-back .board-wrap.three .board-grid { outline: none; }
+.looking-back .board-wrap.three .board-gl { filter: sepia(0.35); }
+
 /* A clock of the game's own at a seat (board/SeatClock.tsx). */
 .seat-clock {
   padding: 2px 9px; border-radius: 8px; background: rgba(0, 0, 0, 0.45); color: #d9e6dd; border: 1px solid rgba(251, 246, 236, 0.25);
@@ -1478,6 +1598,23 @@ html[data-motion="off"] .board-grid .cell.mark-must::before { animation: none; }
   padding: calc(var(--u) * 0.42) calc(var(--u) * 0.12);
   background: var(--wood); border-radius: 10px; box-shadow: var(--elev-2); color: var(--ink);
 }
+/* The board in 3-D: tipped back about its near edge, with CSS alone. It has a thick edge towards
+   you, and each checker is a disc with a side to it, a little higher than the one it lies against. */
+.track.three {
+  transform: perspective(1600px) rotateX(20deg); transform-origin: 50% 100%; transform-style: preserve-3d; margin-bottom: 18px;
+  box-shadow: inset 0 0 0 2px #3a2414, 0 0 0 2px #3a2414;
+}
+.track.three::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 20px; pointer-events: none;
+  transform-origin: 50% 0; transform: rotateX(-90deg); border-radius: 0 0 8px 8px;
+  background: linear-gradient(#4a2e1a, #2c1b0f); box-shadow: 0 26px 30px 4px rgba(0, 0, 0, 0.5);
+}
+.track.three .spot { transform-style: preserve-3d; }
+.track.three .checker { transform: translateZ(calc(2px + var(--k, 0) * 1.5px)); }
+.track.three .checker.tone-light { box-shadow: inset 0 0 0 calc(var(--d) * 0.08) rgba(128, 96, 52, 0.38), 0 calc(var(--d) * 0.06) 0 #b7a37c, 0 calc(var(--d) * 0.12) calc(var(--d) * 0.1) rgba(0, 0, 0, 0.5); }
+.track.three .checker.tone-dark { box-shadow: inset 0 0 0 calc(var(--d) * 0.08) rgba(255, 255, 255, 0.13), 0 calc(var(--d) * 0.06) 0 #0c0a08, 0 calc(var(--d) * 0.12) calc(var(--d) * 0.1) rgba(0, 0, 0, 0.5); }
+.track.three.tall { transform: perspective(1600px) rotateX(12deg); }
+
 /* The strip between the rows: playing surface, with the bar and the rail running through it. */
 .track-mid { grid-row: 2; grid-column: 1 / 14; background: var(--surface); position: relative; display: grid; pointer-events: none; }
 .track::before { content: ""; grid-row: 2; grid-column: 7; background: var(--wood); z-index: 1; }
@@ -2097,7 +2234,9 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .arcade-bar::after { content: ""; display: block; height: 100%; width: var(--fill, 0%); background: var(--gold); }
 .arcade-grow { flex: 1; }
 .arcade-stage { position: relative; flex: 1; min-height: 0; display: grid; place-items: center; background: #02030a; }
-.arcade-stage canvas { display: block; touch-action: none; outline: none; }
+.arcade-stage canvas { display: block; touch-action: none; outline: none; grid-area: 1 / 1; }
+/* The 3-D scene, under the field's own canvas, which then only draws what is written over it. */
+.arcade-stage .arcade-gl { pointer-events: none; visibility: hidden; }
 .arcade-btn {
   font: inherit; font-weight: 600; font-size: 0.85rem; color: inherit; cursor: pointer; padding: 7px 12px; border-radius: 8px;
   border: 1px solid var(--arc-line); background: rgba(255, 255, 255, 0.05);
@@ -2263,6 +2402,11 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .delbies-delbie:active { translate: 0 4px; box-shadow: 0 2px 0 #0b0e13; }
 .delbies-delbie.dream { border-color: var(--green); background: linear-gradient(#2f5a41, #1f3b2c); }
 .delbies-delbie .face { font-size: 3.4rem; line-height: 1; }
+/* The counter in 3-D (idle/counter3d.ts), in the button where the face was. Until it is up it takes no room. */
+.delbies-scene { display: none; width: 100%; aspect-ratio: 2.3; border-radius: 12px; background: linear-gradient(#cfc8b8, #8f8a80); pointer-events: none; }
+.delbies-scene.up { display: block; }
+.delbies-delbie.scened { padding: 8px 8px 12px; gap: 6px; }
+.delbies-delbie.scened.away { opacity: 1; }
 .delbies-delbie .shout { font-size: 1.25rem; font-weight: 700; text-align: center; text-wrap: balance; }
 .delbies-meters { display: grid; gap: 8px; }
 .delbies .bar { height: 10px; border-radius: 6px; background: #0e1116; overflow: hidden; }
@@ -2337,6 +2481,20 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .delbies-grid button.piece span { font-size: 1.15rem; line-height: 1; }
 .delbies-grid button small { font-size: 0.56rem; line-height: 1.1; text-align: center; color: #c5ccda; overflow-wrap: anywhere; }
 .delbies-grid button.fixed { background: #3a3220; border-color: #6b5a2a; cursor: default; }
+/* The floor plan as a room (idle/floor3d.ts). The scene's canvas is behind the grid, a little
+   bigger than it (for the walls, and for what stands up past the far edge); the grid's squares
+   stay the buttons they were, see-through and tipped back onto the picture, each with its name
+   lying at the front of its square. */
+.delbies-room { position: relative; }
+.delbies-room-gl { position: absolute; left: -8%; top: -32%; width: 116%; height: 164%; pointer-events: none; visibility: hidden; }
+.delbies-room.up { margin-block: 9% 2%; }
+.delbies-room.up .delbies-room-gl { visibility: visible; }
+.delbies-room.up .delbies-grid { position: relative; gap: 0; padding: 0; border: 0; background: none; }
+.delbies-room.up .delbies-grid button, .delbies-room.up .delbies-grid button.piece, .delbies-room.up .delbies-grid button.fixed { border: 0; background: none; justify-content: flex-end; overflow: visible; }
+.delbies-room.up .delbies-grid button span { display: none; }
+.delbies-room.up .delbies-grid button small { font-size: 0.6rem; font-weight: 700; color: #fff; padding: 1px 4px; border-radius: 5px; background: rgba(14, 17, 22, 0.72); margin-bottom: 2px; }
+.delbies-room.up .delbies-grid button.held small { background: var(--yellow); color: #14171c; }
+@media (hover: hover) { .delbies-room.up .delbies-grid button:not(.fixed):hover { background: rgba(255, 255, 255, 0.12); } }
 .delbies-grid button.empty { opacity: 0.45; }
 .delbies-grid button.held { border: 2px solid var(--yellow); background: rgba(255, 207, 63, 0.18); }
 .delbies-grid button:hover:not(.fixed) { border-color: var(--yellow); }

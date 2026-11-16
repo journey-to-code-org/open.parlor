@@ -1,6 +1,7 @@
 import type { PalaceMove, PalaceView } from "@journey-to-code/palace";
 import { cardId, type Card, type TableSettings } from "@journey-to-code/rules";
 import { TableSettingsButton } from "../TableSettings";
+import { useWants3d } from "../display";
 import PalaceSeat from "@open-parlor/ui/palace-seat.zb";
 import PlayingCard from "@open-parlor/ui/playing-card.zb";
 import { useEffect, useRef, useState } from "react";
@@ -283,17 +284,22 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
     `${names[view.turn]} is thinking…`
   );
 
+  // In 3-D the felt is a table seen from your chair: tipped back, with the cards lying on it and
+  // the pile standing as high as it is deep. It is the same page, laid out in space with CSS, so
+  // every card is still the same button it was (see ".palace.three" in styles.css).
+  const three = useWants3d("palace");
+
   const order = [...view.finished, ...(view.loser !== null ? [view.loser] : [])];
 
   return (
-    <main className="table palace" ref={root}>
+    <main className={`table palace${three ? " three" : ""}`} ref={root}>
       <header className="palace-bar">
         <button type="button" className="leave" aria-label="Leave game" onClick={() => (view.phase === "finished" || confirm("Leave this game?")) && onLeave()}>
           ←
         </button>
         <strong>🏰 {view.rules.name}</strong>
         <span className="bar-buttons">
-        {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} />}
+        {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} depth />}
         <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>
       </header>
@@ -340,7 +346,7 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
               onKeyDown={(e) => picked.length && (e.key === "Enter" || e.key === " ") && (e.preventDefault(), playPicked())}
             >
               {view.pile.length ? (
-                <div className="pile-stack">
+                <div className="pile-stack" style={{ "--tall": Math.min(view.pileCount, 36) } as React.CSSProperties}>
                   {view.pile.slice(-3).map((c, i, list) => (
                     <div key={`${cardId(c)}-${view.pileCount - list.length + i}`} className={`pile-card${last?.kind === "flip" && pileFrom(c) ? " flipped" : ""}`} style={{ "--i": i } as React.CSSProperties}>
                       <PlayingCard card={c} size="table" data-flip={cardId(c)} data-from={pileFrom(c)} />

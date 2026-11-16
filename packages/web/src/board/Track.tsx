@@ -16,6 +16,7 @@
 // the screen.
 import type { BoardCube, BoardDice, BoardGrid, BoardView } from "@journey-to-code/games";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useWants3d } from "../display";
 import { Dice } from "./Dice";
 
 const COUNT_WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen"];
@@ -72,6 +73,8 @@ export function Track({ grid, view, names, picked, onCell, onPick, onMove, dice,
   const me = view.me;
   const track = grid.track!;
   const tall = useTall();
+  // In 3-D the board is tipped back like a board on a table, with CSS: the checkers have an edge and stand in their stacks.
+  const three = useWants3d(view.game);
   const el = useRef<HTMLDivElement>(null);
   // The second seat sees the board turned over: the far row is the one its cells call the last.
   const over = grid.flip === "rows";
@@ -224,7 +227,7 @@ export function Track({ grid, view, names, picked, onCell, onPick, onMove, dice,
 
   return (
     <div className={`board-wrap track-wrap${tall ? " tall" : ""}`}>
-      <div ref={el} className={`track kind-${track.kind}${tall ? " tall" : ""}`} role="group" aria-label={`${grid.label}: ${track.path.length} points, the bar and the trays. Arrow keys move around it.`} onKeyDown={onKey}>
+      <div ref={el} className={`track kind-${track.kind}${tall ? " tall" : ""}${three ? " three" : ""}`} role="group" aria-label={`${grid.label}: ${track.path.length} points, the bar and the trays. Arrow keys move around it.`} onKeyDown={onKey}>
         {order.map((cell) => {
           const piece = grid.cells[cell];
           const point = numberOf(cell);

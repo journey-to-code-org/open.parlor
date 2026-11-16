@@ -7,10 +7,14 @@
 // store on every device they are in that house on, and the house sees how each member's store
 // stands. The page still plays it; the house is sent a copy every so often, and when the house's
 // copy has been played somewhere else since, that one is taken up here.
-import { dollars, idleGame, type DelbiesCommand, type DelbiesPieceId, type DelbiesState, type DelbiesView, type IdleClock, type IdleGameId, type IdleReport } from "@journey-to-code/games";
+import { DELBIES_FLOOR_RULES, DELBIES_PIECES, dollars, idleGame, type DelbiesCommand, type DelbiesPieceId, type DelbiesState, type DelbiesView, type IdleClock, type IdleGameId, type IdleReport } from "@journey-to-code/games";
 import { useEffect, useRef, useState } from "react";
 import { blip, notes, wakeArcadeSound } from "../arcade/sounds";
 import { loadIdle, loadIdleHouse, loadMyHouses, saveIdle, saveIdleHouse } from "../storage";
+import { useWants3d } from "../display";
+import { BOARD_TRANSFORM } from "../board/board3d";
+import { loadCounter3d, type Counter3d, type CounterLook } from "./counter3d";
+import { loadFloor3d, type Floor3d, type FloorLook } from "./floor3d";
 import { fetchNetwork, fetchStandings, fetchStore, networkDo, sendStore, type NetworkLook, type Parcel, type Standing } from "./network";
 
 /** The time, as the game wants it: the second, and the time of day on this device. */
@@ -195,6 +199,119 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
     };
   }, [house?.slug]);
 
+  // The counter, drawn in 3-D in the big button where the face was (counter3d.ts): a picture of
+  // what the numbers already say. Where it can't be drawn, or isn't wanted, the face is still there.
+  const three = useWants3d(id);
+  const sceneCanvas = useRef<HTMLCanvasElement>(null);
+  const scene = useRef<Counter3d | null>(null);
+  const [sceneUp, setSceneUp] = useState(false);
+  const look = useRef<CounterLook | null>(null);
+  if (view) {
+    const who = (name: string) => [...name].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 7);
+    look.current = {
+      chaos: view.chaos / 1000,
+      stress: view.stress / 1000,
+      dream: view.fever > 0,
+      away: view.vacation > 0,
+      panic: view.panic,
+      clutter: Math.min(1, view.clutter / 1000),
+      asking: !!view.request,
+      radio: !!view.radio,
+      counter: view.crew.filter((c) => c.hired && c.role === "counter").map((c) => ({ who: who(c.id), level: c.level })),
+      drivers: view.crew.filter((c) => c.hired && c.role === "driver").length,
+      desk: view.desk.hired && view.desk.on,
+      minute: clockNow().minute,
+    };
+  }
+  // The floor plan as a room (floor3d.ts), under its own grid of squares.
+  const roomCanvas = useRef<HTMLCanvasElement>(null);
+  const roomGrid = useRef<HTMLDivElement>(null);
+  const room = useRef<Floor3d | null>(null);
+  const [roomUp, setRoomUp] = useState(false);
+  const floorLook = useRef<FloorLook | null>(null);
+  if (view) {
+    const who = (name: string) => [...name].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 7);
+    const at = new Map(view.floor.pieces.map((p) => [p.id, p.square]));
+    const { cols } = view.floor;
+    const beside = (a: number, b: number) => (Math.abs(a - b) === 1 && Math.floor(a / cols) === Math.floor(b / cols)) || Math.abs(a - b) === cols;
+    floorLook.current = {
+      cols,
+      rows: view.floor.rows,
+      pieces: view.floor.pieces.map((p) => ({ id: p.id, square: p.square, fixed: p.fixed, empty: p.empty })),
+      holding,
+      // A rule in effect joins the two things it is about, wherever they now stand side by side.
+      links: view.floor.rules
+        .filter((r) => r.active)
+        .flatMap((r) => {
+          const rule = DELBIES_FLOOR_RULES.find((x) => x.id === r.id);
+          const a = rule && at.get(rule.a);
+          if (!rule || a === undefined) return [];
+          return rule.b.flatMap((id) => {
+            const b = at.get(id);
+            return b !== undefined && beside(a, b) ? [{ a, b, good: r.good }] : [];
+          });
+        }),
+      drivers: view.crew.filter((c) => c.hired && c.role === "driver").length,
+      who: Object.fromEntries(DELBIES_PIECES.filter((p) => p.crew).map((p) => [p.id, who(p.crew!)])),
+    };
+  }
+  const ready = !!view;
+  useEffect(() => {
+    const el = roomCanvas.current;
+    const grid = roomGrid.current;
+    if (!three || !ready || !el || !grid) return setRoomUp(false);
+    let alive = true;
+    let raf = 0;
+    const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const draw = (time: number) => {
+      raf = requestAnimationFrame(draw);
+      const r = room.current;
+      if (!r || !floorLook.current || document.hidden) return;
+      // The camera is set by the grid's width on the page, in the scene and in the CSS alike.
+      grid.parentElement?.style.setProperty("--board-s", `${grid.clientWidth}px`);
+      setRoomUp(r.render(floorLook.current, time, el.clientWidth, el.clientHeight, grid.clientWidth, Math.min(2, window.devicePixelRatio || 1), still));
+    };
+    loadFloor3d(el).then((r) => {
+      if (!alive || !r) return r?.dispose();
+      room.current = r;
+      raf = requestAnimationFrame(draw);
+    });
+    return () => {
+      alive = false;
+      cancelAnimationFrame(raf);
+      room.current?.dispose();
+      room.current = null;
+      setRoomUp(false);
+    };
+  }, [three, ready]);
+  useEffect(() => {
+    const el = sceneCanvas.current;
+    if (!three || !ready || !el) return setSceneUp(false);
+    let alive = true;
+    let raf = 0;
+    const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const draw = (time: number) => {
+      raf = requestAnimationFrame(draw);
+      const s = scene.current;
+      if (!s || !look.current || document.hidden) return;
+      // Until it has drawn once the canvas takes no room: it is sized from the button it will sit in.
+      const width = el.clientWidth || Math.max(0, (el.parentElement?.clientWidth ?? 0) - 16);
+      setSceneUp(s.render(look.current, time, width, el.clientHeight || Math.round(width / 2.3), Math.min(2, window.devicePixelRatio || 1), still));
+    };
+    loadCounter3d(el).then((s) => {
+      if (!alive || !s) return s?.dispose();
+      scene.current = s;
+      raf = requestAnimationFrame(draw);
+    });
+    return () => {
+      alive = false;
+      cancelAnimationFrame(raf);
+      scene.current?.dispose();
+      scene.current = null;
+      setSceneUp(false);
+    };
+  }, [three, ready]);
+
   const refresh = () => {
     const s = state_.current;
     if (!s) return;
@@ -239,6 +356,7 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
   function hustle() {
     const result = act({ cmd: "hustle" }, true);
     if (result?.ok) {
+      scene.current?.ring();
       if (result.message) notes([523, 659, 784, 1046], 70, 0.12);
       else blip(600 + Math.random() * 140, 0.04, "triangle", 0.03, -200);
     }
@@ -298,10 +416,13 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
 
       <div className="delbies-floor">
         <section className="delbies-desk" aria-label="Delbie">
-          <button type="button" className={`delbies-delbie ${view.fever > 0 ? "dream" : ""} ${view.vacation > 0 ? "away" : ""}`} onClick={hustle}>
-            <span className="face" aria-hidden="true">
-              {view.vacation > 0 ? "🎣" : view.fever > 0 ? "😁" : view.chaos >= 500 ? "😤" : "🙂"}
-            </span>
+          <button type="button" className={`delbies-delbie ${view.fever > 0 ? "dream" : ""} ${view.vacation > 0 ? "away" : ""} ${sceneUp ? "scened" : ""}`} onClick={hustle}>
+            {three && <canvas ref={sceneCanvas} className={`delbies-scene${sceneUp ? " up" : ""}`} aria-hidden="true" />}
+            {!sceneUp && (
+              <span className="face" aria-hidden="true">
+                {view.vacation > 0 ? "🎣" : view.fever > 0 ? "😁" : view.chaos >= 500 ? "😤" : "🙂"}
+              </span>
+            )}
             <span className="shout">{view.shout}</span>
             <small>
               {view.vacation > 0 ? `Back in ${minutesAndSeconds(view.vacation)}. The store is doing fine.` : `Hustle: ${dollars(view.perClick)} a click${view.fever > 0 ? ` · ${view.fever}s of the dream left` : ""}`}
@@ -458,7 +579,9 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
           <h2>
             The floor plan <small>{holding ? "Now tap where it goes." : "Tap something, then tap where it goes. Who sits next to what matters."}</small>
           </h2>
-          <div className="delbies-grid" style={{ gridTemplateColumns: `repeat(${view.floor.cols}, 1fr)` }}>
+          <div className={`delbies-room${roomUp ? " up" : ""}`}>
+          {three && <canvas ref={roomCanvas} className="delbies-room-gl" aria-hidden="true" />}
+          <div ref={roomGrid} className="delbies-grid" style={{ gridTemplateColumns: `repeat(${view.floor.cols}, 1fr)`, ...(roomUp ? { transform: BOARD_TRANSFORM } : {}) }}>
             {Array.from({ length: view.floor.cols * view.floor.rows }, (_, square) => {
               const piece = view.floor.pieces.find((p) => p.square === square);
               const held = piece && piece.id === holding;
@@ -486,6 +609,7 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
                 </button>
               );
             })}
+          </div>
           </div>
           <ul className="delbies-rules">
             {view.floor.rules.map((r) => (

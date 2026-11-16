@@ -545,10 +545,58 @@ Bowling plays the way bowling games on a phone do:
   and `[` `]` set the hook.
 - **In 3D** (bowling's default) the camera stands behind the bowler, down the lane, follows the
   ball to the pins, and watches them go: they topple the way they're knocked and lie in the pit.
+  The lane stands in an alley: gutters sunk below the boards, the lanes either side with their own
+  pins (and somebody bowling on them), kickbacks, numbered masking units, the ceiling and its lights.
 - **The moment:** a strike, a spare, a split or a gutter ball gets a call-out, with **Replay** to
   watch it again in slow motion, and the next ball waits a moment so it isn't missed. The ball and
   the pins have their own sounds, and the score sheet (marks over running totals, the frame being
   bowled picked out) is always on screen.
+
+## In 3D
+
+Some games have a look in three dimensions as well as the flat drawing they began with. Each is
+fetched only when its table is on screen and only where WebGL works; anywhere else, and for anyone
+who prefers it, the flat drawing is still there (⚙︎ → **The table is drawn**; an arcade game has
+its own **3D** switch, remembered for that game; `?flat` in the address turns it off for a visit).
+
+- **Bowling and Mini Golf** (`sport/scene3d*.ts`, `sport/alley3d.ts`): the table sports' scene.
+  "The best for each game" is 3D for bowling and the angled flat drawing for mini golf.
+- **Tower of Ryan and Shitstorm** (`arcade/scene3d*.ts`): the scene is drawn on a canvas under the
+  field's own, which then only draws what is written over it (words, the banner, the boss's bar).
+  Tower of Ryan is a valley on a table, with the cave the creeps come out of and Ryan's gate.
+  Shitstorm is what it says: a storm over a town, pigeons, gulls, flying outhouses and a honey
+  wagon throwing what you'd expect, and the fan for a boss; you fly a plunger and a bomb is a
+  flush. The engine still calls these things by their plain names: the parlor's words for them are
+  in `arcade/flavour.ts`.
+  Chip Stack is the one big chip on a card table, with the winnings stacked round it.
+- **The boards** (`board/board3d*.ts`): Chess, Checkers, Reversi, Go (up to 13×13), Tic-Tac-Toe
+  and Drop Four share one scene, each with its own board and set: a turned chess set on walnut,
+  two-faced Reversi discs that turn over, stones on the crossings, discs that run down their
+  column. The board's grid of buttons is still what is tapped, dragged and read out: it is made
+  see-through and tipped back by a CSS transform that is the scene's camera, so each button lies
+  on its square. A game with no set of its own here gets plain counters.
+- **Combat** (`board/sea3d-gl.ts`): the same trick, over a tray of rolling water. Ships are models
+  that ride the swell, burn where they are hit and lie over black when sunk; a miss leaves a white
+  float, and a shot that has just landed throws up spray or flame.
+- **Every card table** (`.table.three`, `.spades.three` in `styles.css`): no canvas at all. The
+  felt becomes a table seen from your chair, set out in space with CSS: the cards lie on it, the
+  deck and the pile have their thickness, and what is read stands up to face you. Palace, Spades
+  and all the games on the card kit; a table for one (the patiences) is tipped only a little.
+- **Backgammon** (`.track.three`): the board tipped back the same way, with checkers that have an
+  edge, and the dice it always had.
+
+- **Delbie's Daycare & Geriatrics** (`idle/counter3d*.ts`): the counter, in the big button where
+  the face was. It is a picture of what the numbers already say: the line is as long as the
+  counter is chaotic and the phones ring with it, whoever has been taken on stands at the counter,
+  a truck is out the back for each driver, the back room's boxes pile up, a red light turns when
+  the books are full, and there is a sign on the counter when Delbie has the afternoon off. The
+  floor plan is a room with its roof off (`idle/floor3d*.ts`), under the same see-through grid of
+  buttons the boards use: a desk and a screen for each terminal and whoever has been taken on at
+  it, the office, the bathroom, the microwave, the bench; what is picked up hangs over its square,
+  and two neighbours that do something to each other are joined by a green or a red bar on the
+  floor. The lists are as they were.
+
+Still flat: a 19×19 Go board, whose crossings would be too close together to tap once tipped back.
 
 ## Making a bowling lane
 
