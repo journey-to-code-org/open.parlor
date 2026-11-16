@@ -14,6 +14,7 @@ import { loadArcadeBest, loadArcadeHouse, loadAutofire, saveArcadeBest, type Arc
 import { boardOf, sendRun, type HouseRun } from "./scores";
 import { wants3d } from "../display";
 import { controlsFor } from "./controls";
+import { createPredictor, type Frame } from "./predict";
 import { arcadeSays } from "./flavour";
 import { hasArcade3d, loadArcade3d, type Arcade3d } from "./scene3d";
 import { createArcadeScreen, type ArcadePointer } from "./screen";
@@ -165,112 +166,58 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
     const playing = run === 0 || rival ? seed : Math.floor(Math.random() * 2 ** 31);
     let state = table ? structuredClone(table.view().arcade) : game.newGame(normal, seats, playing);
     const mySeat = table?.seat ?? stream?.seat ?? 0;
-    // Flown at a table: the ticks the server has told of that are not played here yet, each a list of
-    // the seats whose controls changed; what every seat's controls are doing; and the socket.
-    let frames: [number, unknown][][] = [];
-    let flown: unknown[] = [];
+    // Flown at a table: the server's game as this page plays it (predict.ts), and the socket it comes over.
+    const flight = stream ? createPredictor(game, stream.seat) : null;
+    flight?.reset(state, 0, Array.from({ length: seats }, () => game.idle));
     let serverOver = false;
     let joined = false;
     let socket: WebSocket | null = null;
-    let lastSent = "";
     let again: ReturnType<typeof setTimeout> | undefined;
-    // The server's game as this page has been told of it, and how many ticks of it that is. What is
-    // drawn (`state`) is that game played a little further on, to about where the server's really is:
-    // my own controls take a network trip to count, and a ship that waits for it feels like steering
-    // through syrup. So my controls are played here ahead of the server saying so, by as many ticks
-    // as they have been taking to come back (`lead`). Everyone else's are held as last heard.
-    let real: unknown = state;
-    let realTick = 0;
-    let lead = 0;
-    let trip = 0;
-    /** My controls as sent and not yet heard back, and all of them lately, each with the tick this page was on. */
-    let unheard: { text: string; tick: number }[] = [];
-    let mine: { input: unknown; tick: number }[] = [];
-    const LONGEST_LEAD = 15;
     const endOf = (result: { score: number; stage: string; scores: number[]; ticks: number }) => {
       over = true;
       setEnding({ score: result.score, best: 0, isBest: false, stage: result.stage, time: clock(result.ticks, game.rate), scores: result.scores });
     };
+    /** How the server's own game stands, as far as this page has been told. */
+    const standing = () => {
+      const sum = game.summary(flight!.real);
+      return { score: sum.score, stage: game.view(flight!.real).stage, scores: sum.scores, ticks: sum.ticks };
+    };
     function connect() {
-      if (!stream || !live) return;
+      if (!stream || !flight || !live) return;
       const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/live/${encodeURIComponent(stream.table)}`);
       socket = ws;
       ws.onmessage = (e) => {
-        const m = JSON.parse(String(e.data)) as { snap?: unknown; inputs?: unknown[]; over?: boolean; f?: [number, unknown][][] };
+        const m = JSON.parse(String(e.data)) as { snap?: unknown; tick?: number; inputs?: unknown[]; over?: boolean; f?: Frame[] };
         if (m.snap) {
-          real = state = m.snap;
-          realTick = (m as { tick?: number }).tick ?? 0;
-          unheard = [];
-          mine = [];
-          flown = m.inputs ?? [];
-          frames = [];
+          flight.reset(m.snap, m.tick ?? 0, m.inputs ?? []);
+          state = m.snap;
           joined = true;
-          lastSent = "";
           serverOver = !!m.over;
-        } else if (m.f) frames.push(...m.f);
+        } else if (m.f) flight.told(m.f);
         if (m.over) serverOver = true;
       };
       ws.onclose = (e) => {
         if (!live || over) return;
         // No game in the air at this table: it ended, or the server lost it.
-        if (e.code === 4404) return endOf(stream.result ?? { score: game.summary(real).score, stage: joined ? game.view(real).stage : "Lost in the storm", scores: game.summary(real).scores, ticks: game.summary(real).ticks });
+        if (e.code === 4404) return endOf(stream.result ?? (joined ? standing() : { ...standing(), stage: "Lost in the storm" }));
         again = setTimeout(connect, 1000);
       };
     }
-    /** Play what the server has told of: a tick a frame, and faster when this page has fallen behind. */
+    /** One frame of a game that is flown: my controls out, the server's ticks in, and the game to draw. */
     function fly() {
-      const flying = stream!.seat !== null;
       // As the server will take them: the same controls, said the same way.
-      const input = game.input(controls.read());
-      const read = JSON.stringify(input);
-      if (flying && read !== lastSent && socket?.readyState === 1) {
-        lastSent = read;
-        socket.send(read);
-        unheard.push({ text: read, tick: realTick });
-        mine.push({ input, tick: realTick });
-        if (mine.length > 120) mine = mine.slice(-60);
-      }
-      let n = frames.length > 20 ? frames.length - 2 : frames.length > 4 ? 2 : Math.min(1, frames.length);
-      while (n-- > 0) {
-        for (const [seat, input] of frames.shift()!) {
-          flown[seat] = input;
-          if (seat !== mySeat || !flying) continue;
-          // My own controls, heard back: how many ticks that took is how far ahead to play them.
-          const text = JSON.stringify(input);
-          const at = unheard.findIndex((u) => u.text === text);
-          if (at < 0) continue;
-          const took = realTick - unheard[at]!.tick;
-          unheard = unheard.slice(at + 1);
-          trip = trip ? trip * 0.8 + took * 0.2 : took;
-          lead = Math.max(0, Math.min(LONGEST_LEAD, Math.round(trip)));
-        }
-        game.step(real, flown);
-        realTick++;
+      const out = flight!.frame(game.input(controls.read()));
+      if (out.send && socket?.readyState === 1) socket.send(out.send);
+      state = out.state;
+      for (let i = 0; i < out.played; i++) {
         frame++;
-        screen.hear(game.view(real).events, false, 0);
         screen.settle();
       }
-      if (serverOver && !frames.length) {
-        state = real;
-        if (!over) {
-          const sum = game.summary(real);
-          endOf({ score: sum.score, stage: game.view(real).stage, scores: sum.scores, ticks: sum.ticks });
-        }
-        return;
+      screen.hear(out.events as Parameters<typeof screen.hear>[0], false, 0);
+      if (serverOver && !flight!.behind && !over) {
+        state = flight!.real;
+        endOf(standing());
       }
-      // What is drawn: the server's game, with my controls played on ahead of it.
-      if (!flying || !lead) return void (state = real);
-      const ahead = structuredClone(real);
-      const inputs = flown.slice();
-      let from = 0;
-      for (let i = 0; i < lead; i++) {
-        // The controls the server will have from me on that tick: the ones I sent `lead` ticks before it.
-        const when = realTick + i - lead;
-        while (from < mine.length && mine[from]!.tick <= when) from++;
-        if (from > 0) inputs[mySeat] = mine[from - 1]!.input;
-        game.step(ahead, inputs);
-      }
-      state = ahead;
     }
     // Live: every seat holding still, which is all this page knows of anyone else between the server's words.
     const held = (): { n: number }[] => {
