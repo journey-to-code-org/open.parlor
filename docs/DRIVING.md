@@ -170,13 +170,13 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
 
 ### Phase 1: the garage and the strip
 
-- [ ] **The engine**: cars, parts, a drivetrain, a garage, and the drag race.
+- [x] **The engine**: cars, parts, a drivetrain, a garage, and the drag race.
       [open.games#15](https://github.com/journey-to-code-org/open.games/pull/15).
-- [ ] **The screens**: the garage, and the strip from behind the car, against the locals.
+- [x] **The screens**: the garage, and the strip from behind the car, against the locals.
       [#179](https://github.com/journey-to-code-org/open.parlor/pull/179).
 - [ ] **Garages on the server**, one a player.
-- [ ] **The strip in 3D**, with the flat view kept for whoever wants it.
-- [ ] **The cockpit view** on the strip.
+- [x] **The strip in 3D**, with the flat view kept for whoever wants it.
+- [x] **The cockpit view** on the strip.
 
 ### Phase 2: the phone
 
@@ -190,14 +190,15 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
 
 ### Phase 3: the road
 
-- [ ] **A driving model with steering**, in whole numbers like the rest.
-- [ ] **The mountain road**: one run, end to end, alone against the clock.
-- [ ] **Traffic**, both ways.
-- [ ] **The law**: the radar detector, pulling over, running.
-- [ ] **Stages and gas stations**, with a time and an average speed for each leg.
-- [ ] **Damage you feel**, from the first scrape to the end of the run.
-- [ ] **A rival** on the road with you: a computer driver first, then another player.
-- [ ] **The road from the cockpit**, with mirrors.
+- [x] **A driving model with steering**, in whole numbers like the rest.
+- [x] **The mountain road**: one run, end to end, alone against the clock.
+- [x] **Traffic**, both ways.
+- [x] **The law**: the radar detector, pulling over, running.
+- [x] **Stages and gas stations**, with a time and an average speed for each leg.
+- [x] **Damage you feel**: less power, a car that pulls, cracked glass, and the end of the run.
+- [x] **A rival** on the road with you: a computer driver. Another player waits for races on the server.
+- [x] **The road from the cockpit**, with a mirror.
+- [ ] **Tuning by hand**: computer drivers that pass more boldly, traffic that reacts, a patrol car you can hit.
 
 ### Phase 4: money
 

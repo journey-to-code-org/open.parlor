@@ -2655,3 +2655,15 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .pinks-slip th, .pinks-slip td { padding: 5px 6px; text-align: right; border-bottom: 1px dashed #b9b09a; font-size: 0.9rem; }
 .pinks-slip tbody th, .pinks-slip thead th:first-child { text-align: left; }
 .pinks-slip button.yes { padding: 10px; border-radius: 8px; border: 0; background: #1d1a16; color: #f6f1e4; font-weight: 700; }
+
+/* The mountain road: the strip's screen, with a wheel for a thumb and two pedals. */
+.pinks-road { background: #f0b98a; }
+.pinks-banner.small { top: 16%; font-size: clamp(1.1rem, 4vw, 1.9rem); }
+.pinks-road .pinks-pads { gap: 12px; }
+.pinks-road .steer { pointer-events: auto; flex: 0 1 240px; height: 96px; display: grid; place-content: center; border: 2px solid rgba(255, 255, 255, 0.4); background: rgba(20, 18, 30, 0.55); border-radius: 48px; font-weight: 700; touch-action: none; }
+.pinks-road .feet { display: grid; gap: 8px; justify-items: end; }
+.pinks-road .row { display: flex; gap: 8px; }
+.pinks-road .shifter.row button { width: 64px; height: 44px; font-size: 1.1rem; }
+.pinks-road .pedal { width: 78px; height: 110px; }
+.pinks-road .pedal.brake { background: linear-gradient(rgba(120, 130, 150, 0.55), rgba(20, 18, 30, 0.55)); }
+@media (max-width: 560px) { .pinks-road .pinks-strip-top { top: 34px; } }
