@@ -207,7 +207,7 @@ export function build(canvas: HTMLCanvasElement): Counter3d | null {
   // ---- The people, and what comes and goes ----------------------------------------------------
   const delbie = makeDelbie();
   delbie.group.scale.setScalar(1.12);
-  put(scene, delbie.group, 0, 0, -0.75);
+  put(scene, delbie.group, seatX(3) + 0.957, 0, -0.75);
   // What he gets like: a red face, and steam.
   const face = (delbie.head.material = (delbie.head.material as MeshStandardMaterial).clone());
   const calm = new Color(SKINS[1]!);
@@ -224,8 +224,20 @@ export function build(canvas: HTMLCanvasElement): Counter3d | null {
   scene.add(gone);
 
   const crew: { key: string; who: Person }[] = [];
-  // Four places at the counter, and two more behind it, by the shelves, for a full house.
-  const CREW_AT: [number, number][] = [[-1.9, -0.75], [1.9, -0.75], [-3.3, -0.75], [3.2, -0.75], [-1.0, -1.6], [1.25, -1.6]];
+  // One row behind the counter, as the store is: seven places, in the order the floor plan seats
+  // them, with Delbie's own place in the middle of them. Each has its screen, lit when it is taken.
+  const SEATS = 7;
+  function seatX(seat: number) {
+    return -3.35 + (seat < 4 ? seat : seat + 1) * 0.957;
+  }
+  const screens = Array.from({ length: SEATS }, (_, seat) => {
+    const dark = paint("#1d1f24", 0.5);
+    put(scene, box(0.05, 0.1, 0.05, dark), seatX(seat) + 0.3, 1.12, -0.12);
+    put(scene, box(0.34, 0.24, 0.03, dark), seatX(seat) + 0.3, 1.28, -0.12);
+    const glass = new Mesh(new PlaneGeometry(0.3, 0.2), new MeshBasicMaterial({ color: "#16191e" }));
+    glass.rotation.y = Math.PI;
+    return put(scene, glass, seatX(seat) + 0.3, 1.28, -0.137);
+  });
   const line: Person[] = [];
   // (Nobody stands straight in front of Delbie: he is who the picture is of.)
   const QUEUE: [number, number][] = [[-0.85, 1.0], [1.75, 1.15], [-1.9, 1.7], [0.9, 1.95], [2.8, 2.0], [-0.6, 2.5], [-3.0, 2.5], [2.0, 2.9]];
@@ -353,17 +365,21 @@ export function build(canvas: HTMLCanvasElement): Counter3d | null {
         }
 
         // Who is on the counter: made again only when that changes.
-        const key = look.counter.map((c) => c.who).join(",");
+        const key = look.counter.map((c) => `${c.who}@${c.seat}`).join(",");
         if (key !== crewKey) {
           crewKey = key;
           for (const c of crew) scene.remove(c.who.group);
           crew.length = 0;
-          look.counter.slice(0, CREW_AT.length).forEach((c, i) => {
+          const taken = new Set<number>();
+          for (const c of look.counter) {
+            if (c.seat < 0 || c.seat >= SEATS || taken.has(c.seat)) continue;
+            taken.add(c.seat);
             const who = crewPerson(c.who);
             who.group.scale.multiplyScalar(0.96);
-            put(scene, who.group, CREW_AT[i]![0], 0, CREW_AT[i]![1]);
+            put(scene, who.group, seatX(c.seat), 0, -0.75);
             crew.push({ key: c.who, who });
-          });
+          }
+          screens.forEach((glass, seat) => (glass.material as MeshBasicMaterial).color.set(taken.has(seat) ? "#7dffb0" : "#16191e"));
         }
         const sway = (p: Person, rate: number, far: number) => {
           p.group.position.y = still ? 0 : Math.abs(Math.sin(t * rate + p.phase)) * far;

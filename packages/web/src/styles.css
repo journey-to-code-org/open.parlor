@@ -2497,6 +2497,11 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .delbies-grid button.piece span { font-size: 1.15rem; line-height: 1; }
 .delbies-grid button small { font-size: 0.56rem; line-height: 1.1; text-align: center; color: #c5ccda; overflow-wrap: anywhere; }
 .delbies-grid button.fixed { background: #3a3220; border-color: #6b5a2a; cursor: default; }
+.delbies-grid button small { white-space: nowrap; }
+.delbies-grid button.no { opacity: 0.35; }
+.delbies-room.up .delbies-grid button.back { justify-content: flex-start; }
+.delbies-room.up .delbies-grid button.no { opacity: 1; }
+.delbies-room.up .delbies-grid button.no small { opacity: 0.4; }
 /* The floor plan as a room (idle/floor3d.ts). The scene's canvas is behind the grid, a little
    bigger than it (for the walls, and for what stands up past the far edge); the grid's squares
    stay the buttons they were, see-through and tipped back onto the picture, each with its name

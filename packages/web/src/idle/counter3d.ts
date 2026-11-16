@@ -22,8 +22,11 @@ export interface CounterLook {
   /** A customer is asking for something on account, or Ears is on the radio. */
   asking: boolean;
   radio: boolean;
-  /** Who is on the counter beside Delbie just now, by their id in the game (anybody who has stepped away isn't). */
-  counter: { who: string }[];
+  /**
+   * Who is on the counter just now, by their id in the game (anybody who has stepped away isn't),
+   * and which place along it is theirs: 0 at the far left, as the floor plan has them seated.
+   */
+  counter: { who: string; seat: number }[];
   /** How many trucks are in the yard: a driver taken on and not out on a run. */
   trucks: number;
   /** Somebody is at the billing desk. */
