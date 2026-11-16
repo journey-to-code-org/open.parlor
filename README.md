@@ -545,10 +545,35 @@ Bowling plays the way bowling games on a phone do:
   and `[` `]` set the hook.
 - **In 3D** (bowling's default) the camera stands behind the bowler, down the lane, follows the
   ball to the pins, and watches them go: they topple the way they're knocked and lie in the pit.
+  The lane stands in an alley: gutters sunk below the boards, the lanes either side with their own
+  pins (and somebody bowling on them), kickbacks, numbered masking units, the ceiling and its lights.
 - **The moment:** a strike, a spare, a split or a gutter ball gets a call-out, with **Replay** to
   watch it again in slow motion, and the next ball waits a moment so it isn't missed. The ball and
   the pins have their own sounds, and the score sheet (marks over running totals, the frame being
   bowled picked out) is always on screen.
+
+## In 3D
+
+Some games have a look in three dimensions as well as the flat drawing they began with. Each is
+fetched only when its table is on screen and only where WebGL works; anywhere else, and for anyone
+who prefers it, the flat drawing is still there (⚙︎ → **The table is drawn**, or the **3D** switch
+at an arcade game; `?flat` in the address turns it off for a visit).
+
+- **Bowling and Mini Golf** (`sport/scene3d*.ts`, `sport/alley3d.ts`): the table sports' scene.
+  "The best for each game" is 3D for bowling and the angled flat drawing for mini golf.
+- **Tower of Ryan and Shitstorm** (`arcade/scene3d*.ts`): the scene is drawn on a canvas under the
+  field's own, which then only draws what is written over it (words, the banner, the boss's bar).
+  Tower of Ryan is a valley on a table, with the cave the creeps come out of and Ryan's gate.
+  Shitstorm is what it says: a storm over a town, pigeons, gulls, flying outhouses and a honey
+  wagon throwing what you'd expect, and the fan for a boss; you fly a plunger and a bomb is a
+  flush. The engine still calls these things by their plain names: the parlor's words for them are
+  in `arcade/flavour.ts`.
+- **Chess** (`board/board3d*.ts`): a turned set on a walnut board. The board's grid of buttons is
+  still what is tapped, dragged and read out: it is made see-through and tipped back by a CSS
+  transform that is the scene's camera, so each button lies on its square.
+- **Palace** (`.palace.three` in `styles.css`): no canvas at all. The felt becomes a table seen
+  from your chair, set out in space with CSS: the cards lie on it, the pile stands as high as it
+  is deep, and what is read stands up to face you.
 
 ## Making a bowling lane
 
