@@ -1,4 +1,5 @@
 import { createTournaments } from "./tournaments.js";
+import { createStores } from "./stores.js";
 // Houses: a family's own corner of the parlor. A house has members (who joined with its invite
 // link), saved house rules with one as the default, and the tables it has opened.
 //
@@ -176,6 +177,7 @@ export function createHouses(
     return rooms.sync.write("houses", house.slug, { ...house, ai: house.ai ?? null, deck: house.deck ?? null, deleted: false });
   };
   const tournaments = createTournaments(rooms, { push, saveHouse: (h) => save(h as HouseDoc) });
+  const stores = createStores(rooms.sync);
 
   /** What a member sees. No player secrets; the invite code, since members share the link. */
   async function forMember(house: HouseDoc, me: Member) {
@@ -323,6 +325,13 @@ export function createHouses(
       if (asked === "palace") return json(palaceLeaderboard(await finishedPalace(house), members));
       if (isKitGame(asked)) return json({ ...placesLeaderboard(await finishedKit(house, asked), members), game: asked, teams: kitGame(asked)!.teams });
       return json(leaderboard(await finishedGames(house), members));
+    }
+
+    // /houses/:slug/store, /houses/:slug/stores → a member's idle game kept here, and how the house's stores stand
+    if (action === "store" || action === "stores") {
+      if (!me) return json({ error: "Join the house first." }, 403);
+      const reply = await stores.handle(house, me, action, method, input, new URL(request.url).searchParams);
+      return json(reply.body, reply.status);
     }
 
     // /houses/:slug/tournaments[/:id[/:action]]

@@ -2,10 +2,16 @@
 // date from the clock, and if that was a while it says what happened. While the page is open it is
 // brought up to date a few times a second, and saved every few seconds and whenever the page is
 // put away.
+//
+// A player in a house can keep the store there instead (the Parts Network): it is then the same
+// store on every device they are in that house on, and the house sees how each member's store
+// stands. The page still plays it; the house is sent a copy every so often, and when the house's
+// copy has been played somewhere else since, that one is taken up here.
 import { dollars, idleGame, type DelbiesCommand, type DelbiesPieceId, type DelbiesState, type DelbiesView, type IdleClock, type IdleGameId, type IdleReport } from "@journey-to-code/games";
 import { useEffect, useRef, useState } from "react";
 import { blip, notes, wakeArcadeSound } from "../arcade/sounds";
-import { loadIdle, saveIdle } from "../storage";
+import { loadIdle, loadIdleHouse, loadMyHouses, saveIdle, saveIdleHouse } from "../storage";
+import { fetchStandings, fetchStore, sendStore, type Standing } from "./network";
 
 /** The time, as the game wants it: the second, and the time of day on this device. */
 export function clockNow(): IdleClock {
@@ -24,7 +30,7 @@ const GROUPS: [role: string, name: string, about: string][] = [
 export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () => void }) {
   // One idle game so far, so this screen is its screen.
   const game = idleGame(id)!;
-  const state = useRef<DelbiesState | null>(null);
+  const state_ = useRef<DelbiesState | null>(null);
   const [view, setView] = useState<DelbiesView | null>(null);
   const [report, setReport] = useState<IdleReport | null>(null);
   const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
@@ -32,9 +38,82 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
   const [moving, setMoving] = useState(false);
   // The floor plan: the piece picked up, waiting for a square to be put down on.
   const [holding, setHolding] = useState<DelbiesPieceId | null>(null);
+  // The Parts Network: the house this store is kept in, how its stores stand, and a choice to make
+  // when the house already has a store of this player's.
+  const [house, setHouse] = useState(() => loadIdleHouse(id));
+  const houseRef = useRef(house);
+  houseRef.current = house;
+  const [standings, setStandings] = useState<Standing[]>([]);
+  const [clash, setClash] = useState<{ slug: string; name: string; state: DelbiesState; rev: number } | null>(null);
+  const myHouses = loadMyHouses();
+
+  const keep = (next: { slug: string; name: string; rev: number } | null) => {
+    saveIdleHouse(id, next);
+    houseRef.current = next;
+    setHouse(next);
+  };
+  /** Take up a store from the house in place of the one here. */
+  const adopt = (state: unknown, rev: number, at: { slug: string; name: string }) => {
+    const loaded = game.load(state) as DelbiesState | null;
+    if (!loaded) return false;
+    state_.current = loaded;
+    saveIdle(id, loaded);
+    keep({ ...at, rev });
+    refresh();
+    return true;
+  };
+  /** Send the store to its house; take the house's up instead when that one is newer. */
+  const sync = async () => {
+    const at = houseRef.current;
+    const s = state_.current;
+    if (!at || !s || document.hidden) return;
+    const sent = await sendStore(at.slug, id, s, at.rev);
+    if (houseRef.current?.slug !== at.slug) return;
+    if (sent.kind === "saved") keep({ ...at, rev: sent.rev });
+    else if (sent.kind === "newer") {
+      if (adopt(sent.state, sent.rev, at)) setToast({ text: "Picked up where your other device left off.", key: Date.now() });
+    } else if (sent.kind === "gone") {
+      keep(null);
+      setToast({ text: `You are no longer in ${at.name}. The store is kept here.`, key: Date.now() });
+    }
+  };
+  /** Put the store in a house: straight in when the house has none of this player's, a choice when it has. */
+  const join = async (slug: string) => {
+    const chosen = myHouses.find((h) => h.slug === slug);
+    if (!chosen) return;
+    const theirs = await fetchStore(slug, id);
+    if (!theirs) return setToast({ text: "That house can't be reached just now.", key: Date.now() });
+    const loaded = theirs.state ? (game.load(theirs.state) as DelbiesState | null) : null;
+    if (loaded) return setClash({ slug, name: chosen.name, state: loaded, rev: theirs.rev });
+    keep({ slug, name: chosen.name, rev: theirs.rev });
+    void sync().then(() => fetchStandings(slug, id).then(setStandings));
+  };
+
+  useEffect(() => {
+    if (!house) return setStandings([]);
+    let live = true;
+    const look = () => void fetchStandings(house.slug, id).then((s) => live && setStandings(s));
+    // On opening, the house's copy is taken up if it was played somewhere else since this browser last agreed with it.
+    void fetchStore(house.slug, id).then((theirs) => {
+      if (!live || !theirs) return;
+      if (theirs.state && theirs.rev !== house.rev) adopt(theirs.state, theirs.rev, house);
+      else void sync();
+      look();
+    });
+    const send = setInterval(() => void sync(), 15_000);
+    const watch = setInterval(look, 30_000);
+    const away = () => document.hidden || void sync();
+    document.addEventListener("visibilitychange", away);
+    return () => {
+      live = false;
+      clearInterval(send);
+      clearInterval(watch);
+      document.removeEventListener("visibilitychange", away);
+    };
+  }, [house?.slug]);
 
   const refresh = () => {
-    const s = state.current;
+    const s = state_.current;
     if (!s) return;
     const told = game.advance(s, clockNow());
     if (told.lines.length) setReport(told);
@@ -43,10 +122,10 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
 
   useEffect(() => {
     const clock = clockNow();
-    state.current = (game.load(loadIdle(id)) as DelbiesState | null) ?? (game.newGame(Math.floor(Math.random() * 2 ** 31), clock) as DelbiesState);
+    state_.current = (game.load(loadIdle(id)) as DelbiesState | null) ?? (game.newGame(Math.floor(Math.random() * 2 ** 31), clock) as DelbiesState);
     refresh();
     const tick = setInterval(refresh, 250);
-    const save = () => state.current && saveIdle(id, state.current);
+    const save = () => state_.current && saveIdle(id, state_.current);
     const keep = setInterval(save, 5000);
     // Back from another tab: catch up at once, and say what happened if it was a while.
     const seen = () => (document.hidden ? save() : refresh());
@@ -62,7 +141,7 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
   }, [id]);
 
   function act(command: DelbiesCommand, quiet = false) {
-    const s = state.current;
+    const s = state_.current;
     if (!s) return;
     wakeArcadeSound();
     const result = game.act(s, command, clockNow());
@@ -349,6 +428,43 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
               ))}
             </ul>
           )}
+          <h2>The Parts Network</h2>
+          {house ? (
+            <div className="delbies-network">
+              <p>
+                This store is kept in <b>{house.name}</b>. Open it on any device you are in that house on.
+              </p>
+              {standings.length > 0 && (
+                <ol>
+                  {standings.map((st) => (
+                    <li key={st.id} className={st.me ? "mine" : ""}>
+                      <b>{st.me ? `${st.name} (you)` : st.name}</b>
+                      <span>
+                        {dollars(st.score * 100)} taken in · {dollars(st.perSecond)} a second · {st.crew} on the payroll{st.moves > 0 ? ` · ${st.moves} ${st.moves === 1 ? "move" : "moves"}` : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              <button type="button" className="delbies-reset" onClick={() => keep(null)}>
+                Keep it only in this browser
+              </button>
+            </div>
+          ) : myHouses.length > 0 ? (
+            <div className="delbies-network">
+              <p>This store is only in this browser. Keep it in one of your houses to open it on any device, and to see how the rest of the house is doing.</p>
+              <div className="col">
+                {myHouses.map((h) => (
+                  <button key={h.slug} type="button" onClick={() => void join(h.slug)}>
+                    Keep it in {h.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="empty">This store is only in this browser. Join or start a house from the front page, and you can keep it there and see the rest of the house's stores.</p>
+          )}
+
           <h2>Lost &amp; Found</h2>
           <ul className="delbies-relics">
             {view.relics.map((r) => (
@@ -408,6 +524,43 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
         </div>
       )}
 
+      {clash && (
+        <div className="delbies-sheet" role="dialog" aria-label="Which store?">
+          <div>
+            <h2>{clash.name} already has a store of yours</h2>
+            <p>
+              The one there has taken in {dollars(game.score(clash.state) * 100)}. The one here has taken in {dollars(view.earned)}. Only one can be kept.
+            </p>
+            <div className="row">
+              <button
+                type="button"
+                className="yes"
+                autoFocus
+                onClick={() => {
+                  adopt(clash.state, clash.rev, clash);
+                  setClash(null);
+                }}
+              >
+                Use the one in {clash.name}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  keep({ slug: clash.slug, name: clash.name, rev: clash.rev });
+                  setClash(null);
+                  void sync();
+                }}
+              >
+                Replace it with this one
+              </button>
+              <button type="button" onClick={() => setClash(null)}>
+                Never mind
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {moving && (
         <div className="delbies-sheet" role="dialog" aria-label="Move the store?">
           <div>
@@ -444,8 +597,8 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
               <button
                 type="button"
                 onClick={() => {
-                  state.current = game.newGame(Math.floor(Math.random() * 2 ** 31), clockNow()) as DelbiesState;
-                  saveIdle(id, state.current);
+                  state_.current = game.newGame(Math.floor(Math.random() * 2 ** 31), clockNow()) as DelbiesState;
+                  saveIdle(id, state_.current);
                   setAsking(false);
                   refresh();
                 }}

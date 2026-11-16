@@ -173,3 +173,9 @@ export function saveArcadeBest(game: ArcadeGameId, rules: ArcadeRules, crew: num
 // page is opened again. The game's own `load` checks what comes back.
 export const loadIdle = (game: IdleGameId): unknown => read<unknown>(`cardroom:${game}:save`, null);
 export const saveIdle = (game: IdleGameId, state: unknown) => write(`cardroom:${game}:save`, state);
+/** The house an idle game's store is kept in (and the save of it this browser last agreed with the house on), or null while it is only here. */
+export const loadIdleHouse = (game: IdleGameId): { slug: string; name: string; rev: number } | null => {
+  const kept = read<{ slug?: unknown; name?: unknown; rev?: unknown } | null>(`cardroom:${game}:house`, null);
+  return kept && typeof kept.slug === "string" && typeof kept.name === "string" ? { slug: kept.slug, name: kept.name, rev: typeof kept.rev === "number" ? kept.rev : 0 } : null;
+};
+export const saveIdleHouse = (game: IdleGameId, house: { slug: string; name: string; rev: number } | null) => write(`cardroom:${game}:house`, house);
