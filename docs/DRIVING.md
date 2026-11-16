@@ -20,6 +20,14 @@ Shootout.
 6. **The risk.** Crash and the car is hurt. Hurt enough and it is gone.
 7. **The Shootout.** Once a year. Win an event there.
 
+### The garage is a place
+
+The garage screen is a drawn room, not a list. You pick the thing you mean: the paper on the bench
+(classifieds), the laptop (parts sites), the tool wall, the shelf, the board (the house), the hood,
+the body, underneath, and the door. A part goes on or comes off by undoing its bolts on the car.
+Out the door is a junction: the strip, where the locals pull up one at a time, the mountain road,
+and Morgantown. The pictures are in `packages/web/src/drive/Scenes.tsx`.
+
 ## The phone
 
 Everything you buy comes through it, the way it does now.
