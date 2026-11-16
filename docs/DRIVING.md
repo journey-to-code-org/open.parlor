@@ -215,7 +215,7 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
 - [ ] **Tearing a car down**: a parts car into the parts it is made of.
 - [ ] **A marketplace of players**, on the server: listings for parts, cars and parts cars.
 - [ ] **The scrappers**: Ricky at Rix Racing and the rest, buying and selling against you.
-- [ ] **The dyno in Morgantown, and the remote tune** with its deer.
+- [x] **The dyno in Morgantown, and the remote tune** with its deer. The drive to Morgantown waits for the town.
 - [ ] **The performance sites** as places of their own.
 - [ ] **Cosmetics**, and a car that looks like its build on the strip.
 
@@ -229,12 +229,12 @@ One PR per piece, on a `staging/driving` branch until a phase is whole.
 - [x] **Damage you feel**: less power, a car that pulls, cracked glass, and the end of the run.
 - [x] **A rival** on the road with you: a computer driver. Another player waits for races on the server.
 - [x] **The road from the cockpit**, with a mirror.
-- [x] **Tuning by hand**: computer drivers that pass more readily, traffic that reacts, a patrol car you can hit. In the engine; the screen has them once it is on games 0.1.21.
+- [x] **Tuning by hand**: computer drivers that pass more readily, traffic that reacts, a patrol car you can hit. In the engine and on the screen.
 
 ### Phase 4: money
 
 - [x] **Flashlight drags, roll races and index racing**, in the engine.
-- [ ] **Screens for them**: a roll start, and a board that shows the index and a breakout.
+- [x] **Screens for them**: a roll start, and a slip that shows the index and a breakout.
 - [ ] **Races on the server**, so nobody can see when the flashlight will drop.
 - [ ] **Between players**, with the stake held and paid out: cash, or the cars themselves.
 

@@ -18,6 +18,8 @@ export interface RoadFrame3d {
   steer: number;
   /** A hit just now, fading from 1 to 0: it shakes the camera. */
   jolt: number;
+  /** After dark: headlamps, and not much else. */
+  night: boolean;
 }
 
 export interface Road3d {
