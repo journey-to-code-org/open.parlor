@@ -5,6 +5,8 @@ import { arcadeBlurb, arcadeSays } from "../src/arcade/flavour";
 import { hasArcade3d } from "../src/arcade/scene3d";
 import { hasBoard3d } from "../src/board/board3d";
 import { wants3d } from "../src/display";
+import { GAME_LIST } from "../src/GamePicker";
+import { cardKey } from "../src/handOrder";
 
 describe("which games have a scene", () => {
   it("every game played at the arcade table has one", () => {
@@ -32,5 +34,18 @@ describe("the parlor's words for Shitstorm", () => {
   it("leaves the other games as their engines have them", () => {
     expect(arcadeSays("bulwark", "Bombs")).toBe("Bombs");
     expect(arcadeBlurb("bulwark", "as given")).toBe("as given");
+  });
+});
+
+describe("games the parlor can't draw yet", () => {
+  it("keeps Mahjong Riichi and billiards off the lists until each has a table", () => {
+    for (const id of ["mahjongriichi", "billiards"]) {
+      expect(KIT_GAMES.some((g) => g.id === id), id).toBe(true);
+      expect(GAME_LIST.some((g) => g.id === id), id).toBe(false);
+    }
+  });
+  it("leaves a rack of tiles in the order the engine gave it", () => {
+    const tile = { kind: "tile" as const };
+    expect(cardKey(tile)).toEqual({ suit: 6, rank: 0 });
   });
 });

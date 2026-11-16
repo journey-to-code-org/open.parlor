@@ -3,10 +3,19 @@ import { arcadeBlurb } from "./arcade/flavour";
 import { arranged } from "./catalogue";
 import type { GameId } from "./storage";
 
+/**
+ * Games the engine has that the parlor can't draw properly yet, kept off every list until it can.
+ * Mahjong Riichi's hand is tiles: the card has a face for one now, but the card table doesn't know
+ * melds, discards or a wall. Billiards plays on the sports table as it stands, but that draws it as
+ * a putting green would be (the rails over the balls, a "Putt" button). Each comes off this list in
+ * the change that gives it a table.
+ */
+const NOT_YET = new Set<string>(["mahjongriichi", "billiards"]);
+
 export const GAME_LIST: { id: GameId; name: string; emoji: string; blurb: string }[] = [
   { id: "spades", name: "Spades", emoji: "♠\uFE0E", blurb: "Partners, bids and nils" },
   { id: "palace", name: "Palace", emoji: "🏰", blurb: "First to shed every card wins" },
-  ...KIT_GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, blurb: g.blurb })),
+  ...KIT_GAMES.filter((g) => !NOT_YET.has(g.id)).map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, blurb: g.blurb })),
 ];
 
 /**
