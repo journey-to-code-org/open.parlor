@@ -594,7 +594,12 @@ its own **3D** switch, remembered for that game; `?flat` in the address turns it
   buttons the boards use: a desk and a screen for each terminal and whoever has been taken on at
   it, the office, the bathroom, the microwave, the bench; what is picked up hangs over its square,
   and two neighbours that do something to each other are joined by a green or a red bar on the
-  floor. The lists are as they were.
+  floor. The crew are themselves in both (`idle/people3d.ts`), from what the game says of each:
+  Tommy's tie and clipboard, Pluto's cap and rabbit, B-Rice and his pasta, Ricky outside the
+  bathroom on his phone when that is where he is. The payday board counts down and hands go up
+  when the wages go out; a Store Move sends the boxes past and repaints the walls; and whatever
+  has just gone in the incident log is said over the picture for a few seconds. The lists are as
+  they were.
 
 Still flat: a 19×19 Go board, whose crossings would be too close together to tap once tipped back.
 

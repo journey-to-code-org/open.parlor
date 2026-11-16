@@ -2406,6 +2406,14 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .delbies-scene { display: none; width: 100%; aspect-ratio: 2.3; border-radius: 12px; background: linear-gradient(#cfc8b8, #8f8a80); pointer-events: none; }
 .delbies-scene.up { display: block; }
 .delbies-delbie.scened { padding: 8px 8px 12px; gap: 6px; }
+.delbies-delbie.scened { position: relative; }
+/* What has just happened, over the picture for a few seconds. */
+.delbies-caption {
+  position: absolute; left: 14px; right: 14px; top: 14px; padding: 5px 9px; border-radius: 9px; font-size: 0.8rem; font-weight: 600; line-height: 1.25; text-align: left;
+  color: #14171c; background: rgba(255, 244, 214, 0.94); box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35); pointer-events: none; animation: delbies-caption 6s ease both;
+}
+@keyframes delbies-caption { 0% { opacity: 0; translate: 0 -6px; } 6%, 88% { opacity: 1; translate: 0 0; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .delbies-caption { animation: none; } }
 .delbies-delbie.scened.away { opacity: 1; }
 .delbies-delbie .shout { font-size: 1.25rem; font-weight: 700; text-align: center; text-wrap: balance; }
 .delbies-meters { display: grid; gap: 8px; }

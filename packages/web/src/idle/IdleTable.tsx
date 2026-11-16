@@ -206,8 +206,10 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
   const scene = useRef<Counter3d | null>(null);
   const [sceneUp, setSceneUp] = useState(false);
   const look = useRef<CounterLook | null>(null);
+  /** Taken on, and at work just now: not in the restroom, picking things up, off, or clocked out. */
+  const here = (c: DelbiesView["crew"][number]) => c.hired && (!c.status || c.status === "On the clock");
   if (view) {
-    const who = (name: string) => [...name].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 7);
+    const driversIn = view.crew.filter((c) => c.role === "driver" && here(c));
     look.current = {
       chaos: view.chaos / 1000,
       stress: view.stress / 1000,
@@ -217,12 +219,33 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
       clutter: Math.min(1, view.clutter / 1000),
       asking: !!view.request,
       radio: !!view.radio,
-      counter: view.crew.filter((c) => c.hired && c.role === "counter").map((c) => ({ who: who(c.id), level: c.level })),
-      drivers: view.crew.filter((c) => c.hired && c.role === "driver").length,
+      counter: view.crew.filter((c) => (c.role === "counter" || c.id === "snowcap") && here(c)).map((c) => ({ who: c.id })),
+      // A truck in the yard for each driver who is in, less the one out on a hotshot run.
+      trucks: Math.max(0, driversIn.length - (view.network.hotshot.outSeconds > 0 ? 1 : 0)),
       desk: view.desk.hired && view.desk.on,
+      payroll: view.payroll.inSeconds,
+      moves: view.move.moves,
+      department: view.move.departments[view.move.departments.length - 1] ?? null,
       minute: clockNow().minute,
     };
   }
+  // What has just happened is said over the picture for a few seconds, as well as in the log.
+  const newest = view?.log[view.log.length - 1];
+  const [caption, setCaption] = useState<{ text: string; key: string } | null>(null);
+  const lastTold = useRef<string | null>(null);
+  useEffect(() => {
+    if (!newest) return;
+    const key = `${newest.at}|${newest.text}`;
+    // Whatever was already in the log when the page opened is old news.
+    if (lastTold.current !== null && key !== lastTold.current) setCaption({ text: newest.text, key });
+    lastTold.current = key;
+  }, [newest?.at, newest?.text]);
+  useEffect(() => {
+    if (!caption) return;
+    const gone = setTimeout(() => setCaption(null), 6000);
+    return () => clearTimeout(gone);
+  }, [caption]);
+
   // The floor plan as a room (floor3d.ts), under its own grid of squares.
   const roomCanvas = useRef<HTMLCanvasElement>(null);
   const roomGrid = useRef<HTMLDivElement>(null);
@@ -230,7 +253,6 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
   const [roomUp, setRoomUp] = useState(false);
   const floorLook = useRef<FloorLook | null>(null);
   if (view) {
-    const who = (name: string) => [...name].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 7);
     const at = new Map(view.floor.pieces.map((p) => [p.id, p.square]));
     const { cols } = view.floor;
     const beside = (a: number, b: number) => (Math.abs(a - b) === 1 && Math.floor(a / cols) === Math.floor(b / cols)) || Math.abs(a - b) === cols;
@@ -251,8 +273,15 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
             return b !== undefined && beside(a, b) ? [{ a, b, good: r.good }] : [];
           });
         }),
-      drivers: view.crew.filter((c) => c.hired && c.role === "driver").length,
-      who: Object.fromEntries(DELBIES_PIECES.filter((p) => p.crew).map((p) => [p.id, who(p.crew!)])),
+      drivers: view.crew
+        .filter((c) => c.role === "driver" && here(c))
+        .map((c) => c.id)
+        .slice(view.network.hotshot.outSeconds > 0 ? 1 : 0),
+      who: Object.fromEntries(DELBIES_PIECES.filter((p) => p.crew).map((p) => [p.id, p.crew!])),
+      away: view.crew.filter((c) => c.hired && !here(c)).map((c) => c.id),
+      hungry: view.breakroom.brice && view.breakroom.hungry,
+      cinnamon: view.breakroom.cinnamon,
+      shocked: view.breakroom.plutoShocked > 0,
     };
   }
   const ready = !!view;
@@ -418,6 +447,11 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
         <section className="delbies-desk" aria-label="Delbie">
           <button type="button" className={`delbies-delbie ${view.fever > 0 ? "dream" : ""} ${view.vacation > 0 ? "away" : ""} ${sceneUp ? "scened" : ""}`} onClick={hustle}>
             {three && <canvas ref={sceneCanvas} className={`delbies-scene${sceneUp ? " up" : ""}`} aria-hidden="true" />}
+            {sceneUp && caption && (
+              <span key={caption.key} className="delbies-caption" aria-hidden="true">
+                {caption.text}
+              </span>
+            )}
             {!sceneUp && (
               <span className="face" aria-hidden="true">
                 {view.vacation > 0 ? "🎣" : view.fever > 0 ? "😁" : view.chaos >= 500 ? "😤" : "🙂"}

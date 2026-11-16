@@ -35,28 +35,10 @@ import {
   type Material,
 } from "three";
 import { PERSPECTIVE, SCALE, SHIFT, TILT } from "../board/board3d";
-import { person, SHIRTS, SKINS, type Person } from "./counter3d-gl";
+import { box, crewPerson, drum as drumOf, paint, put, rabbit, type Person } from "./people3d";
 import type { Floor3d, FloorLook } from "./floor3d";
 
-const paints = new Map<string, MeshStandardMaterial>();
-function paint(color: string, rough = 0.8, metal = 0, glow = 0): MeshStandardMaterial {
-  const key = `${color}/${rough}/${metal}/${glow}`;
-  let m = paints.get(key);
-  if (!m) paints.set(key, (m = new MeshStandardMaterial({ color, roughness: rough, metalness: metal, emissive: glow ? color : "#000000", emissiveIntensity: glow })));
-  return m;
-}
-function put<T extends Object3D>(parent: Object3D, o: T, x = 0, y = 0, z = 0): T {
-  o.position.set(x, y, z);
-  parent.add(o);
-  return o;
-}
-const solid = <T extends Mesh>(o: T) => {
-  o.castShadow = true;
-  o.receiveShadow = true;
-  return o;
-};
-const box = (w: number, h: number, d: number, m: Material) => solid(new Mesh(new BoxGeometry(w, h, d), m));
-const drum = (top: number, bottom: number, h: number, m: Material, sides = 12) => solid(new Mesh(new CylinderGeometry(top, bottom, h, sides), m));
+const drum = (top: number, bottom: number, h: number, m: Material, sides = 12) => drumOf(top, bottom, h, m, sides);
 function plate(text: string, ground: string, ink: string): MeshBasicMaterial {
   const c = document.createElement("canvas");
   c.width = 128;
@@ -73,17 +55,19 @@ function plate(text: string, ground: string, ink: string): MeshBasicMaterial {
   t.colorSpace = SRGBColorSpace;
   return new MeshBasicMaterial({ map: t });
 }
-/** A small figure for the room, facing the front: the counter scene's people at this scale. */
-function figure(who: number, cap: boolean): Person {
-  const p = person(SHIRTS[who % SHIRTS.length]!, SKINS[(who >> 3) % SKINS.length]!, cap ? ["#a33a30", "#2f6fd0", "#3f9a55"][who % 3]! : null, who);
-  p.group.scale.setScalar(0.4);
+/** One of the crew at the room's scale, facing the front. */
+function figure(id: string): Person {
+  const p = crewPerson(id);
+  p.group.scale.multiplyScalar(0.4);
   return p;
 }
 
-interface Standing { group: Group; key: string; x: number; z: number; people: Person[]; steam?: Mesh[] }
+interface Standing { group: Group; key: string; x: number; z: number; people: Person[]; steam?: Mesh[]; bubble?: Mesh }
+/** What is going on that changes what a piece looks like. */
+interface Doings { drivers: string[]; rickyOut: boolean; cinnamon: boolean; hungry: boolean }
 
 /** What stands on a square, modelled about its middle and within it. */
-function pieceModel(id: string, empty: boolean, who: number, drivers: number): { group: Group; people: Person[]; steam?: Mesh[] } {
+function pieceModel(id: string, empty: boolean, who: string | undefined, doing: Doings): { group: Group; people: Person[]; steam?: Mesh[]; bubble?: Mesh } {
   const g = new Group();
   const people: Person[] = [];
   const wood = paint("#a8794a", 0.8);
@@ -112,12 +96,23 @@ function pieceModel(id: string, empty: boolean, who: number, drivers: number): {
     put(g, box(0.3, 0.6, 0.02, paint("#3f78b5", 0.7)), 0, 0.3, 0.32);
     put(g, new Mesh(new PlaneGeometry(0.26, 0.13), plate("WC", "#ffffff", "#3f78b5")), 0, 0.7, 0.325);
     put(g, new Mesh(new SphereGeometry(0.02, 8, 6), paint("#f2c230", 0.3, 0.8)), 0.1, 0.3, 0.335);
+    // Ricky, when that is where he is: outside it, on his phone, in no hurry.
+    if (doing.rickyOut) {
+      const p = figure("ricky");
+      put(g, p.group, 0.36, 0, 0.38);
+      people.push(p);
+    }
   } else if (id === "microwave") {
     // The pasta microwave, on its table, going.
     put(g, box(0.56, 0.04, 0.4, wood), 0, 0.3, 0);
     for (const [x, z] of [[-0.24, -0.16], [0.24, -0.16], [-0.24, 0.16], [0.24, 0.16]] as const) put(g, box(0.04, 0.3, 0.04, wood), x, 0.15, z);
     put(g, box(0.4, 0.22, 0.28, paint("#e8e8e4", 0.4, 0.2)), 0, 0.43, 0);
     put(g, new Mesh(new PlaneGeometry(0.24, 0.15), new MeshBasicMaterial({ color: "#ffb347" })), -0.05, 0.43, 0.141);
+    // The cinnamon roll somebody left, which Ricky will not come near.
+    if (doing.cinnamon) {
+      put(g, drum(0.07, 0.08, 0.05, paint("#b9773a", 0.8), 14), 0.2, 0.345, 0.12);
+      put(g, drum(0.04, 0.045, 0.02, paint("#f6efe0", 0.6), 12), 0.2, 0.375, 0.12);
+    }
     const steam = [0, 1, 2].map(() => put(g, new Mesh(new SphereGeometry(0.05, 8, 6), new MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0 })), 0, 0.6, 0));
     return { group: g, people, steam };
   } else if (id === "warranty") {
@@ -128,7 +123,7 @@ function pieceModel(id: string, empty: boolean, who: number, drivers: number): {
     put(g, box(0.22, 0.16, 0.2, paint("#c9a36b", 0.95)), 0.14, 0.38, -0.08);
     put(g, new Mesh(new PlaneGeometry(0.2, 0.1), plate("RMA", "#ffffff", "#a33a30")), 0.14, 0.38, 0.025);
     if (!empty) {
-      const p = figure(who, true);
+      const p = figure(who ?? "snowcap");
       put(g, p.group, 0.05, 0, -0.33);
       people.push(p);
     }
@@ -137,12 +132,12 @@ function pieceModel(id: string, empty: boolean, who: number, drivers: number): {
     put(g, box(0.82, 0.05, 0.24, wood), 0, 0.2, 0);
     put(g, box(0.82, 0.22, 0.04, wood), 0, 0.36, -0.11);
     for (const x of [-0.36, 0.36]) put(g, box(0.05, 0.2, 0.22, steel), x, 0.1, 0);
-    for (let i = 0; i < Math.min(2, drivers); i++) {
-      const p = figure(40 + i * 13, i === 0);
-      p.group.scale.setScalar(0.36);
-      put(g, p.group, -0.2 + i * 0.4, 0.1, 0.02);
+    doing.drivers.slice(0, 3).forEach((driver, i, all) => {
+      const p = figure(driver);
+      p.group.scale.multiplyScalar(0.9);
+      put(g, p.group, (i - (all.length - 1) / 2) * 0.27, 0.1, 0.02);
       people.push(p);
-    }
+    });
   } else {
     // A terminal: a stretch of counter, a screen that is on when somebody sits at it, and them.
     put(g, box(0.78, 0.3, 0.3, paint("#a33a30", 0.7)), 0, 0.15, 0.12);
@@ -156,9 +151,17 @@ function pieceModel(id: string, empty: boolean, who: number, drivers: number): {
       put(g, drum(0.09, 0.09, 0.03, steel, 12), 0, 0.2, -0.26);
       put(g, drum(0.015, 0.015, 0.2, steel, 6), 0, 0.1, -0.26);
     } else {
-      const p = figure(who, who % 2 === 1);
+      const p = figure(who ?? id);
       put(g, p.group, 0, 0, -0.26);
       people.push(p);
+      // Pluto breeds rabbits. One of them comes to work.
+      if (who === "pluto") put(g, rabbit(), 0.27, 0.33, 0.14).scale.setScalar(0.75);
+      // B-Rice, when he hasn't eaten: it is all he can think about.
+      if (who === "brice" && doing.hungry) {
+        const bubble = new Mesh(new PlaneGeometry(0.46, 0.2), plate("PASTA?", "#ffffff", "#a33a30"));
+        put(g, bubble, 0, 1.0, -0.26);
+        return { group: g, people, bubble };
+      }
     }
   }
   return { group: g, people };
@@ -358,13 +361,17 @@ export function build(canvas: HTMLCanvasElement): Floor3d | null {
         const seen = new Set<string>();
         for (const p of look.pieces) {
           seen.add(p.id);
-          const key = `${p.empty}|${p.id === "bench" ? look.drivers : 0}`;
+          const who = look.who[p.id];
+          // A terminal is empty when nobody has been taken on for it, and while whoever has is somewhere else.
+          const away = !!who && look.away.includes(who);
+          const doing: Doings = { drivers: look.drivers, rickyOut: look.away.includes("ricky"), cinnamon: look.cinnamon, hungry: look.hungry };
+          const key = `${p.empty || away}|${p.id === "bench" ? look.drivers.join("") : ""}|${p.id === "bathroom" ? doing.rickyOut : ""}|${p.id === "microwave" ? doing.cinnamon : ""}|${who === "brice" ? doing.hungry : ""}`;
           const [x, z] = spot(p.square);
           let s = standing.get(p.id);
           if (!s || s.key !== key) {
             const at = s ? [s.group.position.x, s.group.position.z] : [x, z];
             if (s) things.remove(s.group);
-            const made = pieceModel(p.id, p.empty, look.who[p.id] ?? 1, look.drivers);
+            const made = pieceModel(p.id, p.empty || away, who, doing);
             s = { ...made, key, x, z };
             s.group.position.set(at[0]!, 0, at[1]!);
             standing.set(p.id, s);
@@ -383,6 +390,9 @@ export function build(canvas: HTMLCanvasElement): Floor3d | null {
             who.arms[1].rotation.x = still ? -0.6 : -0.7 - Math.sin(t * 6 + who.phase) * 0.25;
             who.head.rotation.y = still ? 0 : Math.sin(t * 0.8 + who.phase) * 0.4;
           }
+          if (s.bubble) s.bubble.position.y = 1.0 + (still ? 0 : Math.sin(t * 3) * 0.03);
+          // Pluto, after what B-Rice just ate: not himself.
+          if (who === "pluto" && s.people[0]) s.people[0].group.rotation.z = look.shocked && !still ? Math.sin(t * 38) * 0.12 : 0;
           s.steam?.forEach((puff, i) => {
             const life = (t * 0.6 + i / 3) % 1;
             (puff.material as MeshBasicMaterial).opacity = still ? 0 : (1 - life) * 0.6;
