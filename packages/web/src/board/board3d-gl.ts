@@ -27,26 +27,27 @@ import {
   Mesh,
   MeshBasicMaterial,
   MeshPhysicalMaterial,
-  Object3D,
-  TorusGeometry,
   MeshStandardMaterial,
   NoToneMapping,
+  Object3D,
   PCFShadowMap,
+  Path,
   PerspectiveCamera,
   Plane,
   PlaneGeometry,
   Raycaster,
   RingGeometry,
+  SRGBColorSpace,
   Scene,
   Shape,
   SphereGeometry,
-  SRGBColorSpace,
+  TorusGeometry,
   Vector2,
   Vector3,
   WebGLRenderer,
 } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { PERSPECTIVE, SCALE, SHIFT, TILT, type Board3d, type BoardFrame3d, type Piece3d } from "./board3d";
+import { PERSPECTIVE, SCALE, SHIFT, tiltOf, type Board3d, type BoardFrame3d, type Piece3d } from "./board3d";
 
 // ---- The set -------------------------------------------------------------------------------------
 // Each piece is turned on a lathe from a profile (radius, height), the way a real one is, with
@@ -183,6 +184,12 @@ function pieceOf(game: string, p: Piece3d): Object3D {
 // ---- The board -----------------------------------------------------------------------------------
 /** The frame round the squares, in squares, and how thick the board is. */
 const FRAME = 0.34;
+/**
+ * Drop Four's rack, in squares: the two grilles are `wall` thick, the front one's face `front` out
+ * from the squares, with the discs in the gap between; a hole is a little smaller than a disc, so
+ * the disc stays in; and the rack goes on past the squares this far at the sides, top and bottom.
+ */
+const RACK = { wall: 0.09, front: 0.28, hole: 0.36, side: 0.22, top: 0.16, bottom: 0.3 };
 const THICK = 0.2;
 /** What each game's board is made of: the frame, and how its playing surface is painted. */
 interface Surface {
@@ -385,7 +392,7 @@ export function build(canvas: HTMLCanvasElement): Board3d | null {
 
   /** The board and everything on it, turned to the tilt. */
   const table = new Group();
-  table.rotation.x = Math.PI / 2 - (TILT * Math.PI) / 180;
+  table.rotation.x = Math.PI / 2 - (tiltOf(false) * Math.PI) / 180;
   scene.add(table);
   const boardGroup = new Group();
   const marksGroup = new Group();
@@ -411,6 +418,7 @@ export function build(canvas: HTMLCanvasElement): Board3d | null {
       if (m.isMesh) m.geometry.dispose();
     });
     boardGroup.clear();
+    if (frame.gravity) return buildRack();
     const w = cols + FRAME * 2;
     const d = rows + FRAME * 2;
     const wood = new MeshStandardMaterial({ color: "#4b2f1d", roughness: 0.6 });
@@ -427,7 +435,64 @@ export function build(canvas: HTMLCanvasElement): Board3d | null {
     boardGroup.add(shade);
   }
 
+  /**
+   * A rack that stands on the table, as the real one does: two blue grilles with a hole for every
+   * disc and the discs between them, a divider between each column and the next, a bar along the
+   * bottom that they come to rest on, and two feet. In the table's own coordinates the rack's face
+   * is still the plane of the squares (y is out of it, towards whoever is playing) and its top row
+   * is at the far side, so everything else in this file puts a disc where it always did.
+   */
+  function buildRack() {
+    const blue = new MeshStandardMaterial({ color: "#1f55b5", roughness: 0.38 });
+    const deep = new MeshStandardMaterial({ color: "#173f8c", roughness: 0.5 });
+    const w = cols + RACK.side * 2;
+    const top = -rows / 2 - RACK.top;
+    const bottom = rows / 2 + RACK.bottom;
+    const face = new Shape();
+    face.moveTo(-w / 2, top);
+    face.lineTo(w / 2, top);
+    face.lineTo(w / 2, bottom);
+    face.lineTo(-w / 2, bottom);
+    face.closePath();
+    for (let at = 0; at < cols * rows; at++) {
+      const [x, z] = spot(at);
+      const hole = new Path();
+      hole.absarc(x, z, RACK.hole, 0, Math.PI * 2, true);
+      face.holes.push(hole);
+    }
+    // (Drawn in x and y and stood up: the shape's y becomes the table's z, and its depth runs back from y = 0.)
+    const grille = new ExtrudeGeometry(face, { depth: RACK.wall, bevelEnabled: false, curveSegments: 20 }).rotateX(Math.PI / 2);
+    for (const y of [RACK.front, 0]) {
+      const side = new Mesh(grille, blue);
+      side.position.y = y;
+      side.castShadow = side.receiveShadow = true;
+      boardGroup.add(side);
+    }
+    const gap = RACK.front - RACK.wall;
+    for (let c = 0; c <= cols; c++) {
+      const wall = new Mesh(new BoxGeometry(c === 0 || c === cols ? RACK.side * 2 - 0.1 : 0.07, gap, bottom - top), deep);
+      wall.position.set(c - cols / 2 + (c === 0 ? -RACK.side + 0.05 : c === cols ? RACK.side - 0.05 : 0), gap / 2, (top + bottom) / 2);
+      boardGroup.add(wall);
+    }
+    const bar = new Mesh(new BoxGeometry(w, gap, RACK.bottom - 0.08), deep);
+    bar.position.set(0, gap / 2, rows / 2 + 0.04 + (RACK.bottom - 0.08) / 2);
+    boardGroup.add(bar);
+    for (const side of [-1, 1]) {
+      const foot = new Mesh(new BoxGeometry(0.34, 2.3, 0.2), blue);
+      foot.position.set(side * (w / 2 - 0.1), gap / 2, bottom + 0.1);
+      foot.castShadow = true;
+      boardGroup.add(foot);
+    }
+    // The table it stands on: seen a little from above, running back behind the rack.
+    const wood = new MeshStandardMaterial({ color: "#7a5433", roughness: 0.7 });
+    const tabletop = new Mesh(new BoxGeometry(cols + 5, 5.4, 0.3), wood);
+    tabletop.position.set(0, gap / 2, bottom + 0.35);
+    tabletop.receiveShadow = true;
+    boardGroup.add(tabletop);
+  }
+
   const gold = new MeshBasicMaterial({ color: "#f0c846", transparent: true, opacity: 0.5, depthWrite: false });
+  const white = new MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0.95, depthWrite: false });
   const held = new MeshBasicMaterial({ color: "#f3cf4a", transparent: true, opacity: 0.85, depthWrite: false });
   const danger = new MeshBasicMaterial({ map: dotTexture(), color: "#e02a20", transparent: true, opacity: 0.95, depthWrite: false });
   const going = new MeshBasicMaterial({ color: "#1f4d3a", transparent: true, opacity: 0.6, depthWrite: false });
@@ -442,20 +507,29 @@ export function build(canvas: HTMLCanvasElement): Board3d | null {
   const square = new PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
   const dot = new CircleGeometry(0.16, 24).rotateX(-Math.PI / 2);
   const hoop = new RingGeometry(0.4, 0.46, 40).rotateX(-Math.PI / 2);
+  const rim = new RingGeometry(RACK.hole, RACK.hole + 0.07, 40).rotateX(-Math.PI / 2);
 
   function buildMarks(frame: BoardFrame3d) {
     marksGroup.clear();
     const taken = new Set(frame.pieces.map((p) => p.at));
+    // On a rack that stands, a mark is on the grille in front of the disc, not on the squares behind it.
+    const face = frame.gravity ? RACK.front : 0;
     const lay = (geometry: BufferGeometry, material: MeshBasicMaterial, at: number, lift: number) => {
       const m = new Mesh(geometry, material);
       const [x, z] = spot(at);
-      m.position.set(x, lift, z);
+      m.position.set(x, lift + face, z);
       m.renderOrder = 1;
       marksGroup.add(m);
     };
     for (const m of frame.marks) {
       // On a board of crossings a square of colour would cover the lines: the stone last played
       // wears a small ring instead, the way it is marked on a Go board anywhere.
+      // The disc just dropped and the winning four wear a ring round their holes, as on the flat rack.
+      if (frame.gravity) {
+        if (m.mark === "last") lay(rim, white, m.at, 0.006);
+        else if (m.mark === "win") lay(rim, won, m.at, 0.008);
+        continue;
+      }
       if (m.mark === "from" || m.mark === "last") frame.points ? lay(eye, taken.has(m.at) ? ringed : gold, m.at, taken.has(m.at) ? 0.36 : 0.006) : lay(square, gold, m.at, 0.004);
       else if (m.mark === "threat") lay(square, danger, m.at, 0.006);
       else if (m.mark === "win") lay(square, won, m.at, 0.005);
@@ -585,6 +659,7 @@ export function build(canvas: HTMLCanvasElement): Board3d | null {
         camera.lookAt(0, 0, 0);
         camera.updateProjectionMatrix();
         camera.updateMatrixWorld();
+        table.rotation.x = Math.PI / 2 - (tiltOf(frame.gravity) * Math.PI) / 180;
         table.position.y = -(SHIFT * frame.board) / unit;
         table.scale.setScalar(SCALE);
         table.updateMatrixWorld();

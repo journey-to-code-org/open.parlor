@@ -20,8 +20,17 @@ export const SHIFT = -0.02;
 /** The canvas is bigger than the board's box, for the frame and for pieces that stand up past the far edge. */
 export const CANVAS = { wide: 1.16, high: 1.3 };
 
+/**
+ * A board that stands on its edge (Drop Four's rack) is nearly upright: it leans back this far, in
+ * degrees, which is enough to see the table it stands on and the top of the rack.
+ */
+export const STAND = 9;
+/** How far a board is tipped back: lying on the table, or standing on it. */
+export const tiltOf = (standing: boolean) => (standing ? STAND : TILT);
+
 /** The transform that lays the grid of buttons over the picture; `--board-s` is the board's width. */
-export const BOARD_TRANSFORM = `perspective(calc(var(--board-s) * ${PERSPECTIVE})) translateY(calc(var(--board-s) * ${SHIFT})) rotateX(${TILT}deg) scale(${SCALE})`;
+export const boardTransform = (standing = false) => `perspective(calc(var(--board-s) * ${PERSPECTIVE})) translateY(calc(var(--board-s) * ${SHIFT})) rotateX(${tiltOf(standing)}deg) scale(${SCALE})`;
+export const BOARD_TRANSFORM = boardTransform();
 
 /** The games that have a board and pieces in the scene: the chess set, Combat's fleets on their sea, and the plainer boards. */
 const SETS = new Set(["chess", "combat", "checkers", "reversi", "go", "tictactoe", "dropfour"]);
