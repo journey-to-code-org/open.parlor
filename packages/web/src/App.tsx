@@ -38,7 +38,7 @@ type Screen =
   | { kind: "local"; name: string; preset: RulePreset; seed: number }
   | { kind: "local-palace"; name: string; rules: PalaceRules; seats: number; seed: number }
   | { kind: "local-kit"; game: KitGameId; name: string; rules: unknown; seats: number; seed: number; /** Leaving goes back to the course (or lane) editor, at this one. */ back?: string }
-  | { kind: "arcade"; game: ArcadeGameId; rules: ArcadeRules; seats: number; seed: number; autofire: boolean }
+  | { kind: "arcade"; game: ArcadeGameId; rules: ArcadeRules; seats: number; seed: number; autofire: boolean; rival?: { name: string; score: number } }
   | { kind: "golf"; id: string }
   | { kind: "lane"; id: string }
   | { kind: "room"; id: string; house: string | null }
@@ -232,10 +232,10 @@ export function App() {
   if (screen.kind === "tournament") {
     return <TournamentPage key={screen.id} slug={screen.slug} id={screen.id} onOpenTable={(id) => openTable(id, screen.slug)} onBack={() => openHouse(screen.slug)} />;
   }
-  if (screen.kind === "arcade") return <ArcadeTable key={screen.seed} {...screen} onLeave={() => setScreen({ kind: "setup" })} />;
+  if (screen.kind === "arcade") return <ArcadeTable key={`${screen.seed}:${screen.rival?.name ?? ""}`} {...screen} onLeave={() => setScreen({ kind: "setup" })} />;
   if (isIdleGame(game)) return <IdleTable key={game} game={game} onHome={home} />;
   if (isArcadeGame(game)) {
-    return <ArcadeSetup key={game} game={game} onHome={home} onPlay={(rules, seats, autofire) => setScreen({ kind: "arcade", game, rules, seats, autofire, seed: Math.floor(Math.random() * 2 ** 31) })} />;
+    return <ArcadeSetup key={game} game={game} onHome={home} onPlay={(rules, seats, autofire, rival) => setScreen({ kind: "arcade", game, rules, seats, autofire, seed: rival ? rival.seed : Math.floor(Math.random() * 2 ** 31), rival })} />;
   }
   if (isKitGame(game)) {
     return (
