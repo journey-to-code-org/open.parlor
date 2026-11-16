@@ -16,7 +16,9 @@ import { PalaceSetup } from "./palace/PalaceSetup";
 import { Setup } from "./Setup";
 // The front page is a Vue island: loaded only when it's shown, so table links don't fetch Vue.
 const Home = lazy(() => import("./home/Home").then((m) => ({ default: m.Home })));
-import { isArcadeGame, isKitGame, type ArcadeGameId, type KitGameId } from "@journey-to-code/games";
+import { isArcadeGame, isIdleGame, isKitGame, type ArcadeGameId, type KitGameId } from "@journey-to-code/games";
+import { IdleTable } from "./idle/IdleTable";
+import type { SoloGameId } from "./GamePicker";
 import { ArcadeSetup } from "./arcade/ArcadeSetup";
 import { ArcadeTable } from "./arcade/ArcadeTable";
 import { KitSetup } from "./kit/KitSetup";
@@ -64,12 +66,12 @@ function fromUrl(): Screen {
   return q.get("game") || q.get("embed") === "1" ? { kind: "setup" } : { kind: "home" };
 }
 
-const gameInUrl = (): GameId | ArcadeGameId | null => {
+const gameInUrl = (): GameId | SoloGameId | null => {
   const q = new URLSearchParams(location.search);
   const asked = q.get("game");
   if (asked === "palace" || asked === "spades" || isKitGame(asked)) return asked as GameId;
   // An arcade game is played on the parlor's own pages, not inside the blog embed.
-  return isArcadeGame(asked) && q.get("embed") !== "1" ? asked : null;
+  return (isArcadeGame(asked) || isIdleGame(asked)) && q.get("embed") !== "1" ? asked : null;
 };
 
 function go(params: Record<string, string | null>) {
@@ -82,10 +84,10 @@ function go(params: Record<string, string | null>) {
 export function App() {
   const [screen, setScreen] = useState<Screen>(fromUrl);
   const embedded = new URLSearchParams(location.search).get("embed") === "1";
-  const [game, setGame] = useState<GameId | ArcadeGameId>(() => gameInUrl() ?? loadGame());
-  const pickGame = (g: GameId | ArcadeGameId) => {
+  const [game, setGame] = useState<GameId | SoloGameId>(() => gameInUrl() ?? loadGame());
+  const pickGame = (g: GameId | SoloGameId) => {
     // The game to come back to is a table game: an arcade game is a visit.
-    if (!isArcadeGame(g)) saveGame(g);
+    if (!isArcadeGame(g) && !isIdleGame(g)) saveGame(g);
     setGame(g);
     go(embedded ? { embed: "1", game: g } : { game: g });
     setScreen({ kind: "setup" });
@@ -160,7 +162,7 @@ export function App() {
   };
 
   // Inside the <card-room> embed on someone's page: practice only.
-  if (embedded && screen.kind === "setup" && !isArcadeGame(game)) {
+  if (embedded && screen.kind === "setup" && !isArcadeGame(game) && !isIdleGame(game)) {
     return (
       <EmbedHome
         game={game}
@@ -231,6 +233,7 @@ export function App() {
     return <TournamentPage key={screen.id} slug={screen.slug} id={screen.id} onOpenTable={(id) => openTable(id, screen.slug)} onBack={() => openHouse(screen.slug)} />;
   }
   if (screen.kind === "arcade") return <ArcadeTable key={screen.seed} {...screen} onLeave={() => setScreen({ kind: "setup" })} />;
+  if (isIdleGame(game)) return <IdleTable key={game} game={game} onHome={home} />;
   if (isArcadeGame(game)) {
     return <ArcadeSetup key={game} game={game} onHome={home} onPlay={(rules, seats, autofire) => setScreen({ kind: "arcade", game, rules, seats, autofire, seed: Math.floor(Math.random() * 2 ** 31) })} />;
   }

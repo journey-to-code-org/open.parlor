@@ -2205,3 +2205,96 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 
 .bowl-controls { display: grid; gap: 4px; }
 .bowl-label { min-width: 3.2rem; font-size: 0.82rem; opacity: 0.85; }
+
+/* ---- Delbie's Daycare & Geriatrics ---------------------------------------------------------------
+   A parts store: shop-floor grey, a counter-top yellow for what matters, and a till you can read
+   from across the room. Three columns on a wide screen (Delbie, the crew, the log), one on a phone. */
+.delbies {
+  --shop: #171b22;
+  --panel: #222833;
+  --edge: #353d4c;
+  --ink: #eef1f6;
+  --dim: #98a2b6;
+  --yellow: #ffcf3f;
+  --red: #ff5a5f;
+  --green: #55d68a;
+  position: fixed; inset: 0; overflow-y: auto; background: var(--shop); color: var(--ink); font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+}
+.delbies h1, .delbies h2, .delbies h3 { font-family: inherit; }
+.delbies button { font: inherit; color: inherit; cursor: pointer; }
+.delbies button:disabled { cursor: default; opacity: 0.45; }
+.delbies button:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.delbies small { color: var(--dim); }
+.delbies .row { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
+.delbies-top {
+  position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap; padding: max(10px, env(safe-area-inset-top)) 16px 10px;
+  background: #10141a; border-bottom: 3px solid var(--yellow);
+}
+.delbies-top h1 { margin: 0; font-size: clamp(1rem, 2.4vw, 1.35rem); flex: 1; min-width: 180px; text-wrap: balance; }
+.delbies-back { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--edge); background: transparent; font-size: 0.85rem; }
+.delbies-till { display: flex; gap: 18px; font-variant-numeric: tabular-nums; }
+.delbies-till div { display: flex; flex-direction: column; }
+.delbies-till small { font-size: 0.66rem; letter-spacing: 0.07em; text-transform: uppercase; }
+.delbies-till b { font-size: 1.1rem; white-space: nowrap; }
+.delbies-till .cash { font-size: 1.5rem; color: var(--yellow); }
+.delbies-floor { display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr) minmax(220px, 300px); gap: 16px; padding: 16px; max-width: 1400px; margin: 0 auto; align-items: start; }
+.delbies-desk, .delbies-log { display: flex; flex-direction: column; gap: 12px; }
+.delbies-delbie {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 18px 14px; border-radius: 18px; border: 3px solid var(--yellow);
+  background: linear-gradient(#2c3340, #20252f); box-shadow: 0 6px 0 #0b0e13; -webkit-user-select: none; user-select: none; touch-action: manipulation;
+}
+.delbies-delbie:active { translate: 0 4px; box-shadow: 0 2px 0 #0b0e13; }
+.delbies-delbie.dream { border-color: var(--green); background: linear-gradient(#2f5a41, #1f3b2c); }
+.delbies-delbie .face { font-size: 3.4rem; line-height: 1; }
+.delbies-delbie .shout { font-size: 1.25rem; font-weight: 700; text-align: center; text-wrap: balance; }
+.delbies-meters { display: grid; gap: 8px; }
+.delbies .bar { height: 10px; border-radius: 6px; background: #0e1116; overflow: hidden; }
+.delbies .bar i { display: block; height: 100%; background: var(--green); border-radius: 6px; transition: width 200ms linear; }
+.delbies-meter.bad .bar i { background: var(--red); }
+.delbies-meter.dream .bar i { background: var(--yellow); }
+.delbies-meter small { font-size: 0.74rem; }
+.delbies-tabs, .delbies-ask { padding: 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--edge); display: grid; gap: 8px; }
+.delbies-tabs b { font-variant-numeric: tabular-nums; }
+.delbies-tabs b span { color: var(--dim); font-weight: 400; font-size: 0.85rem; }
+.delbies-tabs .bar i { background: var(--yellow); }
+.delbies-tabs.panic { border-color: var(--red); }
+.delbies-tabs.panic .bar i { background: var(--red); }
+.delbies-tabs p, .delbies-payroll { margin: 0; font-size: 0.84rem; color: #c5ccda; line-height: 1.4; }
+.delbies-ask { border-color: var(--yellow); }
+.delbies-ask p { margin: 0; line-height: 1.4; }
+.delbies-ask p span { color: var(--dim); font-variant-numeric: tabular-nums; }
+.delbies-ask button, .delbies-sheet button, .delbies-reset { padding: 9px 14px; border-radius: 10px; border: 1px solid var(--edge); background: #2c3340; font-weight: 600; }
+.delbies .yes { background: var(--yellow); border-color: var(--yellow); color: #1b1608; }
+.delbies-actions { display: grid; gap: 8px; }
+.delbies-actions button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--edge); background: var(--panel); }
+.delbies-actions button:hover:not(:disabled) { border-color: var(--yellow); }
+.delbies-crew { display: grid; gap: 18px; }
+.delbies-crew h2, .delbies-log h2 { margin: 0 0 8px; font-size: 1.05rem; color: var(--yellow); }
+.delbies-crew h2 small { font-weight: 400; font-size: 0.8rem; margin-left: 6px; }
+.delbies-crew article { display: flex; gap: 12px; align-items: center; padding: 11px 12px; margin-top: 8px; border-radius: 12px; background: var(--panel); border: 1px dashed var(--edge); }
+.delbies-crew article.hired { border-style: solid; }
+.delbies-crew .who { flex: 1; min-width: 0; }
+.delbies-crew h3 { margin: 0; font-size: 1rem; }
+.delbies-crew h3 small { font-weight: 400; font-size: 0.78rem; margin-left: 4px; }
+.delbies-crew p { margin: 3px 0 0; font-size: 0.84rem; color: #c5ccda; line-height: 1.35; }
+.delbies-crew .numbers { display: flex; gap: 6px 12px; flex-wrap: wrap; color: var(--dim); font-variant-numeric: tabular-nums; font-size: 0.8rem; }
+.delbies-status { color: var(--green); font-weight: 600; }
+.delbies-status.away { color: var(--red); }
+.delbies-crew article > button { display: flex; flex-direction: column; align-items: center; min-width: 92px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--yellow); background: transparent; }
+.delbies-crew article > button:hover:not(:disabled) { background: rgba(255, 207, 63, 0.14); }
+.delbies-crew article > button small { color: var(--yellow); font-variant-numeric: tabular-nums; }
+.delbies-log ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.delbies-log li { padding: 8px 10px; border-radius: 8px; background: var(--panel); font-size: 0.84rem; line-height: 1.35; border-left: 3px solid var(--edge); }
+.delbies-log li:first-child { border-left-color: var(--yellow); }
+.delbies-log .empty { margin: 0; color: var(--dim); font-size: 0.85rem; }
+.delbies-reset { margin-top: 10px; background: transparent; font-weight: 400; font-size: 0.8rem; color: var(--dim); align-self: flex-start; }
+.delbies-toast { position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); translate: -50% 0; z-index: 3; max-width: min(92vw, 460px); padding: 10px 16px; border-radius: 12px; background: #0b0e13; border: 1px solid var(--yellow); font-size: 0.92rem; text-align: center; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+.delbies-sheet { position: fixed; inset: 0; z-index: 4; display: grid; place-items: center; padding: 16px; background: rgba(8, 10, 14, 0.72); overflow-y: auto; }
+.delbies-sheet > div { width: min(100%, 480px); padding: 22px; border-radius: 16px; background: var(--panel); border: 2px solid var(--yellow); display: grid; gap: 12px; }
+.delbies-sheet h2 { margin: 0; font-size: 1.4rem; color: var(--yellow); }
+.delbies-sheet ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 7px; line-height: 1.4; }
+.delbies-sheet p { margin: 0; line-height: 1.45; color: #c5ccda; }
+.delbies-sheet .fine { font-size: 0.8rem; color: var(--dim); }
+@media (max-width: 1050px) { .delbies-floor { grid-template-columns: minmax(260px, 360px) minmax(0, 1fr); } .delbies-log { grid-column: 1 / -1; } }
+@media (max-width: 720px) { .delbies-floor { grid-template-columns: minmax(0, 1fr); padding: 12px; } .delbies-till { gap: 12px; width: 100%; justify-content: space-between; } }
+@media (prefers-reduced-motion: reduce) { .delbies .bar i { transition: none; } }

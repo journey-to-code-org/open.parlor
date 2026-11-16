@@ -24,7 +24,7 @@ export interface ChooserGame {
   /** A board game shows a little board instead of cards. */
   board?: { cols: number; cells: ({ glyph: string; tone: string; shade?: string } | null)[]; shade?: string };
   /** An arcade game shows a little screen: a ship, what it is up against, and what is coming at it (in a 100 × 100 box). */
-  screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][]; chip?: boolean };
+  screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][]; chip?: boolean; shop?: boolean };
   /** A dice game shows a few dice: the face each one shows. */
   dice?: number[];
   /** A table sport shows a little table from above: its surface, a hole, a ball or two (in a 100 × 100 box). */
@@ -178,6 +178,16 @@ const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spa
                   <rect class="plinth" :x="t[0] - 7" :y="t[1] - 7" width="14" height="14" rx="3" />
                   <circle class="turret" :class="`n${i}`" :cx="t[0]" :cy="t[1]" r="4" />
                 </g>
+              </svg>
+              <svg v-else-if="g.screen.shop" viewBox="0 0 100 100">
+                <rect class="wall" x="3" y="3" width="94" height="94" rx="14" />
+                <rect class="sign" x="14" y="14" width="72" height="20" rx="4" />
+                <path class="awning" d="M10 40 H90 L84 54 H16 Z" />
+                <path class="stripe" d="M26 40 L23 54 M42 40 L41 54 M58 40 L59 54 M74 40 L77 54" />
+                <rect class="door" x="42" y="60" width="16" height="32" rx="2" />
+                <rect class="pane" x="16" y="62" width="20" height="18" rx="2" />
+                <rect class="pane" x="64" y="62" width="20" height="18" rx="2" />
+                <path class="wrench" d="M30 24 h30 M60 24 l6 -5 M60 24 l6 5" />
               </svg>
               <svg v-else-if="g.screen.chip" viewBox="0 0 100 100">
                 <rect class="felt" x="3" y="3" width="94" height="94" rx="14" />
@@ -404,6 +414,13 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .mini-screen .turret { fill: #5ee6a0; }
 .mini-screen .turret.n1 { fill: #3fe0d0; }
 .mini-screen .turret.n2 { fill: #ffd166; }
+.mini-screen .wall { fill: #2a3140; stroke: #ffd166; stroke-width: 2; }
+.mini-screen .sign { fill: #ffd166; }
+.mini-screen .wrench { fill: none; stroke: #1d1a16; stroke-width: 3.4; stroke-linecap: round; }
+.mini-screen .awning { fill: #c8323c; stroke: #5b1420; stroke-width: 1.4; stroke-linejoin: round; }
+.mini-screen .stripe { stroke: #fbf6ec; stroke-width: 5; }
+.mini-screen .door { fill: #0e131c; stroke: #8b97b8; stroke-width: 1.4; }
+.mini-screen .pane { fill: #4cc9ff; opacity: 0.75; }
 .mini-screen .felt { fill: #1f4d3a; stroke: #e8c46a; stroke-width: 2; }
 .mini-screen .coin { fill: #ffd166; stroke: #8a6a14; stroke-width: 1.6; }
 .mini-screen .bigchip { fill: #c8323c; stroke: #5b1420; stroke-width: 1.6; }

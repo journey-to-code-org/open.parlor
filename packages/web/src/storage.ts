@@ -1,6 +1,6 @@
 import { familyTable, renamedPreset, builtInPresets, cleanSettings, DEFAULT_SETTINGS, type RulePreset, type TableSettings } from "@journey-to-code/rules";
 import { familyPalace, normalizePalaceRules, type PalaceRules } from "@journey-to-code/palace";
-import { arcadeGame, isKitGame, kitGame, type ArcadeGameId, type KitGameId } from "@journey-to-code/games";
+import { arcadeGame, isKitGame, kitGame, type ArcadeGameId, type IdleGameId, type KitGameId } from "@journey-to-code/games";
 
 const NAME_KEY = "spades:name";
 const PRESETS_KEY = "spades:presets";
@@ -167,3 +167,9 @@ export function saveArcadeBest(game: ArcadeGameId, rules: ArcadeRules, crew: num
   write(bestKey(game, rules, crew), score);
   return true;
 }
+
+// ---- Idle games ----------------------------------------------------------------------------------
+// The whole game is kept here, in this browser: it is brought up to date from the clock when the
+// page is opened again. The game's own `load` checks what comes back.
+export const loadIdle = (game: IdleGameId): unknown => read<unknown>(`cardroom:${game}:save`, null);
+export const saveIdle = (game: IdleGameId, state: unknown) => write(`cardroom:${game}:save`, state);
