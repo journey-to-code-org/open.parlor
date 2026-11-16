@@ -2,7 +2,7 @@
 // date from the clock, and if that was a while it says what happened. While the page is open it is
 // brought up to date a few times a second, and saved every few seconds and whenever the page is
 // put away.
-import { dollars, idleGame, type DelbiesCommand, type DelbiesState, type DelbiesView, type IdleClock, type IdleGameId, type IdleReport } from "@journey-to-code/games";
+import { dollars, idleGame, type DelbiesCommand, type DelbiesPieceId, type DelbiesState, type DelbiesView, type IdleClock, type IdleGameId, type IdleReport } from "@journey-to-code/games";
 import { useEffect, useRef, useState } from "react";
 import { blip, notes, wakeArcadeSound } from "../arcade/sounds";
 import { loadIdle, saveIdle } from "../storage";
@@ -30,6 +30,8 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
   const [toast, setToast] = useState<{ text: string; key: number } | null>(null);
   const [asking, setAsking] = useState(false);
   const [moving, setMoving] = useState(false);
+  // The floor plan: the piece picked up, waiting for a square to be put down on.
+  const [holding, setHolding] = useState<DelbiesPieceId | null>(null);
 
   const refresh = () => {
     const s = state.current;
@@ -288,6 +290,49 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
               </div>
             );
           })}
+        </section>
+
+        <section className="delbies-floorplan" aria-label="The floor plan">
+          <h2>
+            The floor plan <small>{holding ? "Now tap where it goes." : "Tap something, then tap where it goes. Who sits next to what matters."}</small>
+          </h2>
+          <div className="delbies-grid" style={{ gridTemplateColumns: `repeat(${view.floor.cols}, 1fr)` }}>
+            {Array.from({ length: view.floor.cols * view.floor.rows }, (_, square) => {
+              const piece = view.floor.pieces.find((p) => p.square === square);
+              const held = piece && piece.id === holding;
+              return (
+                <button
+                  key={square}
+                  type="button"
+                  className={`${piece ? "piece" : ""} ${piece?.fixed ? "fixed" : ""} ${piece?.empty ? "empty" : ""} ${held ? "held" : ""}`}
+                  aria-label={piece ? `${piece.label}${piece.fixed ? ", part of the building" : ""}${held ? ", picked up" : ""}` : `Empty square ${square + 1}`}
+                  aria-pressed={held || undefined}
+                  onClick={() => {
+                    if (holding) {
+                      if (!held) act({ cmd: "place", piece: holding, square });
+                      setHolding(null);
+                    } else if (piece && !piece.fixed) setHolding(piece.id);
+                    else if (piece) act({ cmd: "place", piece: piece.id, square });
+                  }}
+                >
+                  {piece && (
+                    <>
+                      <span aria-hidden="true">{piece.emoji}</span>
+                      <small>{piece.label.replace("'s terminal", "").replace("' terminal", "")}</small>
+                    </>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <ul className="delbies-rules">
+            {view.floor.rules.map((r) => (
+              <li key={r.id} className={`${r.active ? "on" : ""} ${r.good ? "good" : "bad"}`}>
+                <b>{r.label}</b>
+                <span>{r.active ? r.does : `${r.hint}. ${r.does}`}</span>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <section className="delbies-log" aria-label="Incident log">
