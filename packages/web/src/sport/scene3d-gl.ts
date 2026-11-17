@@ -163,7 +163,7 @@ const SURFACES: Record<SportSurface, Look> = {
   lane: { color: "#dcb67c", grain: "boards", tile: 1090, rough: 0.28, shine: 0.45 },
   paving: { color: "#b3aa9b", grain: "stones", tile: 2400, rough: 0.95 },
 };
-const SOLIDS: Record<SportMaterial, string> = { timber: "#8a5a2b", brick: "#a9523a", stone: "#8d8a82" };
+const SOLIDS: Record<SportMaterial, string> = { timber: "#8a5a2b", brick: "#a9523a", stone: "#8d8a82", cushion: "#23845a" };
 const BLOCKS: Record<string, string> = { rock: "#8b8a85", brick: "#a9523a", timber: "#8a5a2b", planter: "#7a5236", pot: "#c06a3c", stone: "#9a968c", castle: "#c9b48a", crate: "#a07a45" };
 
 const surfaces = new Map<SportSurface, MeshStandardMaterial>();
