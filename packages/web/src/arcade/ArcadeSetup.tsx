@@ -59,8 +59,10 @@ export function ArcadeSetup({ game: id, onHome, onPlay, onTogether }: Props) {
   const says = (text: string) => arcadeSays(id, text);
   const asTable = { ...game, fields: game.fields.map((f) => ({ ...f, label: says(f.label), ...(f.hint ? { hint: says(f.hint) } : {}) })), describe: (r: ArcadeRules) => game.describe(r).map(says) } as unknown as TableGame<any, any, any, any>;
 
+  // Air hockey is one against another: no score to beat or post, and a second seat is a second person at this screen.
+  const versus = id === "airhockey";
   const crews: [string, string][] = [];
-  for (let n = game.seats.min; n <= game.seats.max; n++) crews.push([String(n), n === 1 ? "On your own" : n === 2 ? "With a computer player" : `With ${n - 1} computer players`]);
+  for (let n = game.seats.min; n <= game.seats.max; n++) crews.push([String(n), versus ? (n === 1 ? "Against the house" : "Two players at this screen") : n === 1 ? "On your own" : n === 2 ? "With a computer player" : `With ${n - 1} computer players`]);
 
   return (
     <SetupLayout
@@ -80,8 +82,9 @@ export function ArcadeSetup({ game: id, onHome, onPlay, onTogether }: Props) {
               if (next) setRules(next);
             }}
           />
-          {crews.length > 1 && <Choice label="Crew" value={crew} options={crews} onChange={(v) => setCrew(Number(v))} />}
-          <p className="arcade-best-line">
+          {crews.length > 1 && <Choice label={versus ? "Play" : "Crew"} value={crew} options={crews} onChange={(v) => setCrew(Number(v))} />}
+          {versus && <p className="arcade-best-line">{crew > 1 ? "Lay the screen flat between you: blue has the near end, red the far end, a finger each." : "You have the near end. The house has the far end."}</p>}
+          <p className="arcade-best-line" hidden={versus}>
             {best > 0 ? (
               <>
                 Your best with these rules: <strong>{points(best)}</strong>
@@ -90,7 +93,7 @@ export function ArcadeSetup({ game: id, onHome, onPlay, onTogether }: Props) {
               "No score with these rules yet."
             )}
           </p>
-          {houses.length > 0 && (
+          {houses.length > 0 && !versus && (
             <SelectField
               label="Scores go to"
               value={house?.slug ?? ""}
@@ -101,7 +104,7 @@ export function ArcadeSetup({ game: id, onHome, onPlay, onTogether }: Props) {
               }}
             />
           )}
-          {house && (
+          {house && !versus && (
             <section className="arcade-house" aria-label={`${house.name}'s best`}>
               <h3>{house.name}'s best with these rules</h3>
               {board.length === 0 ? (
@@ -191,7 +194,7 @@ export function ArcadeSetup({ game: id, onHome, onPlay, onTogether }: Props) {
           </ul>
         </>
       }
-      more={<p className="fine">{house ? `A finished run is sent to ${house.name}, which plays it back to check the score. "Take it on" gives you the very same game a housemate had.` : "Scores are kept in this browser."}</p>}
+      more={<p className="fine">{versus ? "Played on this device: it needs no connection." : house ? `A finished run is sent to ${house.name}, which plays it back to check the score. "Take it on" gives you the very same game a housemate had.` : "Scores are kept in this browser."}</p>}
     />
   );
 }
