@@ -152,11 +152,13 @@ Checked in Chrome, two separate browsers on one machine:
 
 What it doesn't do yet:
 
-- A guest who drops off can't come back to the same game. The host sees who dropped; the table
-  stays as it was.
-- The game stops if the host's device sleeps or leaves. The screen is kept awake while a table
-  runs. Handing the state to every guest as it changes, so another device can take over, is the
-  next piece.
+- A guest who drops off comes back to the same seat (`wifi/WifiRejoin.tsx`): the host's table
+  says who dropped and offers **Let Grammi back in**, which shows a new QR code for that seat; the
+  guest taps **Scan the host's new code** on their "table has closed" screen, shows theirs back,
+  and is sent the table as it stands. The same brings everyone back after the host's phone slept.
+- The game ends if the host leaves (closes the page, or the browser drops it). The screen is kept
+  awake while a table runs. Handing the game to a guest instead would mean every other guest
+  pairing with the new host again, by QR code; it hasn't been built.
 - Nothing is saved: no history, no scores to a house, no chat between devices, no table settings
   on a guest's screen, and Spades and Palace (which aren't kit games) aren't offered.
 - A view is sent whole on every change, in one message (the limit is 256 KB). A long Mini Golf
@@ -182,5 +184,6 @@ permission prompts above.
 
 1. Two phones, the router's internet unplugged: host Chess on one, join from the other. Then the
    same on a phone's hotspot, and with an iPhone on either side.
-2. If it holds: reconnecting, and the host handing the game over when it leaves.
+2. If it holds: rejoining on real phones (built, checked in Chrome), and the host handing the game
+   over when it leaves.
 3. Then the data-channel transport in open.rooms, so a wifi table is a room like any other.

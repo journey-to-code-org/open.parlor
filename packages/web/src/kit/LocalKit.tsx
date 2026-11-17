@@ -9,6 +9,7 @@
 // the people here, played from their own device over a channel. This page is their server: it is
 // sent their moves and sends each of them their own seat's view, so a hand stays hidden from the
 // other guests exactly as it does at a family table.
+import { WifiRejoin } from "../wifi/WifiRejoin";
 import { PassCurtain } from "./PassCurtain";
 import { addGame, harder, RecordShown, type GameRecord } from "../record";
 import { GameError, isBoardGame, kitGame, kitGreet, reactToKit, type KitGameId, type KitRemark } from "@journey-to-code/games";
@@ -255,20 +256,30 @@ export function LocalKit({ game: id, name, others, guests, rules, seats, seed, o
 
   // The guests on the wifi: each is sent their seat's view whenever the table changes, and their
   // moves are made here, with the game's answer (a refusal, in words, or nothing) sent back.
+  // A guest who dropped off can be let back in to the same seat (wifi/WifiRejoin.tsx): their link is
+  // swapped for the new one, and the table carries on.
+  const [links, setLinks] = useState<PeerLink[]>(() => away.map((guest) => guest.link));
   const [gone, setGone] = useState<number[]>([]);
+  const [rejoining, setRejoining] = useState<number | null>(null);
   useEffect(() => {
-    away.forEach((guest, i) => guest.link.send({ t: "view", seat: people + i, names, view: game.view(state, people + i) }));
-  }, [state, names, away]);
+    links.forEach((link, i) => link.send({ t: "view", seat: people + i, names, view: game.view(state, people + i) }));
+  }, [state, names, links]);
   useEffect(() => {
-    const stops = away.flatMap((guest, i) => [
-      guest.link.listen((message) => {
+    const stops = links.flatMap((link, i) => [
+      link.listen((message) => {
         if (message.t !== "move" || !message.move || typeof message.move !== "object") return;
-        void moveAs(people + i, message.move).then((error) => guest.link.send({ t: "ack", id: message.id, error }));
+        void moveAs(people + i, message.move).then((error) => link.send({ t: "ack", id: message.id, error }));
       }),
-      guest.link.closed(() => setGone((seats) => [...seats, people + i])),
+      link.closed(() => setGone((seats) => (seats.includes(people + i) ? seats : [...seats, people + i]))),
     ]);
     return () => stops.forEach((stop) => stop());
-  }, [away]);
+  }, [links]);
+  const letBackIn = (seat: number, link: PeerLink) => {
+    setLinks((now) => now.map((old, i) => (people + i === seat ? link : old)));
+    setGone((seats) => seats.filter((s) => s !== seat));
+    setRejoining(null);
+    link.send({ t: "seated", names });
+  };
 
   const view = useMemo(() => game.view(state, here), [state, here]);
   return (
@@ -296,7 +307,18 @@ export function LocalKit({ game: id, name, others, guests, rules, seats, seed, o
         names={names}
         act={act}
         onLeave={onLeave}
-        banner={gone.length > 0 ? <p className="wifi-gone" role="status">{gone.map((seat) => names[seat]).join(" and ")} dropped off the wifi. The table is as they left it.</p> : undefined}
+        banner={
+          gone.length > 0 ? (
+            <div className="wifi-gone" role="status">
+              <p>{gone.map((seat) => names[seat]).join(" and ")} dropped off the wifi. The table is as they left it.</p>
+              {gone.map((seat) => (
+                <button key={seat} type="button" className="secondary small" onClick={() => setRejoining(seat)}>
+                  Let {names[seat]} back in
+                </button>
+              ))}
+            </div>
+          ) : undefined
+        }
         // People round one screen talk across it; the chat is for the computer players' table talk.
         chat={bots.length > 0 ? { messages, mySeat: here, send } : undefined}
         together={people > 1}
@@ -309,6 +331,7 @@ export function LocalKit({ game: id, name, others, guests, rules, seats, seed, o
         }}
       />
       <TurnClock deadline={deadline} mySeat={here} now={Date.now} />
+      {rejoining !== null && <WifiRejoin name={names[rejoining] ?? "them"} onLinked={(link) => letBackIn(rejoining, link)} onCancel={() => setRejoining(null)} />}
       {curtain !== null && <PassCurtain name={names[curtain] ?? "the next player"} onReady={() => setCurtain(null)} />}
     </TableTime.Provider>
     </RecordShown.Provider>

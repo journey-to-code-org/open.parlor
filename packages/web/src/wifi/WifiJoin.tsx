@@ -169,8 +169,20 @@ export function WifiJoin({ onLeave }: { onLeave: () => void }) {
       {step.at === "gone" && (
         <section className="wifi-step" role="status">
           <h2>The table has closed</h2>
-          <p className="fine">The host left, or one of you dropped off the wifi.</p>
-          <button type="button" className="primary" onClick={onLeave}>
+          <p className="fine">The host left, or one of you dropped off the wifi. If it was you, the host can let you back in to the same seat: they tap “Let … back in” under the table and show you a new code.</p>
+          <button
+            type="button"
+            className="primary"
+            onClick={() => {
+              link.current = null;
+              seat.current = null;
+              setProblem(null);
+              setStep({ at: "scan" });
+            }}
+          >
+            📷 Scan the host's new code
+          </button>
+          <button type="button" className="secondary" onClick={onLeave}>
             All games
           </button>
         </section>

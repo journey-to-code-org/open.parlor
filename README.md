@@ -123,7 +123,7 @@ show one back, and the host's browser runs the game with no server at all. Both 
 there is no internet: a game's page then has *Play on this wifi*, and a note at the foot of the
 screen says what still works and offers *Join a game on this wifi*. With the internet up, a family
 table does the same job, so the wifi buttons stay out of the way. It is a first
-version: every kit game, no rejoining yet. A parlor run on a laptop at home also prints its wifi
+version: every kit game, and a guest who drops off can be let back in to the same seat. A parlor run on a laptop at home also prints its wifi
 address, and a QR code for it, when it starts.
 
 [docs/LOCAL-PLAY.md](docs/LOCAL-PLAY.md) has how all of it works, and what hasn't been tried on
