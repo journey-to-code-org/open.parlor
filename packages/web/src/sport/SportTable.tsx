@@ -14,6 +14,7 @@
 // its events as they happen. While it rolls, the scores, the story and the sheets stay as they
 // were: nobody is told the putt dropped before they have watched it drop. When it stops the
 // screen shows the server's table, and a check confirms that is where the roll ended.
+import { HowToButton } from "../HowToPlay";
 import { angleTo, kitGame, UNITS_PER_METRE, type SportBody, type SportCard, type SportView } from "@journey-to-code/games";
 import { type TableSettings } from "@journey-to-code/rules";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -33,6 +34,8 @@ import type { Point } from "@journey-to-code/physics";
 import { SoundButton } from "../SoundButton";
 
 export interface SportTableProps {
+  /** Open how to play (HowToPlay.tsx): the "?" in the top bar. */
+  onHelp?: () => void;
   view: SportView;
   names: string[];
   /** Resolves to an error message when the move is refused. */
@@ -120,7 +123,7 @@ function aimWords(v: SportView, aim: AimAt): { short: string; long: string } {
 /** A game whose shot starts anywhere along a line, aimed any way: pool with the cue ball in hand, and Carrom's striker on its baseline. (Bowling's line is a throw: aimed up the lane.) */
 const onLine = (game: string) => game === "billiards" || game === "carrom";
 
-export function SportTable({ view, names, act, onLeave, banner, chat, together, settings }: SportTableProps) {
+export function SportTable({ view, names, act, onLeave, banner, chat, together, settings, onHelp}: SportTableProps) {
   const game = kitGame(view.game)!;
   const me = view.me;
   const pace = settings?.value.pace;
@@ -823,6 +826,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
         </button>
         <span className="sport-course">{shown.card?.title ?? game.name}</span>
         <span className="bar-buttons">
+          {onHelp && <HowToButton onClick={onHelp} />}
           {shown.card && (
             <button type="button" className="sound-toggle inline" onClick={() => setCardOpen(true)} aria-label="Scorecard" aria-haspopup="dialog">
               📋

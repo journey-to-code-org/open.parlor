@@ -253,6 +253,7 @@ export function LocalKit({ game: id, name, others, guests, rules, seats, seed, o
     <TableTime.Provider value={time}>
       <GameTable
         view={view}
+        rules={rules}
         names={names}
         act={act}
         onLeave={onLeave}

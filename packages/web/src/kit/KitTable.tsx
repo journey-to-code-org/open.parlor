@@ -1,6 +1,7 @@
 // One table for every game on the card kit. The engine's view says everything: your hand and what
 // a tap does, cards to pick, buttons to press, the trick or the piles in the middle, the melds on
 // the table, the scores. This only lays it out: others around you, the middle, your hand below.
+import { HowToButton } from "../HowToPlay";
 import {
   kitGame,
   type Center,
@@ -48,6 +49,8 @@ export interface KitTableProps {
   watching?: boolean;
   /** Several people share this screen and take turns at it: say whose turn it is by name, not "your". */
   together?: boolean;
+  /** Open how to play (HowToPlay.tsx): the "?" in the top bar. */
+  onHelp?: () => void;
 }
 
 
@@ -64,7 +67,7 @@ export function KitTable({
   chat,
   settings,
   watching,
-  together,
+  together, onHelp
 }: KitTableProps) {
   const game = kitGame(view.game)!;
   const me = view.me;
@@ -221,6 +224,7 @@ export function KitTable({
           ))}
         </div>
         <span className="bar-buttons">
+          {onHelp && <HowToButton onClick={onHelp} />}
           {settings && (
             <TableSettingsButton
               settings={settings.value}

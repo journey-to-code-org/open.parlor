@@ -3001,3 +3001,16 @@ button.word-tile:active:not(:disabled) { transform: translateY(2px); }
 .draw-size { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border-radius: 8px; border: 0; background: rgba(0, 0, 0, 0.3); cursor: pointer; }
 .draw-size span { display: block; border-radius: 50%; background: var(--cream); }
 .draw-size.on { outline: 2px solid var(--gold); }
+
+/* ---------- How to play (HowToPlay.tsx) ---------- */
+.howto-backdrop { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 16px; background: rgba(4, 14, 9, 0.62); backdrop-filter: blur(2px); animation: howto-in 0.2s ease-out; }
+.howto { width: min(520px, 100%); max-height: calc(100dvh - 32px); overflow: auto; padding: 22px 22px 18px; border-radius: 18px; color: var(--cream); background: linear-gradient(#1d4a37, #143628); border: 1px solid rgba(232, 196, 106, 0.55); box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5); }
+.howto h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 1.45rem; color: var(--gold); display: flex; gap: 10px; align-items: center; }
+.howto-tagline { margin: 6px 0 0; font-style: italic; color: #d6e6dc; }
+.howto h3 { margin: 16px 0 6px; font-size: 0.82rem; letter-spacing: 0.06em; text-transform: uppercase; color: #b9d0c2; }
+.howto ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; line-height: 1.4; }
+.howto .primary { margin-top: 18px; width: 100%; }
+.howto .fine { margin: 8px 0 0; text-align: center; }
+.howto-button { font-weight: 800; font-size: 1.15rem; color: var(--cream); }
+@keyframes howto-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .howto-backdrop { animation: none; } }
