@@ -5,7 +5,7 @@ import { cleanSettings, partnerOf, personaFor, pickPersonas, seatsOf, teamOf, ty
 import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { applyDeck, deckAtTable, prefersOwnDeck, savedDeck, type TableDeck } from "@journey-to-code/decks";
 import { TableDeckPicker } from "./TableDeck";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { lobby } from "./lobbyApi";
 import { loadSavedName, saveName, saveTableSettings } from "./storage";
 import { Table } from "./Table";
@@ -19,6 +19,8 @@ import { GameTable } from "./kit/GameTable";
 import { OnlineTable, TablePlayers, TableSettingsFields, TurnTimerField, type TablePlayersValue } from "./TableSettings";
 import { TableTime } from "./board/SeatClock";
 import { TurnClock } from "./TurnClock";
+import { seatAtTable, sharesDevice, type SeatSight } from "./kit/sameDevice";
+import { SECONDS, secondBase, secondRoom } from "./second";
 
 type Summary = { game?: string; rules: string; scores?: { points: number }[]; hand?: number; finished?: number[] };
 type AnyRoom = Room<unknown, unknown, Summary>;
@@ -32,6 +34,14 @@ const gameOf = (doc: RoomDoc<Summary>): string => {
 const seatLabel = (game: string, i: number) => (game === "spades" ? SEAT_LABELS[i]! : `Seat ${i + 1}`);
 
 const SEAT_LABELS = ["South", "West", "North", "East"];
+/** Someone else at this device, at this table: which of the device's extra people they are, their own room, and their seat. */
+interface Beside {
+  n: number;
+  room: AnyRoom;
+  seat: number;
+}
+/** How long a board waits before it turns to the next person at this device, as at a table shared in practice. */
+const HANDOVER_MS = 900;
 const WATCHING = "You're watching: the computer plays this seat.";
 
 /** A family table on the server: sit down, invite people, fill seats with bots, then play. */
@@ -101,6 +111,63 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
     });
   }, [room, source]);
 
+  // More than one person at this device (second.ts), in a game with nothing to hide: each has a
+  // room and a seat of their own, and the screen shows the table of whichever of them is to move.
+  const shares = doc !== null && sharesDevice(gameOf(doc));
+  const [beside, setBeside] = useState<Beside[]>([]);
+  const besideNow = useRef(beside);
+  besideNow.current = beside;
+  useEffect(() => {
+    if (!shares) return;
+    let live = true;
+    // Coming back to the table (a reload, a phone that slept): find the seats this device already has.
+    void (async () => {
+      const found: Beside[] = [];
+      for (let n = 1; n <= SECONDS; n++) {
+        const second = secondRoom<unknown, unknown, Summary>(id, n);
+        const info = await second.info().catch(() => null);
+        if (live && info && info.seat !== null) found.push({ n, room: second, seat: info.seat });
+        else second.close();
+      }
+      if (live) setBeside((now) => [...now.filter((b) => !found.some((f) => f.n === b.n)), ...found].sort((a, b) => a.n - b.n));
+    })();
+    return () => {
+      live = false;
+      besideNow.current.forEach((b) => b.room.close());
+    };
+  }, [id, shares]);
+  const [besideViews, setBesideViews] = useState<Record<number, unknown>>({});
+  const besideKey = beside.map((b) => `${b.n}:${b.seat}`).join(",");
+  useEffect(() => {
+    setBesideViews({});
+    const offs = beside.map((b) => b.room.onView(b.seat, (doc) => setBesideViews((was) => ({ ...was, [b.seat]: doc.view }))));
+    return () => offs.forEach((off) => off());
+  }, [besideKey]);
+  // A seat beside yours can be taken away before the deal too (the host removed them, or the lobby freed it).
+  const besideGone = doc !== null && !doc.started ? beside.filter((b) => !doc.seats[b.seat]?.name).map((b) => b.n).join(",") : "";
+  useEffect(() => {
+    if (!besideGone) return;
+    for (const b of besideNow.current.filter((b) => besideGone.split(",").includes(String(b.n)))) {
+      b.room.info().then((info) => {
+        if (info.seat !== null) return;
+        b.room.close();
+        setBeside((now) => now.filter((other) => other.n !== b.n));
+      }, () => undefined);
+    }
+  }, [besideGone]);
+  /** This device's seats, its own first. */
+  const locals = mySeat === null ? [] : [mySeat as number, ...beside.map((b) => b.seat)];
+  const [here, setHere] = useState<number | null>(null);
+  const at = here !== null && locals.includes(here) ? here : mySeat;
+  const sights = { ...besideViews, ...(mySeat !== null && view ? { [mySeat]: view } : {}) } as Record<number, SeatSight | undefined>;
+  const next = at !== null && locals.length > 1 ? seatAtTable(sights, locals, at) : at;
+  const turning = doc !== null && isBoardGame(gameOf(doc));
+  useEffect(() => {
+    if (next === null || next === at) return;
+    const timer = setTimeout(() => setHere(next), turning ? HANDOVER_MS : 0);
+    return () => clearTimeout(timer);
+  }, [next, at, turning]);
+
   // Your seat can be taken away before the deal (the host removed you, or you went quiet at an open
   // table). The public seats say so; check with the server before believing it.
   const seatGone = mySeat !== null && doc !== null && (doc.started ? Boolean(doc.seats[mySeat]?.bot) : !doc.seats[mySeat]?.name);
@@ -121,6 +188,8 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
     const here = () => {
       if (document.visibilityState === "hidden") return;
       lobby.here(id).catch(() => undefined);
+      // The people beside you are waiting too.
+      for (const b of besideNow.current) lobby.here(id, b.n).catch(() => undefined);
     };
     const back = () => {
       if (document.visibilityState === "hidden") return;
@@ -131,7 +200,10 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
       }, () => undefined);
     };
     // Closing the tab gives the seat back straight away, rather than after the lobby notices the quiet.
-    const gone = () => navigator.sendBeacon?.(`/rooms/${encodeURIComponent(id)}/stand`);
+    const gone = () => {
+      navigator.sendBeacon?.(`/rooms/${encodeURIComponent(id)}/stand`);
+      for (const b of besideNow.current) navigator.sendBeacon?.(`${secondBase(b.n)}/rooms/${encodeURIComponent(id)}/stand`);
+    };
     here();
     const timer = setInterval(here, 20_000);
     document.addEventListener("visibilitychange", back);
@@ -195,7 +267,7 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
   // table that is or was open to everyone, its host can mute and remove.
   const hosting = doc.host != null && doc.host === mySeat;
   const players: TablePlayersValue = {
-    players: doc.seats.flatMap((s, i) => (i === mySeat || !s.name ? [] : [{ seat: i, name: s.name, bot: s.bot, hidden: hidden.includes(i), muted: Boolean(doc.muted?.includes(i)) }])),
+    players: doc.seats.flatMap((s, i) => (locals.includes(i) || !s.name ? [] : [{ seat: i, name: s.name, bot: s.bot, hidden: hidden.includes(i), muted: Boolean(doc.muted?.includes(i)) }])),
     hide: (seat, hide) => setHidden((was) => (hide ? [...was, seat] : was.filter((s) => s !== seat))),
     mute: hosting ? (seat, muted) => lobby.mute(id, seat, muted) : undefined,
     remove: hosting ? (seat) => lobby.remove(id, seat) : undefined,
@@ -208,7 +280,7 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
     <OnlineTable.Provider value={true}>
       <TablePlayers.Provider value={players}>
         <TableTime.Provider value={time}>{table}</TableTime.Provider>
-        <TurnClock deadline={doc.deadline} mySeat={mySeat} now={room.serverNow} />
+        <TurnClock deadline={doc.deadline} mySeat={(locals.length > 1 ? at : mySeat) as Seat | null} now={room.serverNow} />
       </TablePlayers.Provider>
     </OnlineTable.Provider>
   );
@@ -241,17 +313,57 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
       return <LiveArcade view={{ ...live, seat }} table={id} seat={seat} flying={!watching} names={names} serverNow={room.serverNow} act={watching ? () => Promise.resolve() : (move) => room.act(move)} onLeave={onLeave} />;
     }
     if (isKitGame(game)) {
+      // With more than one person at this device, the table shown and played is that of whoever's
+      // move it is: the device's own player, or one of the people beside them, each through their own room.
+      const together = locals.length > 1;
+      const second = together && at !== mySeat ? beside.find((b) => b.seat === at && besideViews[b.seat]) : undefined;
+      const shown = second ? besideViews[second.seat] : view;
+      const names = doc.seats.map((s, i) => s.name ?? seatLabel(game, i));
+      const actAs = (move: unknown) => {
+        const mover = second?.room ?? room;
+        const sight = shown as SeatSight;
+        // After a hole, a frame or a game of a match, one press moves everyone here on: they have
+        // all seen the same scores on the same screen.
+        const movesOn = together && !!sight.result && !sight.over;
+        return mover.act(move).then(
+          () => {
+            if (movesOn) for (const other of [room, ...beside.map((b) => b.room)]) if (other !== mover) void other.act(move).catch(() => undefined);
+            return null;
+          },
+          (e: Error) => e.message,
+        );
+      };
+      const label = (doc as { label?: string }).label ?? `Table ${id}`;
       return online(
         <GameTable
           // The watch view looks on from the first seat; turn it to the side being watched from.
-          view={fromTheSide ? { ...(view as KitView | BoardView | SportView), me: seat } : (view as KitView | BoardView | SportView)}
+          view={fromTheSide ? { ...(view as KitView | BoardView | SportView), me: seat } : (shown as KitView | BoardView | SportView)}
           watching={watching}
-          names={doc.seats.map((s, i) => s.name ?? seatLabel(game, i))}
-          act={act}
+          names={names}
+          act={together ? actAs : act}
           onLeave={onLeave}
-          banner={banner ?? <div className="banner">{(doc as { label?: string }).label ?? `Table ${id}`}</div>}
+          banner={
+            banner ??
+            (together ? (
+              <div className="banner">
+                <label>
+                  {label} · at this device:{" "}
+                  <select value={at ?? 0} onChange={(e) => setHere(Number(e.target.value))} aria-label="Whose table this screen shows">
+                    {locals.map((s) => (
+                      <option key={s} value={s}>
+                        {names[s]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : (
+              <div className="banner">{label}</div>
+            ))
+          }
           chat={chat}
           settings={tableSettings}
+          together={together}
         />,
       );
     }
@@ -285,10 +397,13 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
 
   // Leaving an open table before the deal gives the seat back, so nobody waits on an empty chair.
   const leave = () => {
-    if (waiting) void room.stand().catch(() => undefined);
+    if (waiting) {
+      void room.stand().catch(() => undefined);
+      for (const b of beside) void b.room.stand().catch(() => undefined);
+    }
     onLeave();
   };
-  return <Lobby room={room} doc={doc} mySeat={mySeat} onSat={setMySeat} problem={problem} setProblem={setProblem} onLeave={leave} chat={chat} settings={tableSettings} />;
+  return <Lobby room={room} doc={doc} mySeat={mySeat} onSat={setMySeat} beside={beside} onBeside={setBeside} shares={shares} problem={problem} setProblem={setProblem} onLeave={leave} chat={chat} settings={tableSettings} />;
 }
 
 function PlayingTable(props: {
@@ -330,6 +445,10 @@ function Lobby(props: {
   doc: RoomDoc<Summary>;
   mySeat: Seat | null;
   onSat: (seat: Seat) => void;
+  /** The other people at this device who have a seat here, and whether this game lets a device seat more than one. */
+  beside: Beside[];
+  onBeside: (next: Beside[]) => void;
+  shares: boolean;
   problem: string | null;
   setProblem: (p: string | null) => void;
   onLeave: () => void;
@@ -344,6 +463,9 @@ function Lobby(props: {
   const info = (doc as { info?: Info }).info;
   const [name, setName] = useState(loadSavedName);
   const [copied, setCopied] = useState(false);
+  const { beside, onBeside } = props;
+  /** The name of the next person to sit down beside you. */
+  const [other, setOther] = useState("");
   const link = typeof location === "undefined" ? "" : `${location.origin}${location.pathname}?table=${room.id}`;
   const full = doc.seats.every((s) => s.bot || s.name);
 
@@ -398,6 +520,23 @@ function Lobby(props: {
                 {game === "spades" && s.bot && s.name && personaFor(s.name).blurb && <small className="blurb">{personaFor(s.name).blurb}</small>}
               </strong>
               {mine && <em>you</em>}
+              {beside.some((b) => b.seat === i) && <em>at this device</em>}
+              {!doc.started && !doc.locked && beside.some((b) => b.seat === i) && (
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() =>
+                    attempt(async () => {
+                      const second = beside.find((b) => b.seat === i)!;
+                      await second.room.stand();
+                      second.room.close();
+                      onBeside(beside.filter((b) => b !== second));
+                    })
+                  }
+                >
+                  Stand up
+                </button>
+              )}
               {!mine && doc.open && !doc.started && doc.host === i && <em>host</em>}
               {doc.muted?.includes(i) && <em>muted</em>}
               {doc.open && !doc.started && mySeat !== null && doc.host === mySeat && !mine && !s.bot && s.name && (
@@ -450,6 +589,34 @@ function Lobby(props: {
           );
         })}
       </ol>
+
+      {props.shares && mySeat !== null && !doc.started && !doc.locked && !full && beside.length < SECONDS && (
+        <section className="house-block" aria-label="Someone else at this device">
+          <TextField label="Someone else at this device" value={other} maxlength={20} onValueChange={(e: CustomEvent<string>) => setOther(e.detail)} />
+          <button
+            type="button"
+            className="secondary small"
+            onClick={() =>
+              attempt(async () => {
+                const free = doc.seats.findIndex((s) => !s.bot && !s.name);
+                const n = Array.from({ length: SECONDS }, (_, i) => i + 1).find((k) => !beside.some((b) => b.n === k))!;
+                const second = secondRoom<unknown, unknown, Summary>(room.id, n);
+                try {
+                  const { seat } = await second.sit(free, other.trim() || `Player ${free + 1}`);
+                  onBeside([...beside, { n, room: second, seat }].sort((a, b) => a.n - b.n));
+                  setOther("");
+                } catch (e) {
+                  second.close();
+                  throw e;
+                }
+              })
+            }
+          >
+            Seat them here
+          </button>
+          <p className="fine">They take a seat of their own and share this screen with you: it shows the table of whoever's move it is. Everyone else plays from their own device.</p>
+        </section>
+      )}
 
       {!doc.started && props.settings && doc.seats.length > 1 && !arcade && (
         <section className="house-block" aria-label="Turn timer">

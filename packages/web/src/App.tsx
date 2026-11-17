@@ -45,7 +45,7 @@ type Screen =
   | { kind: "local-palace"; name: string; rules: PalaceRules; seats: number; seed: number }
   | { kind: "sketchbook" }
   | { kind: "local-kit"; game: KitGameId; name: string; /** The other people playing at this device, after `name`. */ others?: string[]; rules: unknown; seats: number; seed: number; /** Leaving goes back to the course (or lane) editor, at this one. */ back?: string }
-  | { kind: "wifi-host"; game: KitGameId; name: string; rules: unknown; seats: number; seed: number }
+  | { kind: "wifi-host"; game: KitGameId; name: string; /** The other people playing at the host's device. */ others?: string[]; rules: unknown; seats: number; seed: number }
   | { kind: "wifi-join" }
   | { kind: "move" }
   | { kind: "arcade"; game: ArcadeGameId; rules: ArcadeRules; seats: number; seed: number; autofire: boolean; rival?: { name: string; score: number } }
@@ -306,7 +306,7 @@ export function App() {
         game={game}
         onHome={home}
         onPractice={(name, rules, seats, others) => setScreen({ kind: "local-kit", game, name, others, rules, seats, seed: Math.floor(Math.random() * 2 ** 31) })}
-        onWifi={(name, rules, seats) => setScreen({ kind: "wifi-host", game, name, rules, seats, seed: Math.floor(Math.random() * 2 ** 31) })}
+        onWifi={(name, rules, seats, others) => setScreen({ kind: "wifi-host", game, name, others, rules, seats, seed: Math.floor(Math.random() * 2 ** 31) })}
         onFamilyTable={async (rules, seats) => openTable(await createRoom({ game, rules, seats }, { settings: loadTableSettings() }), null)}
         onFindPlayers={(name, rules, seats) => findPlayers(game, name, rules, seats)}
         onOpenHouse={openHouse}

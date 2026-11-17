@@ -44,7 +44,8 @@ interface Props {
   /** `others`: the other people playing at this device, when there are any (see sameDevice.ts). */
   onPractice: (name: string, rules: Rules, seats: number, others?: string[]) => void;
   /** Host a table on this wifi, with no server (wifi/WifiHost.tsx). Not offered where it's left out (the blog embed). */
-  onWifi?: (name: string, rules: Rules, seats: number) => void;
+  /** `others`: the other people at this device, who take seats beside the host; the rest are for guests. */
+  onWifi?: (name: string, rules: Rules, seats: number, others?: string[]) => void;
   onFamilyTable: (rules: Rules, seats: number) => Promise<void>;
   /** Sit at an open table that's waiting for this game, or open one with these rules and wait. */
   onFindPlayers: (name: string, rules: Rules, seats: number) => Promise<void>;
@@ -352,7 +353,9 @@ export function KitSetup({
               disabled={errors.length > 0}
               onClick={() => {
                 remember();
-                onWifi(name.trim() || "You", rules, tableSeats);
+                // The people at this device come too, as long as a seat is left for someone to join.
+                const here = Math.min(people, tableSeats - 1);
+                onWifi(name.trim() || "You", rules, tableSeats, here > 1 ? Array.from({ length: here - 1 }, (_, i) => personName(others[i], i + 1)) : undefined);
               }}
             >
               📶 Play on this wifi
