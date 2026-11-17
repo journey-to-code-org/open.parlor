@@ -370,7 +370,7 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .mini-board.shade-wood .mini-cell.tone-light { text-shadow: 0 0 1px #1d1a16, 0 1px 1px rgba(0, 0, 0, 0.5); }
 /* A board of points (Backgammon): long triangles from both edges, and no lines between the cells. */
 /* A word game: letter tiles, green in place, gold elsewhere, grey not in the word. */
-.mini-board.shade-words { width: calc(var(--tile-card) * 2.5); gap: 3px; rotate: -4deg; background: none; box-shadow: none; border-radius: 0; overflow: visible; aspect-ratio: 5 / 2; grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.mini-board.shade-words { width: calc(var(--tile-card) * 2.5); gap: 3px; rotate: -4deg; background: none; box-shadow: none; border-radius: 0; overflow: visible; aspect-ratio: 5 / 2; grid-template-rows: none; grid-auto-rows: auto; aspect-ratio: auto; }
 .mini-board.shade-words .mini-cell { aspect-ratio: 1; border-radius: 4px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); font-size: calc(var(--tile-card) * 1.5 / var(--cols) * 0.55); font-weight: 800; color: #1d1a16; background: #fbf6ec; }
 .mini-board.shade-words .mini-cell.tone-hit { background: #3f9a52; color: #fff; }
 .mini-board.shade-words .mini-cell.tone-near { background: #d2a52a; color: #241a00; }

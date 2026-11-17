@@ -305,17 +305,22 @@ export function KitSetup({
           <SameRulesToggle />
             </>
           )}
-          <button
-            type="button"
-            className={!solo ? "secondary" : "primary deal"}
-            disabled={errors.length > 0}
-            onClick={() => {
-              remember();
-              onPractice(name.trim() || "You", rules, tableSeats, people > 1 ? Array.from({ length: people - 1 }, (_, i) => personName(others[i], i + 1)) : undefined);
-            }}
-          >
-            {solo ? "Deal" : people > 1 ? "Play together on this device" : "Practice against the computer"}
-          </button>
+          {game.practice === false ? (
+            // A game that needs people (Draw & Guess): computer players can only keep it moving.
+            <p className="fine">This one needs people: computer players can't draw. Start a family table, or play on this wifi.</p>
+          ) : (
+            <button
+              type="button"
+              className={!solo ? "secondary" : "primary deal"}
+              disabled={errors.length > 0}
+              onClick={() => {
+                remember();
+                onPractice(name.trim() || "You", rules, tableSeats, people > 1 ? Array.from({ length: people - 1 }, (_, i) => personName(others[i], i + 1)) : undefined);
+              }}
+            >
+              {solo ? "Deal" : people > 1 ? "Play together on this device" : "Practice against the computer"}
+            </button>
+          )}
           {!solo && onWifi && (
             <button
               type="button"

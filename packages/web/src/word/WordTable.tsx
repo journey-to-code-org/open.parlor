@@ -9,9 +9,12 @@
 // - How the others' guesses went (`players[].marks`): coloured squares, never their letters.
 // - The words that have been played, the result of a round, and the end of the game.
 //
+// Three games' moves aren't typed (word/WordPieces.tsx): a word traced on a square of letters
+// (Word Hunt), tiles put on a board from your hand (Criss-Crosswords), and a drawing (Draw & Guess).
+//
 // A typed word can't be checked here (that needs the word list, which is the engine's): anything of
 // the right shape is sent, and a refusal comes back in words.
-import { kitGame, type Choice, type WordBoard, type WordTile, type WordTone, type WordView } from "@journey-to-code/games";
+import { kitGame, type Choice, type PlacedTile, type WordBoard, type WordStroke, type WordTile, type WordTone, type WordView } from "@journey-to-code/games";
 import { type TableSettings } from "@journey-to-code/rules";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bubble, TableChat, useBubbles, type ChatProps } from "../Chat";
@@ -20,6 +23,7 @@ import { loadFeedbackSettings, play, saveFeedbackSettings } from "../feedback/so
 import { named, ResultTable, sideName } from "../kit/KitTable";
 import { SoundButton } from "../SoundButton";
 import { TableSettingsButton } from "../TableSettings";
+import { Canvas, PlaceBoard, TraceGrid } from "./WordPieces";
 
 export interface WordTableProps {
   view: WordView;
@@ -57,6 +61,12 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
   const [confirming, setConfirming] = useState<Choice | null>(null);
   /** The rack in the order this player likes it: shuffled here, never sent. */
   const [order, setOrder] = useState<number[] | null>(null);
+  /** A word being traced on the square: the tiles, in order. */
+  const [path, setPath] = useState<number[]>([]);
+  /** Tiles put on the board this turn, not yet played; and the hand tile chosen to put next. */
+  const [pending, setPending] = useState<PlacedTile[]>([]);
+  const [chosen, setChosen] = useState<number | null>(null);
+  const [handOrder, setHandOrder] = useState<number[] | null>(null);
   const [soundOn, setSoundOn] = useState(() => loadFeedbackSettings().sound);
   const bubbles = useBubbles(chat?.messages ?? []);
   const entry = watching ? null : view.entry;
@@ -69,6 +79,15 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
   const entryKey = entry ? `${entry.type}/${entry.prompt}/${entry.min}/${entry.max}` : "";
   useEffect(() => setTyped(""), [entryKey, rackKey, view.phase]);
   useEffect(() => setOrder(null), [rackKey]);
+  useEffect(() => setPath([]), [entryKey, view.phase]);
+  // A new hand, or the turn moving on: tiles not played go back.
+  const handKey = (view.hand ?? []).join("");
+  const placing = watching ? null : (view.place ?? null);
+  useEffect(() => {
+    setPending([]);
+    setChosen(null);
+  }, [handKey, !!placing]);
+  useEffect(() => setHandOrder(null), [handKey]);
   useEffect(() => {
     if (!error) return;
     const timer = setTimeout(() => setError(null), 3500);
@@ -144,6 +163,61 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
     void send({ type: pick.type, letter });
   };
 
+  // Tracing a word on the square: the path spells what is typed.
+  const traceBoard = view.boards.find((b) => b.trace) ?? null;
+  const traceLetters = traceBoard ? traceBoard.rows.flat().map((t) => t.letter) : [];
+  const onPath = (next: number[]) => {
+    setPath(next);
+    setTyped(next.map((i) => traceLetters[i]).join(""));
+    setError(null);
+  };
+  const sendPath = async (p: number[]) => {
+    if (!entry) return;
+    const word = p.map((i) => traceLetters[i]).join("");
+    if (word.length < entry.min) {
+      setError(`At least ${entry.min} letters.`);
+      play("nope");
+      onPath([]);
+      return;
+    }
+    const ok = await send({ type: entry.type, word });
+    setPath([]);
+    setTyped("");
+    if (ok) play("piece");
+  };
+
+  // Putting tiles on the board from your hand.
+  const hand = view.hand ?? [];
+  const shownHand = handOrder && handOrder.length === hand.length ? handOrder.map((i) => hand[i]!) : hand;
+  /** Which of the shown hand's tiles are on the board: matched left to right, as the rack's are. */
+  const onBoard = useMemo(() => {
+    const taken = new Set<number>();
+    for (const t of pending) {
+      const at = shownHand.findIndex((l, i) => l === t.letter && !taken.has(i));
+      if (at >= 0) taken.add(at);
+    }
+    return taken;
+  }, [pending, shownHand]);
+  const onSquare = (row: number, col: number) => {
+    const there = pending.findIndex((t) => t.row === row && t.col === col);
+    if (there >= 0) {
+      setPending(pending.filter((_, i) => i !== there));
+      return;
+    }
+    if (chosen === null || onBoard.has(chosen)) return;
+    setPending([...pending, { row, col, letter: shownHand[chosen]! }]);
+    setChosen(null);
+    setError(null);
+  };
+  const playTiles = async () => {
+    if (!placing || !pending.length) return;
+    if (await send({ type: placing.type, tiles: pending })) {
+      setPending([]);
+      setChosen(null);
+    }
+  };
+  const sendStroke = (stroke: WordStroke) => send({ type: view.canvas!.draw!.type, stroke });
+
   // A real keyboard: letters, Backspace and Enter, unless someone is typing in the chat.
   const keys = useRef({ add, back, submit, name });
   keys.current = { add, back, submit, name };
@@ -156,7 +230,10 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
       const key = e.key.toLowerCase();
       if (/^[a-z]$/.test(key)) {
         e.preventDefault();
-        if (entry) keys.current.add(key);
+        if (entry) {
+          setPath([]);
+          keys.current.add(key);
+        }
         else keys.current.name(key);
       } else if (entry && e.key === "Backspace") {
         e.preventDefault();
@@ -222,16 +299,23 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
             </p>
           )}
           {gallows && <Gallows shown={gallows.shown} of={gallows.of} />}
-          {view.boards.map((board) => (
-            <Board key={board.id} board={board} label={view.boards.length > 1 || board.owner === undefined} typing={typingInto?.id === board.id ? typed : null} />
-          ))}
+          {view.canvas && <Canvas canvas={watching ? { ...view.canvas, draw: null } : view.canvas} onStroke={sendStroke} />}
+          {view.boards.map((board) =>
+            board.trace ? (
+              <TraceGrid key={board.id} board={board} path={path} onPath={onPath} onSend={(p) => void sendPath(p)} disabled={!entry || busy} />
+            ) : view.place?.board === board.id || (view.hand && board.cols > 9) ? (
+              <PlaceBoard key={board.id} board={board} pending={pending} values={view.values ?? {}} canPlace={!!placing && chosen !== null && !busy} onSquare={onSquare} />
+            ) : (
+              <Board key={board.id} board={board} label={view.boards.length > 1 || board.owner === undefined} typing={typingInto?.id === board.id ? typed : null} />
+            ),
+          )}
           {view.words.length > 0 && (
             <ul className="word-played" aria-label="Words">
               {view.words.map((w, i) => (
                 <li key={i} className={w.by === null ? "answer" : w.by === me ? "mine" : ""}>
                   <span className="word-tiles small" aria-label={w.word}>
                     {[...w.word].map((letter, j) => (
-                      <span key={j} className={`word-tile${w.by === null ? " answer" : " played"}`} aria-hidden>
+                      <span key={j} className={`word-tile${w.by === null ? " word-answer" : " word-said"}`} aria-hidden>
                         {letter}
                       </span>
                     ))}
@@ -295,8 +379,67 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
           </div>
         )}
 
+        {/* What has been traced, and the buttons to send it or start again. */}
+        {traceBoard && entry && (
+          <div className="word-rack-area">
+            <div className="word-tiles typed" aria-live="polite" aria-label={typed ? `Your word: ${typed}` : "Your word: nothing yet"}>
+              {typed ? [...typed].map((letter, i) => (
+                <span key={i} className="word-tile filled small-tile" aria-hidden>
+                  {letter}
+                </span>
+              )) : <span className="fine">Drag across the letters, or tap them in turn</span>}
+            </div>
+            <div className="word-actions">
+              <button type="button" className="secondary" disabled={!typed} onClick={() => onPath([])}>
+                Clear
+              </button>
+              <button type="button" className="primary" disabled={busy || typed.length < entry.min} onClick={() => void (path.length ? sendPath(path) : submit())}>
+                Enter
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Your own tiles: choose one, then a square. */}
+        {view.hand && view.hand.length > 0 && !watching && (
+          <div className="word-rack-area">
+            <div className="word-tiles rack word-hand" role="group" aria-label={placing ? "Your tiles: choose one, then a square on the board" : "Your tiles"}>
+              {shownHand.map((letter, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className={`word-tile rack-tile${onBoard.has(i) ? " used" : ""}${chosen === i ? " chosen" : ""}`}
+                  disabled={!placing || onBoard.has(i) || busy}
+                  aria-pressed={chosen === i}
+                  aria-label={`${letter.toUpperCase()}, worth ${view.values?.[letter] ?? 0}`}
+                  onClick={() => setChosen(chosen === i ? null : i)}
+                >
+                  {letter}
+                  {view.values && <small className="tile-value" aria-hidden>{view.values[letter]}</small>}
+                </button>
+              ))}
+            </div>
+            <div className="word-actions">
+              <button type="button" className="secondary" disabled={!!pending.length} onClick={() => setHandOrder(shuffle(hand.length))} aria-label="Shuffle your tiles">
+                🔀
+              </button>
+              {placing && (
+                <>
+                  <button type="button" className="secondary" disabled={!pending.length} onClick={() => setPending([])}>
+                    Take back
+                  </button>
+                  <button type="button" className="primary" disabled={busy || !pending.length} onClick={() => void playTiles()}>
+                    Play {pending.length ? `${pending.length} ${pending.length === 1 ? "tile" : "tiles"}` : ""}
+                  </button>
+                </>
+              )}
+            </div>
+            {placing && <p className="word-prompt">{placing.prompt}</p>}
+          </div>
+        )}
+
         {/* A keyboard, for typing a word anywhere, or naming one letter. */}
-        {((entry && !pool) || pick) && (
+        {((entry && !pool && !traceBoard) || pick) && (
           <div className="word-keyboard" role="group" aria-label={pick ? pick.prompt : entry!.prompt}>
             <p className="word-prompt">{pick ? pick.prompt : entry!.prompt}</p>
             {ROWS.map((row, r) => (
@@ -401,9 +544,10 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
         <div className="sheet won-sheet">
           <h2>{won && view.seats > 1 && !together ? "You won! 🏆" : named(view.over.title, names)}</h2>
           {won && view.seats > 1 && !together && <p className="won-line">{named(view.over.title, names)}</p>}
-          {view.words.some((w) => w.by === null) && (
+          {/* The one answer of a game that had one (Secret Word, Hangman, the last drawing): not Word Hunt's words nobody found. */}
+          {view.words.some((w) => w.by === null && (w.note === "The word" || w.note === "It was")) && (
             <p className="won-line">
-              The word was <strong>{view.words.find((w) => w.by === null)!.word.toUpperCase()}</strong>.
+              The word was <strong>{view.words.find((w) => w.by === null && (w.note === "The word" || w.note === "It was"))!.word.toUpperCase()}</strong>.
             </p>
           )}
           {view.result && <ResultTable result={view.result} names={names} me={me} untitled />}

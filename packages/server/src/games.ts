@@ -144,8 +144,22 @@ export function watchView(game: GameId, views: unknown[]): unknown {
   // squares, is everyone's: it is in every seat's view alike.
   if (isWordGame(game)) {
     const owned = seats.some((v) => Array.isArray(v.boards) && v.boards.some((b) => (b as Any).owner !== undefined));
-    const open: Any[] = seats.map((v) => ({ ...v, boards: Array.isArray(v.boards) ? v.boards.filter((b) => (b as Any).owner === undefined) : [] }));
-    const view = sharedView(open, { blank: { entry: null, pick: null, choices: null, ...(owned ? { keys: {} } : {}) }, from: { seat: 0, keys: ["me"] } });
+    // A hand of tiles is its owner's (Criss-Crosswords); a drawing is everyone's, but the pen is the artist's.
+    const open: Any[] = seats.map((v) => ({
+      ...v,
+      boards: Array.isArray(v.boards) ? v.boards.filter((b) => (b as Any).owner === undefined) : [],
+      ...(v.canvas ? { canvas: { ...(v.canvas as Any), draw: null } } : {}),
+    }));
+    // A tile the seats see differently (the word in Draw & Guess: the artist sees it, a guesser
+    // doesn't yet) is hidden from a watcher, as it is from the seats that can't see it.
+    type Tiles = { rows: unknown[][] };
+    const tileAt = (v: Any, b: number, r: number, c: number) => JSON.stringify((v.boards as Tiles[])[b]?.rows[r]?.[c]);
+    const boards = (open[0]!.boards as (Any & Tiles)[]).map((board, b) => ({
+      ...board,
+      rows: board.rows.map((row, r) => row.map((tile, c) => (open.every((v) => tileAt(v, b, r, c) === JSON.stringify(tile)) ? tile : { letter: "", hidden: true }))),
+    }));
+    for (const v of open) v.boards = boards;
+    const view = sharedView(open, { blank: { entry: null, pick: null, choices: null, hand: null, place: null, ...(owned ? { keys: {} } : {}) }, from: { seat: 0, keys: ["me"] } });
     if (Array.isArray(view.info)) view.info = view.info.filter((line) => typeof line === "string");
     return view;
   }

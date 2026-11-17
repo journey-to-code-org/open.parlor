@@ -122,3 +122,39 @@ describe("word games in the parlor", () => {
     expect(watched.pick).toBeNull();
   });
 });
+
+describe("watching the word games with hidden parts", () => {
+  it("keeps a Criss-Crosswords hand from a watcher, and shows the board", () => {
+    const game = kitGame("crisscross")!;
+    const s = game.newGame(game.presets[0], 2, 1);
+    const watched = watchView("crisscross", [game.view(s, 0), game.view(s, 1)]) as WordView;
+    expect(watched.hand).toBeNull();
+    expect(watched.place).toBeNull();
+    expect(watched.boards).toHaveLength(1);
+    for (const rack of (s as { racks: string[][] }).racks) expect(JSON.stringify(watched)).not.toContain(JSON.stringify(rack));
+  });
+
+  it("shows a watcher the drawing in Draw & Guess, never the word, and no pen", () => {
+    const game = kitGame("drawguess")!;
+    let s = game.newGame(game.presets[0], 3, 1);
+    s = game.apply(s, 0, { type: "choose", index: 0 });
+    const stroke = { points: [10, 10, 500, 500], color: 1, size: 0 };
+    s = game.apply(s, 0, { type: "stroke", stroke });
+    const word = (s as { prompt: string }).prompt;
+    const watched = watchView("drawguess", [0, 1, 2].map((seat) => game.view(s, seat))) as WordView;
+    expect(watched.canvas).toEqual({ strokes: [stroke], draw: null });
+    expect(JSON.stringify(watched)).not.toContain(`"${word}"`);
+    expect(watched.boards.flatMap((b) => b.rows.flat()).every((t) => !t.letter)).toBe(true);
+  });
+
+  it("keeps Word Hunt's words from a watcher until they are read out", () => {
+    const game = kitGame("wordhunt")!;
+    let s = game.newGame(game.presets[0], 2, 1);
+    const grid = (s as { grid: string }).grid;
+    const found = (s as unknown as { found: string[][] }) && game.bot(s, 0, { skill: 1 }, () => 0.5)!;
+    s = game.apply(s, 0, found, { elapsed: 0 });
+    const watched = watchView("wordhunt", [game.view(s, 0), game.view(s, 1)]) as WordView;
+    expect(watched.words).toEqual([]);
+    expect(watched.boards[0]!.rows.flat().map((t) => t.letter).join("")).toBe(grid);
+  });
+});
