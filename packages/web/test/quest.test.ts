@@ -41,10 +41,12 @@ describe("Zubra Quest's pictures", () => {
   });
   it("paints every tile in every kind of country, sixteen pixels square", () => {
     for (const biome of ["meadow", "dunes", "marsh", "crags", "cave", ...QUEST_DENS.map((den) => den.biome)]) for (const tile of Object.values(QUEST_TILE)) {
-      const art = tileArt(biome, tile, 3, 0, QUEST_TILE.ground, QUEST_TILE.ground);
+      for (const mask of [0, 5, 10, 15]) {
+      const art = tileArt(biome, tile, 3, 0, mask);
       expect([art.w, art.h]).toEqual([16, 16]);
       // Nothing of a tile is left unpainted.
       for (let i = 3; i < art.data.length; i += 4) expect(art.data[i]).toBe(255);
+      }
     }
   });
   it("draws a frame for a game as it is played, and for the title", () => {

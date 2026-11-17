@@ -37,8 +37,54 @@ export interface Sprite {
 }
 export const blank = (w: number, h: number): Sprite => ({ w, h, data: new Uint8ClampedArray(w * h * 4) });
 
-/** A sprite from rows of letters. `swap` trades letters for others first: the same drawing in other colours. */
+/**
+ * What makes a drawing in four flat colours look sixteen-bit: light and shade. Every patch of
+ * colour is lit along its top and left edges and darkened along its bottom and right, and the
+ * black line round the outside takes on a dark shade of whatever it is the edge of, so a green
+ * thing has a deep green edge and not a black one. Dark marks inside a drawing (an eye, a stripe)
+ * are left alone.
+ */
+export function polished(s: Sprite): Sprite {
+  const { w, h } = s;
+  const out: Sprite = { w, h, data: s.data.slice() };
+  const there = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && s.data[(y * w + x) * 4 + 3]! > 0;
+  const line = (x: number, y: number) => { const i = (y * w + x) * 4; return s.data[i] === 11 && s.data[i + 1] === 11 && s.data[i + 2] === 20; };
+  // 0 nothing, 1 the line round the outside, 2 colour (and dark marks inside, which count as colour).
+  const kind = (x: number, y: number): number => {
+    if (!there(x, y)) return 0;
+    if (!line(x, y)) return 2;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (!there(x + dx, y + dy)) return 1;
+    return 2;
+  };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const k = kind(x, y);
+    const i = (y * w + x) * 4;
+    if (k === 2 && !line(x, y)) {
+      const lit = kind(x, y - 1) !== 2 || kind(x - 1, y) !== 2;
+      const dim = kind(x, y + 1) !== 2 || kind(x + 1, y) !== 2;
+      const near = !lit && !dim && (kind(x + 1, y + 1) !== 2 || kind(x, y + 2) !== 2 || kind(x + 2, y) !== 2);
+      for (let c = 0; c < 3; c++) {
+        const v = s.data[i + c]!;
+        out.data[i + c] = lit && !dim ? v + (255 - v) * 0.24 : dim && !lit ? v * 0.74 : near ? v * 0.88 : v;
+      }
+    } else if (k === 1) {
+      let n = 0;
+      const sum = [0, 0, 0];
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (kind(x + dx, y + dy) === 2 && !line(x + dx, y + dy)) { n++; for (let c = 0; c < 3; c++) sum[c]! += s.data[((y + dy) * w + x + dx) * 4 + c]!; }
+      if (!n) continue;
+      const top = !there(x, y - 1) || !there(x - 1, y);
+      for (let c = 0; c < 3; c++) out.data[i + c] = (sum[c]! / n) * (top ? 0.42 : 0.28);
+    }
+  }
+  return out;
+}
+
+/** A sprite from rows of letters, lit and shaded. `swap` trades letters for others first: the same drawing in other colours. */
 export function sprite(rows: readonly string[], swap: Record<string, string> = {}): Sprite {
+  return polished(flat(rows, swap));
+}
+/** A sprite exactly as its letters say, with no light or shade added. */
+export function flat(rows: readonly string[], swap: Record<string, string> = {}): Sprite {
   const w = Math.max(...rows.map((row) => row.length));
   const out = blank(w, rows.length);
   rows.forEach((row, y) => {
@@ -164,26 +210,39 @@ export class Screen {
       }
     }
   }
-  /** Words, in the font below. Returns how wide they came out. `stripe` paints every other row of dots in a second colour. */
-  text(words: string, x: number, y: number, c: Rgb, shadow: Rgb | null = [11, 11, 20], size = 1, stripe: Rgb | null = null): number {
+  /** Words, in the font below. Returns how wide they came out. `to` fades the letters from their colour at the top to another at the bottom. */
+  text(words: string, x: number, y: number, c: Rgb, shadow: Rgb | null = [11, 11, 20], size = 1, to: Rgb | null = null): number {
     let at = x;
     for (const letter of words.toUpperCase()) {
       const rows = FONT[letter] ?? FONT["?"]!;
       for (let pass = shadow ? 0 : 1; pass < 2; pass++) for (let gy = 0; gy < 7; gy++) for (let gx = 0; gx < 5; gx++) {
         if (!(rows[gy]! & (16 >> gx))) continue;
         const off = pass === 0 ? size : 0;
-        this.rect(at + gx * size + off, y + gy * size + off, size, size, pass === 0 ? shadow! : stripe && gy % 2 ? stripe : c);
+        this.rect(at + gx * size + off, y + gy * size + off, size, size, pass === 0 ? shadow! : to ? [c[0] + ((to[0] - c[0]) * gy) / 6, c[1] + ((to[1] - c[1]) * gy) / 6, c[2] + ((to[2] - c[2]) * gy) / 6] : c);
       }
       at += 6 * size;
     }
     return at - x;
   }
-  /** A box with a border, for words to go in. */
-  panel(x: number, y: number, w: number, h: number, fill: Rgb = [16, 18, 40], edge: Rgb = [200, 204, 216]) {
-    this.rect(x + 1, y, w - 2, h, [11, 11, 20]);
-    this.rect(x, y + 1, w, h - 2, [11, 11, 20]);
-    this.rect(x + 1, y + 1, w - 2, h - 2, edge);
-    this.rect(x + 2, y + 2, w - 4, h - 4, fill);
+  /** Lay a colour over what is there: 0 leaves it, 256 covers it. The see-through layers a Super Nintendo was proud of. */
+  tint(x: number, y: number, w: number, h: number, c: Rgb, much: number) {
+    for (let py = Math.max(0, y); py < Math.min(this.h, y + h); py++) for (let px = Math.max(0, x); px < Math.min(this.w, x + w); px++) {
+      const i = (py * this.w + px) * 4;
+      this.data[i] = this.data[i]! + (((c[0] - this.data[i]!) * much) >> 8);
+      this.data[i + 1] = this.data[i + 1]! + (((c[1] - this.data[i + 1]!) * much) >> 8);
+      this.data[i + 2] = this.data[i + 2]! + (((c[2] - this.data[i + 2]!) * much) >> 8);
+    }
+  }
+  /** A box for words to go in: rounded, a pale line round it, and a fill that deepens from top to bottom. */
+  panel(x: number, y: number, w: number, h: number, fill: Rgb = [40, 56, 150], edge: Rgb = [232, 236, 248], deep: Rgb = [fill[0] * 0.35, fill[1] * 0.35, fill[2] * 0.45]) {
+    const round = (px: number, py: number, inset: number) => (px === x + inset || px === x + w - 1 - inset) && (py === y + inset || py === y + h - 1 - inset);
+    for (let py = y; py < y + h; py++) for (let px = x; px < x + w; px++) {
+      if (round(px, py, 0)) continue;
+      const rim = px === x || py === y || px === x + w - 1 || py === y + h - 1;
+      const line = !rim && (px === x + 1 || py === y + 1 || px === x + w - 2 || py === y + h - 2 || round(px, py, 2));
+      const t = (py - y) / Math.max(1, h - 1);
+      this.dot(px, py, rim ? [11, 11, 20] : line ? (py > y + h / 2 ? [edge[0] * 0.72, edge[1] * 0.72, edge[2] * 0.8] : edge) : [fill[0] + (deep[0] - fill[0]) * t, fill[1] + (deep[1] - fill[1]) * t, fill[2] + (deep[2] - fill[2]) * t]);
+    }
   }
 }
 
