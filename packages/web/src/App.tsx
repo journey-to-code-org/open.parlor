@@ -233,7 +233,16 @@ export function App() {
   if (screen.kind === "wifi-host") return <WifiHost key={screen.seed} {...screen} onLeave={() => setScreen({ kind: "setup" })} />;
   if (screen.kind === "wifi-join") return <WifiJoin onLeave={home} />;
   if (screen.kind === "move") return <MoveDevice onLeave={home} onOpenHouse={openHouse} />;
-  if (screen.kind === "local-kit") return <LocalKit key={screen.seed} {...screen} onLeave={screen.back ? () => (screen.game === "bowling" ? editLane : editCourse)(screen.back!) : home} />;
+  if (screen.kind === "local-kit")
+    return (
+      <LocalKit
+        key={screen.seed}
+        {...screen}
+        onLeave={screen.back ? () => (screen.game === "bowling" ? editLane : editCourse)(screen.back!) : home}
+        // The same game again, at once: the same rules and players, a new deal.
+        onAgain={() => setScreen({ ...screen, seed: Math.floor(Math.random() * 2 ** 31) })}
+      />
+    );
   if (screen.kind === "lane")
     return (
       <LaneEditor

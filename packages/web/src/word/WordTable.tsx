@@ -14,6 +14,7 @@
 //
 // A typed word can't be checked here (that needs the word list, which is the engine's): anything of
 // the right shape is sent, and a refusal comes back in words.
+import { PlayAgain } from "../kit/PlayAgain";
 import { HowToButton } from "../HowToPlay";
 import { kitGame, type Choice, type PlacedTile, type WordBoard, type WordStroke, type WordTile, type WordTone, type WordView } from "@journey-to-code/games";
 import { type TableSettings } from "@journey-to-code/rules";
@@ -27,6 +28,8 @@ import { TableSettingsButton } from "../TableSettings";
 import { Canvas, PlaceBoard, TraceGrid } from "./WordPieces";
 
 export interface WordTableProps {
+  /** The same game again at once (a practice table): without it, "Play again" goes back to the game's page. */
+  onAgain?: () => void;
   /** Open how to play (HowToPlay.tsx): the "?" in the top bar. */
   onHelp?: () => void;
   view: WordView;
@@ -55,7 +58,7 @@ const missesLeft = (info: string[]) => {
   return null;
 };
 
-export function WordTable({ view, names, act, onLeave, banner, chat, settings, watching, together, onHelp}: WordTableProps) {
+export function WordTable({ view, names, act, onLeave, banner, chat, settings, watching, together, onHelp, onAgain}: WordTableProps) {
   const game = kitGame(view.game)!;
   const me = view.me;
   const [typed, setTyped] = useState("");
@@ -555,9 +558,7 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
             </p>
           )}
           {view.result && <ResultTable result={view.result} names={names} me={me} untitled />}
-          <button type="button" className="primary" onClick={onLeave}>
-            Play again
-          </button>
+          <PlayAgain onAgain={onAgain} onLeave={onLeave} />
         </div>
       )}
       <p className="sr-only">{game.name}</p>

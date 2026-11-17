@@ -26,7 +26,7 @@ import type { PeerLink } from "../wifi/link";
 /** On a board the screen stays with the person who moved for a moment, so they see the piece land before the board turns to the next person. */
 const HANDOVER_MS = 900;
 
-export function LocalKit({ game: id, name, others, guests, rules, seats, seed, onLeave }: { game: KitGameId; name: string; /** The other people at this device, in seat order after you. */ others?: string[]; /** People on their own devices on this wifi, in seat order after the people here. */ guests?: { name: string; link: PeerLink }[]; rules: unknown; seats: number; seed: number; onLeave: () => void }) {
+export function LocalKit({ game: id, name, others, guests, rules, seats, seed, onLeave, onAgain }: { game: KitGameId; /** Start the same game again with a new deal (not offered to a wifi table, whose guests would have to join again). */ onAgain?: () => void; name: string; /** The other people at this device, in seat order after you. */ others?: string[]; /** People on their own devices on this wifi, in seat order after the people here. */ guests?: { name: string; link: PeerLink }[]; rules: unknown; seats: number; seed: number; onLeave: () => void }) {
   const game = kitGame(id)!;
   /** Seats 0 to people - 1 are people at this device; the rest are computer players. */
   const people = Math.min(seats, 1 + (others?.length ?? 0));
@@ -254,6 +254,7 @@ export function LocalKit({ game: id, name, others, guests, rules, seats, seed, o
       <GameTable
         view={view}
         rules={rules}
+        onAgain={guests?.length ? undefined : onAgain}
         names={names}
         act={act}
         onLeave={onLeave}

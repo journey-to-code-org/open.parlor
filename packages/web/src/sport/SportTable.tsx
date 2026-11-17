@@ -14,6 +14,7 @@
 // its events as they happen. While it rolls, the scores, the story and the sheets stay as they
 // were: nobody is told the putt dropped before they have watched it drop. When it stops the
 // screen shows the server's table, and a check confirms that is where the roll ended.
+import { PlayAgain } from "../kit/PlayAgain";
 import { HowToButton } from "../HowToPlay";
 import { angleTo, kitGame, UNITS_PER_METRE, type SportBody, type SportCard, type SportView } from "@journey-to-code/games";
 import { type TableSettings } from "@journey-to-code/rules";
@@ -34,6 +35,8 @@ import type { Point } from "@journey-to-code/physics";
 import { SoundButton } from "../SoundButton";
 
 export interface SportTableProps {
+  /** The same game again at once (a practice table): without it, "Play again" goes back to the game's page. */
+  onAgain?: () => void;
   /** Open how to play (HowToPlay.tsx): the "?" in the top bar. */
   onHelp?: () => void;
   view: SportView;
@@ -123,7 +126,7 @@ function aimWords(v: SportView, aim: AimAt): { short: string; long: string } {
 /** A game whose shot starts anywhere along a line, aimed any way: pool with the cue ball in hand, and Carrom's striker on its baseline. (Bowling's line is a throw: aimed up the lane.) */
 const onLine = (game: string) => game === "billiards" || game === "carrom";
 
-export function SportTable({ view, names, act, onLeave, banner, chat, together, settings, onHelp}: SportTableProps) {
+export function SportTable({ view, names, act, onLeave, banner, chat, together, settings, onHelp, onAgain}: SportTableProps) {
   const game = kitGame(view.game)!;
   const me = view.me;
   const pace = settings?.value.pace;
@@ -985,9 +988,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
           <h2>{won && !together ? "You won! 🏆" : named(shown.over.title, names)}</h2>
           {won && !together && !shown.over.title.includes(`{${me}}`) && <p className="won-line">{named(shown.over.title, names)}</p>}
           {shown.card ? <Scorecard card={shown.card} names={names} me={me} /> : shown.result && <ResultTable result={shown.result} names={names} me={me} untitled />}
-          <button type="button" className="primary" onClick={onLeave}>
-            Play again
-          </button>
+          <PlayAgain onAgain={onAgain} onLeave={onLeave} />
         </div>
       )}
       <p className="sr-only">{game.name}</p>

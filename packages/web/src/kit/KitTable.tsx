@@ -1,6 +1,7 @@
 // One table for every game on the card kit. The engine's view says everything: your hand and what
 // a tap does, cards to pick, buttons to press, the trick or the piles in the middle, the melds on
 // the table, the scores. This only lays it out: others around you, the middle, your hand below.
+import { PlayAgain } from "./PlayAgain";
 import { HowToButton } from "../HowToPlay";
 import {
   kitGame,
@@ -51,6 +52,8 @@ export interface KitTableProps {
   together?: boolean;
   /** Open how to play (HowToPlay.tsx): the "?" in the top bar. */
   onHelp?: () => void;
+  /** The same game again at once (a practice table): without it, "Play again" goes back to the game's page. */
+  onAgain?: () => void;
 }
 
 
@@ -67,7 +70,7 @@ export function KitTable({
   chat,
   settings,
   watching,
-  together, onHelp
+  together, onHelp, onAgain
 }: KitTableProps) {
   const game = kitGame(view.game)!;
   const me = view.me;
@@ -452,9 +455,7 @@ export function KitTable({
           {view.result && (
             <ResultTable result={view.result} names={names} me={me} untitled />
           )}
-          <button type="button" className="primary" onClick={onLeave}>
-            Play again
-          </button>
+          <PlayAgain onAgain={onAgain} onLeave={onLeave} />
         </div>
       )}
       <p className="sr-only">{game.name}</p>
