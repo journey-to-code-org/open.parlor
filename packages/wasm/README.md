@@ -22,13 +22,39 @@ engine, standing in until the game has its own.
 | Controller | Left stick to move, right stick to turn, right trigger or X to fire, A to use, the bumpers for weapons, Start for the menu |
 | Together | Up to four, each on a device of their own, against the monsters or each other. One starts a game and sends the others its link or its four-letter code |
 | Watching | Anyone with the link can watch, through any player's eyes, and is run through the game so far if they come late. A game its host lists also shows on the parlor's watch page |
+| Changing it | An editor at `/wasm/editor/` swaps any of the game's pictures and sounds for a file of your own, and the game is played with them, alone |
 | Sound | Effects, through Web Audio. No music yet |
 | Saved games and settings | Kept in the browser (IndexedDB), under the engine's own menus |
 | Offline | After the first visit the page, the engine and the game's data are kept on the device |
 
 Not there yet: music (the songs are MUS data, which wants an OPL or MIDI synthesiser), playing
 together with the internet out (over the parlor's same-wifi pairing), joining a game that has
-started as a player, replays of games that are over, and the editor for the game's data.
+started as a player, replays of games that are over, and an editor for the game's levels.
+
+## The editor
+
+`/wasm/editor/` lists everything the game is drawn and heard with, by kind: about 1,300 sprites,
+the pieces walls are built from, floors, the other pictures (title, menus, status bar, scores,
+letters) and the sound effects. Any of them can be swapped for a file:
+
+- **Open one and choose a file, or drop it.** A picture in any format the browser opens is
+  brought into the game's 256 colours; where it is less than half there, it is see-through. It is
+  made the size of what it replaces, or, for a sprite, kept at its own size if asked. A sound in
+  any format the browser plays is made one channel at the game's rate.
+- **Drop a folder's worth on the page** and each file goes to the thing it is named after:
+  `TROOA1.png` to the sprite `TROOA1`.
+- **Save as a PNG** gives a picture to change in a paint program and drop back.
+- **Try it** runs the game on the page with the changes as they stand.
+- **Save my changes as a file** writes them as a small WAD of the kind other Doom engines load on
+  top of a game; **Load changes from a file** reads one back.
+
+The changes are kept in the browser (IndexedDB) and laid over the game's WAD each time it is
+played alone. A game with other devices is played on the data as it came. Pictures and sounds
+don't change what happens in a game, so each player seeing their own would be safe; it isn't done.
+
+The page is Svelte, and its controls are Zubra components: the parlor's copies of zubra-ui
+(`packages/ui/src/zubra-ui`). Reading and writing the data is `wad/`, plain TypeScript with no
+browser in it, which is where the tests are.
 
 ## Playing together
 
@@ -59,6 +85,12 @@ host/                 for any game: nothing here knows about Doom
   wasi.ts             the disk and terminal a C program expects, in memory
   assets.ts           big files, fetched once with a progress count and kept (Cache Storage)
   store.ts            the files a game writes, kept between visits (IndexedDB)
+wad/                  the Doom engine's data, read and written. No browser, no Svelte
+  wad.ts              a WAD file: its lumps, in and out
+  picture.ts          the engine's pictures (columns of posts; 64 by 64 floors) and its palette
+  sound.ts            its sound effects
+  catalogue.ts        which lumps are sprites, walls, floors, other pictures and sounds
+  mod.ts              someone's changes: laid over a game, or as a WAD of their own
 net/                  for any lockstep game, and for a server: nothing here knows about Doom either
   protocol.ts         what a device and a room say to each other
   room.ts             a room, and the rooms of one server
@@ -76,6 +108,8 @@ src/
   shooter/together.ts asking the server for a room, the connection to it, and the lobby
   shooter/keys.ts, touch.ts, gamepad.ts, audio.ts
   main.ts             this package's own page
+  editor/             the editor: App.svelte, Thumb.svelte, and convert.ts (a dropped file to a lump)
+editor/index.html     the editor's page
 public/sw.js          keeps the page for playing offline
 scripts/              build-engine.mjs, toolchain.mjs, fetch-data.mjs, sources.mjs
 lib/                  net/ compiled for a server to import (npm run build:net); git ignores it
@@ -92,6 +126,7 @@ a browser only draws once the call has returned: that is what most of the change
 npm run dev -w @open-parlor/wasm      # http://localhost:5177/wasm/
 npm test -w @open-parlor/wasm         # boots the engine in Node on the real data, alone and in games of several
 npm run engine -w @open-parlor/wasm   # recompile the C
+npm run typecheck -w @open-parlor/wasm   # after a build: Zubra writes its components' typings then
 ```
 
 `dev` and `build` fetch Freedoom from its release on GitHub the first time (28 MB, stored gzipped
@@ -120,6 +155,10 @@ To make this folder a repository: copy it, and take from the parlor
 - the rooms in the same file: `/wasm/play` and the socket at `/wasm/play/<code>`, about twenty
   lines over `Rooms` from this package's `net/`. open.wasm will want a small server of its own
   for them, or to publish `net/` for the parlor's to go on importing,
+- the Zubra components the editor uses, which are the parlor's copies (`packages/ui/src/zubra-ui`,
+  through the `@open-parlor/ui` alias in `vite.config.ts` and `tsconfig.json`): open.wasm takes
+  its own copies, or zubra-ui itself,
+- the few lines in the server that serve a folder's own `index.html` (the editor's page),
 - the "Freedoom, playing now" list on the watch page (`packages/watch/src/App.tsx`),
 - the step in `.github/workflows/pages.yml` and the lines in `ci.yml`,
 - `-w @open-parlor/wasm` and `build:net` in the root `package.json`'s scripts, and the server's

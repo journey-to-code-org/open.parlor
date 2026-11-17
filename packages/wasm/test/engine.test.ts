@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { describe, expect, test } from "vitest";
 import data from "../games/shooter/data.json";
-import { decodeDmx } from "../src/shooter/audio.ts";
+import { decodeDmx } from "../wad/sound.ts";
 import { type Engine, STATE_LEVEL, STATE_MENU, STATE_QUESTION, screenOf, startEngine } from "../src/shooter/engine.ts";
 import { KEY } from "../src/shooter/keys.ts";
 

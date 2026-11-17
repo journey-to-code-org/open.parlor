@@ -1,8 +1,8 @@
 // Keeps this page for playing with no connection. It only answers for this folder (its scope), so
 // it and the parlor's own service worker, one folder up, leave each other's pages alone.
 //
-// The page is asked of the network first, so an update shows at once, with the kept copy as the
-// fallback. Its scripts, styles and the engine are kept the first time they are fetched: their
+// A page (the game, or its editor) is asked of the network first, so an update shows at once, with
+// the kept copy as the fallback. Its scripts, styles and the engine are kept the first time they are fetched: their
 // names carry a hash, so a kept one is never stale. The game's data (tens of megabytes) is kept by
 // the page itself, in "open-wasm-assets" (host/assets.ts), and is not this worker's business.
 const CACHE = "open-wasm-page";
@@ -13,12 +13,14 @@ self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim(
 
 async function page(request) {
   const cache = await caches.open(CACHE);
+  // Kept under the page's own address, whatever was asked for after its "?".
+  const address = request.url.split(/[?#]/)[0].replace(/index\.html$/, "");
   try {
     const response = await fetch(request);
-    if (response.ok) await cache.put(scope, response.clone());
+    if (response.ok) await cache.put(address, response.clone());
     return response;
   } catch (error) {
-    const kept = await cache.match(scope);
+    const kept = await cache.match(address);
     if (kept) return kept;
     throw error;
   }
@@ -38,6 +40,7 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET" || !request.url.startsWith(scope)) return;
   const path = request.url.slice(scope.length).split(/[?#]/)[0];
   if (request.mode === "navigate") {
-    if (path === "" || path === "index.html") event.respondWith(page(request));
+    // The game, and the editor for its pictures and sounds.
+    if (/^(editor\/)?(index\.html)?$/.test(path)) event.respondWith(page(request));
   } else if (path.startsWith("assets/")) event.respondWith(file(request));
 });

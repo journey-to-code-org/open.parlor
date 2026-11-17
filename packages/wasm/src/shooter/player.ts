@@ -31,6 +31,18 @@ export interface ShooterOptions {
   rooms?: string;
   /** How many episodes the game has, and maps in each, for the host to choose where to start. */
   levels: { episodes: number; maps: number };
+  /**
+   * The player's own version of the game's data, when playing alone. A game with other devices is
+   * played on the data as it came, so every device has the same.
+   */
+  own?: {
+    /** Given the game's WAD, the WAD to play. */
+    apply(wad: Uint8Array): Promise<Uint8Array>;
+    /** A line for the start screen that says what is different about it, or "" if nothing is. */
+    note(): Promise<string>;
+  };
+  /** Where the editor for the game's pictures and sounds is, for a link from the start screen. */
+  editor?: string;
 }
 
 const WIDTH = 320;
@@ -47,7 +59,16 @@ function el<K extends keyof HTMLElementTagNameMap>(name: K, className: string, t
   return node;
 }
 
-export function mountShooter(root: HTMLElement, options: ShooterOptions): void {
+/** The game, once it is on a page. */
+export interface Shooter {
+  /** Takes the game off the page: stops it, leaves any room, and lets go of the keyboard and the mouse. */
+  destroy(): void;
+}
+
+export function mountShooter(root: HTMLElement, options: ShooterOptions): Shooter {
+  /** Ended by destroy(): every listener on the window and the document goes with it. */
+  const ending = new AbortController();
+  const life = { signal: ending.signal };
   const screen = el("div", "shooter-screen");
   const canvas = el("canvas", "shooter-canvas");
   canvas.width = WIDTH;
@@ -145,14 +166,14 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): void {
     if (event.repeat || held.has(event.code)) return;
     held.set(event.code, key);
     engine.key(true, key);
-  });
+  }, life);
   addEventListener("keyup", (event) => {
     const key = held.get(event.code);
     if (key === undefined) return;
     held.delete(event.code);
     engine?.key(false, key);
-  });
-  addEventListener("blur", releaseAll);
+  }, life);
+  addEventListener("blur", releaseAll, life);
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       hiddenAt ??= performance.now();
@@ -161,7 +182,7 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): void {
       lost += performance.now() - hiddenAt;
       hiddenAt = null;
     }
-  });
+  }, life);
 
   // A mouse turns once the page has it to itself (a click on the picture); its buttons fire.
   canvas.addEventListener("click", () => {
@@ -171,22 +192,22 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): void {
   const locked = () => document.pointerLockElement === canvas;
   document.addEventListener("mousemove", (event) => {
     if (locked()) engine?.mouse(buttons, playing() ? event.movementX * MOUSE : 0, 0);
-  });
+  }, life);
   for (const type of ["mousedown", "mouseup"] as const)
     document.addEventListener(type, (event) => {
       if (!locked() || event.button > 2) return;
       const bit = [1, 4, 2][event.button]!;
       buttons = type === "mousedown" ? buttons | bit : buttons & ~bit;
       engine?.mouse(buttons, 0, 0);
-    });
+    }, life);
   document.addEventListener("pointerlockchange", () => {
     if (!locked()) releaseAll();
-  });
+  }, life);
   canvas.addEventListener("contextmenu", (event) => event.preventDefault());
   /** The touch controls are for someone playing, on a screen that is touched. */
   let touched = touchScreen;
   const fitPad = () => (pad.hidden = !touched || !engine || !!engine.stopped || watching());
-  addEventListener("touchstart", () => ((touched = true), fitPad()), { once: true, passive: true });
+  addEventListener("touchstart", () => ((touched = true), fitPad()), { once: true, passive: true, signal: life.signal });
 
   /** A frame of this engine's game, for as long as it is the one running. */
   function loop(running: Engine) {
@@ -292,7 +313,8 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): void {
     audio.unlock();
     try {
       const [{ compiled, wad }, files] = await Promise.all([ready(), kept.load()]);
-      files.set(options.wad.name, wad);
+      // Alone, the game is played with the player's own changes to it, if there are any.
+      files.set(options.wad.name, room || !options.own ? wad : await options.own.apply(wad));
       const started = await startEngine(
         compiled,
         files,
@@ -397,7 +419,26 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): void {
   /** The way in. */
   function home() {
     const alone: Action = { label: "Play", run: () => void run(options.args ?? [], null) };
-    show(options.title, [options.blurb, `The first time, it downloads about ${options.wad.megabytes} MB and keeps it on this device.`], [alone]);
+    const lines = [options.blurb, `The first time, it downloads about ${options.wad.megabytes} MB and keeps it on this device.`];
+    /** Under the buttons: what is different about this player's game, and the way to the editor. */
+    const foot = el("p", "shooter-own");
+    const extras = () => (options.editor || options.own ? [foot] : []);
+    if (options.editor) {
+      const link = el("a", "", "Change how the game looks and sounds");
+      link.href = options.editor;
+      foot.append(link);
+    }
+    const said = el("span", "", "");
+    foot.prepend(said);
+    void options.own?.note().then(
+      (note) => (said.textContent = note ? `${note} ` : ""),
+      () => {},
+    );
+    const start = (actions: Action[]) => {
+      show(options.title, lines, actions);
+      card.append(...extras());
+    };
+    start([alone]);
     if (!options.rooms) return;
     // The server may have no rooms (a site with no server at all has none): then there is only playing alone.
     void hasRooms(options.rooms).then((rooms) => {
@@ -407,9 +448,19 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): void {
       if (engine || net || card.querySelector("h1")?.textContent !== options.title) return;
       if (code && rooms) return gather(code, invited.has("watch"));
       if (code) return show(options.title, ["That link is to a game with other people, and this site has no games like that: it has no server behind it. You can still play alone."], [alone]);
-      if (rooms) show(options.title, [options.blurb, `The first time, it downloads about ${options.wad.megabytes} MB and keeps it on this device.`], [alone, { label: "Play together", run: () => gather(null) }]);
+      if (rooms) start([alone, { label: "Play together", run: () => gather(null) }]);
     });
   }
 
   home();
+  return {
+    destroy() {
+      put();
+      leave();
+      ending.abort();
+      audio.close();
+      root.classList.remove("shooter");
+      root.replaceChildren();
+    },
+  };
 }

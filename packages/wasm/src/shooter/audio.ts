@@ -1,24 +1,12 @@
 // Sound effects through Web Audio. The engine hands over each effect as it sits in the WAD (a DMX
 // lump: a short header, then unsigned 8-bit samples); it is decoded once and kept.
+import { decodeDmx } from "../../wad/sound.ts";
 import type { SoundHost } from "./engine.ts";
 
 interface Voice {
   source: AudioBufferSourceNode;
   gain: GainNode;
   pan: StereoPannerNode;
-}
-
-/** A DMX sound lump as mono samples from -1 to 1, with its sample rate; null if it isn't one. */
-export function decodeDmx(lump: Uint8Array): { rate: number; samples: Float32Array } | null {
-  if (lump.length <= 8 || lump[0] !== 3 || lump[1] !== 0) return null;
-  const view = new DataView(lump.buffer, lump.byteOffset, lump.byteLength);
-  const rate = view.getUint16(2, true);
-  const length = Math.min(view.getUint32(4, true), lump.length - 8);
-  // The first and last 16 samples are padding, when the lump is long enough to have them.
-  const pad = length > 48 ? 16 : 0;
-  const samples = new Float32Array(length - pad * 2);
-  for (let i = 0; i < samples.length; i++) samples[i] = (lump[8 + pad + i]! - 128) / 128;
-  return rate > 0 && samples.length > 0 ? { rate, samples } : null;
 }
 
 export interface Audio extends SoundHost {

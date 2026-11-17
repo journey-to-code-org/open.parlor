@@ -3,7 +3,10 @@
 import FREEDOOM from "../games/shooter/data.json";
 import wasm from "../games/shooter/shooter.wasm?url";
 import { forgetAssetsExcept } from "../host/assets.ts";
+import { applyMod } from "../wad/mod.ts";
+import { loadMod } from "../wad/saved.ts";
 import { mountShooter } from "./shooter/player.ts";
+import "./shooter/shooter.css";
 import "./styles.css";
 
 // The game's data for now is Freedoom: free levels, pictures and sounds for the Doom engine.
@@ -19,6 +22,15 @@ mountShooter(document.getElementById("game")!, {
   levels: { episodes: 4, maps: 9 },
   // The parlor's server has the rooms that let devices play together; a site without it plays alone.
   rooms: `${import.meta.env.BASE_URL}play`,
+  // What the player has changed in the editor is what they play with, alone.
+  editor: `${import.meta.env.BASE_URL}editor/`,
+  own: {
+    apply: async (game) => applyMod(game, await loadMod()),
+    note: async () => {
+      const changed = (await loadMod()).length;
+      return changed ? `Playing alone, you play with the ${changed === 1 ? "one thing" : `${changed} things`} you have changed.` : "";
+    },
+  },
 });
 
 // An older version of the game's data, kept by an earlier visit, is let go.
