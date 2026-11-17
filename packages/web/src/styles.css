@@ -3058,3 +3058,22 @@ button.word-tile:active:not(:disabled) { transform: translateY(2px); }
 .league-table td:nth-child(n + 3), .league-table th:nth-child(n + 3) { text-align: right; }
 .league-table tr.mine td { color: var(--gold); font-weight: 700; }
 .league-table tbody tr:first-child td { font-weight: 700; }
+
+/* Zubra Quest: a screen of 256 by 224 pixels, every one of them square, and under a finger a pad and two buttons. */
+.quest-stage { background: #05060f; }
+.quest-screen { image-rendering: pixelated; image-rendering: crisp-edges; box-shadow: 0 0 0 2px #0b0b14, 0 0 0 4px #2e3248, 0 18px 50px rgba(0, 0, 0, 0.6); }
+.quest-end { background: rgba(3, 4, 12, 0.25); align-items: end; }
+.quest-pad { display: none; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 22px; background: var(--arc-rail); border-top: 1px solid var(--arc-line); touch-action: none; }
+@media (pointer: coarse) { .quest-pad { display: flex; } }
+.quest-stick { position: relative; flex: none; width: 132px; height: 132px; border-radius: 50%; background: radial-gradient(circle at 50% 45%, #2a3160, #141a3a 70%); border: 2px solid #3a4480; touch-action: none; }
+.quest-stick i { position: absolute; width: 0; height: 0; border: 9px solid transparent; opacity: 0.75; }
+.quest-stick i:nth-child(1) { top: 10px; left: calc(50% - 9px); border-bottom-color: #c8ccd8; border-top-width: 0; }
+.quest-stick i:nth-child(2) { bottom: 10px; left: calc(50% - 9px); border-top-color: #c8ccd8; border-bottom-width: 0; }
+.quest-stick i:nth-child(3) { left: 10px; top: calc(50% - 9px); border-right-color: #c8ccd8; border-left-width: 0; }
+.quest-stick i:nth-child(4) { right: 10px; top: calc(50% - 9px); border-left-color: #c8ccd8; border-right-width: 0; }
+.quest-tool { align-self: flex-end; font: inherit; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #c8ccd8; padding: 8px 14px; border-radius: 999px; border: 1px solid #3a4480; background: #141a3a; touch-action: none; }
+.quest-buttons { display: flex; gap: 14px; align-items: center; transform: rotate(-12deg); }
+.quest-buttons button { width: 64px; height: 64px; border-radius: 50%; font: inherit; font-size: 1.3rem; font-weight: 800; color: #fff; border: 0; touch-action: none; box-shadow: 0 5px 0 rgba(0, 0, 0, 0.45); }
+.quest-buttons button:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45); }
+.quest-a { background: #c8283c; }
+.quest-b { background: #2850b0; margin-top: 26px; }

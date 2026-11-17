@@ -24,7 +24,7 @@ export interface ChooserGame {
   /** A board game shows a little board instead of cards. */
   board?: { cols: number; cells: ({ glyph: string; tone: string; shade?: string } | null)[]; shade?: string };
   /** An arcade game shows a little screen: a ship, what it is up against, and what is coming at it (in a 100 × 100 box). */
-  screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][]; chip?: boolean; shop?: boolean; strip?: boolean; rink?: boolean };
+  screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][]; chip?: boolean; shop?: boolean; strip?: boolean; rink?: boolean; quest?: boolean };
   /** A dice game shows a few dice: the face each one shows. */
   dice?: number[];
   /** A table sport shows a little table from above: its surface, a hole, a ball or two (in a 100 × 100 box). */
@@ -247,6 +247,12 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
                 <rect class="racer a" x="24" y="66" width="20" height="13" rx="3" />
                 <rect class="racer b" x="57" y="50" width="15" height="10" rx="2.5" />
                 <path class="tail" d="M27 75 h4 M37 75 h4 M59.5 57 h3 M66.5 57 h3" />
+              </svg>
+              <svg v-else-if="g.screen.quest" viewBox="0 0 100 100" shape-rendering="crispEdges">
+                <rect fill="#4aa84a" x="3" y="3" width="94" height="94" rx="14" />
+                <path fill="#74cc62" d="M14 20h4v2h-4z M70 16h4v2h-4z M80 60h4v2h-4z M12 70h4v2h-4z M30 84h4v2h-4z M62 86h4v2h-4z" />
+                <path fill="#2f8a3c" d="M22 40h4v2h-4z M84 34h4v2h-4z M18 56h4v2h-4z M76 78h4v2h-4z" />
+                <g transform="translate(18 16) scale(4)"><path fill="#0b0b14" d="M6 0h4v1h-4zM1 1h2v1h-2zM5 1h1v1h-1zM10 1h1v1h-1zM13 1h2v1h-2zM0 2h1v1h-1zM3 2h1v1h-1zM5 2h1v1h-1zM7 2h2v1h-2zM10 2h1v1h-1zM12 2h1v1h-1zM15 2h1v1h-1zM0 3h1v1h-1zM3 3h2v1h-2zM11 3h2v1h-2zM15 3h1v1h-1zM1 4h2v1h-2zM13 4h2v1h-2zM1 5h1v1h-1zM14 5h1v1h-1zM1 6h1v1h-1zM4 6h2v1h-2zM10 6h2v1h-2zM14 6h1v1h-1zM1 7h1v1h-1zM4 7h2v1h-2zM10 7h2v1h-2zM14 7h1v1h-1zM1 8h1v1h-1zM14 8h1v1h-1zM2 9h1v1h-1zM13 9h1v1h-1zM2 10h1v1h-1zM6 10h1v1h-1zM9 10h1v1h-1zM13 10h1v1h-1zM1 11h1v1h-1zM14 11h1v1h-1zM1 12h1v1h-1zM14 12h1v1h-1zM1 13h1v1h-1zM3 13h1v1h-1zM12 13h1v1h-1zM14 13h1v1h-1zM2 14h2v1h-2zM12 14h2v1h-2zM3 15h1v1h-1zM6 15h1v1h-1zM9 15h1v1h-1zM12 15h1v1h-1z" /><path fill="#2e3248" d="M6 1h4v1h-4zM6 2h1v1h-1zM9 2h1v1h-1zM5 3h1v1h-1zM7 3h2v1h-2zM10 3h1v1h-1zM3 5h1v1h-1zM12 5h1v1h-1zM4 15h2v1h-2zM10 15h2v1h-2z" /><path fill="#c8ccd8" d="M1 2h1v1h-1zM14 2h1v1h-1zM1 3h1v1h-1zM14 3h1v1h-1zM2 8h1v1h-1zM13 8h1v1h-1zM3 9h1v1h-1zM12 9h1v1h-1z" /><path fill="#ffffff" d="M2 2h1v1h-1zM13 2h1v1h-1zM2 3h1v1h-1zM6 3h1v1h-1zM9 3h1v1h-1zM13 3h1v1h-1zM3 4h10v1h-10zM2 5h1v1h-1zM4 5h8v1h-8zM13 5h1v1h-1zM2 6h2v1h-2zM6 6h4v1h-4zM12 6h2v1h-2zM2 7h2v1h-2zM6 7h4v1h-4zM12 7h2v1h-2zM3 8h10v1h-10zM2 12h1v1h-1zM13 12h1v1h-1zM2 13h1v1h-1zM13 13h1v1h-1z" /><path fill="#8a90a4" d="M4 9h8v1h-8zM4 10h1v1h-1zM7 10h2v1h-2zM11 10h1v1h-1z" /><path fill="#ff5a5a" d="M3 10h1v1h-1zM12 10h1v1h-1zM2 11h1v1h-1zM4 11h8v1h-8zM13 11h1v1h-1z" /><path fill="#545a70" d="M5 10h1v1h-1zM10 10h1v1h-1z" /><path fill="#c8283c" d="M3 11h1v1h-1zM12 11h1v1h-1z" /><path fill="#3c90e8" d="M3 12h2v1h-2zM6 12h4v1h-4zM11 12h2v1h-2zM4 13h2v1h-2zM7 13h2v1h-2zM10 13h2v1h-2zM4 14h3v1h-3zM9 14h3v1h-3z" /><path fill="#2850b0" d="M5 12h1v1h-1zM10 12h1v1h-1zM6 13h1v1h-1zM9 13h1v1h-1zM7 14h2v1h-2z" /></g>
               </svg>
               <svg v-else-if="g.screen.rink" viewBox="0 0 100 100">
                 <rect class="ice" x="3" y="3" width="94" height="94" rx="14" />
