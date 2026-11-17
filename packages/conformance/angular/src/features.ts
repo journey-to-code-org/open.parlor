@@ -5,7 +5,7 @@ import { CUSTOM_ELEMENTS_SCHEMA, ChangeDetectionStrategy, Component, Injectable,
 import { toSignal } from "@angular/core/rxjs-interop";
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
 import { ZubraModel } from "@zubra/runtime/angular";
-import { FACES, WORDS } from "../../src/shared/fixture";
+import { FACES, SEGMENTS, WORDS } from "../../src/shared/fixture";
 import { Lazy } from "./lazy";
 import "./zubra";
 
@@ -104,6 +104,18 @@ export class Panel {
       </section>
 
       <section>
+        <h2>A reactive form of the parlor's other controls</h2>
+        <form [formGroup]="all">
+          <select-field data-t="f-all-seat" label="Seat" [options]="SEGMENTS" formControlName="seat" zubraModel></select-field>
+          <segmented-control data-t="f-all-view" label="View" [options]="SEGMENTS" formControlName="view" zubraModel></segmented-control>
+          <color-swatches data-t="f-all-colour" formControlName="colour" zubraModel></color-swatches>
+        </form>
+        <output data-t="f-all-out">{{ allJson() }}</output>
+        <button data-t="f-all-set" type="button" (click)="all.setValue({ seat: 'c', view: 'b', colour: '#db2777' })">Set them</button>
+        <button data-t="f-all-disable" type="button" (click)="all.disabled ? all.enable() : all.disable()">Disable / enable</button>
+      </section>
+
+      <section>
         <h2>Content projection</h2>
         <app-panel data-t="f-proj" heading="Projected">
           <span>Inner text</span>
@@ -116,6 +128,7 @@ export class Panel {
 })
 export class Features {
   protected readonly WORDS = WORDS;
+  protected readonly SEGMENTS = SEGMENTS;
   protected readonly words = inject(Word);
 
   protected readonly faces = signal([...FACES]);
@@ -131,6 +144,20 @@ export class Features {
   });
   /** Anything the form reports: a value, validity, touched or pristine. */
   private readonly news = toSignal(this.form.events);
+
+  /** The parlor's other two-way controls: a select, a segmented control, swatches. (The slider is
+   *  left for lazy.ts, which needs a component the page hasn't loaded.) */
+  protected readonly all = new FormGroup({
+    seat: new FormControl("a", { nonNullable: true }),
+    view: new FormControl("a", { nonNullable: true }),
+    colour: new FormControl("#16a34a", { nonNullable: true }),
+  });
+  private readonly allNews = toSignal(this.all.events);
+
+  protected allJson(): string {
+    this.allNews();
+    return JSON.stringify(this.all.getRawValue());
+  }
 
   protected json(): string {
     this.news();

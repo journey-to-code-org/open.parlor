@@ -58,10 +58,10 @@ names that start `f-`. A check runs in the frameworks that have the feature:
 | Props handed over as one object | spread | `v-bind` | spread | spread | |
 | A component leaves with a transition | | `Transition` | `transition:fade` | | `animate.leave` |
 | A component kept off the page keeps what was typed | `Activity` | `KeepAlive` | | | |
-| Forms | | `v-model.trim` | | | reactive forms: values both ways, validity and touched, `disable()`, `reset()` |
+| Forms | | `v-model.trim` | | | reactive forms: values both ways, validity and touched, `disable()`, `reset()`, over the text field, switch, select, segmented control and swatches |
 | Only there | | `v-show` | `use:` actions, `#key`, snippets | `Dynamic` | `ng-content` in the page's own wrapper |
 
-That is 43 checks: 7 in React, 10 in Vue, 9 in Svelte, 7 in Solid and 10 in Angular.
+That is 45 checks: 7 in React, 10 in Vue, 9 in Svelte, 7 in Solid and 12 in Angular.
 
 Not covered yet: Angular's router with lazy routes and template-driven `<form>` validation, Vue's
 `Suspense` and template refs, Solid's stores and resources, server rendering and hydration in any
@@ -73,7 +73,7 @@ That is Solid's rule for every custom element, not a difference in Zubra.
 
 ## Known differences
 
-None today: the 18 component checks pass in all six frameworks, and the 43 feature checks pass
+None today: the 18 component checks pass in all six frameworks, and the 45 feature checks pass
 in the frameworks that have each feature, on Zubra 5.15.0.
 
 `KNOWN` in each spec is where a difference goes when one turns up: the check's title and the
@@ -85,9 +85,11 @@ The first run of this suite, on Zubra 5.9, found five (zubra#261, #262, #267, #2
 gap in the typings (#270). All were fixed in 5.15.0, and the workarounds they needed are gone from
 the admin app and the parlor.
 
-The first run of the feature checks found one, in a component rather than in Zubra: a disabled
-reactive form disabled `text-field` but left `toggle-switch` pressable, because the switch had no
-disabled state (zubra-ui#20). The parlor's copy has it now, and the same change is zubra-ui#21.
+The first run of the feature checks found one, in the components rather than in Zubra: a
+disabled reactive form disabled `text-field` and `select-field` but left `toggle-switch`,
+`color-swatches` and `segmented-control` usable, because they had no disabled state. The parlor's
+copies have one now. Upstream it is zubra-ui#20 (the switch, fixed in zubra-ui#21) and zubra-ui#22
+(the rest).
 
 ## Adding a check
 

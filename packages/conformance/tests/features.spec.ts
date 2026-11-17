@@ -14,7 +14,8 @@ const FRAMEWORKS = ["react", "vue", "svelte", "solid", "angular"] as const;
 type Framework = (typeof FRAMEWORKS)[number];
 
 // Nothing differs today. The one found when these were written (a disabled reactive form left
-// zubra-ui's toggle-switch pressable, zubra-ui#20) is fixed in the parlor's copy of the component.
+// toggle-switch, color-swatches and segmented-control usable: zubra-ui#20 and #22) is fixed in the
+// parlor's copies of the components.
 const KNOWN: Partial<Record<Framework, Record<string, string>>> = {};
 
 const t = (page: Page, name: string) => page.locator(`[data-t="${name}"]`);
@@ -210,6 +211,53 @@ const FEATURES: Feature[] = [
       await expect(button).toBeDisabled();
       await t(page, "f-form-disable").click();
       await expect(button).toBeEnabled();
+    },
+  },
+  {
+    title: "a reactive form binds every kind of control the parlor has, both ways",
+    in: { angular: "select, segmented control, swatches" },
+    body: async (page) => {
+      const out = t(page, "f-all-out");
+      const select = t(page, "f-all-seat").locator("select");
+      const view = t(page, "f-all-view");
+      const colour = t(page, "f-all-colour");
+      await expect(out).toHaveText('{"seat":"a","view":"a","colour":"#16a34a"}');
+      await expect(select).toHaveValue("a");
+      await expect(view.getByRole("button", { name: "Alpha" })).toHaveAttribute("aria-pressed", "true");
+      await expect(colour.getByRole("radio", { name: "Green" })).toHaveAttribute("aria-checked", "true");
+
+      await select.selectOption("b");
+      await view.getByRole("button", { name: "Gamma" }).click();
+      await colour.getByRole("radio", { name: "Blue" }).click();
+      await expect(out).toHaveText('{"seat":"b","view":"c","colour":"#2563eb"}');
+
+      await t(page, "f-all-set").click();
+      await expect(select).toHaveValue("c");
+      await expect(view.getByRole("button", { name: "Beta" })).toHaveAttribute("aria-pressed", "true");
+      await expect(colour.getByRole("radio", { name: "Pink" })).toHaveAttribute("aria-checked", "true");
+      await expect(out).toHaveText('{"seat":"c","view":"b","colour":"#db2777"}');
+    },
+  },
+  {
+    title: "a disabled reactive form disables every kind of control the parlor has",
+    in: { angular: "disable() and enable()" },
+    body: async (page) => {
+      const controls = [
+        t(page, "f-all-seat").locator("select"),
+        ...["Alpha", "Beta", "Gamma"].map((name) => t(page, "f-all-view").getByRole("button", { name })),
+        ...["Green", "Blue", "Pink"].map((name) => t(page, "f-all-colour").getByRole("radio", { name })),
+      ];
+      await t(page, "f-all-disable").click();
+      for (const control of controls) await expect(control).toBeDisabled();
+      // A press that gets through anyway changes nothing.
+      await t(page, "f-all-view").getByRole("button", { name: "Gamma" }).click({ force: true });
+      await t(page, "f-all-colour").getByRole("radio", { name: "Blue" }).click({ force: true });
+      await expect(t(page, "f-all-out")).toHaveText('{"seat":"a","view":"a","colour":"#16a34a"}');
+      await t(page, "f-all-disable").click();
+      for (const control of controls) await expect(control).toBeEnabled();
+      await t(page, "f-all-view").getByRole("button", { name: "Gamma" }).click();
+      await t(page, "f-all-colour").getByRole("radio", { name: "Blue" }).click();
+      await expect(t(page, "f-all-out")).toHaveText('{"seat":"a","view":"c","colour":"#2563eb"}');
     },
   },
   {
