@@ -19,6 +19,7 @@ import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import ToggleSwitch from "@open-parlor/ui/zubra-ui/toggle-switch.zb";
 import { ref } from "vue";
 import { CARDS, COLUMNS, EXTRA_ROW, ITEMS, ROWS, SEGMENTS, TABS, VARIANTS } from "../shared/fixture";
+import Features from "./Features.vue";
 
 const variant = ref(0);
 const count = ref(0);
@@ -152,4 +153,5 @@ function remount() {
       <button data-t="remount" type="button" @click="remount">Take away / bring back</button>
     </section>
   </main>
+  <Features />
 </template>

@@ -17,7 +17,7 @@
             "browser": "angular/src/main.ts",
             "index": "angular/src/index.html",
             "tsConfig": "angular/tsconfig.json",
-            "baseHref": "/angular/",
+            "baseHref": "./",
             "styles": ["src/shared/styles.css"],
             "outputHashing": "all"
           }

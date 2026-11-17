@@ -46,6 +46,9 @@ const props = defineProps<{
   canAsk?: boolean;
 }>();
 const emit = defineEmits<{ pick: [id: string]; house: [slug: string]; lobby: []; wifi: []; move: []; ask: [] }>();
+// The page about how the parlor is made: one set of Zubra components, checked in every framework
+// it uses. It is published with the GitHub Pages build, since its results come from a run there.
+const BUILT = "https://journey-to-code-org.github.io/open.parlor/conformance/";
 const gameOf = (id: string) => props.games.find((g) => g.id === id);
 const waitingAt = computed(() => props.open.slice(0, 4));
 
@@ -303,6 +306,7 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
     <p class="fine links">
       <a class="design" href="watch/">👀 Watch a game</a>
       <a class="design" href="designer/">🎨 Design your own deck of cards</a>
+      <a class="design" :href="BUILT">🧪 How the parlor is built</a>
       <button type="button" class="design" @click="emit('move')">📱 Use the parlor on another device</button>
       <button v-if="canAsk" type="button" class="design" @click="emit('ask')">💡 Don't see your game? Ask for it</button>
     </p>

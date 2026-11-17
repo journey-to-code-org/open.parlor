@@ -1,0 +1,20 @@
+@import "../../../ui/src/zubra-ui/themes/system.css";
+
+body { margin: 0; font-family: system-ui, sans-serif; line-height: 1.55; background: var(--background); color: var(--foreground); }
+#app { max-width: 62rem; margin: 0 auto; padding: clamp(1rem, 4vw, 2.5rem) clamp(1rem, 4vw, 2rem) 4rem; }
+header { display: grid; gap: 0.75rem; margin-bottom: 1.5rem; }
+h1 { margin: 0; font-size: clamp(1.6rem, 5vw, 2.4rem); line-height: 1.15; text-wrap: balance; }
+h2 { margin: 1.75rem 0 0.5rem; font-size: 1.15rem; }
+p { margin: 0 0 0.75rem; max-width: 44rem; }
+.lede { font-size: 1.05rem; color: var(--muted-foreground); }
+.fine { font-size: 0.85rem; color: var(--muted-foreground); }
+a { color: inherit; }
+code { font-family: ui-monospace, monospace; font-size: 0.9em; padding: 0.05em 0.3em; background: var(--muted); border-radius: 0.25rem; }
+[data-tab] { padding-top: 0.5rem; }
+ul.found { padding: 0; margin: 0 0 1rem; list-style: none; display: grid; gap: 0.6rem; max-width: 44rem; }
+ul.found li { display: grid; gap: 0.15rem; padding: 0.7rem 0.85rem; border: 1px solid var(--border); border-radius: 0.5rem; }
+ul.found .what { font-weight: 600; }
+/* The check's name wraps, so the frameworks' columns stay in reach on a phone. */
+data-table td:first-child, data-table th:first-child { white-space: normal; min-width: 9.5rem; max-width: 19rem; }
+data-table td:not(:first-child), data-table th:not(:first-child) { white-space: nowrap; }
+[hidden] { display: none !important; }
