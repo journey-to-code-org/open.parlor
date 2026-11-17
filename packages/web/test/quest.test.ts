@@ -6,7 +6,9 @@ import { controlsFor } from "../src/arcade/controls";
 import { BOSSES, FOES, ITEMS, tileArt } from "../src/quest/art";
 import { nextTool, padWay } from "../src/quest/QuestTable";
 import { questScreen } from "../src/quest/render";
-import { RETRO_H, RETRO_W } from "../src/retro/pixels";
+import { RETRO_H, RETRO_W, RETRO_ZOOM } from "../src/retro/pixels";
+
+const PIXELS = RETRO_W * RETRO_ZOOM * RETRO_H * RETRO_ZOOM;
 
 describe("Zubra Quest's controls", () => {
   it("has a screen of its own", () => {
@@ -39,28 +41,30 @@ describe("Zubra Quest's pictures", () => {
     }
     for (const den of QUEST_DENS) expect(BOSSES[den.boss], den.boss).toBeTruthy();
   });
-  it("paints every tile in every kind of country, sixteen pixels square", () => {
+  it("paints every tile in every kind of country, thirty-two pixels square", () => {
     for (const biome of ["meadow", "dunes", "marsh", "crags", "cave", ...QUEST_DENS.map((den) => den.biome)]) for (const tile of Object.values(QUEST_TILE)) {
-      const art = tileArt(biome, tile, 3, 0, QUEST_TILE.ground, QUEST_TILE.ground);
-      expect([art.w, art.h]).toEqual([16, 16]);
+      for (const mask of [0, 5, 10, 15]) {
+      const art = tileArt(biome, tile, 3, 0, mask);
+      expect([art.w, art.h]).toEqual([32, 32]);
       // Nothing of a tile is left unpainted.
       for (let i = 3; i < art.data.length; i += 4) expect(art.data[i]).toBe(255);
+      }
     }
   });
   it("draws a frame for a game as it is played, and for the title", () => {
     const screen = questScreen();
     const s = zubraQuest.newGame(zubraQuest.normalize(null), 1, 7);
-    expect(screen.title(0, ["NEW QUEST"], 0)).toHaveLength(RETRO_W * RETRO_H * 4);
+    expect(screen.title(0, ["NEW QUEST"], 0)).toHaveLength(PIXELS * 4);
     for (let t = 0; t < 60 * 40; t++) {
       zubraQuest.step(s, [zubraQuest.bot(s, 0, { skill: 1, sloppy: 0 }, () => 0.5)]);
       screen.hear(s.events);
       screen.settle();
-      if (t % 20 === 0) expect(screen.draw(zubraQuest.view(s), t)).toHaveLength(RETRO_W * RETRO_H * 4);
+      if (t % 20 === 0) expect(screen.draw(zubraQuest.view(s), t)).toHaveLength(PIXELS * 4);
     }
     // The room is not left black: the hero's screen is mostly ground.
     const frame = screen.draw(zubraQuest.view(s), 1);
     let lit = 0;
-    for (let i = 48 * RETRO_W * 4; i < frame.length; i += 4) if (frame[i]! + frame[i + 1]! + frame[i + 2]! > 120) lit++;
-    expect(lit).toBeGreaterThan((RETRO_W * (RETRO_H - 48)) / 2);
+    for (let i = 48 * RETRO_ZOOM * RETRO_W * RETRO_ZOOM * 4; i < frame.length; i += 4) if (frame[i]! + frame[i + 1]! + frame[i + 2]! > 120) lit++;
+    expect(lit).toBeGreaterThan((PIXELS * (RETRO_H - 48)) / RETRO_H / 2);
   });
 });

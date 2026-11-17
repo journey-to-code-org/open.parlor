@@ -1,4 +1,4 @@
-// Zubra Quest, played in this browser: a sixteen-bit adventure on a screen of 256 by 224 pixels,
+// Zubra Quest, played in this browser: a sixteen-bit adventure on a screen of 512 by 448 pixels,
 // made as big as the window allows in whole pixels, so every one of them stays square. The engine
 // is open.games' `zubraQuest`; the pictures are in `art.ts` and the screen in `render.ts`.
 //
@@ -13,7 +13,7 @@ import { QUEST_TOOLS, zubraQuest, type ArcadeView, type QuestInput, type QuestSt
 import { useEffect, useRef, useState } from "react";
 import { setArcadeSound, wakeArcadeSound } from "../arcade/sounds";
 import { loadFeedbackSettings, saveFeedbackSettings } from "../feedback/sounds";
-import { RETRO_H, RETRO_W } from "../retro/pixels";
+import { RETRO_H, RETRO_W, RETRO_ZOOM } from "../retro/pixels";
 import { loadArcadeBest, loadQuest, saveArcadeBest, saveQuest, type ArcadeRules } from "../storage";
 import { questScreen } from "./render";
 import { questMusic, questSounds } from "./sound";
@@ -93,7 +93,7 @@ export function QuestTable({ rules, seed, onLeave }: Props) {
     const l = live.current;
     const screen = questScreen();
     const music = questMusic();
-    const picture = ctx.createImageData(RETRO_W, RETRO_H);
+    const picture = ctx.createImageData(RETRO_W * RETRO_ZOOM, RETRO_H * RETRO_ZOOM);
     let raf = 0;
     let last = performance.now();
     let owed = 0;
@@ -107,9 +107,12 @@ export function QuestTable({ rules, seed, onLeave }: Props) {
     const resize = () => {
       const box = el.parentElement!.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
-      const by = Math.max(1, Math.floor(Math.min((box.width * dpr) / RETRO_W, (box.height * dpr) / RETRO_H)));
-      el.style.width = `${(RETRO_W * by) / dpr}px`;
-      el.style.height = `${(RETRO_H * by) / dpr}px`;
+      const [w, h] = [RETRO_W * RETRO_ZOOM, RETRO_H * RETRO_ZOOM];
+      const by = Math.floor(Math.min((box.width * dpr) / w, (box.height * dpr) / h));
+      // Where even one whole pixel each will not fit (a small phone held upright), it is shown as wide as there is room for.
+      const fit = by >= 1 ? by / dpr : Math.min(box.width / w, box.height / h);
+      el.style.width = `${w * fit}px`;
+      el.style.height = `${h * fit}px`;
     };
     const keep = () => { if (l.state && l.state.phase === "play") saveQuest(l.state); };
     const pause = () => { if (l.mode === "play" && !done) { keep(); setPaused(true); } };
@@ -257,7 +260,7 @@ export function QuestTable({ rules, seed, onLeave }: Props) {
     <main className="arcade quest">
       <div className="arcade-cabinet">
         <div className="arcade-stage quest-stage">
-          <canvas ref={canvas} width={RETRO_W} height={RETRO_H} className="quest-screen" aria-label="Zubra Quest" />
+          <canvas ref={canvas} width={RETRO_W * RETRO_ZOOM} height={RETRO_H * RETRO_ZOOM} className="quest-screen" aria-label="Zubra Quest" />
           {how && (
             <section className="arcade-sheet" aria-label="How to play">
               <div className="arcade-card">

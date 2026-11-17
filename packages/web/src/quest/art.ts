@@ -1,412 +1,14 @@
-// Zubra Quest's pictures: who is in it, what lies about, and the ground it is played on. People and
-// things are drawn by hand, a letter a pixel (see retro/pixels.ts for the letters); most are the
-// same on both sides, so only their left half is written down. The ground, the trees, the water
-// and the walls are painted by rule instead, so no two tiles of grass are the same tile.
+// Zubra Quest's pictures: what lies about, and the ground it is played on. (Who is in it is in
+// cast.ts.) Small things are drawn by hand, a letter a pixel (see retro/pixels.ts for the letters),
+// and come out at twice that size with their edges smoothed; most are the same on both sides, so
+// only their left half is written down. The ground, the trees, the water and the walls are painted
+// by rule, 32 pixels to a tile, so no two tiles of grass are the same tile.
 import { QUEST_TILE } from "@journey-to-code/games";
-import { blank, bobbed, flipped, mirrored, rgb, speck, sprite, turned, type Rgb, type Sprite } from "../retro/pixels";
+import { blank, mirrored, rgb, speck, sprite, turned, type Rgb, type Sprite } from "../retro/pixels";
 
 const half = (rows: string[], swap?: Record<string, string>) => sprite(mirrored(rows), swap);
 
-// ---- Zub, and the people he meets ------------------------------------------------------------------
-
-const ZUB_FRONT = [
-  "......00",
-  ".00..055",
-  "0210.050",
-  "02100515",
-  ".0011111",
-  ".0151111",
-  ".0110011",
-  ".0110011",
-  ".0211111",
-  "..023333",
-  "..0r3403",
-  ".0rRrrrr",
-  ".01UUvUU",
-  ".010UUvU",
-  "..00UUUv",
-  "...0550.",
-];
-const ZUB_BACK = [
-  "......00",
-  ".00..055",
-  "0210.050",
-  "02100515",
-  ".0011150",
-  ".0151105",
-  ".0111150",
-  ".0151105",
-  ".0211150",
-  "..021105",
-  "..0r2250",
-  ".0rRrrrr",
-  ".01UUvUU",
-  ".010UUvU",
-  "..00UUUv",
-  "...0550.",
-];
-const ZUB_SIDE = [
-  ".....0000.......",
-  "....0550500.....",
-  "...055051120....",
-  "...0501111110...",
-  "..0550111111110.",
-  "..0501151111110.",
-  "..0550111100110.",
-  "..05011111001330",
-  "..05501111133340",
-  "...0211111333300",
-  "....0rRrrr00000.",
-  "....0UUvUU10....",
-  "....0UUUvU10....",
-  "....0UvUUUU0....",
-  "....0550.0550...",
-  "....000..000....",
-];
-/** A step: one foot lifted, then the other. */
-function steps(s: Sprite): [Sprite, Sprite] {
-  const lift = (left: boolean) => {
-    const out: Sprite = { w: s.w, h: s.h, data: s.data.slice() };
-    for (let x = left ? 0 : s.w / 2; x < (left ? s.w / 2 : s.w); x++) out.data.fill(0, ((s.h - 1) * s.w + x) * 4, ((s.h - 1) * s.w + x) * 4 + 4);
-    return out;
-  };
-  return [lift(true), lift(false)];
-}
-const front = half(ZUB_FRONT);
-const back = half(ZUB_BACK);
-const side = sprite(ZUB_SIDE);
-/** Zub by the way he faces (right, down, left, up): standing, then the two frames of a walk. Left is right, turned round. */
-export const ZUB: [Sprite, Sprite, Sprite][] = [[side, bobbed(side), side], [front, ...steps(front)], [flipped(side), flipped(bobbed(side)), flipped(side)], [back, ...steps(back)]];
-export const ZUB_BIG = front;
-
-export const FOLK: Record<string, Sprite> = {
-  elder: half([
-    "......00",
-    ".00..033",
-    "0320.030",
-    "03200323",
-    ".0022222",
-    ".0232222",
-    ".0220022",
-    ".0222222",
-    ".0211111",
-    "..011111",
-    "..0P1111",
-    ".0PP1111",
-    ".0PmP111",
-    ".0PPmP11",
-    ".0PPPmPP",
-    "..000000",
-  ]),
-  // Bru is his brother's spit: the same drawing in a shopkeeper's colours.
-  keeper: half(ZUB_FRONT, { U: "o", v: "Y", r: "G", R: "h" }),
-};
-
-// ---- What he fights --------------------------------------------------------------------------------
-
-const two = (rows: string[], swap?: Record<string, string>): [Sprite, Sprite] => { const s = half(rows, swap); return [s, bobbed(s)]; };
-const SLIME = [
-  "........",
-  "........",
-  "........",
-  "........",
-  ".....000",
-  "...00ggg",
-  "..0gg1gg",
-  ".0gGGGGG",
-  ".0GG00GG",
-  "0GGG01GG",
-  "0GGGGGGG",
-  "0GGGGG00",
-  "0hGGGGGG",
-  "0hhGGGGh",
-  ".0hhhhhh",
-  "..000000",
-];
-const CHARGER = [
-  "........",
-  "........",
-  "..00....",
-  ".0dd0000",
-  ".0dccccc",
-  "0dccccdc",
-  "0dc0cccc",
-  "0dc01ccc",
-  "0dcccccb",
-  "10dccbbb",
-  "110dbb0b",
-  ".00dbbbb",
-  "..0dcccc",
-  "..0dddcd",
-  "..0e0.0e",
-  "..00...0",
-];
-const WISP = [
-  "........",
-  ".......0",
-  "......0t",
-  ".....0tt",
-  "....0ttu",
-  "...0ttu1",
-  "..0tTt11",
-  "..0tt011",
-  ".0tTt011",
-  ".0tttt11",
-  ".0tTttt0",
-  ".0ttTttt",
-  "..0ttTtt",
-  "..0t0tt0",
-  "...0.00.",
-  "........",
-];
-export const FOES: Record<string, [Sprite, Sprite]> = {
-  slime: two(SLIME),
-  skitter: two([
-    "........",
-    "........",
-    "........",
-    "........",
-    "...0..00",
-    "..0.00oo",
-    ".0..0ooy",
-    "0..0ooo1",
-    ".000oRo0",
-    "0..0oRRo",
-    ".0.0oRRR",
-    "0.00oooo",
-    "..0.0ooo",
-    ".0...000",
-    "0.......",
-    "........",
-  ]),
-  bat: [
-    half([
-      "........",
-      "........",
-      ".0......",
-      "0P0.....",
-      "0PP0...0",
-      "0PPP0.0P",
-      ".0PPP0PP",
-      ".0mPPPP1",
-      "..0mPPP0",
-      "...0mPPP",
-      "....0mPk",
-      ".....0PP",
-      "......00",
-      "........",
-      "........",
-      "........",
-    ]),
-    half([
-      "........",
-      "........",
-      "........",
-      "........",
-      ".......0",
-      "......0P",
-      "..0000PP",
-      ".0PPPPP1",
-      "0PPmPPP0",
-      "0Pm0mPPP",
-      "0m0.0mPk",
-      ".0...0PP",
-      "......00",
-      "........",
-      "........",
-      "........",
-    ]),
-  ],
-  spitter: two([
-    "........",
-    "......0k",
-    ".....0kk",
-    "....0kpk",
-    "....00kk",
-    "...0GG00",
-    "..0GgGGG",
-    ".0GgGG0G",
-    ".0GGGG0G",
-    "0hGGGGGG",
-    "0hGGG000",
-    "0hGGGGGG",
-    ".0hGGGGG",
-    ".0hhGGGh",
-    "..0hhhhh",
-    "...00000",
-  ]),
-  charger: two(CHARGER),
-  knight: two([
-    ".....000",
-    "....0222",
-    "...02221",
-    "...02333",
-    "...03000",
-    "...03r0r",
-    "..003333",
-    ".0U02333",
-    "0Uu03333",
-    "0Uu02223",
-    "0Uv03333",
-    "0Uv04334",
-    ".0003443",
-    "...04004",
-    "...0500.",
-    "...000..",
-  ]),
-  wisp: two(WISP),
-};
-
-const MAW = [
-  "................",
-  "..........000000",
-  "........00hGGGGG",
-  "......00hGGgggGG",
-  ".....0hGGggggggG",
-  "....0hGGgggGGGGg",
-  "...0hGGggGGGGGGG",
-  "..0hGGGgGGGGGGGG",
-  "..0hGGGGGGG00GGG",
-  ".0hGGGGGGG0yy0GG",
-  ".0hGGGGGGG0y00GG",
-  ".0hGGGGGGGG00GGG",
-  "0hhGGGGGGGGGGGGG",
-  "0hhGGGGGGGGGGGGG",
-  "0hhGG00000000000",
-  "0hhG0RkRkRkRkRkR",
-  "0hhGG00000000000",
-  "0hhhGGGGGGGGGGGG",
-  "0HhhGGGGGGGGGGGG",
-  ".0HhhGGGGGGGGGGG",
-  ".0HhhhGGGGGGGGGG",
-  ".0HHhhhGGGGGGGGG",
-  "..0HHhhhhGGGGGGG",
-  "..0HHHhhhhhhGGGG",
-  "...0HHHhhhhhhhhh",
-  "....00HHHHhhhhhh",
-  "..0...00HHHHHHHH",
-  ".0h0....00000000",
-  "0hG0..0.....0hh0",
-  "0hGh00h0...0hGGh",
-  ".0hhhhGh000hGGhh",
-  "..00000000000000",
-];
-const MAW_OPEN = [
-  "0hhGG00000000000",
-  "0hhG0kkkkkkkkkkk",
-  "0hh0k1q1qqq1qqq1",
-  "0hh0kqqqqqqqqqqq",
-  "0hh0kqqqRRRRqqqq",
-  "0hh0k1qqRrrRqq1q",
-  "0hhG0kkkkkkkkkkk",
-  ".0HhG00000000000",
-];
-export const BOSSES: Record<string, Sprite> = {
-  maw: half(MAW),
-  "maw:open": half([...MAW.slice(0, 13), ...MAW_OPEN, ...MAW.slice(21)]),
-  tusker: half([
-    "................",
-    "................",
-    "....000.........",
-    "...0ddd00.......",
-    "...0dccdd0000000",
-    "..0dccccddddcccc",
-    "..0dcccccccccccc",
-    ".0dccccccccccccc",
-    ".0dcccccccdddccc",
-    "0ddcccccc0000dcc",
-    "0dccccccc0r10dcc",
-    "0dccccccc0000ccc",
-    "0dcccccccccccccc",
-    "0dccccccccccbbbb",
-    "0dcccccccccbbbbb",
-    "10dccccccccbbbbb",
-    "110dcccccccbb00b",
-    "1110dccccccbb00b",
-    "01110ddccccbbbbb",
-    ".01120dddccccbbb",
-    "..0000eddddccccc",
-    "....0edddddddddd",
-    "...0eddccccccccc",
-    "...0edccccccccdd",
-    "...0edcccccccdde",
-    "...0eddccccddde0",
-    "...0eeddddddee0.",
-    "...0e0eeeeee00..",
-    "..0ee0.0000.....",
-    "..0550..........",
-    "..0000..........",
-    "................",
-  ]),
-  gloom: half([
-    "...........00000",
-    ".........00ppppp",
-    ".......00ppPPPPP",
-    "......0ppPPPPPPP",
-    ".....0pPPPPPPPPP",
-    "....0pPPPPmmmmmm",
-    "....0pPPPmm00000",
-    "...0pPPPmm000000",
-    "...0pPPPm00yy000",
-    "...0pPPPm00y1000",
-    "...0pPPPm0000000",
-    "..0pPPPPmm000000",
-    "..0pPPPPPmm00000",
-    "..0pPPPPPPmmmmmm",
-    ".0pPPPPPPPPPPPPP",
-    ".0pPPmPPPPPPPPPP",
-    "0pPPPmPPPPPPPPPP",
-    "0pPPmmPPPPPPmPPP",
-    "0PPPmPPPPPPPmPPP",
-    "0PPmmPPPPPPmmPPP",
-    "0PPm0PPPPPPm0PPP",
-    ".0m0.0PPPPPm.0PP",
-    "..0..0PPPPm0..0P",
-    ".....0PPPm0....0",
-    "......0Pm0......",
-    "......0m0.......",
-    ".......0........",
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-  ]),
-  quagg: half([
-    "............0000",
-    "...00......0yyyy",
-    "..0dd0....0yYyYy",
-    ".0dbbd0...0YYYYY",
-    ".0dbbbd00000eeee",
-    "..0dbbbccccccccc",
-    "...0dbcccceecccc",
-    "...0dccce0000ccc",
-    "...0dccc0rr10ccc",
-    "...0dccce0000ccc",
-    "...0deccccccccee",
-    "....0dcccccccccc",
-    "....0dccbbbbbbbb",
-    ".....0dbbbb00bbb",
-    "....000dbbbbbbbb",
-    "..00qRR0dddddddd",
-    ".0qRRRRR00000000",
-    "0qRRRRRqm0PPPPPP",
-    "0qRRRRqmm0PPpPPP",
-    "0qRRRRqm0PPPpPPP",
-    "0qRRRRq0c0PPPPPP",
-    "0qRRRRq0c0PPmmPP",
-    "0qRRRRq0b0PPPPPP",
-    "0qRRRRRq00mmmmmm",
-    "0qRRRRRRq0PPPPPP",
-    "0qqRRRRRq0PPm0PP",
-    ".0qqRRRRq0Pm00PP",
-    ".0qqqRRRq0dd0.0d",
-    "..0qqqqqq0dd0.0d",
-    "...000000eee0.0e",
-    "........0000..00",
-    "................",
-  ]),
-};
+export { BOSSES, FOES, FOLK, ZUB } from "./cast";
 
 // ---- Things that lie about, and things in the hand -------------------------------------------------
 
@@ -853,153 +455,216 @@ const PROP_OF: Record<number, string> = {
 };
 
 // ---- The ground, painted by rule -------------------------------------------------------------------
+//
+// Sixteen-bit ground is not a tile repeated: trees stand together as a wood, rock as a cliff with a
+// face, water has a bank. So a tile is painted knowing which of its four neighbours are the same
+// as it (`mask`: 1 right, 2 below, 4 left, 8 above), and joins up with them.
 
 interface Land { base: string; light: string; dark: string; wall: [string, string, string, string]; water: [string, string, string]; inside: boolean; trees: boolean }
 const LANDS: Record<string, Land> = {
-  meadow: { base: "#4aa84a", light: "#74cc62", dark: "#2f8a3c", wall: ["#56b454", "#2f8a3c", "#1c5e2c", "#0f3a20"], water: ["#3a7ae0", "#7ab4ff", "#2a56b0"], inside: false, trees: true },
-  dunes: { base: "#e6c67e", light: "#f6e0a6", dark: "#c69e5c", wall: ["#e0a868", "#b87a44", "#8a5630", "#5a3420"], water: ["#3a7ae0", "#7ab4ff", "#2a56b0"], inside: false, trees: false },
-  marsh: { base: "#3e8468", light: "#5ca482", dark: "#2a644e", wall: ["#3c9070", "#226a54", "#144a40", "#0c2e2c"], water: ["#2e7e8c", "#62b4b4", "#1e5a6a"], inside: false, trees: true },
-  crags: { base: "#a08c7c", light: "#b8a696", dark: "#7c6a5c", wall: ["#b0b4c0", "#80849a", "#565a70", "#30344a"], water: ["#3a7ae0", "#7ab4ff", "#2a56b0"], inside: false, trees: false },
-  cave: { base: "#6e5646", light: "#846a58", dark: "#523e32", wall: ["#b89a78", "#8e7258", "#5a4638", "#2a1e1a"], water: ["#3a7ae0", "#7ab4ff", "#2a56b0"], inside: true, trees: false },
-  bramble: { base: "#5e7a5a", light: "#70906a", dark: "#48624a", wall: ["#6c9a62", "#4a7448", "#30523a", "#162a22"], water: ["#3a7ae0", "#7ab4ff", "#2a56b0"], inside: true, trees: false },
-  vault: { base: "#c8a868", light: "#dec284", dark: "#a8884c", wall: ["#e2b868", "#b88a44", "#8a6030", "#4a3018"], water: ["#3a7ae0", "#7ab4ff", "#2a56b0"], inside: true, trees: false },
-  hollow: { base: "#6c6088", light: "#8276a2", dark: "#544a70", wall: ["#8a7ab8", "#62548e", "#40366a", "#1e1a3a"], water: ["#3a7ae0", "#7ab4ff", "#2a56b0"], inside: true, trees: false },
-  keep: { base: "#80626a", light: "#987a82", dark: "#604a52", wall: ["#a8707a", "#7c4a56", "#54303e", "#281420"], water: ["#3a7ae0", "#7ab4ff", "#2a56b0"], inside: true, trees: false },
+  meadow: { base: "#48a048", light: "#68c058", dark: "#2c8038", wall: ["#78d060", "#3c9c44", "#1e6c34", "#0c3c24"], water: ["#3470d8", "#78b8ff", "#2048a0"], inside: false, trees: true },
+  dunes: { base: "#e4c078", light: "#f8e4a8", dark: "#c09450", wall: ["#f0c080", "#c88c50", "#945c34", "#583020"], water: ["#3470d8", "#78b8ff", "#2048a0"], inside: false, trees: false },
+  marsh: { base: "#3a7c64", light: "#58a080", dark: "#245c4c", wall: ["#58b088", "#2c7c60", "#145044", "#082c2c"], water: ["#2a7684", "#64b8b4", "#184c60"], inside: false, trees: true },
+  crags: { base: "#9c8878", light: "#b8a898", dark: "#746454", wall: ["#c4c8d8", "#8c90a8", "#585c78", "#2c3048"], water: ["#3470d8", "#78b8ff", "#2048a0"], inside: false, trees: false },
+  cave: { base: "#6c5444", light: "#846a58", dark: "#4c382c", wall: ["#b89878", "#886c54", "#584434", "#281c18"], water: ["#3470d8", "#78b8ff", "#2048a0"], inside: true, trees: false },
+  bramble: { base: "#5c7858", light: "#74946c", dark: "#445c44", wall: ["#84b470", "#507c4c", "#30543c", "#142820"], water: ["#3470d8", "#78b8ff", "#2048a0"], inside: true, trees: false },
+  vault: { base: "#c4a464", light: "#e0c488", dark: "#a08044", wall: ["#f0c878", "#bc8c48", "#885c30", "#442c18"], water: ["#3470d8", "#78b8ff", "#2048a0"], inside: true, trees: false },
+  hollow: { base: "#685c84", light: "#8478a4", dark: "#4c4468", wall: ["#9c8cc8", "#645890", "#3c3468", "#1c1838"], water: ["#3470d8", "#78b8ff", "#2048a0"], inside: true, trees: false },
+  keep: { base: "#7c5c64", light: "#987c84", dark: "#58444c", wall: ["#bc8088", "#844c5c", "#542c3c", "#24101c"], water: ["#3470d8", "#78b8ff", "#2048a0"], inside: true, trees: false },
 };
 const landOf = (biome: string) => LANDS[biome] ?? LANDS.meadow!;
-const OUTLINE: Rgb = [11, 11, 20];
+const mix = (a: Rgb, b: Rgb, t: number): Rgb => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
-function paint(w = 16, h = 16) {
+/** A tile's side, in real pixels. */
+const N = 32;
+
+function paint(w = N, h = N) {
   const s = blank(w, h);
   const dot = (x: number, y: number, c: Rgb) => { if (x >= 0 && y >= 0 && x < w && y < h) s.data.set([c[0], c[1], c[2], 255], (y * w + x) * 4); };
   const rect = (x: number, y: number, rw: number, rh: number, c: Rgb) => { for (let py = y; py < y + rh; py++) for (let px = x; px < x + rw; px++) dot(px, py, c); };
   const stamp = (p: Sprite, ox = 0, oy = 0) => { for (let y = 0; y < p.h; y++) for (let x = 0; x < p.w; x++) if (p.data[(y * p.w + x) * 4 + 3]) dot(x + ox, y + oy, [p.data[(y * p.w + x) * 4]!, p.data[(y * p.w + x) * 4 + 1]!, p.data[(y * p.w + x) * 4 + 2]!]); };
   return { s, dot, rect, stamp };
 }
+type Paint = ReturnType<typeof paint>;
 
-/** Open ground: grass with tufts, sand with ripples, or flagstones under a roof. */
-function ground(land: Land, seed: number, path: boolean, shaded = false) {
+/** Open ground: grass in soft drifts with blades in it, sand in ripples, dirt with pebbles, or flagstones under a roof. */
+function ground(land: Land, biome: string, seed: number, path: boolean): Paint {
   const p = paint();
   const [base, light, dark] = [rgb(land.base), rgb(land.light), rgb(land.dark)];
-  p.rect(0, 0, 16, 16, path && !land.inside ? light : base);
   if (land.inside) {
-    // Flagstones: four to a tile, lit from the top left, a crack here and there.
-    for (const [ox, oy] of [[0, 0], [8, 0], [0, 8], [8, 8]] as const) {
-      p.rect(ox, oy, 8, 1, light);
-      p.rect(ox, oy, 1, 8, light);
-      p.rect(ox, oy + 7, 8, 1, dark);
-      p.rect(ox + 7, oy, 1, 8, dark);
-      if (speck(ox, oy, seed) < 0.22) { const cx = ox + 2 + Math.floor(speck(oy, ox, seed) * 3); p.dot(cx, oy + 3, dark); p.dot(cx + 1, oy + 4, dark); p.dot(cx + 1, oy + 5, dark); }
+    // Flagstones, four to a tile: each a shade of its own, bevelled, lit from the top left, some cracked.
+    for (const [ox, oy] of [[0, 0], [16, 0], [0, 16], [16, 16]] as const) {
+      const own = mix(base, speck(ox, oy, seed) < 0.5 ? light : dark, speck(oy, ox, seed + 3) * 0.28);
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) p.dot(ox + x, oy + y, mix(own, speck(x >> 1, y >> 1, seed + ox + oy) > 0.5 ? light : dark, 0.07));
+      p.rect(ox, oy, 16, 1, mix(own, light, 0.75));
+      p.rect(ox, oy, 1, 16, mix(own, light, 0.55));
+      p.rect(ox, oy + 15, 16, 1, mix(own, dark, 0.95));
+      p.rect(ox + 15, oy, 1, 16, mix(own, dark, 0.8));
+      p.rect(ox + 1, oy + 14, 14, 1, mix(own, dark, 0.35));
+      if (speck(ox, oy, seed) < 0.3) { let cx = ox + 4 + Math.floor(speck(oy, ox, seed) * 7); for (let y = 3; y < 12; y++) { if (speck(cx, y, seed) > 0.55) cx += speck(y, cx, seed) > 0.5 ? 1 : -1; p.dot(cx, oy + y, mix(own, dark, 0.9)); p.dot(cx + 1, oy + y, mix(own, light, 0.4)); } }
     }
-    // Under a wall: its shadow.
-    if (shaded) { p.rect(0, 0, 16, 3, dark); for (let x = 0; x < 16; x += 2) p.dot(x, 3, dark); }
     return p;
   }
-  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
-    const n = speck(x, y, seed);
-    if (n < 0.035) { p.dot(x, y, path ? base : light); if (!path) p.dot(x + 1, y - 1, light); }
-    else if (n > 0.965) { p.dot(x, y, path ? base : dark); if (!path) p.dot(x - 1, y - 1, dark); }
-    else if (path && n > 0.9) p.dot(x, y, dark);
+  const floor = path ? mix(base, light, 0.55) : base;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    // Soft drifts of lighter and darker, so the ground is never one flat colour.
+    // It repeats exactly once a tile, so one tile runs into the next without a seam.
+    const drift = Math.sin((x / N) * Math.PI * 2 + 1) * Math.cos((y / N) * Math.PI * 2) + (speck(x, y, seed + 11) - 0.5) * 0.35;
+    p.dot(x, y, mix(floor, drift > 0 ? light : dark, Math.min(0.3, Math.abs(drift) * 0.26)));
+  }
+  if (biome === "dunes") {
+    // Ripples: a dark crest with a pale line under it, bowed.
+    for (let n = 0; n < 7; n++) { const x = Math.floor(speck(n, 1, seed) * 22); const y = 3 + Math.floor(speck(n, 2, seed) * 26); const len = 6 + Math.floor(speck(n, 3, seed) * 5); for (let i = 0; i < len; i++) { const bow = Math.round(Math.sin((i / (len - 1)) * Math.PI) * -1.6); p.dot(x + i, y + bow, dark); p.dot(x + i, y + bow + 1, light); } }
+  } else if (biome === "crags" || path) {
+    // Pebbles, each lit on top with a shadow beneath.
+    for (let n = 0; n < 7; n++) { const x = 1 + Math.floor(speck(n, 3, seed) * 27); const y = 1 + Math.floor(speck(n, 4, seed) * 27); const r = 1 + Math.floor(speck(n, 5, seed) * 2); p.rect(x, y, r + 2, r + 1, mix(floor, dark, 0.75)); p.rect(x, y, r + 1, 1, light); p.dot(x, y + 1, light); p.rect(x + 1, y + r + 1, r + 2, 1, mix(dark, [0, 0, 0], 0.3)); }
+  } else {
+    // Blades of grass in little tufts: three strokes fanning up, pale at the tips.
+    for (let n = 0; n < 9; n++) {
+      const x = 2 + Math.floor(speck(n, 5, seed) * 26);
+      const y = 5 + Math.floor(speck(n, 6, seed) * 24);
+      const tip = mix(light, [255, 255, 255], 0.3);
+      p.dot(x, y, dark); p.dot(x + 1, y, dark); p.dot(x + 2, y, dark);
+      p.dot(x - 1, y - 1, light); p.dot(x - 1, y - 2, tip);
+      p.dot(x + 1, y - 1, light); p.dot(x + 1, y - 2, light); p.dot(x + 1, y - 3, tip);
+      p.dot(x + 3, y - 1, light); p.dot(x + 3, y - 2, tip);
+    }
   }
   return p;
 }
 
-/** Something that blocks the way: a tree, a boulder, or a wall of brick. `face` when the tile below is open, so its front shows. */
-function wall(land: Land, seed: number, face: boolean) {
+/** How far a pixel is inside a patch of tiles that join: 0 on an open edge, growing inwards. Corners where two open sides meet are rounded. */
+function inset(x: number, y: number, mask: number, round = 9): number {
+  const r = mask & 1 ? 99 : N - 1 - x;
+  const d = mask & 2 ? 99 : N - 1 - y;
+  const l = mask & 4 ? 99 : x;
+  const u = mask & 8 ? 99 : y;
+  let far = Math.min(r, d, l, u);
+  for (const [a, b] of [[l, u], [r, u], [l, d], [r, d]]) if (a! < round && b! < round) far = Math.min(far, round - Math.sqrt((round - a!) * (round - a!) + (round - b!) * (round - b!)));
+  return far;
+}
+
+/** Something that blocks the way. Out of doors, a wood or a cliff; under a roof, a wall of stone. Each shows a face where the tile below it is open. */
+function wall(land: Land, biome: string, seed: number, mask: number): Paint {
   const [light, mid, dark, deep] = land.wall.map(rgb) as [Rgb, Rgb, Rgb, Rgb];
+  const face = !(mask & 2);
   if (land.inside) {
     const p = paint();
-    p.rect(0, 0, 16, 16, mid);
-    const top = face ? 6 : 16;
-    // The top of the wall, seen from above: capstones, two courses to a tile, each lit along its top.
-    p.rect(0, 0, 16, top, mid);
-    for (const y of [0, 8]) if (y < top) { p.rect(0, y, 16, 1, light); p.rect(0, y + 7, 16, 1, dark); }
-    for (const [x, y] of [[5, 0], [13, 8]] as const) if (y < top) p.rect(x, y, 1, Math.min(8, top - y), dark);
-    for (let y = 0; y < top; y++) for (let x = 0; x < 16; x++) if (speck(x, y, seed) > 0.93) p.dot(x, y, light);
+    const top = face ? 13 : N;
+    // The top, seen from above: capstones, each lit along its top, with a pale rim along every open side.
+    for (let y = 0; y < top; y++) for (let x = 0; x < N; x++) {
+      const course = y >> 4;
+      const joint = y % 16 === 15 || (x + (course ? 8 : 0)) % 16 === 11;
+      p.dot(x, y, joint ? mix(mid, deep, 0.55) : y % 16 === 0 ? mix(mid, light, 0.65) : mix(mid, speck(x >> 1, y >> 1, seed + 1) > 0.5 ? light : dark, 0.12 + speck(x >> 2, y >> 2, seed) * 0.12));
+    }
+    if (!(mask & 8)) { p.rect(0, 0, N, 1, light); p.rect(0, 1, N, 1, mix(mid, light, 0.6)); }
+    if (!(mask & 4)) p.rect(0, 0, 2, top, mix(mid, light, 0.7));
+    if (!(mask & 1)) p.rect(N - 2, 0, 2, top, dark);
     if (!face) return p;
-    p.rect(0, top, 16, 1, deep);
-    // Its front: courses of brick, darker towards the floor.
+    p.rect(0, top - 2, N, 2, light);
+    // Its front: courses of brick, each lit along its top and darker towards the floor.
     for (let row = 0; row < 3; row++) {
-      const y = top + 1 + row * 3;
-      p.rect(0, y, 16, 2, row === 2 ? dark : mid);
-      p.rect(0, y + 2, 16, 1, deep);
-      for (let x = row % 2 ? 3 : 7; x < 16; x += 8) p.rect(x, y, 1, 2, deep);
-      p.rect(0, y, 16, 1, row === 0 ? light : row === 1 ? mid : dark);
-      for (let x = row % 2 ? 3 : 7; x < 16; x += 8) p.dot(x, y, deep);
+      const y = top + row * 6;
+      const body = mix(mid, dark, 0.15 + row * 0.38);
+      for (let by = 0; by < 6; by++) for (let x = 0; x < N; x++) p.dot(x, y + by, mix(body, speck(x >> 1, y + by, seed) > 0.5 ? light : deep, 0.08));
+      p.rect(0, y, N, 1, mix(body, light, 0.45));
+      p.rect(0, y + 5, N, 1, mix(dark, deep, 0.7));
+      for (let x = row % 2 ? 5 : 13; x < N; x += 16) { p.rect(x, y, 1, 5, mix(dark, deep, 0.7)); p.rect(x + 1, y, 1, 5, mix(body, light, 0.3)); }
     }
+    p.rect(0, N - 1, N, 1, deep);
     return p;
   }
-  const p = ground(land, seed, false);
+  const p = ground(land, biome, seed, false);
   if (land.trees) {
-    // A round tree: a trunk, and a head lit from the top left.
-    p.rect(6, 12, 4, 4, rgb("#4a2a1c"));
-    p.rect(7, 12, 2, 3, rgb("#7a4a2c"));
-    for (let y = 0; y < 14; y++) for (let x = 0; x < 16; x++) {
-      const dx = x - 7.5;
-      const dy = (y - 6.5) * 1.08;
-      const far = dx * dx + dy * dy;
-      if (far > 58) continue;
-      const lit = (x - 5) * (x - 5) + (y - 4) * (y - 4);
-      p.dot(x, y, far > 46 ? deep : lit < 9 ? light : lit < 30 || speck(x, y, seed) < 0.12 ? mid : dark);
+    // A wood: round heads of leaves crowding together, each lit on its top left and dark beneath, with trunks showing along the bottom.
+    if (face) for (const tx of [7, 23]) { p.rect(tx - 3, 20, 7, 12, rgb("#2e1a14")); p.rect(tx - 2, 20, 4, 11, rgb("#6e4428")); p.rect(tx - 1, 20, 2, 10, rgb("#9a6838")); p.rect(tx - 6, 30, 13, 2, mix(rgb(land.base), [0, 0, 0], 0.35)); }
+    const low = face ? 24 : N;
+    for (let y = 0; y < low; y++) for (let x = 0; x < N; x++) {
+      const scallop = Math.sin((x + y * 0.6 + seed * 2) * 0.72) * 1.6;
+      const far = inset(x, face ? y + 8 : y, face ? mask | 2 : mask) + scallop;
+      const hem = face ? low - 1 - y + Math.sin((x + seed) * 0.8) * 2.2 : 99;
+      const depth = Math.min(far, hem);
+      if (depth < 1) continue;
+      // The nearest head of leaves, on a lattice that wraps at the tile's edge.
+      const cx = ((x + ((y / 11) | 0) * 5 + seed * 3) % 11) - 5;
+      const cy = (y % 11) - 5;
+      const d = Math.sqrt(cx * cx + cy * cy);
+      const lit = -cx * 0.6 - cy * 0.8;
+      let c = d > 5.4 ? deep : lit > 2.6 ? light : lit > 0.2 ? mid : lit > -2.6 ? dark : mix(dark, deep, 0.7);
+      if (lit > 3.8 && d < 4.4) c = mix(light, [255, 255, 255], 0.22);
+      if (depth < 2.2) c = deep;
+      else if (depth < 4 && lit < 1) c = mix(c, deep, 0.5);
+      p.dot(x, y, c);
     }
-    for (const [x, y] of [[4, 3], [9, 2], [11, 6], [5, 8], [8, 10]] as const) if (speck(x, y, seed) < 0.7) { p.dot(x, y, light); p.dot(x + 1, y, light); }
     return p;
   }
-  // A boulder.
-  for (let y = 1; y < 16; y++) for (let x = 0; x < 16; x++) {
-    const dx = (x - 7.5) / 8;
-    const dy = (y - 8.5) / 7.5;
-    const far = dx * dx * dx * dx + dy * dy * dy * dy;
-    if (far > 1) continue;
-    p.dot(x, y, far > 0.72 ? deep : y < 5 && x < 11 ? light : y > 11 || x > 12 ? dark : mid);
+  // A cliff: a flat top with a pale rim, and a face of rock where it drops to the ground below.
+  const top = face ? 18 : N;
+  for (let y = 0; y < top; y++) for (let x = 0; x < N; x++) {
+    const far = inset(x, y, mask | 2, 6);
+    if (far < 0.5) continue;
+    const grain = Math.sin((x * 0.5 + y * 0.9 + seed) * 0.8) * 0.5 + (speck(x >> 1, y >> 1, seed) - 0.5);
+    const lit = (!(mask & 8) && y < 4) || (!(mask & 4) && x < 4);
+    p.dot(x, y, far < 1.5 ? deep : far < 4 ? (lit ? light : mix(mid, dark, 0.6)) : mix(mid, grain > 0 ? light : dark, Math.min(0.45, Math.abs(grain) * 0.4)));
   }
-  for (const [x, y] of [[5, 7], [6, 8], [6, 9], [10, 5], [10, 6], [9, 11]] as const) if (speck(x, y, seed) < 0.75) p.dot(x, y, dark);
+  for (let n = 0; n < 4; n++) { const x = 6 + Math.floor(speck(n, 1, seed) * 20); const y = 5 + Math.floor(speck(n, 2, seed) * 8); if (inset(x, y, mask | 2, 6) > 5 && y < top - 4) { p.dot(x, y, dark); p.dot(x + 1, y + 1, dark); p.dot(x + 2, y + 1, dark); p.dot(x + 1, y + 2, light); } }
+  if (face) {
+    for (let y = top; y < N; y++) for (let x = 0; x < N; x++) {
+      if (inset(x, 10, mask | 2 | 8, 6) < 0.5) continue;
+      // Strata: columns of rock, each lit down its left side.
+      const col = (x + seed * 3) % 9;
+      const t = (y - top) / (N - top);
+      const body = mix(mix(mid, dark, 0.5 + t * 0.5), deep, t * 0.5);
+      p.dot(x, y, y === top ? light : y === top + 1 ? mix(mid, light, 0.4) : y >= N - 1 ? deep : col === 0 ? mix(body, deep, 0.6) : col === 1 ? mix(body, light, 0.3) : body);
+    }
+  }
   return p;
 }
 
-function water(land: Land, seed: number, frame: number, shore: boolean) {
+/** Water: bands of light moving across it, and a bank wherever it meets the land. */
+function water(land: Land, seed: number, frame: number, mask: number): Paint {
   const p = paint();
   const [base, light, deep] = land.water.map(rgb) as [Rgb, Rgb, Rgb];
-  p.rect(0, 0, 16, 16, base);
-  for (let n = 0; n < 5; n++) {
-    const x = (Math.floor(speck(n, 1, seed) * 16) + frame * 3) % 16;
-    const y = 2 + Math.floor(speck(n, 2, seed) * 13);
-    for (let i = 0; i < 4; i++) p.dot((x + i) % 16, y, light);
-    p.dot((x + 1) % 16, y + 1, deep);
-    p.dot((x + 2) % 16, y + 1, deep);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const wave = Math.sin((x + frame * 8) * 0.2 + Math.sin(y * 0.4 + seed) * 1.3 + y * 0.5);
+    const far = inset(x, y, mask, 7);
+    const c = wave > 0.9 ? mix(light, [255, 255, 255], 0.3) : wave > 0.62 ? mix(base, light, 0.5) : wave < -0.72 ? mix(base, deep, 0.5) : base;
+    // The bank: its shadow under the top edge, and foam that comes and goes along the others.
+    const foam = Math.sin((x + y) * 0.7 + frame * 1.57) > -0.2;
+    p.dot(x, y, far < 0 ? mix(rgb(land.base), [0, 0, 0], 0.25) : far < 4 && !(mask & 8) && y < 4 ? deep : far < 1.5 ? (foam ? [240, 248, 255] : light) : far < 3 ? mix(c, light, 0.45) : far < 7 ? mix(c, deep, 0.22) : c);
   }
-  if (shore) { p.rect(0, 0, 16, 2, deep); for (let x = (frame * 2) % 4; x < 16; x += 4) p.dot(x, 2, light); }
   return p;
 }
 
-function pit(shore: boolean) {
+function pit(mask: number): Paint {
   const p = paint();
-  p.rect(0, 0, 16, 16, OUTLINE);
-  if (shore) { p.rect(0, 0, 16, 2, rgb("#2e3248")); p.rect(0, 2, 16, 1, rgb("#1a1c30")); }
+  p.rect(0, 0, N, N, [6, 6, 14]);
+  if (!(mask & 8)) { p.rect(0, 0, N, 2, rgb("#545a70")); p.rect(0, 2, N, 3, rgb("#2e3248")); p.rect(0, 5, N, 4, rgb("#1a1c30")); for (let x = 0; x < N; x += 2) p.dot(x, 9, rgb("#1a1c30")); }
+  if (!(mask & 4)) p.rect(0, 0, 2, N, rgb("#1a1c30"));
+  if (!(mask & 1)) p.rect(N - 2, 0, 2, N, rgb("#1a1c30"));
   return p;
 }
 
 const made = new Map<string, Sprite>();
 /**
- * One tile of a room, as a picture. `seed` picks which of the many grasses or bricks it is, `frame`
- * moves what moves (water, a torch's flame), and `below` and `above` are the tiles under and over
- * it, which decide whether a wall shows its face and water its bank.
+ * One tile of a room, as a picture 32 pixels square. `seed` picks which of the many grasses or
+ * bricks it is, `frame` moves what moves (water, a torch's flame), and `mask` says which neighbours
+ * are the same kind of tile (1 right, 2 below, 4 left, 8 above), so that woods, cliffs, walls and
+ * water join up.
  */
-export function tileArt(biome: string, tile: number, seed: number, frame: number, below: number, above: number): Sprite {
+export function tileArt(biome: string, tile: number, seed: number, frame: number, mask: number): Sprite {
   const land = landOf(biome);
   const moving = tile === T.water || tile === T.torch;
-  const face = tile === T.wall && below !== T.wall && below !== -1;
-  const shore = (tile === T.water && above !== T.water) || (tile === T.pit && above !== T.pit);
-  const shaded = land.inside && above === T.wall && tile !== T.wall;
-  const key = `${biome}:${tile}:${seed % 8}:${moving ? frame % 4 : 0}:${face ? 1 : 0}${shore ? 1 : 0}${shaded ? 1 : 0}`;
+  const joins = tile === T.wall || tile === T.water || tile === T.pit;
+  const key = `${biome}:${tile}:${seed % 8}:${moving ? frame % 4 : 0}:${joins ? mask : 0}`;
   let got = made.get(key);
   if (got) return got;
-  let p;
-  if (tile === T.wall) p = wall(land, seed % 8, face);
-  else if (tile === T.water) p = water(land, seed % 8, frame % 4, shore);
-  else if (tile === T.pit) p = pit(shore);
+  let p: Paint;
+  if (tile === T.wall) p = wall(land, biome, seed % 8, mask);
+  else if (tile === T.water) p = water(land, seed % 8, frame % 4, mask);
+  else if (tile === T.pit) p = pit(mask);
   else {
-    p = ground(land, seed % 8, tile === T.path, shaded);
+    p = ground(land, biome, seed % 8, tile === T.path);
     const name = tile === T.bush && biome === "dunes" ? "cactus" : tile === T.torch && frame % 4 >= 2 ? "torch:2" : PROP_OF[tile];
     if (name) p.stamp(PROPS[name]!);
   }
