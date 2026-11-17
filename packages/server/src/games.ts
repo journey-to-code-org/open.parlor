@@ -3,7 +3,7 @@
 // A room's options say which game it is. Spades rooms keep the options they always had (the house
 // rules themselves), so tables and logs from before there were other games still work; any other
 // game's options carry `game`.
-import { KIT_GAMES, isBoardGame, isKitGame, isSportGame, kitGame, kitGreet, reactToKit, type KitGameId, type ThinkBudget } from "@journey-to-code/games";
+import { KIT_GAMES, isBoardGame, isKitGame, isSportGame, isWordGame, kitGame, kitGreet, reactToKit, type KitGameId, type ThinkBudget } from "@journey-to-code/games";
 import { palaceGreet, palaceReplyTo, reactToPalace, type PalaceState } from "@journey-to-code/palace";
 import { sharedView, type RoomDefinition } from "@journey-to-code/rooms/server";
 import { cleanSettings, greet, reactToMove, replyTo, type GameState, type RulePreset, type Seat } from "@journey-to-code/rules";
@@ -135,6 +135,17 @@ export function watchView(game: GameId, views: unknown[]): unknown {
   // first seat's table and the shot that goes with it, whole, and nobody's aim or buttons.
   if (isSportGame(game)) {
     const view = sharedView(seats, { blank: { shoot: null, choices: null }, from: { seat: 0, keys: ["me", "table", "last"] } });
+    if (Array.isArray(view.info)) view.info = view.info.filter((line) => typeof line === "string");
+    return view;
+  }
+  // A word game: a board that is one seat's own (Secret Word's guesses) is theirs alone, and so is
+  // what they know of the letters from it, what they may type or name, and a word they have handed
+  // in before the words are turned over (Anagrams). How each seat's guesses went, as coloured
+  // squares, is everyone's: it is in every seat's view alike.
+  if (isWordGame(game)) {
+    const owned = seats.some((v) => Array.isArray(v.boards) && v.boards.some((b) => (b as Any).owner !== undefined));
+    const open: Any[] = seats.map((v) => ({ ...v, boards: Array.isArray(v.boards) ? v.boards.filter((b) => (b as Any).owner === undefined) : [] }));
+    const view = sharedView(open, { blank: { entry: null, pick: null, choices: null, ...(owned ? { keys: {} } : {}) }, from: { seat: 0, keys: ["me"] } });
     if (Array.isArray(view.info)) view.info = view.info.filter((line) => typeof line === "string");
     return view;
   }

@@ -2872,3 +2872,69 @@ main.setup.wifi { max-width: 520px; }
 .wifi-gone { margin: 0; padding: 6px 12px; text-align: center; font-size: 0.85rem; background: rgba(120, 30, 20, 0.85); color: var(--cream); }
 /* The code that makes another device you (MoveDevice.tsx): big enough to read across a table. */
 .move-code { margin: 0; font-size: 2.2rem; font-weight: 700; letter-spacing: 0.12em; font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--gold); user-select: all; }
+
+/* ---------- Word games (word/WordTable.tsx) ---------- */
+/* Green is a letter in its place, gold in the word somewhere else, grey not in it: the colours
+   people know from the newspaper puzzles. Each also differs in lightness, for colour-blind eyes. */
+.word { --hit: #3f9a52; --near: #d2a52a; --miss: #5b5650; --tile: var(--cream); --tile-ink: var(--ink); }
+.word-felt { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 12px 10px 18px; overflow-y: auto; }
+.word-others { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; }
+.word-middle { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; max-width: 520px; }
+.word-info { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; font-size: 0.82rem; }
+.word-info span { padding: 2px 10px; border-radius: 999px; background: rgba(0, 0, 0, 0.25); }
+.word-narration { margin: 0; min-height: 1.4em; text-align: center; font-size: 0.95rem; }
+.word-narration .mine { color: var(--gold); }
+.word-board { display: grid; gap: 6px; justify-items: center; }
+.word-board-label { margin: 0; font: inherit; font-size: 0.85rem; font-weight: 600; opacity: 0.8; }
+.word-tiles { display: flex; gap: 6px; justify-content: center; flex-wrap: nowrap; }
+.word-tile {
+  --size: clamp(34px, min(11vw, calc(76vw / var(--cols, 6))), 56px);
+  display: inline-grid; place-items: center; width: var(--size); height: var(--size); border-radius: 8px;
+  font-size: calc(var(--size) * 0.5); font-weight: 800; text-transform: uppercase; line-height: 1;
+  color: var(--tile-ink); background: var(--tile); border: 2px solid transparent; box-shadow: var(--elev-1);
+  transition: background var(--dur-3), color var(--dur-3), transform var(--dur-2);
+}
+.word-tile.empty { background: rgba(0, 0, 0, 0.22); border-color: rgba(251, 246, 236, 0.25); box-shadow: none; }
+.word-tiles.typing .word-tile.filled { border-color: var(--gold); transform: scale(1.04); }
+.word-tile.tone-hit, .word-tile.answer { background: var(--hit); color: #fff; }
+.word-tile.tone-near { background: var(--near); color: #241a00; }
+.word-tile.tone-miss { background: var(--miss); color: #f1ece4; }
+.word-tile.hidden { background: rgba(0, 0, 0, 0.3); border-color: rgba(251, 246, 236, 0.5); border-style: dashed; box-shadow: none; }
+.word-tiles.row .word-tile[class*="tone-"] { animation: word-flip var(--dur-3) ease-out both; animation-delay: calc(var(--i, 0) * 70ms); }
+@keyframes word-flip { from { transform: rotateX(90deg); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .word-tiles.row .word-tile[class*="tone-"] { animation: none; } }
+.word-tiles.small .word-tile { --size: 26px; border-radius: 5px; }
+.word-played { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; width: 100%; }
+.word-played li { display: flex; align-items: center; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.word-played li.mine .word-who { color: var(--gold); }
+.word-played .word-tile.played { background: var(--tile); }
+.word-who small { opacity: 0.75; }
+.word-rack-area { display: grid; gap: 12px; justify-items: center; width: 100%; max-width: 560px; }
+.word-tiles.rack .word-tile { --size: clamp(38px, 11vw, 54px); }
+button.word-tile { cursor: pointer; padding: 0; font-family: inherit; }
+button.word-tile:active:not(:disabled) { transform: translateY(2px); }
+.word-tile.used { opacity: 0.28; box-shadow: none; }
+.word-actions, .word-choices { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.word-keyboard { display: grid; gap: 6px; width: 100%; max-width: 520px; touch-action: manipulation; }
+.word-prompt { margin: 0 0 2px; text-align: center; font-weight: 600; }
+.word-key-row { display: flex; gap: 5px; justify-content: center; }
+.word-key {
+  flex: 1 1 0; min-width: 0; max-width: 46px; height: 50px; padding: 0; border: 0; border-radius: 7px; cursor: pointer;
+  font: inherit; font-size: 1rem; font-weight: 700; text-transform: uppercase; color: var(--ink); background: #d9d1c3;
+}
+.word-key.wide { flex: 1.6 1 0; max-width: 72px; font-size: 0.78rem; text-transform: none; }
+.word-key.tone-hit { background: var(--hit); color: #fff; }
+.word-key.tone-near { background: var(--near); color: #241a00; }
+.word-key.tone-miss { background: var(--miss); color: #cfc8bd; }
+.word-key:disabled { cursor: default; opacity: 0.45; }
+.word-key:not(:disabled):active { filter: brightness(0.9); }
+.word-error { margin: 0; text-align: center; }
+.word-seat .word-marks { display: grid; gap: 2px; margin-top: 4px; }
+.word-mark-row { display: flex; gap: 2px; }
+.word-mark { width: 8px; height: 8px; border-radius: 2px; background: var(--miss); }
+.word-mark.tone-hit { background: var(--hit); }
+.word-mark.tone-near { background: var(--near); }
+.word-seat.done { opacity: 0.85; }
+.gallows { width: min(40vw, 150px); height: auto; }
+.gallows .frame { fill: none; stroke: #c9a46a; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.gallows .figure { fill: none; stroke: var(--cream); stroke-width: 4.5; stroke-linecap: round; }

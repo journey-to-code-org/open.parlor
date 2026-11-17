@@ -5,10 +5,10 @@
 // It only suits a game with nothing to hide. At a table of Hearts every seat's view holds a hand
 // the others mustn't see, and one screen can't keep a secret from the person holding it. So the
 // list below is the games where every seat sees the same table: the board games, the dice, the
-// table sports and Memory. Combat is a board game and still isn't here: the fleets are hidden.
+// table sports, Memory and Hangman (Secret Word and Anagrams keep each player's words to themselves). Combat is a board game and still isn't here: the fleets are hidden.
 import { QUICK_BUDGET, QUICK_STYLE, isKitGame, kitGame, type KitGameId, type TableGame } from "@journey-to-code/games";
 
-const SHARED: ReadonlySet<KitGameId> = new Set<KitGameId>(["tictactoe", "dropfour", "reversi", "checkers", "go", "chess", "backgammon", "yacht", "memory", "minigolf", "bowling", "billiards"]);
+const SHARED: ReadonlySet<KitGameId> = new Set<KitGameId>(["tictactoe", "dropfour", "reversi", "checkers", "go", "chess", "backgammon", "yacht", "memory", "minigolf", "bowling", "billiards", "carrom", "hangman"]);
 
 /** Whether a game can be shared on one device: nothing hidden, and more than one seat. */
 export const sharesDevice = (id: unknown): id is KitGameId => isKitGame(id) && SHARED.has(id) && kitGame(id)!.seats.max > 1;

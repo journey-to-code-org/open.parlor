@@ -12,7 +12,7 @@ import { Table } from "./Table";
 import { useTable, type Move } from "./useTable";
 import type { PalaceMove, PalaceView } from "@journey-to-code/palace";
 import { PalaceTable } from "./palace/PalaceTable";
-import { isBoardGame, isKitGame, isSportGame, kitGame, type BoardView, type KitView, type SportView } from "@journey-to-code/games";
+import { isBoardGame, isKitGame, isSportGame, isWordGame, kitGame, type BoardView, type KitView, type SportView } from "@journey-to-code/games";
 import { ARCADE_LIST, GAME_LIST } from "./GamePicker";
 import { isLiveArcade, LiveArcade, type FlownView, type LiveView } from "./arcade/ArcadeTable";
 import { GameTable } from "./kit/GameTable";
@@ -476,7 +476,7 @@ function Lobby(props: {
           )}
           {mySeat !== null && (
             <button type="button" className="primary deal" disabled={!full} onClick={() => attempt(() => room.start())}>
-              {full ? (arcade || isBoardGame(game) || isSportGame(game) ? "Start the game" : "Deal") : doc.open ? "Waiting for players…" : "Waiting for every seat"}
+              {full ? (arcade || isBoardGame(game) || isSportGame(game) || isWordGame(game) ? "Start the game" : "Deal") : doc.open ? "Waiting for players…" : "Waiting for every seat"}
             </button>
           )}
         </>

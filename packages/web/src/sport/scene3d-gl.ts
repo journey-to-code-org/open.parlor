@@ -468,8 +468,9 @@ function makeThing(d: Disc): Thing {
       group.add(s);
     }
     stuff.stem = stem;
-  } else if (d.look && d.look.height && !/^(ball|cue|striker)$/.test(kind)) {
-    // A bumper or a peg: a short post in its own colour.
+  } else if (d.look && d.look.height && (!/^(ball|cue|striker)$/.test(kind) || d.look.height < r)) {
+    // A bumper or a peg: a short post in its own colour. A flat disc too (a carrom piece, its
+    // striker): a post lower than it is wide.
     skin = mesh(new CylinderGeometry(r, r, height, 24), paint(toneColour(d.look.tone), 0.5));
     skin.position.y = height / 2;
     group.add(skin);

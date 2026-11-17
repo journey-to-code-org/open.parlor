@@ -98,6 +98,11 @@ const YOU_VERBS: Record<string, string> = {
   rolls: "roll",
   scores: "score",
   scratches: "scratch",
+  names: "name",
+  pockets: "pocket",
+  covers: "cover",
+  // "doesn't": a word stops at the apostrophe, so this turns "doesn" into "don" and the "'t" follows.
+  doesn: "don",
   bowls: "bowl",
   knocks: "knock",
   misses: "miss",

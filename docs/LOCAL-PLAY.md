@@ -8,8 +8,8 @@ does, what it doesn't yet, and what to check are at the end.
 ## Offline
 
 The service worker (`packages/web/public/sw.js`) keeps a copy of the app on the device. The last
-step of the web build (`scripts/precache.mjs`) writes the list of the app's files into it: 26 files,
-4.3 MB today. The copy is made in the background on the first visit, and the page says "Ready to
+step of the web build (`scripts/precache.mjs`) writes the list of the app's files into it: 28 files,
+6.2 MB today. The copy is made in the background on the first visit, and the page says "Ready to
 play offline" once, when it is done.
 
 | | Offline |
@@ -50,8 +50,8 @@ person holding it:
 | Shared on one device | Not |
 | --- | --- |
 | Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon | Every game with a hand of cards |
-| Yacht, Memory | Combat (the fleets are hidden) |
-| Mini Golf, Bowling, Billiards | Spades and Palace; the arcade and idle games |
+| Yacht, Memory, Hangman | Combat (the fleets are hidden); Secret Word and Anagrams (each player's words are their own) |
+| Mini Golf, Bowling, Billiards, Carrom | Spades and Palace; the arcade and idle games |
 
 Candidates for later: War, Kings Cup, Horse Race and Mahjong Shanghai have nothing hidden either.
 A card game could be shared with a "hand the phone to Ann" curtain between turns; that is a

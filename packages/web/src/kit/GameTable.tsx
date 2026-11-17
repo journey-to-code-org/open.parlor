@@ -1,12 +1,15 @@
 // The table for any game on the kit: the card table for a card game's view, the board table for a
-// board game's, the canvas table for a table sport's. Family tables and practice games both come through here, so neither needs to know
-// which kind of game it is running.
-import { isBoardGame, isSportGame, type BoardView, type KitView, type SportView } from "@journey-to-code/games";
+// board game's, the word table for a word game's, the canvas table for a table sport's. Family
+// tables and practice games both come through here, so neither needs to know which kind of game it
+// is running.
+import { isBoardGame, isSportGame, isWordGame, type BoardView, type KitView, type SportView, type WordView } from "@journey-to-code/games";
 import { BoardTable } from "../board/BoardTable";
 import { SportTable } from "../sport/SportTable";
+import { WordTable } from "../word/WordTable";
 import { KitTable, type KitTableProps } from "./KitTable";
 
-export function GameTable({ view, ...rest }: Omit<KitTableProps, "view"> & { view: KitView | BoardView | SportView }) {
+export function GameTable({ view, ...rest }: Omit<KitTableProps, "view"> & { view: KitView | BoardView | SportView | WordView }) {
   if (isSportGame(view.game)) return <SportTable view={view as SportView} {...rest} />;
+  if (isWordGame(view.game)) return <WordTable view={view as WordView} {...rest} />;
   return isBoardGame(view.game) ? <BoardTable view={view as BoardView} {...rest} /> : <KitTable view={view as KitView} {...rest} />;
 }
