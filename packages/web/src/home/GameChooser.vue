@@ -24,7 +24,7 @@ export interface ChooserGame {
   /** A board game shows a little board instead of cards. */
   board?: { cols: number; cells: ({ glyph: string; tone: string; shade?: string } | null)[]; shade?: string };
   /** An arcade game shows a little screen: a ship, what it is up against, and what is coming at it (in a 100 × 100 box). */
-  screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][]; chip?: boolean; shop?: boolean; strip?: boolean };
+  screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][]; chip?: boolean; shop?: boolean; strip?: boolean; rink?: boolean };
   /** A dice game shows a few dice: the face each one shows. */
   dice?: number[];
   /** A table sport shows a little table from above: its surface, a hole, a ball or two (in a 100 × 100 box). */
@@ -244,6 +244,16 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
                 <rect class="racer a" x="24" y="66" width="20" height="13" rx="3" />
                 <rect class="racer b" x="57" y="50" width="15" height="10" rx="2.5" />
                 <path class="tail" d="M27 75 h4 M37 75 h4 M59.5 57 h3 M66.5 57 h3" />
+              </svg>
+              <svg v-else-if="g.screen.rink" viewBox="0 0 100 100">
+                <rect class="ice" x="3" y="3" width="94" height="94" rx="14" />
+                <path class="rinkline" d="M3 50 H97 M38 50 a12 12 0 1 0 24 0 a12 12 0 1 0 -24 0" />
+                <rect class="goal far" x="34" y="3" width="32" height="4" rx="2" />
+                <rect class="goal near" x="34" y="93" width="32" height="4" rx="2" />
+                <circle class="mallet far" cx="56" cy="24" r="10" />
+                <circle class="mallet near" cx="40" cy="78" r="10" />
+                <path class="streak" d="M47 68 L62 46" />
+                <circle class="puck" cx="62" cy="46" r="6" />
               </svg>
               <svg v-else-if="g.screen.chip" viewBox="0 0 100 100">
                 <rect class="felt" x="3" y="3" width="94" height="94" rx="14" />
@@ -522,6 +532,13 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .mini-screen .racer.a { fill: #4cc9ff; stroke: #0e131c; stroke-width: 1.4; }
 .mini-screen .racer.b { fill: #ff5a6e; stroke: #0e131c; stroke-width: 1.2; }
 .mini-screen .tail { stroke: #ff2d2d; stroke-width: 2; stroke-linecap: round; }
+.mini-screen .ice { fill: #0d1f3f; stroke: #9fb4dd; stroke-width: 2; }
+.mini-screen .rinkline { fill: none; stroke: rgba(125, 211, 252, 0.5); stroke-width: 1.6; }
+.mini-screen .goal.near, .mini-screen .mallet.near { fill: #5aa9ff; }
+.mini-screen .goal.far, .mini-screen .mallet.far { fill: #ff6b6b; }
+.mini-screen .mallet { stroke: #0e131c; stroke-width: 1.6; }
+.mini-screen .streak { stroke: #ffd166; stroke-width: 5; stroke-linecap: round; opacity: 0.35; }
+.mini-screen .puck { fill: #ffd166; stroke: #8a6a1a; stroke-width: 1.6; }
 .mini-screen .felt { fill: #1f4d3a; stroke: #e8c46a; stroke-width: 2; }
 .mini-screen .coin { fill: #ffd166; stroke: #8a6a14; stroke-width: 1.6; }
 .mini-screen .bigchip { fill: #c8323c; stroke: #5b1420; stroke-width: 1.6; }
