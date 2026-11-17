@@ -14,6 +14,7 @@ import { createCardRoom } from "./app.js";
 import { createBackups } from "./backup.js";
 import { workersFrom } from "./bots.js";
 import { warmSports } from "./kit.js";
+import { lanNotice } from "./lan.js";
 
 /** A setting: CARDROOM_<name>, or the older SPADES_<name>. */
 function setting(name: string): string | undefined {
@@ -157,6 +158,8 @@ server.on("upgrade", (req, socket, head) => {
 
 server.listen(port, () => {
   console.log(`open.parlor on http://localhost:${port}`);
+  const lan = lanNotice(port, !!process.stdout.isTTY);
+  if (lan) console.log(lan);
   backups?.start();
   const bots = cardRoom.bots?.stats();
   console.log(bots?.workers ? `computer players think in ${bots.workers} worker thread${bots.workers === 1 ? "" : "s"} (CARDROOM_BOT_WORKERS=0 for none)` : "computer players think on the main thread");

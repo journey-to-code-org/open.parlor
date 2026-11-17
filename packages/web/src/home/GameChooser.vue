@@ -45,7 +45,7 @@ const props = defineProps<{
   /** Whether this parlor takes requests for games it doesn't have. */
   canAsk?: boolean;
 }>();
-const emit = defineEmits<{ pick: [id: string]; house: [slug: string]; lobby: []; ask: [] }>();
+const emit = defineEmits<{ pick: [id: string]; house: [slug: string]; lobby: []; wifi: []; ask: [] }>();
 const gameOf = (id: string) => props.games.find((g) => g.id === id);
 const waitingAt = computed(() => props.open.slice(0, 4));
 
@@ -135,7 +135,10 @@ const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spa
     <section class="open" aria-label="Open tables">
       <div class="games-head">
         <h2>Open tables</h2>
-        <button type="button" class="house" @click="emit('lobby')">{{ open.length ? `See all ${open.length}` : "See open tables" }}</button>
+        <span class="open-ways">
+          <button type="button" class="house" @click="emit('lobby')">{{ open.length ? `See all ${open.length}` : "See open tables" }}</button>
+          <button type="button" class="house" @click="emit('wifi')"><span aria-hidden="true">📶</span> Join on this wifi</button>
+        </span>
       </div>
       <ul v-if="open.length">
         <li v-for="t in waitingAt" :key="t.id">
@@ -301,6 +304,7 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .quiet { margin: 10px 0 0; color: #b9d0c2; }
 
 .games-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.open-ways { display: flex; gap: 8px; flex-wrap: wrap; }
 .shelf { margin: clamp(20px, 2.6vw, 30px) 0 0; display: flex; align-items: baseline; gap: 10px; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.15rem, 1.7vw, 1.4rem); color: var(--cream); border-bottom: 1px solid rgba(232, 196, 106, 0.35); padding-bottom: 6px; }
 .shelf small { font-family: inherit; font-size: 0.8rem; font-weight: 400; color: #b9d0c2; }
 .shelf + .grid { margin-top: 12px; }

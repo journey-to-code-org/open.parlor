@@ -102,8 +102,14 @@ whoever's move it is. That is Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Fo
 Yacht, Memory, Mini Golf, Bowling and Billiards. A game with a hand of cards can't be: one screen
 can't keep a secret from the person holding it.
 
-[docs/LOCAL-PLAY.md](docs/LOCAL-PLAY.md) has how both work, and what it would take for several
-devices on the same wifi to play when the internet is out.
+And when the internet is out but the wifi is up, one device can **host a table on the wifi**:
+*Play on this wifi* shows a QR code, the others scan it (or tap *Join on this wifi* on the front
+page) and show one back, and the host's browser runs the game with no server at all. It is a first
+version: every kit game, no rejoining yet. A parlor run on a laptop at home also prints its wifi
+address, and a QR code for it, when it starts.
+
+[docs/LOCAL-PLAY.md](docs/LOCAL-PLAY.md) has how all of it works, and what hasn't been tried on
+real phones yet.
 
 ## Backgammon
 

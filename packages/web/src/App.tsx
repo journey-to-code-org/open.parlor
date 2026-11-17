@@ -29,6 +29,8 @@ import { LaneEditor } from "./golf/LaneEditor";
 import { onLane } from "./golf/LanePicker";
 import { fiveFrames, nineHoles } from "@journey-to-code/games";
 import { LocalKit } from "./kit/LocalKit";
+import { WifiHost } from "./wifi/WifiHost";
+import { WifiJoin } from "./wifi/WifiJoin";
 import { TournamentPage } from "./TournamentPage";
 import { loadGame, loadLastGame, loadName, loadSameRules, loadTableSettings, rememberHouse, saveGame, type ArcadeRules, type GameId } from "./storage";
 
@@ -39,6 +41,8 @@ type Screen =
   | { kind: "local"; name: string; preset: RulePreset; seed: number }
   | { kind: "local-palace"; name: string; rules: PalaceRules; seats: number; seed: number }
   | { kind: "local-kit"; game: KitGameId; name: string; /** The other people playing at this device, after `name`. */ others?: string[]; rules: unknown; seats: number; seed: number; /** Leaving goes back to the course (or lane) editor, at this one. */ back?: string }
+  | { kind: "wifi-host"; game: KitGameId; name: string; rules: unknown; seats: number; seed: number }
+  | { kind: "wifi-join" }
   | { kind: "arcade"; game: ArcadeGameId; rules: ArcadeRules; seats: number; seed: number; autofire: boolean; rival?: { name: string; score: number } }
   | { kind: "golf"; id: string }
   | { kind: "lane"; id: string }
@@ -59,6 +63,8 @@ function fromUrl(): Screen {
   const challenge = q.get("challenge");
   if (challenge) return { kind: "challenge", code: challenge };
   if (q.get("lobby")) return { kind: "lobby" };
+  // A table on this wifi: the host's QR code is a link here, with their offer after the #.
+  if (q.get("wifi")) return { kind: "wifi-join" };
   const golf = q.get("golf");
   if (golf) return { kind: "golf", id: golf };
   const lane = q.get("lane");
@@ -78,6 +84,8 @@ const gameInUrl = (): GameId | SoloGameId | null => {
 function go(params: Record<string, string | null>) {
   const url = new URL(location.href);
   url.search = "";
+  // What follows the # is a wifi table's offer (wifi/signal.ts): it belongs to the screen it came with.
+  url.hash = "";
   for (const [k, v] of Object.entries(params)) if (v) url.searchParams.set(k, v);
   history.pushState(null, "", url);
 }
@@ -98,9 +106,10 @@ export function App() {
   // A bug report says which screen and game it came from.
   useEffect(() => {
     const practice = screen.kind === "local" || screen.kind === "local-palace" || screen.kind === "local-kit";
-    const itsGame = screen.kind === "local" ? "spades" : screen.kind === "local-palace" ? "palace" : screen.kind === "local-kit" || screen.kind === "arcade" ? screen.game : screen.kind === "setup" ? game : undefined;
+    const wifi = screen.kind === "wifi-host" || screen.kind === "wifi-join";
+    const itsGame = screen.kind === "local" ? "spades" : screen.kind === "local-palace" ? "palace" : screen.kind === "local-kit" || screen.kind === "wifi-host" || screen.kind === "arcade" ? screen.game : screen.kind === "setup" ? game : undefined;
     setBugContext({
-      screen: screen.kind === "arcade" ? "arcade" : practice ? "practice table" : screen.kind === "room" ? "table" : `${screen.kind}${embedded ? " (embedded)" : ""}`,
+      screen: screen.kind === "arcade" ? "arcade" : practice ? "practice table" : wifi ? "wifi table" : screen.kind === "room" ? "table" : `${screen.kind}${embedded ? " (embedded)" : ""}`,
       game: itsGame,
       table: screen.kind === "room" ? screen.id : undefined,
     });
@@ -196,12 +205,24 @@ export function App() {
   if (screen.kind === "home")
     return (
       <Suspense fallback={<main className="home" />}>
-        <Home last={loadLastGame()} onPick={pickGame} onOpenHouse={openHouse} onLobby={openLobby} />
+        <Home
+          last={loadLastGame()}
+          onPick={pickGame}
+          onOpenHouse={openHouse}
+          onLobby={openLobby}
+          onWifi={() => {
+            go({ wifi: "join" });
+            setScreen({ kind: "wifi-join" });
+            scrollTo(0, 0);
+          }}
+        />
       </Suspense>
     );
   if (screen.kind === "lobby") return <LobbyPage onOpenTable={(id) => openTable(id, null)} onLeave={home} />;
   if (screen.kind === "local") return <LocalTable key={screen.seed} {...screen} onLeave={home} />;
   if (screen.kind === "local-palace") return <LocalPalace key={screen.seed} {...screen} onLeave={home} />;
+  if (screen.kind === "wifi-host") return <WifiHost key={screen.seed} {...screen} onLeave={() => setScreen({ kind: "setup" })} />;
+  if (screen.kind === "wifi-join") return <WifiJoin onLeave={home} />;
   if (screen.kind === "local-kit") return <LocalKit key={screen.seed} {...screen} onLeave={screen.back ? () => (screen.game === "bowling" ? editLane : editCourse)(screen.back!) : home} />;
   if (screen.kind === "lane")
     return (
@@ -260,6 +281,7 @@ export function App() {
         game={game}
         onHome={home}
         onPractice={(name, rules, seats, others) => setScreen({ kind: "local-kit", game, name, others, rules, seats, seed: Math.floor(Math.random() * 2 ** 31) })}
+        onWifi={(name, rules, seats) => setScreen({ kind: "wifi-host", game, name, rules, seats, seed: Math.floor(Math.random() * 2 ** 31) })}
         onFamilyTable={async (rules, seats) => openTable(await createRoom({ game, rules, seats }, { settings: loadTableSettings() }), null)}
         onFindPlayers={(name, rules, seats) => findPlayers(game, name, rules, seats)}
         onOpenHouse={openHouse}
