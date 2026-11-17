@@ -47,16 +47,20 @@ hole, a frame or a game of a match, one press of "Next" moves everyone on.
 It is offered only where there is nothing to hide, because one screen can't keep a secret from the
 person holding it:
 
-| Shared on one device | Not |
-| --- | --- |
-| Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon | Every game with a hand of cards |
-| Yacht, Memory, Hangman | Combat (the fleets are hidden); Secret Word and Anagrams (each player's words are their own) |
-| Mini Golf, Bowling, Billiards, Carrom | Spades and Palace; the arcade and idle games |
+| Shared on one device, the screen facing whoever's move it is | Passed round, with a curtain between people | Not at all |
+| --- | --- | --- |
+| Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon | Every turn-based card game: Hearts, Gin, Crazy Eights, Euchre, Hold'em, … | Speed, Slapjack, War (played at once, or against each other's speed) |
+| Yacht, Memory, Hangman | Combat (the fleets), Criss-Crosswords (the hands), Secret Word and Anagrams | Word Hunt (a race against the clock), Draw & Guess (needs guessers) |
+| Mini Golf, Bowling, Billiards, Carrom | | Both Mahjongs (a call can come from anyone); Spades and Palace; the arcade and idle games |
 
-Candidates for later: War, Kings Cup, Horse Race and Mahjong Shanghai have nothing hidden either.
-A card game could be shared with a "hand the phone to Ann" curtain between turns; that is a
-different table, and wasn't attempted. A device lying flat between two people facing each other
-would rather the board did not turn: a table setting for that would be small.
+**Passed round** (`passesDevice`, `kit/PassCurtain.tsx`): a game with something to hide can still be
+played round one device. When the move passes from one person to the next, the whole screen is
+covered ("Pass to Grammi"), and the table only shows again when the next person taps "I'm Grammi:
+show me". Steps where everyone acts (passing cards in Hearts, moving on to the next hand) are taken
+one person at a time, with the curtain between each.
+
+A device lying flat between two people facing each other would rather the board did not turn: a
+table setting for that would be small.
 
 ## Several devices on the same wifi, with the internet out
 

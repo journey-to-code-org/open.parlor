@@ -1,7 +1,7 @@
 // Several people at one device: which games can be shared, and whose table the screen shows.
 import { KIT_GAMES, QUICK_STYLE, kitGame } from "@journey-to-code/games";
 import { describe, expect, it } from "vitest";
-import { personName, seatAtScreen, sharesDevice } from "../src/kit/sameDevice";
+import { passesDevice, personName, seatAtScreen, sharesDevice } from "../src/kit/sameDevice";
 
 const start = (id: string, seats: number, rules?: unknown) => {
   const game = kitGame(id)!;
@@ -15,6 +15,27 @@ describe("sharing a device", () => {
     for (const id of ["hearts", "gin", "holdem", "combat", "gofish", "spades", "palace", "skyfire", "secretword", "anagrams"]) expect(sharesDevice(id), id).toBe(false);
     // A game for one has nobody to share with.
     for (const game of KIT_GAMES) if (game.seats.max === 1) expect(sharesDevice(game.id), game.id).toBe(false);
+  });
+
+  it("passes a device round for games with hands to hide, but not for races", () => {
+    for (const id of ["hearts", "gin", "crazy8", "holdem", "euchre", "combat", "crisscross", "secretword"]) expect(passesDevice(id), id).toBe(true);
+    // Played at once, or against each other's speed.
+    for (const id of ["speed", "slapjack", "war", "wordhunt", "drawguess", "mahjongriichi"]) expect(passesDevice(id), id).toBe(false);
+    // Shared already (nothing hidden), or for one, or not a kit game.
+    for (const id of ["chess", "memory", "klondike", "spades", "skyfire"]) expect(passesDevice(id), id).toBe(false);
+  });
+
+  it("passed round, the screen goes to each person in turn (Crazy Eights)", () => {
+    const { game, state } = start("crazy8", 2);
+    let now = state;
+    let at = 0;
+    const seen = new Set<number>();
+    for (let move = 0; move < 10 && !game.summary(now).over; move++) {
+      at = seatAtScreen(game, now, 2, at);
+      seen.add(at);
+      now = game.apply(now, at, game.bot(now, at, QUICK_STYLE)!);
+    }
+    expect([...seen].sort()).toEqual([0, 1]);
   });
 
   it("names people who gave no name by their seat", () => {
