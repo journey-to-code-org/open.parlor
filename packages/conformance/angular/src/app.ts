@@ -8,11 +8,12 @@ import { CUSTOM_ELEMENTS_SCHEMA, ChangeDetectionStrategy, Component, signal } fr
 import { FormsModule } from "@angular/forms";
 import { ZubraModel } from "@zubra/runtime/angular";
 import { CARDS, COLUMNS, EXTRA_ROW, ITEMS, ROWS, SEGMENTS, TABS, VARIANTS } from "../../src/shared/fixture";
+import { Features } from "./features";
 import "./zubra";
 
 @Component({
   selector: "app-root",
-  imports: [FormsModule, ZubraModel],
+  imports: [FormsModule, ZubraModel, Features],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -135,6 +136,7 @@ import "./zubra";
         <button data-t="remount" type="button" (click)="remount()">Take away / bring back</button>
       </section>
     </main>
+    <app-features />
   `,
 })
 export class App {

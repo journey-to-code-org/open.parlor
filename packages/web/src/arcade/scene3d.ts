@@ -36,7 +36,7 @@ export interface Arcade3d {
   dispose(): void;
 }
 
-/** The games that have a scene. */
+/** The games that have a scene. Air hockey is drawn from straight above at its own table, which is how it is played. */
 const SCENES = new Set<ArcadeGameId>(["skyfire", "bulwark", "chipstack"]);
 export const hasArcade3d = (game: ArcadeGameId) => SCENES.has(game);
 

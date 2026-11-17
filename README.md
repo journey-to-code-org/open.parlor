@@ -7,6 +7,14 @@ challenge links, and a widget that puts a game on any site, including [open.blog
 Built first for Grammi and Grammi's House. Everything runs in one small server you can host
 yourself (Docker or Railway), and practice games work anywhere, including the GitHub Pages build.
 
+[![Zubra conformance](https://img.shields.io/endpoint?url=https://journey-to-code-org.github.io/open.parlor/conformance/badge.json)](https://journey-to-code-org.github.io/open.parlor/conformance/)
+
+The parlor is also the proving ground for [Zubra](https://github.com/journey-to-code-org/zubra): its
+components are written once and used from React, Vue, Svelte, Solid and Angular, each in a different
+part of the app. [How the parlor is built](https://journey-to-code-org.github.io/open.parlor/conformance/)
+shows the checks that they behave the same in every one, how the last run went, and what the checks
+have found.
+
 This repository is the app. The games and the rooms they are played in come from two packages' repositories:
 [open.games](https://github.com/journey-to-code-org/open.games) (the engine and every game) and
 [open.rooms](https://github.com/journey-to-code-org/open.rooms) (turn-based rooms over Zubra's sync layer).
