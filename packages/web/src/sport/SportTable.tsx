@@ -668,7 +668,9 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
     const [wx, wy] = unprojectVector(fit.current, dx, dy);
     const angle = wrap((Math.atan2(-wy, -wx) * 18000) / Math.PI);
     const share = Math.min(1, (far - CANCEL_ZONE) / (fullPull() - CANCEL_ZONE));
-    setAim({ angle, power: clampPower(shown.shoot.minPower + share * (shown.shoot.maxPower - shown.shoot.minPower)) });
+    // Only the direction and the power change: where the cue ball or striker was put, its spin and a
+    // called shot stay as they were, or the shot sent on letting go is one the game turns down.
+    setAim({ ...aimRef.current, angle, power: clampPower(shown.shoot.minPower + share * (shown.shoot.maxPower - shown.shoot.minPower)) });
   }
   function onPointerUp(e: React.PointerEvent) {
     const sw = swipe.current;
