@@ -105,12 +105,36 @@ function surprise() {
   const fresh = shown.value.filter((g) => g.id !== props.last);
   const from = fresh.length ? fresh : shown.value;
   const game = from[Math.floor(Math.random() * from.length)];
-  if (game) emit("pick", game.id);
+  if (game) pick(game.id);
 }
 /** Where each face's pips sit in a die's three-by-three (0 is the top left). */
 const PIPS: Record<number, number[]> = { 1: [4], 2: [2, 6], 3: [2, 4, 6], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
 const seatsLabel = (g: ChooserGame) => (g.screen ? (g.seats[1] === 1 ? "1 player" : `1–${g.seats[1]} players`) : g.teams ? "4 players · partners" : g.seats[0] === g.seats[1] ? `${g.seats[0]} players` : `${g.seats[0]}–${g.seats[1]} players`);
-const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spades, Palace, Hearts and more, with the family."));
+const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : `${props.games.length} games to play with family and friends: cards, board games, words, table sports and arcade.`));
+/** Someone who has never played here: no name, no last game. They get the line about what it costs and a few games to start with. */
+const STARTED_KEY = "parlor.started";
+const startedBefore = (() => {
+  try {
+    return localStorage.getItem(STARTED_KEY) === "1";
+  } catch {
+    return false;
+  }
+})();
+const firstVisit = computed(() => !props.name && !props.last && !startedBefore);
+/** Open a game, and remember that this device has been in one: the next visit isn't a first one. */
+function pick(id: string) {
+  try {
+    localStorage.setItem(STARTED_KEY, "1");
+  } catch {
+    /* private mode: they'll see "Start here" again, which is harmless */
+  }
+  emit("pick", id);
+}
+/** A few to start with, one from each kind of game, in the order a newcomer might like them. */
+const STARTERS = ["spades", "chess", "secretword", "minigolf", "billiards", "hearts", "drawguess", "yacht"];
+const starters = computed(() => STARTERS.map(gameOf).filter((g): g is ChooserGame => !!g).slice(0, 6));
+/** Jump to a shelf. */
+const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
 </script>
 
 <template>
@@ -119,7 +143,20 @@ const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spa
       <div class="suits" aria-hidden="true">♠&#xFE0E; ♥&#xFE0E; ♣&#xFE0E; ♦&#xFE0E;</div>
       <h1>open.parlor</h1>
       <p>{{ hello }}</p>
+      <p v-if="firstVisit" class="free">Free, no sign-up, and it works offline.</p>
     </header>
+
+    <section v-if="firstVisit && starters.length" class="starters" aria-label="Start here">
+      <h2>Start here</h2>
+      <ul>
+        <li v-for="g in starters" :key="g.id">
+          <button type="button" class="starter" @click="pick(g.id)">
+            <span class="starter-emoji" aria-hidden="true">{{ g.emoji }}</span>
+            <span class="starter-text"><strong>{{ g.name }}</strong><span>{{ g.blurb }}</span></span>
+          </button>
+        </li>
+      </ul>
+    </section>
 
     <section v-if="houses.length" class="houses" aria-label="Your houses">
       <h2>Your houses</h2>
@@ -167,11 +204,16 @@ const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spa
           <button type="button" class="house surprise" :disabled="!shown.length" @click="surprise"><span aria-hidden="true">🎲</span> Surprise me</button>
         </div>
       </div>
+      <nav v-if="shelves.length > 1" class="jump" aria-label="Kinds of game">
+        <button v-for="shelf in shelves" :key="shelf.id" type="button" class="jump-chip" @click="toShelf(shelf.id)">
+          <span aria-hidden="true">{{ shelf.emoji }}</span> {{ shelf.name }} <small>{{ shelf.games.length }}</small>
+        </button>
+      </nav>
       <template v-for="shelf in shelves" :key="shelf.id">
-      <h3 v-if="shelf.name" class="shelf"><span aria-hidden="true">{{ shelf.emoji }}</span> {{ shelf.name }} <small>{{ shelf.games.length }}</small></h3>
+      <h3 v-if="shelf.name" :id="`shelf-${shelf.id}`" class="shelf"><span aria-hidden="true">{{ shelf.emoji }}</span> {{ shelf.name }} <small>{{ shelf.games.length }}</small></h3>
       <ul class="grid" :aria-label="shelf.name || 'Games'">
         <li v-for="g in shelf.games" :key="g.id">
-          <button type="button" class="tile" :class="{ last: g.id === last }" :aria-label="`${g.name}: ${g.blurb}, ${seatsLabel(g)}`" @click="emit('pick', g.id)">
+          <button type="button" class="tile" :class="{ last: g.id === last }" :aria-label="`${g.name}: ${g.blurb}, ${seatsLabel(g)}`" @click="pick(g.id)">
             <span v-if="g.screen" class="mini-screen" aria-hidden="true">
               <svg v-if="g.screen.road" viewBox="0 0 100 100">
                 <rect class="lawn" x="3" y="3" width="94" height="94" rx="14" />
@@ -282,6 +324,30 @@ const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spa
 .hero { text-align: center; padding-top: clamp(8px, 4vh, 48px); }
 .hero h1 { margin: 6px 0 0; font-size: clamp(2.8rem, 7vw, 5.2rem); letter-spacing: -0.02em; text-shadow: 0 4px 24px rgba(0, 0, 0, 0.35); }
 .hero p { margin: 8px 0 0; font-size: clamp(1.05rem, 1.6vw, 1.3rem); font-style: italic; color: #d6e6dc; }
+.hero p.free { margin-top: 6px; font-style: normal; font-weight: 600; font-size: 0.98rem; color: var(--gold, #e8c46a); }
+.starters h2 { margin: 0; }
+.starters ul { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); }
+@media (min-width: 760px) {
+  .starters ul { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 559px) {
+  .starters ul { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .starter { padding: 10px 12px; gap: 10px; }
+  .starter-emoji { font-size: 1.4rem; width: 1.7rem; }
+  .starter-text span { display: none; }
+}
+.starter { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; text-align: left; border-radius: 14px; border: 1px solid rgba(232, 196, 106, 0.45); background: rgba(10, 30, 20, 0.45); color: var(--cream, #fbf6ec); cursor: pointer; transition: transform 0.15s, border-color 0.15s; }
+.starter:hover, .starter:focus-visible { border-color: var(--gold, #e8c46a); transform: translateY(-1px); }
+.starter-emoji { font-size: 1.8rem; line-height: 1; width: 2.2rem; text-align: center; flex: none; }
+.starter-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.starter-text strong { font-family: Georgia, "Times New Roman", serif; font-size: 1.1rem; }
+.starter-text span { font-size: 0.86rem; color: #b9d0c2; }
+.jump { position: sticky; top: 0; z-index: 3; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 14px -4px 0; padding: 10px 4px; background: linear-gradient(rgba(20, 54, 40, 0.96), rgba(20, 54, 40, 0.88)); backdrop-filter: blur(6px); border-radius: 0 0 12px 12px; }
+.jump::-webkit-scrollbar { display: none; }
+.jump-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(232, 196, 106, 0.5); background: rgba(10, 30, 20, 0.5); color: var(--cream, #fbf6ec); font-weight: 600; font-size: 0.9rem; cursor: pointer; white-space: nowrap; }
+.jump-chip small { font-weight: 400; color: #b9d0c2; }
+.jump-chip:hover { border-color: var(--gold, #e8c46a); }
+.shelf { scroll-margin-top: 64px; }
 .suits { letter-spacing: 0.5em; color: var(--gold); font-size: clamp(1rem, 1.6vw, 1.3rem); }
 h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 

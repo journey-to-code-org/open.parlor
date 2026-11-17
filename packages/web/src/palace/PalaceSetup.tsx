@@ -186,6 +186,18 @@ export function PalaceSetup({
           <button
             type="button"
             className="primary deal"
+            disabled={errors.length > 0}
+            onClick={() => {
+              remember();
+              onPractice(name.trim() || "You", rules, seats);
+            }}
+          >
+            Practice against the computer
+          </button>
+          <p className="with-people">Play with people</p>
+          <button
+            type="button"
+            className="secondary"
             disabled={errors.length > 0 || busy || !online}
             onClick={async () => {
               setBusy(true);
@@ -222,17 +234,6 @@ export function PalaceSetup({
             Find players
           </button>
           <SameRulesToggle />
-          <button
-            type="button"
-            className="secondary"
-            disabled={errors.length > 0}
-            onClick={() => {
-              remember();
-              onPractice(name.trim() || "You", rules, seats);
-            }}
-          >
-            Practice against the computer
-          </button>
           {!online && <p className="fine">{OFFLINE_LINE}</p>}
           {problem && <p className="error">{problem}</p>}
         </>

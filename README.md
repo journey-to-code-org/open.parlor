@@ -88,6 +88,19 @@ the other player's disc lands you have three seconds to drop yours, or you take 
 your turn. Yacht's drinking mode is a table called Shotzee: roll five of a kind and everyone else
 takes a shot; put a zero on your scorecard and you drink.
 
+## The front page and a game's page
+
+A first visit (no name, and no game opened on this device yet) gets a line saying what the parlor
+is and that it is free, needs no sign-up and works offline, and a **Start here** row of six games
+from different shelves. Below the filters, a row of chips (Card games 48, Board games 8, …) stays at
+the top of the screen and jumps to each shelf.
+
+A game's page puts **Play** first, under who's playing: practice against the computer (or play
+together on this device, or Deal for a solitaire), then the ways to play with people (a family
+table, Find players, this wifi). A game that needs people (Draw & Guess) starts with the family
+table. The computer players, their speed and the animations are folded into **Settings**, open on a
+wide screen; suit colours are only offered for card games.
+
 ## With no connection, and at one device
 
 Once the parlor has been opened on a device, the games that need no server start with no

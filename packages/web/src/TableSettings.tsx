@@ -153,7 +153,14 @@ export function TableSettingsFields({
 }
 
 /** This device's own look: animations, suit colours and how a table sport is looked at. Saved at once. */
-export function DisplayFields({ sport = false, stones = false, depth = false }: { sport?: boolean; stones?: boolean; depth?: boolean }) {
+/** The animation hints for a game with no cards in it. */
+const PLAIN_MOTION: Record<DisplaySettings["motion"], string> = {
+  on: "Pieces glide and winners get confetti.",
+  calm: "Quicker, smaller movements. No confetti or pulsing.",
+  off: "Everything just appears where it goes.",
+};
+
+export function DisplayFields({ sport = false, stones = false, depth = false, cards = true }: { sport?: boolean; stones?: boolean; depth?: boolean; cards?: boolean }) {
   const [display, setDisplay] = useState(loadDisplay);
   const change = (patch: Partial<DisplaySettings>) => {
     const next = { ...display, ...patch };
@@ -169,8 +176,9 @@ export function DisplayFields({ sport = false, stones = false, depth = false }: 
         onChange={(v) => change({ motion: v as DisplaySettings["motion"] })}
       />
       <p className="fine">
-        {MOTIONS.find((m) => m.id === display.motion)?.hint}
+        {cards ? MOTIONS.find((m) => m.id === display.motion)?.hint : PLAIN_MOTION[display.motion]}
       </p>
+      {cards && (
       <Choice
         label="Suit colours"
         value={display.suits}
@@ -180,6 +188,7 @@ export function DisplayFields({ sport = false, stones = false, depth = false }: 
         ]}
         onChange={(v) => change({ suits: v === "4" ? 4 : 2 })}
       />
+      )}
       {sport && (
         <Choice
           label="The table is seen"
@@ -332,7 +341,7 @@ function SettingsEscape({ onClose }: { onClose: () => void }) {
  * On a setup screen: the opponents and speed new tables start with, remembered in this browser.
  * A solo game (a solitaire) has no computer players, so it only gets the look of the table.
  */
-export function OpponentSettings({ solo = false }: { solo?: boolean }) {
+export function OpponentSettings({ solo = false, cards = true }: { solo?: boolean; cards?: boolean }) {
   const [settings, setSettings] = useState(loadTableSettings);
   return (
     <section
@@ -348,7 +357,7 @@ export function OpponentSettings({ solo = false }: { solo?: boolean }) {
           }}
         />
       )}
-      <DisplayFields />
+      <DisplayFields cards={cards} />
     </section>
   );
 }
