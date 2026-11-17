@@ -50,7 +50,7 @@ person holding it:
 | Shared on one device, the screen facing whoever's move it is | Passed round, with a curtain between people | Not at all |
 | --- | --- | --- |
 | Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon | Every turn-based card game: Hearts, Gin, Crazy Eights, Euchre, Hold'em, … | Speed, Slapjack, War (played at once, or against each other's speed) |
-| Yacht, Memory, Hangman | Combat (the fleets), Criss-Crosswords (the hands), Secret Word and Anagrams | Word Hunt (a race against the clock), Draw & Guess (needs guessers) |
+| Yacht, Pig, Ten Thousand, Ship Captain Crew, Shut the Box, Memory, Hangman | Combat (the fleets), Liar's Dice (the dice), Criss-Crosswords (the hands), Secret Word and Anagrams | Word Hunt (a race against the clock), Draw & Guess (needs guessers) |
 | Mini Golf, Bowling, Billiards, Carrom | | Both Mahjongs (a call can come from anyone); Spades and Palace; the arcade and idle games |
 
 **Passed round** (`passesDevice`, `kit/PassCurtain.tsx`): a game with something to hide can still be

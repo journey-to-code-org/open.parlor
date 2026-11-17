@@ -298,6 +298,31 @@
       "emoji": "🎲",
       "blurb": "Two dice and fifteen checkers each: a friendly game, a money game with the doubling cube, or a match to 3, 5 or 7 points."
     },
+    "pig": {
+      "name": "Pig",
+      "emoji": "🐖",
+      "blurb": "Roll as often as you dare and add it all up. Stop to keep it; roll a one and the turn is gone. First to 100 wins."
+    },
+    "tenthousand": {
+      "name": "Ten Thousand",
+      "emoji": "🔥",
+      "blurb": "Set aside the dice that score and roll the rest for more, or bank what you have before a bust takes it. First to 10,000."
+    },
+    "shipcaptaincrew": {
+      "name": "Ship, Captain, Crew",
+      "emoji": "⚓",
+      "blurb": "Three rolls to find a ship (6), a captain (5) and a crew (4), in that order. The other two dice are your cargo: biggest takes the round."
+    },
+    "shutthebox": {
+      "name": "Shut the Box",
+      "emoji": "🧰",
+      "blurb": "Roll the dice and shut any open tiles that add up to the roll. Keep going until you can't: what's left open is your score, and lowest wins."
+    },
+    "liarsdice": {
+      "name": "Liar's Dice",
+      "emoji": "🤥",
+      "blurb": "Everyone's dice are hidden. Bid how many of a number are under all the cups, raise the bid, or call the last bidder a liar. Lose a call, lose a die."
+    },
     "secretword": {
       "name": "Secret Word",
       "emoji": "🟩",

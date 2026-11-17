@@ -62,6 +62,12 @@ const YOU_VERBS: Record<string, string> = {
   bowls: "bowl",
   knocks: "knock",
   misses: "miss",
+  banks: "bank",
+  busts: "bust",
+  reaches: "reach",
+  sails: "sail",
+  stays: "stay",
+  shuts: "shut",
 };
 
 /** Engines name seats as {0}, {1}…: put the players' names in. */

@@ -5,11 +5,11 @@
 // It only suits a game with nothing to hide. At a table of Hearts every seat's view holds a hand
 // the others mustn't see, and one screen can't keep a secret from the person holding it. So the
 // list below is the games where every seat sees the same table: the board games, the dice, the
-// table sports, Memory and Hangman (Secret Word and Anagrams keep each player's words to themselves). Combat is a board game and still isn't here: the fleets are hidden.
+// table sports, Memory and Hangman (Secret Word and Anagrams keep each player's words to themselves). Combat is a board game and still isn't here: the fleets are hidden. Nor is Liar's Dice (everyone's dice are): those two are passed round instead.
 import { QUICK_BUDGET, QUICK_STYLE, isKitGame, kitGame, type KitGameId, type TableGame } from "@journey-to-code/games";
 import { categoryOf } from "../categories";
 
-const SHARED: ReadonlySet<KitGameId> = new Set<KitGameId>(["tictactoe", "dropfour", "reversi", "checkers", "go", "chess", "backgammon", "yacht", "memory", "minigolf", "bowling", "billiards", "carrom", "hangman"]);
+const SHARED: ReadonlySet<KitGameId> = new Set<KitGameId>(["tictactoe", "dropfour", "reversi", "checkers", "go", "chess", "backgammon", "yacht", "pig", "tenthousand", "shipcaptaincrew", "shutthebox", "memory", "minigolf", "bowling", "billiards", "carrom", "hangman"]);
 
 /**
  * Games played at once, or against each other's speed: a phone can't be passed round for these.
@@ -18,7 +18,7 @@ const SHARED: ReadonlySet<KitGameId> = new Set<KitGameId>(["tictactoe", "dropfou
 const RACES: ReadonlySet<string> = new Set(["speed", "slapjack", "war", "mahjongshanghai", "mahjongriichi", "wordhunt", "drawguess"]);
 
 /**
- * Whether a game with something hidden (a hand of cards, a fleet, a rack of tiles) can still be
+ * Whether a game with something hidden (a hand of cards, a fleet, a rack of tiles, dice under a cup) can still be
  * played round one device by passing it: the screen covers the table between people (a curtain:
  * "Pass to Ann"), so nobody sees anyone else's hand.
  */
@@ -26,7 +26,7 @@ export const passesDevice = (id: unknown): id is KitGameId => {
   if (!isKitGame(id) || SHARED.has(id) || RACES.has(id)) return false;
   const game = kitGame(id)!;
   const kind = categoryOf(id);
-  return game.seats.max > 1 && game.practice !== false && (kind === "cards" || kind === "words" || id === "combat");
+  return game.seats.max > 1 && game.practice !== false && (kind === "cards" || kind === "words" || id === "combat" || id === "liarsdice");
 };
 
 /** Whether a game can be shared on one device: nothing hidden, and more than one seat. */

@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { play } from "../feedback/sounds";
 import { reducedMotion } from "../motion";
 import { DARK, LIGHT, loadDice3d, type Dice3d, type Die3d } from "./dice3d";
+import { thrownDice } from "./thrown";
 
 /** Where each face's pips sit in a die's three-by-three (0 is the top left, 8 the bottom right). */
 const PIPS: Record<number, number[]> = { 1: [4], 2: [2, 6], 3: [2, 4, 6], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
@@ -97,15 +98,18 @@ export function Dice({ dice, onTap, still, onTumble, split }: DiceProps) {
   const [faces, setFaces] = useState<Map<number, number> | null>(null);
   const [said, setSaid] = useState("");
   const seen = useRef(dice.roll);
+  // The dice as they lay at the last render: what a throw picked up.
+  const before = useRef(dice.dice);
   useEffect(() => {
     const isThrow = dice.roll > seen.current;
     seen.current = dice.roll;
     // A count that went down is another table's dice, not a throw.
     if (!isThrow) return;
     play("dice");
-    // A roll that couldn't be played is spent as soon as it lands: it is still thrown.
-    const thrown = dice.dice.filter((d) => !d.held && d.value !== null);
-    const rolled = thrown.some((d) => !d.used) ? thrown.filter((d) => !d.used) : thrown;
+    // The dice that lay loose before this throw are the ones that were thrown, whatever they are
+    // now: a die kept the moment it lands, or spent by a roll that couldn't be played, still tumbles.
+    const thrown = new Set(thrownDice(before.current, dice.dice));
+    const rolled = dice.dice.filter((d) => thrown.has(d.id));
     setSaid(`Rolled: ${dice.dice.filter((d) => d.value !== null).map((d) => WORDS[d.value!] ?? d.value).join(", ")}`);
     if (still || reducedMotion() || !rolled.length) return;
     const any = () => new Map(rolled.map((d) => [d.id, 1 + Math.floor(Math.random() * sides)]));
@@ -123,6 +127,9 @@ export function Dice({ dice, onTap, still, onTumble, split }: DiceProps) {
       landed();
     };
   }, [dice.roll]);
+  useEffect(() => {
+    before.current = dice.dice;
+  });
 
   const tappable = new Set(dice.tap?.dice ?? []);
   function onKey(e: React.KeyboardEvent) {
