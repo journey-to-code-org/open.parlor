@@ -58,6 +58,8 @@ export interface Aim {
   cancel: boolean;
   /** What strikes it, drawn behind the ball the whole time it is aimed: a pool cue or a putter. */
   tool?: "cue" | "putter";
+  /** How far it is from the ball to the edge of what is drawn, behind it: a cue is shortened to fit. */
+  room?: number;
 }
 
 /** Something brief that happened at a place: `t` runs from 0 to 1 over its life. */
@@ -221,7 +223,9 @@ function drawTool(b: Brush, a: Aim, ux: number, uy: number, r: number) {
   const at = (along: number, across = 0): [number, number] => [a.x - ux * (r + along) + nx * across, a.y - uy * (r + along) + ny * across];
   const [sx, sy] = [b.light[0] * 5 * px, b.light[1] * 5 * px];
   if (a.tool === "cue") {
-    const length = 14700;
+    // A cue's real length, unless the edge of the table is nearer: then the whole of it, butt and all,
+    // is kept on the screen, down to about a quarter of its length.
+    const length = Math.max(3800, Math.min(14700, (a.room ?? 14700) - r - gap - 300));
     const tip = Math.max(65, 2.2 * px);
     const butt = Math.max(150, 5 * px);
     /** The outline of the stick from `from` to `to` along it, tapering with the whole cue. */
