@@ -12,9 +12,9 @@
   },
   "dependencies": {
     "@journey-to-code/decks": "^0.1.0",
-    "@journey-to-code/games": "^0.1.29",
+    "@journey-to-code/games": "^0.1.30",
     "@journey-to-code/palace": "^0.1.0",
-    "@journey-to-code/physics": "^0.1.1",
+    "@journey-to-code/physics": "^0.1.2",
     "@journey-to-code/relay": "^0.1.0",
     "@journey-to-code/relay-ui": "^0.1.0",
     "@journey-to-code/rooms": "^0.1.0",
