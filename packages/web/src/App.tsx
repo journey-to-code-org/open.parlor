@@ -1,4 +1,5 @@
 import { createRoom } from "@journey-to-code/rooms/client";
+import { Sketchbook } from "./word/Sketchbook";
 import type { PalaceRules } from "@journey-to-code/palace";
 import type { RulePreset } from "@journey-to-code/rules";
 import { lazy, Suspense, useEffect, useState } from "react";
@@ -41,6 +42,7 @@ type Screen =
   | { kind: "lobby" }
   | { kind: "local"; name: string; preset: RulePreset; seed: number }
   | { kind: "local-palace"; name: string; rules: PalaceRules; seats: number; seed: number }
+  | { kind: "sketchbook" }
   | { kind: "local-kit"; game: KitGameId; name: string; /** The other people playing at this device, after `name`. */ others?: string[]; rules: unknown; seats: number; seed: number; /** Leaving goes back to the course (or lane) editor, at this one. */ back?: string }
   | { kind: "wifi-host"; game: KitGameId; name: string; rules: unknown; seats: number; seed: number }
   | { kind: "wifi-join" }
@@ -233,6 +235,7 @@ export function App() {
   if (screen.kind === "wifi-host") return <WifiHost key={screen.seed} {...screen} onLeave={() => setScreen({ kind: "setup" })} />;
   if (screen.kind === "wifi-join") return <WifiJoin onLeave={home} />;
   if (screen.kind === "move") return <MoveDevice onLeave={home} onOpenHouse={openHouse} />;
+  if (screen.kind === "sketchbook") return <Sketchbook onLeave={() => pickGame("drawguess")} />;
   if (screen.kind === "local-kit")
     return (
       <LocalKit
@@ -306,6 +309,10 @@ export function App() {
         onOpenHouse={openHouse}
         onEditCourse={editCourse}
         onEditLane={editLane}
+        onSketch={() => {
+          setScreen({ kind: "sketchbook" });
+          scrollTo(0, 0);
+        }}
       />
     );
   }
