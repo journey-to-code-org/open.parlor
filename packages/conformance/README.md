@@ -6,7 +6,7 @@ in the sixth is a difference in how the components behave in that framework.
 
 ```sh
 npm run build -w @open-parlor/conformance        # the six pages
-npm run conformance -w @open-parlor/conformance  # 18 checks × 6 frameworks, in Chrome
+npm run conformance -w @open-parlor/conformance  # 18 checks × 6 frameworks, and each framework's own features, in Chrome
 npm run dev -w @open-parlor/conformance          # http://localhost:4179/react/ and friends (not Angular)
 ```
 
@@ -40,12 +40,48 @@ The pages are written the way each framework's templates naturally are, with no 
 the tests show what a newcomer would hit. They import the components loosely typed; the card
 room's apps are where the typings Zubra writes are checked.
 
+## Each framework's own features
+
+`tests/features.spec.ts` is a second set of checks. The first set asks whether the components
+behave the same everywhere; this one asks whether what a framework adds on top still works when
+the thing it is added to is a Zubra component. Each page has a second part for it
+(`Features.vue`, `features.tsx`, `Features.svelte`, `angular/src/features.ts`), with `data-t`
+names that start `f-`. A check runs in the frameworks that have the feature:
+
+| Check | React | Vue | Svelte | Solid | Angular |
+| --- | --- | --- | --- | --- | --- |
+| A keyed list reordered in a slot keeps its elements | `key` | `TransitionGroup` | keyed `each`, `animate:flip` | `For` | `@for` with `track` |
+| The page's own component in a slot gets the page's context | context | provide / inject | `setContext` | context | dependency injection |
+| Class and style bindings land on the component | `className`, `style` | `:class`, `:style` | `class:`, `style:` | `classList`, `style` | `[class.x]`, `[style.x]` |
+| A component loaded later arrives and works | `lazy`, `Suspense` | `defineAsyncComponent` | `#await import()` | `lazy`, `Suspense` | `@defer` |
+| A component drawn elsewhere on the page stays bound | `createPortal` | `Teleport` | | `Portal` | |
+| Props handed over as one object | spread | `v-bind` | spread | spread | |
+| A component leaves with a transition | | `Transition` | `transition:fade` | | `animate.leave` |
+| A component kept off the page keeps what was typed | `Activity` | `KeepAlive` | | | |
+| Forms | | `v-model.trim` | | | reactive forms: values both ways, validity and touched, `disable()`, `reset()` |
+| Only there | | `v-show` | `use:` actions, `#key`, snippets | `Dynamic` | `ng-content` in the page's own wrapper |
+
+That is 43 checks: 7 in React, 10 in Vue, 9 in Svelte, 7 in Solid and 10 in Angular.
+
+Not covered yet: Angular's router with lazy routes and template-driven `<form>` validation, Vue's
+`Suspense` and template refs, Solid's stores and resources, server rendering and hydration in any
+of them, and a native `<form>` submitting the components' values.
+
+One thing learned writing the Solid page: Solid sets what it is given on a custom element as a
+property, so a `data-` attribute with a value that isn't a plain string is written `attr:data-…`.
+That is Solid's rule for every custom element, not a difference in Zubra.
+
 ## Known differences
 
-None today: all 18 checks pass in all six frameworks on Zubra 5.15.0.
+In the components: none today. All 18 checks pass in all six frameworks on Zubra 5.15.0.
 
-`KNOWN` in `tests/conformance.spec.ts` is where a difference goes when one turns up: the check's
-title and the Zubra issue it was reported in. A listed check is expected to fail, so the run stays
+In the frameworks' own features: one, and it is in a component rather than in Zubra. A reactive
+form that is disabled disables `text-field` but not `toggle-switch`: `zubraModel` puts `disabled`
+on the element, and zubra-ui's switch has no disabled state, so its button can still be pressed.
+`color-swatches` is form-associated in the same way. It hasn't been reported upstream yet.
+
+`KNOWN` in each spec is where a difference goes when one turns up: the check's title and the
+Zubra issue it was reported in. A listed check is expected to fail, so the run stays
 green. When Zubra fixes it, the check passes, the run goes red with "Expected to fail, but
 passed", and the entry comes out (with any workaround in the parlor's apps).
 
@@ -55,5 +91,7 @@ the admin app and the parlor.
 
 ## Adding a check
 
-Add what it needs to all six pages (same `data-t` names), then one `check(...)` in the spec. If a
+Add what it needs to all six pages (same `data-t` names), then one `check(...)` in the spec. For a
+framework's own feature, add it to that framework's features page and one entry to `FEATURES` in
+`tests/features.spec.ts`, naming the frameworks that have it. If a
 framework fails it, report it upstream and add it to `KNOWN` with the link.

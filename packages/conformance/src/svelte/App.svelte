@@ -1,6 +1,7 @@
 <!-- The fixture in Svelte: the custom elements' tags, properties set by name, events as on<event>. -->
 <script lang="ts">
   import { CARDS, COLUMNS, EXTRA_ROW, ITEMS, ROWS, SEGMENTS, TABS, VARIANTS } from "../shared/fixture";
+  import Features from "./Features.svelte";
 
   let variant = $state(0);
   let count = $state(0);
@@ -148,3 +149,4 @@
     >
   </section>
 </main>
+<Features />

@@ -3,6 +3,7 @@
 import { For, Show, createSignal } from "solid-js";
 import { render } from "solid-js/web";
 import { CARDS, COLUMNS, EXTRA_ROW, ITEMS, ROWS, SEGMENTS, TABS, VARIANTS } from "../shared/fixture";
+import { Features } from "./features";
 import "./zubra";
 import "../shared/styles.css";
 
@@ -207,4 +208,12 @@ function App() {
   );
 }
 
-render(() => <App />, document.getElementById("app")!);
+render(
+  () => (
+    <>
+      <App />
+      <Features />
+    </>
+  ),
+  document.getElementById("app")!,
+);

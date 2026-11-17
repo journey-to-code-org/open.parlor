@@ -7,3 +7,13 @@ section > h2 { flex-basis: 100%; margin: 0; font-size: 0.9rem; }
 output { font-family: ui-monospace, monospace; padding: 0 0.4rem; background: var(--muted); border-radius: 0.25rem; min-width: 1ch; min-height: 1.2em; }
 :root { --card-w: 56px; --card-h: 80px; }
 [hidden] { display: none !important; }
+
+/* The framework features (tests/features.spec.ts). */
+.f-hot { outline: 2px solid var(--destructive, #dc2626); }
+/* Vue's <Transition name="f-fade"> and <TransitionGroup name="f-move">. */
+.f-fade-enter-active, .f-fade-leave-active { transition: opacity 120ms; }
+.f-fade-enter-from, .f-fade-leave-to { opacity: 0; }
+.f-move-move { transition: transform 120ms; }
+/* Angular's animate.leave. */
+.f-leave { animation: f-leave 120ms forwards; }
+@keyframes f-leave { to { opacity: 0; } }
