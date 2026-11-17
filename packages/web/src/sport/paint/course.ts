@@ -28,7 +28,7 @@ import { blockProp, decorProps, drawBurrow, drawCup, drawFlat, liesFlat, tunnelP
 type Ctx = CanvasRenderingContext2D;
 
 const TEXTURE: Record<SportSurface, Texture> = { green: "green", rough: "rough", sand: "sand", water: "water", slope: "green", felt: "felt", wood: "wood", lane: "lane", lawn: "lawn", gravel: "gravel", paving: "paving", soil: "soil", deck: "deck" };
-const RAIL: Record<SportMaterial, Texture> = { timber: "timber", brick: "brick", stone: "stone" };
+const RAIL: Record<SportMaterial, Texture> = { timber: "timber", brick: "brick", stone: "stone", cushion: "felt" };
 
 /** What the painting leaves behind for the frames that follow. */
 export interface Painted {
