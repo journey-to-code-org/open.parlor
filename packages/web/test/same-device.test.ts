@@ -1,7 +1,8 @@
 // Several people at one device: which games can be shared, and whose table the screen shows.
 import { KIT_GAMES, QUICK_STYLE, kitGame } from "@journey-to-code/games";
 import { describe, expect, it } from "vitest";
-import { passesDevice, personName, seatAtScreen, sharesDevice } from "../src/kit/sameDevice";
+import { passesDevice, personName, seatAtScreen, seatAtTable, sharesDevice, type SeatSight } from "../src/kit/sameDevice";
+import { SECONDS, secondBase } from "../src/second";
 
 const start = (id: string, seats: number, rules?: unknown) => {
   const game = kitGame(id)!;
@@ -153,4 +154,76 @@ describe("sharing a device", () => {
       expect(over, game.id).toBe(true);
     }
   }, 120_000);
+
+  // At a table on the server the page has no state, only each seat's own view (RoomTable.tsx).
+  it("at a table on the server, goes by the views: to whichever of this device's seats has the move", () => {
+    const sight = (me: number, turn: number | null, more: Partial<SeatSight> = {}): SeatSight => ({ me, turn, over: null, result: null, shoot: null, choices: null, ...more });
+    // One seat here: always that one.
+    expect(seatAtTable({ 0: sight(0, 2) }, [0], 0)).toBe(0);
+    // Two here (seats 0 and 2), one elsewhere (seat 1).
+    const here = [0, 2];
+    expect(seatAtTable({ 0: sight(0, 2), 2: sight(2, 2) }, here, 0)).toBe(2);
+    expect(seatAtTable({ 0: sight(0, 0), 2: sight(2, 0) }, here, 2)).toBe(0);
+    // Someone on another device is moving: the screen stays where it is.
+    expect(seatAtTable({ 0: sight(0, 1), 2: sight(2, 1) }, here, 2)).toBe(2);
+    // Everyone may move (Mini Golf with everyone putting at once): finish yours, then the next person's.
+    expect(seatAtTable({ 0: sight(0, null, { shoot: {} }), 2: sight(2, null, { shoot: {} }) }, here, 0)).toBe(0);
+    expect(seatAtTable({ 0: sight(0, null), 2: sight(2, null, { shoot: {} }) }, here, 0)).toBe(2);
+    expect(seatAtTable({ 0: sight(0, null, { choices: { prompt: "", options: [{ label: "Next hole", primary: true }] } }), 2: sight(2, null) }, here, 2)).toBe(0);
+    // Someone who has agreed and waits for the other still has a way back, but is not being asked for anything.
+    expect(seatAtTable({ 0: sight(0, null, { choices: { prompt: "Waiting for {2} to agree", options: [{ label: "Play on" }] } }), 2: sight(2, null, { choices: { prompt: "", options: [{ label: "Agree", primary: true }] } }) }, here, 0)).toBe(2);
+    // Over, or nothing arrived yet: it stays.
+    expect(seatAtTable({ 0: sight(0, 2, { over: {} }), 2: sight(2, 2, { over: {} }) }, here, 0)).toBe(0);
+    expect(seatAtTable({}, here, 2)).toBe(2);
+    // A seat that is no longer this device's is not shown.
+    expect(seatAtTable({ 0: sight(0, 0) }, [0], 2)).toBe(0);
+  });
+
+  it("plays every shared game to the end from views alone, with two people here and one elsewhere", () => {
+    const tables = KIT_GAMES.filter((g) => sharesDevice(g.id)).flatMap((game) => [game.presets[0], ...(game.fields.some((f: { key: string }) => f.key === "order") ? [{ ...game.presets[0], order: "together" }] : [])].map((rules) => ({ game, rules })));
+    for (const { game, rules } of tables) {
+      // Three seats where the game has them: this device has the first and the last, and the middle one is somebody else's.
+      const seats = Math.min(3, game.seats.max);
+      const here = seats === 3 ? [0, 2] : [0, 1];
+      let now = game.newGame(game.normalize(rules), seats, 11) as unknown;
+      let at = 0;
+      let over = false;
+      for (let step = 0; step < 9000 && !over; step++) {
+        // The person elsewhere plays whenever they can.
+        if (seats === 3) {
+          const theirs = game.bot(now, 1, QUICK_STYLE);
+          if (theirs) {
+            now = game.apply(now, 1, theirs);
+            continue;
+          }
+        }
+        const views = Object.fromEntries(here.map((seat) => [seat, game.view(now, seat) as SeatSight]));
+        at = seatAtTable(views, here, at);
+        const view = views[at]!;
+        if (view.over) {
+          over = true;
+          break;
+        }
+        const move = game.bot(now, at, QUICK_STYLE);
+        expect(move, `${game.id} step ${step}: the screen is at seat ${at}, which has nothing to do`).not.toBeNull();
+        now = game.apply(now, at, move!);
+        // One press moves everyone here on after a round, as the table does it.
+        if (view.result) {
+          for (const other of here) {
+            if (other === at) continue;
+            try {
+              now = game.apply(now, other, move!);
+            } catch {}
+          }
+        }
+      }
+      expect(over, game.id).toBe(true);
+    }
+  }, 180_000);
+
+  it("reaches the server as the nth extra person at /second/n, and as itself with no prefix", () => {
+    expect(secondBase(0)).toBe("");
+    expect(secondBase(1)).toBe("/second/1");
+    expect(SECONDS).toBe(3);
+  });
 });

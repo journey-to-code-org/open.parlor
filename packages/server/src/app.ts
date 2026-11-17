@@ -21,6 +21,7 @@ import { createPush, type PushOptions } from "./push.js";
 import { playerOf } from "@journey-to-code/rooms/server";
 import { gameName, gameOfOptions, tableRoom, talk, type GameId, type Remark } from "./games.js";
 import { createFlights, isFlight, type Flights, type FlightState, type Flyer } from "./flight.js";
+import { secondAllowed, secondCookie, secondPath, secondSearch } from "./second.js";
 
 export function createCardRoom(
   options: { log?: Log; botDelay?: number; talk?: boolean; push?: PushOptions; ai?: AiOptions; lobby?: LobbyOptions; /** Turns moderation on (see moderation.ts). */ adminToken?: string; bugs?: BugOptions; /** Copies of the database (see backup.ts), for the admin app to report and hand out. */ backups?: Backups; /** Worker threads for the computer players' thinking (see bots.ts). Without it they think on the main thread. */ bots?: BotOptions; /** The games flown live (see flight.ts): one a caller made, for tests that play them by hand. Without it they play by the clock. */ flights?: Flights; /** The clock, for tests. */ spectate?: { now?: () => number } } = {},
@@ -222,6 +223,24 @@ export function createCardRoom(
     },
     /** Answers houses, designs, moderation, rooms and sync requests; null for anything else. */
     async fetch(request: Request): Promise<Response | null> {
+      // A second person at the same device (second.ts): the same request, made as somebody else.
+      const url = new URL(request.url);
+      const second = secondPath(url.pathname);
+      if (second) {
+        if (!secondAllowed(second)) return json({ error: "Not found" }, 404);
+        // Someone the parlor has blocked is blocked whoever they say is sitting beside them.
+        const blocked = await refusal(new Request(new URL(second.path + url.search, url), { method: request.method === "GET" || request.method === "HEAD" ? "GET" : "POST", headers: request.headers }));
+        if (blocked) return blocked;
+        const as = secondCookie(request.headers.get("cookie") ?? "", second.n, request);
+        const headers = new Headers(request.headers);
+        headers.set("cookie", as.cookie);
+        const body = request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer();
+        const response = await this.fetch(new Request(new URL(second.path + secondSearch(url.search, second.n), url), { method: request.method, headers, body }));
+        if (!response || !as.setCookie) return response;
+        const answered = new Response(response.body, response);
+        answered.headers.append("set-cookie", as.setCookie);
+        return answered;
+      }
       return (await ours(request)) ?? (await rooms.fetch(request));
     },
     /** For Node's http: answers and resolves true, or resolves false for anything else. */
@@ -232,6 +251,20 @@ export function createCardRoom(
         res.writeHead(response.status, Object.fromEntries(response.headers));
         return response.arrayBuffer().then((body) => (res.end(Buffer.from(body)), true));
       };
+      // A second person at the same device (second.ts): the same request, made as somebody else.
+      const second = secondPath(url.pathname);
+      if (second) {
+        if (!secondAllowed(second)) return answer(json({ error: "Not found" }, 404));
+        const path = second.path + secondSearch(url.search, second.n);
+        // Someone the parlor has blocked is blocked whoever they say is sitting beside them.
+        const refused = await refusal(new Request(new URL(path, url), { method: req.method === "GET" || req.method === "HEAD" ? "GET" : "POST", headers }));
+        if (refused) return answer(refused);
+        const as = secondCookie(req.headers.cookie ?? "", second.n, new Request(url, { headers }));
+        if (as.setCookie) res.setHeader("set-cookie", as.setCookie);
+        req.url = path;
+        req.headers.cookie = as.cookie;
+        return this.handle(req, res);
+      }
       if (under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/spectate", "/bugs", "/me"])) {
         const chunks: Buffer[] = [];
         let size = 0;
