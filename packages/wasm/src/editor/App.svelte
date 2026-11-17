@@ -21,6 +21,7 @@
   import { type Palette, paletteOf } from "../../wad/picture.ts";
   import { loadMod, removeChange, saveChange } from "../../wad/saved.ts";
   import { readWad, type Wad } from "../../wad/wad.ts";
+  import { withDelbies } from "../shooter/delbies.ts";
   import { mountShooter, type Shooter } from "../shooter/player.ts";
   import { download, type Fit, isSound, pictureLump, pictureOf, play, png, soundLump } from "./convert.ts";
   import Levels from "./Levels.svelte";
@@ -101,7 +102,8 @@
         progress: (received, total) => (progress = total ? `Fetching the game: ${(received / 1048576).toFixed(0)} of ${(total / 1048576).toFixed(0)} MB` : "Fetching the game"),
         valid: (data) => /^[IP]WAD$/.test(String.fromCharCode(...data.subarray(0, 4))),
       });
-      wad = readWad(bytes);
+      // The game as it is played: its own title and levels over the data it is built on. "As it came" here means that.
+      wad = readWad(await withDelbies(bytes));
       palette = paletteOf(wad.lumps.find((lump) => lump.name === "PLAYPAL")?.data ?? new Uint8Array(0));
       assets = catalogue(wad).sort((a, b) => a.name.localeCompare(b.name));
       const known = new Set(assets.map((asset) => key(asset.kind, asset.name)));
@@ -237,6 +239,7 @@
     const mounted: Shooter = mountShooter(stageElement, {
       wasm,
       wad: { url: address, name: "freedoom1.wad", megabytes: game.megabytes },
+      base: withDelbies,
       title: where ? `Try ${tryLevel}` : "Try it",
       blurb: changes.size ? "The game, with what you have changed." : "The game as it came: nothing is changed yet.",
       args: where ? ["-warp", ...where] : [],

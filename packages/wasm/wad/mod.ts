@@ -17,6 +17,16 @@ export interface Change {
   data: Uint8Array;
 }
 
+/**
+ * A game with another WAD laid over it: the pictures, sounds and levels of `over` in the place of
+ * the game's own of the same names. This is how a game of our own sits on top of the data it is
+ * built on. What `over` has that the game has no place for is left out.
+ */
+export function layer(game: Uint8Array, over: Uint8Array): Uint8Array {
+  const wad = readWad(game);
+  return applyMod(game, modFromWad(over, catalogue(wad), wad).changes);
+}
+
 /** The lumps of a "walls" change, by name; null if it isn't a level's shape, built. */
 export function wallLumps(data: Uint8Array): Map<string, Uint8Array> | null {
   try {

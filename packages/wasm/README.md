@@ -170,6 +170,7 @@ wad/                  the Doom engine's data, read and written. No browser, no S
   level.ts            a level: what is placed in it, and its shape (corners, walls, sides, rooms), in and out
   shape.ts            changes to a shape: move or remove a corner, split a wall, add or remove a room, add a door; an empty level
   texture.ts          the pictures on walls, put together from their patches
+  plan.ts             a level from a floor plan: rooms as rectangles, for levels built by a script
   nodes.ts            the node builder, run on a shape to make a level the engine can play
   does.ts             what a wall or a room can be made to do
   things.ts           what can be placed in a level; written from the engine's table by scripts/gen-things.mjs
@@ -184,6 +185,7 @@ games/shooter/
   shooter.wasm        the engine, compiled. Committed, so building the site needs no C compiler
   shooter.wasm.json   a hash of the C it was compiled from
   data.json           which Freedoom release is the game's data
+  delbies/            the game's own title and levels, laid over Freedoom: see its README
   nodes/              the node builder: BSP 5.2's C (GPL-2.0) in bsp/, what calls it in glue/, and nodes.wasm, committed
 src/
   shooter/engine.ts   starts the engine and calls into it. No DOM: the tests run it in Node
@@ -213,6 +215,7 @@ npm run dev -w @open-parlor/wasm      # http://localhost:5177/wasm/
 npm test -w @open-parlor/wasm         # boots the engine in Node on the real data, alone and in games of several
 npm run engine -w @open-parlor/wasm   # recompile the engine's C
 npm run nodes -w @open-parlor/wasm    # recompile the node builder's
+npm run delbies -w @open-parlor/wasm  # rebuild the game's own WAD from its plans
 npm run typecheck -w @open-parlor/wasm   # after a build: Zubra writes its components' typings then
 ```
 

@@ -5,19 +5,23 @@ import wasm from "../games/shooter/shooter.wasm?url";
 import { forgetAssetsExcept } from "../host/assets.ts";
 import { applyMod } from "../wad/mod.ts";
 import { loadMod } from "../wad/saved.ts";
+import { DELBIES, withDelbies } from "./shooter/delbies.ts";
 import { mountShooter } from "./shooter/player.ts";
 import "./shooter/shooter.css";
 import "./styles.css";
 
-// The game's data for now is Freedoom: free levels, pictures and sounds for the Doom engine.
-// scripts/fetch-data.mjs puts the release named in data.json under public/data/.
+// The game is Delbie's Daycare & Geriatrics: its own title and levels (games/shooter/delbies) laid
+// over Freedoom, free levels, pictures and sounds for the Doom engine, which is everything of the
+// game that isn't its own yet. scripts/fetch-data.mjs puts the release named in data.json under
+// public/data/.
 const wad = `${import.meta.env.BASE_URL}data/${FREEDOOM.file}`;
 
 mountShooter(document.getElementById("game")!, {
   wasm,
   wad: { url: wad, name: "freedoom1.wad", megabytes: FREEDOOM.megabytes },
-  title: "Freedoom: Phase 1",
-  blurb: "A first-person shooter on the open-source Doom engine, running in your browser.",
+  base: withDelbies,
+  title: "Delbie's Daycare & Geriatrics",
+  blurb: "The parts store is overrun. Clear it out, floor by floor. A first-person shooter on the open-source Doom engine, running in your browser.",
   // Freedoom: Phase 1 is four episodes of nine maps.
   levels: { episodes: 4, maps: 9 },
   // The parlor's server has the rooms that let devices play together; a site without it plays alone.
@@ -34,7 +38,7 @@ mountShooter(document.getElementById("game")!, {
 });
 
 // An older version of the game's data, kept by an earlier visit, is let go.
-void forgetAssetsExcept([wad]);
+void forgetAssetsExcept([wad, DELBIES]);
 
 // This page's own service worker keeps it for playing with no connection. Not on the dev server,
 // where it would hold on to files that are being changed.

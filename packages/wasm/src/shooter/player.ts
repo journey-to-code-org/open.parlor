@@ -33,6 +33,11 @@ export interface ShooterOptions {
   /** How many episodes the game has, and maps in each, for the host to choose where to start. */
   levels: { episodes: number; maps: number };
   /**
+   * What the game is made of, given the data it was fetched as: a game of our own laid over the
+   * data it is built on. Every device does the same, so this is what is played alone and together.
+   */
+  base?(wad: Uint8Array): Promise<Uint8Array>;
+  /**
    * The player's own version of the game's data, when playing alone. A game with other devices is
    * played on the data as it came, so every device has the same.
    */
@@ -308,7 +313,7 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
         // A WAD begins with the letters IWAD or PWAD.
         valid: (bytes) => /^[IP]WAD$/.test(String.fromCharCode(...bytes.subarray(0, 4))),
       }),
-    ]).then(([compiled, wad]) => ({ compiled, wad }));
+    ]).then(async ([compiled, wad]) => ({ compiled, wad: options.base ? await options.base(wad) : wad }));
     // A failure isn't kept: the next try fetches again.
     assets.catch(() => (assets = null));
     return assets;
