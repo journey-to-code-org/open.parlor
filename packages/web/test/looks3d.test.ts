@@ -38,9 +38,8 @@ describe("the parlor's words for Shitstorm", () => {
 });
 
 describe("games the parlor can't draw yet", () => {
-  it("keeps billiards off the lists until it has been seen on a screen", () => {
-    expect(KIT_GAMES.some((g) => g.id === "billiards")).toBe(true);
-    expect(GAME_LIST.some((g) => g.id === "billiards")).toBe(false);
+  it("lists every game the engine has, billiards included now that it has been seen on a screen", () => {
+    for (const g of KIT_GAMES) expect(GAME_LIST.some((l) => l.id === g.id), g.id).toBe(true);
   });
   it("lists Mahjong Riichi now that it has a table", () => {
     expect(GAME_LIST.some((g) => g.id === "mahjongriichi")).toBe(true);
