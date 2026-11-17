@@ -20,9 +20,10 @@
   import { encodeShape, encodeThings, FLAG_AMBUSH, FLAG_EASY, FLAG_HARD, FLAG_MEDIUM, FLAG_MULTIPLAYER, levelLumps, levelNames, readLevel, type Room, SHAPE_LUMPS, type Shape, type Side, type Thing, THING_KINDS, thingKind, WALL_BLOCKS, WALL_BLOCKS_MONSTERS, WALL_BLOCKS_SOUND, WALL_SECRET } from "../../wad/level.ts";
   import { type Change, wallLumps } from "../../wad/mod.ts";
   import { buildLevel } from "../../wad/nodes.ts";
-  import { addRoomBeyond, addRoomInside, GRID, moveCorner, roomAt, roomTrouble, snap, splitWall } from "../../wad/shape.ts";
-  import type { Palette } from "../../wad/picture.ts";
+  import { addDoor, addRoomBeyond, addRoomInside, emptyLevel, lookOf, moveCorner, removeCorner, removeRoom, roomAt, roomTrouble, snap, splitWall, wallsAt } from "../../wad/shape.ts";
+  import type { Palette, Picture } from "../../wad/picture.ts";
   import type { Wad } from "../../wad/wad.ts";
+  import Shown from "./Shown.svelte";
   import Thumb from "./Thumb.svelte";
 
   type News<T> = CustomEvent<T>;
@@ -33,6 +34,7 @@
     palette,
     level = $bindable(""),
     wallPictures,
+    wallPicture,
     builder,
     saved,
     keep,
@@ -47,6 +49,8 @@
     level: string;
     /** The names of the pictures a wall can have. */
     wallPictures: string[];
+    /** What a wall picture looks like, by name; null for none. */
+    wallPicture: (name: string) => Picture | null;
     /** The node builder, compiled: fetched the first time it is wanted. */
     builder: () => Promise<WebAssembly.Module>;
     /** A level's things, or its walls, as they were last kept, if they have been changed. */
@@ -108,6 +112,10 @@
   /** Why the level as it stands can't be built, if it can't. */
   let broken = $state("");
   let mode = $state<"move" | "add" | "build">("move");
+  /** Asking whether to start the level again, empty. */
+  let emptying = $state(false);
+  /** Corners can be told apart, and so chosen, from this close. */
+  const CLOSE = 0.3;
   let adding = $state("3004");
   let canvas = $state<HTMLCanvasElement>();
   /** The view: how many screen pixels a unit of the level is, and which point of the level is at the canvas's middle. */
@@ -137,9 +145,20 @@
     return part?.kind === "room" && shape ? { ...shape.rooms[part.index]! } : null;
   });
   const wallLength = $derived(wall && shape ? Math.round(Math.hypot(shape.corners[wall.to]!.x - shape.corners[wall.from]!.x, shape.corners[wall.to]!.y - shape.corners[wall.from]!.y)) : 0);
+  /** How many walls meet at the chosen corner: two can be made one. */
+  const meeting = $derived.by(() => {
+    void drawn;
+    return part?.kind === "corner" && shape ? wallsAt(shape, part.index).length : 0;
+  });
+  /** A floor or ceiling's picture, by name. */
+  const flatPicture = (name: string): Picture | null => {
+    const asset = assets.find((one) => one.kind === "floor" && one.name === name);
+    const data = asset && wad.lumps[asset.index]!.data;
+    return data && data.length >= 4096 ? { width: 64, height: 64, left: 0, top: 0, pixels: data.subarray(0, 4096), solid: new Uint8Array(4096).fill(1) } : null;
+  };
   const built = $derived.by(() => {
     void drawn;
-    return shape ? `${shape.walls.length} walls round ${shape.rooms.length} rooms.` : "";
+    return shape ? `${shape.walls.length} walls round ${shape.rooms.length === 1 ? "one room" : `${shape.rooms.length} rooms`}.` : "";
   });
   const picked = $derived(things[chosen]);
   const pickedKind = $derived(picked ? thingKind(picked.type) : null);
@@ -313,6 +332,56 @@
     });
   }
 
+  function takeRoom() {
+    if (part?.kind !== "room") return;
+    const at = part.index;
+    reshape((now) => {
+      const why = removeRoom(now, at, $state.snapshot(things));
+      if (!why) part = null;
+      return why;
+    });
+  }
+
+  function takeCorner() {
+    if (part?.kind !== "corner") return;
+    const at = part.index;
+    reshape((now) => {
+      const why = removeCorner(now, at);
+      if (!why) part = null;
+      return why;
+    });
+  }
+
+  /** The level again from one empty room, made of what the level was mostly made of, with only the players' starts in it. */
+  function empty() {
+    emptying = false;
+    if (!shape) return;
+    const fresh = emptyLevel(lookOf(shape));
+    things = fresh.things;
+    chosen = -1;
+    commit();
+    reshape(() => {
+      shape = fresh.shape;
+      part = null;
+    });
+    // Not something to undo a step at a time: "Put this level back" is the way back.
+    undo = [];
+    mode = "build";
+    fit();
+  }
+
+  /** A door picture the game has, for a new door to wear. */
+  const doorPicture = $derived(["BIGDOOR2", "DOOR3", "DOOR1"].find((name) => wallPictures.includes(name)));
+  function door() {
+    if (part?.kind !== "wall") return;
+    const at = part.index;
+    reshape((now) => {
+      const made = addDoor(now, at, Math.max(64, Math.min(256, snap(wallLength))), doorPicture);
+      if (typeof made === "string") return made;
+      part = { kind: "room", index: made, x: 0, y: 0 };
+    });
+  }
+
   function roomInside() {
     if (part?.kind !== "room") return;
     const { x, y } = part;
@@ -395,7 +464,7 @@
         }
       }
       pen.stroke();
-      if (view.scale > 0.3) {
+      if (view.scale > CLOSE) {
         pen.fillStyle = "#e4e2da";
         for (const one of built.walls) for (const at of [built.corners[one.from]!, built.corners[one.to]!]) pen.fillRect(toScreen(at.x, at.y)[0] - 2, toScreen(at.x, at.y)[1] - 2, 4, 4);
       }
@@ -464,6 +533,8 @@
 
   /** The corner under a point of the canvas, within a finger's width; -1 for none. */
   function cornerAt(px: number, py: number): number {
+    // From far off they are too close together to tell apart: a tap there is for a wall or a room.
+    if (view.scale <= CLOSE) return -1;
     let best = -1;
     let nearest = 14;
     for (const one of shape?.walls ?? [])
@@ -630,6 +701,7 @@
     <cluster-layout gap="0.5rem">
       {#if changed}<status-badge variant="primary">Changed</status-badge>{/if}
       <action-button variant="outline" size="sm" disabled={!changed} onclick={putBack}>Put this level back</action-button>
+      <action-button variant="outline" size="sm" onclick={() => (emptying = true)}>Start it again, empty</action-button>
       <action-button size="sm" onclick={play}>Play this level</action-button>
     </cluster-layout>
   </div>
@@ -678,19 +750,20 @@
           <div class="thing">
             <strong>A corner</strong>
             <p class="quiet">At {corner.x}, {corner.y}. Drag it to move it, or use the arrow keys; the walls that meet here go with it.</p>
+            {#if meeting === 2}<action-button variant="outline" size="sm" onclick={takeCorner}>Take it away</action-button>{/if}
           </div>
         {:else if wall && front}
           <div class="thing">
             <strong>{back ? "An opening between two rooms" : "A wall"}, {wallLength} long</strong>
             {#if back}
               <p class="quiet">The tick on the map is its front. Each side has a picture above the opening, where the next room's ceiling is lower, and below it, where its floor is higher.</p>
-              <select-field class="front-upper" label="Front, above the opening" options={withNow(pictures, front.upper)} value={front.upper} onvaluechange={(event: News<string>) => setSide("front", { upper: event.detail })}></select-field>
-              <select-field class="front-lower" label="Front, below the opening" options={withNow(pictures, front.lower)} value={front.lower} onvaluechange={(event: News<string>) => setSide("front", { lower: event.detail })}></select-field>
-              <select-field label="Back, above the opening" options={withNow(pictures, back.upper)} value={back.upper} onvaluechange={(event: News<string>) => setSide("back", { upper: event.detail })}></select-field>
-              <select-field label="Back, below the opening" options={withNow(pictures, back.lower)} value={back.lower} onvaluechange={(event: News<string>) => setSide("back", { lower: event.detail })}></select-field>
-              <select-field label="Across the opening" description="Something seen through: bars, a grate. Mostly nothing." options={withNow(pictures, front.middle)} value={front.middle} onvaluechange={(event: News<string>) => (setSide("front", { middle: event.detail }), setSide("back", { middle: event.detail }))}></select-field>
+              <div class="pick"><Shown picture={wallPicture(front.upper)} {palette} /><select-field class="front-upper" label="Front, above the opening" options={withNow(pictures, front.upper)} value={front.upper} onvaluechange={(event: News<string>) => setSide("front", { upper: event.detail })}></select-field></div>
+              <div class="pick"><Shown picture={wallPicture(front.lower)} {palette} /><select-field class="front-lower" label="Front, below the opening" options={withNow(pictures, front.lower)} value={front.lower} onvaluechange={(event: News<string>) => setSide("front", { lower: event.detail })}></select-field></div>
+              <div class="pick"><Shown picture={wallPicture(back.upper)} {palette} /><select-field label="Back, above the opening" options={withNow(pictures, back.upper)} value={back.upper} onvaluechange={(event: News<string>) => setSide("back", { upper: event.detail })}></select-field></div>
+              <div class="pick"><Shown picture={wallPicture(back.lower)} {palette} /><select-field label="Back, below the opening" options={withNow(pictures, back.lower)} value={back.lower} onvaluechange={(event: News<string>) => setSide("back", { lower: event.detail })}></select-field></div>
+              <div class="pick"><Shown picture={wallPicture(front.middle)} {palette} /><select-field label="Across the opening" description="Something seen through: bars, a grate. Mostly nothing." options={withNow(pictures, front.middle)} value={front.middle} onvaluechange={(event: News<string>) => (setSide("front", { middle: event.detail }), setSide("back", { middle: event.detail }))}></select-field></div>
             {:else}
-              <select-field class="wall-picture" label="Its picture" options={withNow(pictures, front.middle)} value={front.middle} onvaluechange={(event: News<string>) => setSide("front", { middle: event.detail })}></select-field>
+              <div class="pick"><Shown picture={wallPicture(front.middle)} {palette} /><select-field class="wall-picture" label="Its picture" options={withNow(pictures, front.middle)} value={front.middle} onvaluechange={(event: News<string>) => setSide("front", { middle: event.detail })}></select-field></div>
             {/if}
             <select-field class="wall-does" label="What it does" options={choices(WALL_DOES, wall.special)} value={String(wall.special)} onvaluechange={(event: News<string>) => setWall({ special: Number(event.detail) })}></select-field>
             {#if WALL_DOES.find((one) => one.number === wall.special)?.tagged ?? wall.special !== 0}
@@ -704,7 +777,10 @@
             {/if}
             <cluster-layout gap="0.5rem">
               <action-button variant="outline" size="sm" onclick={split}>Split it in two</action-button>
-              {#if !back}<action-button variant="outline" size="sm" onclick={roomBeyond}>Add a room behind it</action-button>{/if}
+              {#if !back}
+                <action-button variant="outline" size="sm" onclick={roomBeyond}>Add a room behind it</action-button>
+                <action-button variant="outline" size="sm" onclick={door}>Add a door, and a room behind it</action-button>
+              {/if}
             </cluster-layout>
           </div>
         {:else if room && part}
@@ -712,16 +788,17 @@
             <strong>A room</strong>
             <text-field class="room-floor" type="number" inputmode="numeric" required label="Floor height" description="A step up of more than 24 can't be climbed." value={String(room.floor)} onvaluechange={(event: News<string>) => setRoom({ floor: whole(event.detail) }, "floor")}></text-field>
             <text-field class="room-ceiling" type="number" inputmode="numeric" required label="Ceiling height" description="A player is 56 tall." value={String(room.ceiling)} onvaluechange={(event: News<string>) => setRoom({ ceiling: whole(event.detail) }, "ceiling")}></text-field>
-            <select-field label="Floor" options={withNow(flats, room.floorFlat)} value={room.floorFlat} onvaluechange={(event: News<string>) => setRoom({ floorFlat: event.detail })}></select-field>
-            <select-field label="Ceiling" description="F_SKY1 is the open sky." options={withNow(flats, room.ceilingFlat)} value={room.ceilingFlat} onvaluechange={(event: News<string>) => setRoom({ ceilingFlat: event.detail })}></select-field>
+            <div class="pick"><Shown picture={flatPicture(room.floorFlat)} {palette} /><select-field label="Floor" options={withNow(flats, room.floorFlat)} value={room.floorFlat} onvaluechange={(event: News<string>) => setRoom({ floorFlat: event.detail })}></select-field></div>
+            <div class="pick"><Shown picture={flatPicture(room.ceilingFlat)} {palette} /><select-field label="Ceiling" description="F_SKY1 is the open sky." options={withNow(flats, room.ceilingFlat)} value={room.ceilingFlat} onvaluechange={(event: News<string>) => setRoom({ ceilingFlat: event.detail })}></select-field></div>
             <range-slider class="room-light" label="Light" min={0} max={255} step={16} value={Math.min(255, room.light)} onvaluechange={(event: News<number>) => setRoom({ light: Math.min(255, event.detail) }, "light")}></range-slider>
             <select-field label="What it does" options={choices(ROOM_DOES, room.special)} value={String(room.special)} onvaluechange={(event: News<string>) => setRoom({ special: Number(event.detail) })}></select-field>
             <text-field type="number" inputmode="numeric" required label="Its number" description="A switch or a door acts on the rooms with its number. 0 for none." value={String(room.tag)} onvaluechange={(event: News<string>) => setRoom({ tag: Math.max(0, whole(event.detail)) }, "room tag")}></text-field>
             <action-button variant="outline" size="sm" onclick={roomInside}>Add a room inside it, here</action-button>
             <p class="quiet">The new room starts the same as this one. Give it a higher floor for a platform, a lower one for a pit.</p>
+            <action-button variant="outline" size="sm" onclick={takeRoom}>Take this room away</action-button>
           </div>
         {:else}
-          <p class="quiet">Tap a corner, a wall or the floor of a room. Drag a corner to move it. Drag the map to move about.</p>
+          <p class="quiet">Tap a wall or the floor of a room. {view.scale > CLOSE ? "Tap a corner to choose it, and drag it to move it." : "Come closer to choose and move corners."} Drag the map to move about.</p>
         {/if}
       {:else if picked && pickedKind}
         {@const picture = pictureOf(pickedKind.sprite, pickedKind.frame)}
@@ -753,7 +830,25 @@
   </div>
 </div>
 
+<modal-dialog open={emptying} label="Start {level} again, empty?" onopenchange={(event: News<boolean>) => (emptying = event.detail)}>
+  <p>Everything in this level goes, and it is one empty room with the players' starts in it: somewhere to build a level of your own. "Put this level back" brings the game's level back.</p>
+  <cluster-layout slot="actions" gap="0.6rem">
+    <action-button variant="outline" size="sm" data-close>Keep it as it is</action-button>
+    <action-button variant="destructive" size="sm" onclick={empty}>Start it again, empty</action-button>
+  </cluster-layout>
+</modal-dialog>
+
 <style>
+  .pick {
+    display: flex;
+    align-items: end;
+    gap: 0.6rem;
+    width: 100%;
+  }
+  .pick > :global(select-field) {
+    flex: 1;
+    min-width: 0;
+  }
   .levels {
     display: grid;
     gap: 0.75rem;

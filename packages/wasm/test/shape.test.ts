@@ -14,7 +14,10 @@ import { choices, ROOM_DOES, WALL_DOES } from "../wad/does.ts";
 import { decodeShape, encodeShape, levelLumps, readLevel, SHAPE_LUMPS, type Shape, type ShapeLumps, wallNames } from "../wad/level.ts";
 import { applyMod, type Change, fits, modFromWad, modToWad, wallLumps } from "../wad/mod.ts";
 import { buildLevel, buildNodes } from "../wad/nodes.ts";
-import { addRoomBeyond, addRoomInside, moveCorner, roomAt, splitWall, trouble, wallsAt } from "../wad/shape.ts";
+import { addDoor, addRoomBeyond, addRoomInside, emptyLevel, lookOf, moveCorner, removeCorner, removeRoom, roomAt, splitWall, trouble, wallsAt, wallsOf } from "../wad/shape.ts";
+import { composeWall, wallPictures } from "../wad/texture.ts";
+import { encodeThings, levelNames } from "../wad/level.ts";
+import { KEY } from "../src/shooter/keys.ts";
 import { readWad } from "../wad/wad.ts";
 
 const here = (path: string) => join(import.meta.dirname, path);
@@ -104,6 +107,62 @@ describe("a shape", () => {
     expect(addRoomBeyond(shape, 4)).toMatch(/already/);
     // Not into a room that is there: behind the first room's bottom wall after a room is put below the second's.
     expect(trouble(shape, shape.walls.map((_, i) => i))).toBeNull();
+  });
+
+  test("gives up a room: one inside another closes over, any other leaves its neighbours walled", () => {
+    const shape = twoRooms();
+    const whole = structuredClone(shape);
+    // A room inside the first, then taken away: the level is as it was (but for corners and sides no wall uses).
+    const inner = addRoomInside(shape, 128, 128, 64) as number;
+    expect(removeRoom(shape, inner)).toBeNull();
+    expect(decodeShape(encodeShape(shape))).toEqual(whole);
+
+    // The second room, with something standing in it, stays; empty, it goes, and the opening is the first room's wall.
+    expect(removeRoom(shape, 1, [{ x: 300, y: 100 }])).toMatch(/Move what is placed/);
+    expect(removeRoom(shape, 1, [{ x: 100, y: 100 }])).toBeNull();
+    expect(shape.rooms).toHaveLength(1);
+    expect(shape.walls).toHaveLength(4);
+    expect([roomAt(shape, 100, 100), roomAt(shape, 300, 100)]).toEqual([0, -1]);
+    const was = shape.walls.find((wall) => shape.corners[wall.from]!.x === 256 && shape.corners[wall.to]!.x === 256)!;
+    expect(was).toMatchObject({ back: -1, flags: 1 });
+    expect(shape.sides[was.front]).toMatchObject({ middle: "STARTAN3", upper: "-", lower: "-", room: 0 });
+    expect(trouble(shape, shape.walls.map((_, i) => i))).toBeNull();
+    expect(removeRoom(shape, 0)).toMatch(/one room/);
+
+    // The first room of two: the second is renumbered, and its walls with it.
+    const other = twoRooms();
+    expect(removeRoom(other, 0)).toBeNull();
+    expect([roomAt(other, 100, 100), roomAt(other, 300, 100)]).toEqual([-1, 0]);
+    expect(wallsOf(other, 0)).toHaveLength(4);
+    expect(decodeShape(encodeShape(other)).sides.every((side) => side.room === 0)).toBe(true);
+  });
+
+  test("gives up a corner where one wall was split, and nowhere else", () => {
+    const shape = twoRooms();
+    const whole = structuredClone(shape);
+    const corner = splitWall(shape, 6) as number;
+    expect(removeCorner(shape, corner)).toBeNull();
+    expect(decodeShape(encodeShape(shape))).toEqual(whole);
+    // Where three walls meet, and where the two belong to different rooms.
+    expect(removeCorner(shape, 2)).toMatch(/More than two/);
+    const beyond = addRoomBeyond(shape, 4, 128);
+    expect(typeof beyond).toBe("number");
+    expect(removeCorner(shape, 5)).toMatch(/More than two/);
+    // A square's corner: the two walls would lie across the room, on no other wall, so it is allowed and the room is a triangle.
+    const square = emptyLevel({ wall: "STARTAN3", floor: "FLOOR0_1", ceiling: "CEIL1_1" }).shape;
+    expect(removeCorner(square, 0)).toBeNull();
+    expect(square.walls).toHaveLength(3);
+    // But not down to two walls, one on top of the other.
+    expect(removeCorner(square, 1)).toMatch(/on top of another/);
+    expect(square.walls).toHaveLength(3);
+  });
+
+  test("starts a level from one empty room", () => {
+    const { shape, things } = emptyLevel({ wall: "STARTAN3", floor: "FLOOR0_1", ceiling: "CEIL1_1" });
+    expect(trouble(shape, shape.walls.map((_, i) => i))).toBeNull();
+    expect(things.map((thing) => thing.type)).toEqual([1, 2, 3, 4]);
+    expect(things.every((thing) => roomAt(shape, thing.x, thing.y) === 0)).toBe(true);
+    expect(lookOf(twoRooms())).toEqual({ wall: "STARTAN3", floor: "FLOOR0_1", ceiling: "CEIL1_1" });
   });
 
   test("offers what walls and rooms do, and keeps a number it doesn't know", () => {
@@ -221,5 +280,75 @@ describe.skipIf(!existsSync(file))("the real game's first level", () => {
     expect(back.skipped).toEqual([]);
     expect(back.changes.map((one) => `${one.kind}/${one.name}`)).toEqual(["walls/E1M1"]);
     expect(back.changes[0]!.data).toEqual(change.data);
+  });
+
+  test("started again as one empty room, with a door made in it, is played and the door opens", async () => {
+    const look = lookOf(readLevel(wad, "E1M1").shape);
+    expect(wallNames(wad)).toContain(look.wall);
+    const { shape, things: placed } = emptyLevel(look);
+    // A door in the north wall, and a room behind it, lit brighter.
+    const north = shape.walls.findIndex((wall) => shape.corners[wall.from]!.y === 256 && shape.corners[wall.to]!.y === 256);
+    const beyond = addDoor(shape, north, 256) as number;
+    expect(beyond).toBe(2);
+    expect(shape.rooms.map((room) => room.ceiling - room.floor)).toEqual([128, 0, 128]);
+    shape.rooms[beyond]!.light = 255;
+    // Each opening of the door has its front to the room it is pushed from.
+    expect(shape.walls.filter((wall) => wall.special === 1).map((wall) => shape.sides[wall.front]!.room)).toEqual([0, 2]);
+    // Where there is space for the door but not for the room behind it, nothing is left half made.
+    const real = readLevel(wad, "E1M1").shape;
+    const tight = real.walls.findIndex((wall, index) => wall.back < 0 && typeof addRoomBeyond(structuredClone(real), index, 16) === "number" && typeof addDoor(structuredClone(real), index, 1024) === "string");
+    expect(tight).toBeGreaterThanOrEqual(0);
+    const whole = structuredClone(real);
+    expect(addDoor(real, tight, 1024)).toMatch(/cross|on top/);
+    expect(real).toEqual(whole);
+    expect(trouble(shape, shape.walls.map((_, i) => i))).toBeNull();
+    // The player, at the door, facing it.
+    placed[0] = { ...placed[0]!, x: 0, y: 208, angle: 90 };
+
+    const changes: Change[] = [
+      { kind: "things", name: "E1M1", data: encodeThings(placed) },
+      { kind: "walls", name: "E1M1", data: await buildLevel(nodes, "E1M1", shape, encodeThings(placed)) },
+    ];
+    const changed = applyMod(game, changes);
+    let clock = 0;
+    let picture = new Uint8ClampedArray(0);
+    const sounds: string[] = [];
+    const running = await startEngine(engine, new Map([["freedoom1.wad", changed]]), "freedoom1.wad", { now: () => clock, frame: (pixels) => (picture = pixels.slice()), sound: { start: (_c, lump) => void sounds.push(wad.lumps[lump]!.name), update() {}, stop() {}, playing: () => false } }, ["-warp", "1", "1"]);
+    const run = (tics: number) => {
+      for (let i = 0; i < tics; i++) {
+        clock += 1000 / 35;
+        running.frame();
+      }
+    };
+    run(60);
+    const shut = picture;
+    run(40);
+    // Nothing moves in an empty room: the door stays shut until it is pushed.
+    expect(alike(shut, picture)).toBeGreaterThan(0.99);
+    running.key(true, KEY.use);
+    run(4);
+    running.key(false, KEY.use);
+    run(70);
+    expect(running.stopped).toBeNull();
+    expect(sounds).toContain("DSDOROPN");
+    // Open: the bright room beyond is where the door was.
+    expect(alike(shut, picture)).toBeLessThan(0.7);
+  });
+
+  test("its wall pictures are put together from their patches", () => {
+    const recipes = wallPictures(wad);
+    expect([...recipes.keys()].sort()).toEqual(wallNames(wad));
+    const patches = new Map(catalogue(wad).filter((asset) => asset.kind === "wall").map((asset) => [asset.name, wad.lumps[asset.index]!.data]));
+    const look = lookOf(readLevel(wad, "E1M1").shape);
+    const picture = composeWall(recipes.get(look.wall)!, (name) => patches.get(name))!;
+    expect([picture.width, picture.height]).toEqual([recipes.get(look.wall)!.width, recipes.get(look.wall)!.height]);
+    // Covered all over, and not all one colour.
+    expect(picture.solid.every((bit) => bit === 1)).toBe(true);
+    expect(new Set(picture.pixels).size).toBeGreaterThan(4);
+    // All but two of the game's recipes find every patch they name (those two name one the game hasn't; no level uses them).
+    const missing = [...recipes.values()].filter((recipe) => recipe.patches.some((piece) => !patches.has(piece.patch))).map((recipe) => recipe.name);
+    expect(missing).toEqual(["SLAD10", "SLAD11"]);
+    const used = new Set(levelNames(wad).flatMap((name) => readLevel(wad, name).shape.sides.flatMap((side) => [side.upper, side.lower, side.middle])));
+    expect(missing.filter((name) => used.has(name))).toEqual([]);
   });
 });

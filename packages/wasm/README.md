@@ -28,8 +28,7 @@ engine, standing in until the game has its own.
 | Offline | After the first visit the page, the engine and the game's data are kept on the device |
 
 Not there yet: music (the songs are MUS data, which wants an OPL or MIDI synthesiser), joining a
-game that has started as a player, replays of games that are over, and drawing a level from
-nothing (the levels there are can be changed and added to).
+game that has started as a player, and replays of games that are over.
 
 ## The editor
 
@@ -71,20 +70,32 @@ table (`engine/info.c`), read by `scripts/gen-things.mjs` into `wad/things.ts`.
 What it is built of, under **Walls**. Tap a corner, a wall or the floor of a room:
 
 - **A corner** is dragged, or moved with the arrows, on a grid of 8. The walls that meet at it go
-  with it. It won't go where walls would cross.
+  with it. It won't go where walls would cross. Where only two walls meet, it can be **taken
+  away**, which makes them one wall: what undoes a split. Corners are chosen from close to; from
+  far off they are too near each other to tell apart, and a tap is for a wall or a room.
 - **A wall** has a picture, or, where it is an opening between two rooms, one above and one below
   the opening on each side. It can be made to do something (a door, a switch, a lift, the way
   out), to the rooms that have its number; made to block players, monsters or sound; split in
-  two; and, if nothing is behind it, given **a room behind it**, which makes it an opening.
+  two; and, if nothing is behind it, given **a room behind it**, which makes it an opening, or
+  **a door and a room behind it**. Each picture is shown beside its name, put together from its
+  patches as they now are (`wad/texture.ts`).
 - **A room** has a floor and a ceiling (a height and a picture each), a light, something it does
   (hurts, flickers, counts as a secret) and a number for switches to find it by. **Add a room
   inside it** puts a square room where it was tapped: a platform once its floor is raised, a pit
-  once lowered, a pillar with the ceiling brought down to the floor.
+  once lowered, a pillar with the ceiling brought down to the floor. **Take this room away**
+  closes the room round it over a room that was inside it; any other room leaves a hole, its
+  openings becoming its neighbours' walls, and can't go while something is placed in it.
 - **Undo** takes back the last change to the walls, up to thirty of them; Ctrl+Z with the map in
   focus does the same.
 
-Walls and rooms can't be taken away, and a room is added as a square or as a box behind a wall,
-not drawn freehand: move its corners and split its walls to shape it.
+**Start it again, empty** makes the level one square room with the four players' starts in it,
+in the wall and floor pictures the level mostly used: somewhere to build a level of your own.
+The game has 36 levels, and one of your own takes the place of one of them. "Put this level
+back" brings the game's back.
+
+A room is added as a square, or as a box behind a wall, not drawn freehand: move its corners and
+split its walls to shape it. Two rooms that are both there can't be joined by a new opening, so
+a level grows outward like a tree, without loops. A single wall can't be taken away, only a room.
 
 A level's walls are stored with a tree the engine draws and collides by (the "nodes"), which has
 to be rebuilt whenever a wall moves. That is done by a node builder,
@@ -157,7 +168,8 @@ wad/                  the Doom engine's data, read and written. No browser, no S
   sound.ts            its sound effects
   catalogue.ts        which lumps are sprites, walls, floors, other pictures, sounds and levels
   level.ts            a level: what is placed in it, and its shape (corners, walls, sides, rooms), in and out
-  shape.ts            changes to a shape: move a corner, split a wall, add a room; and what makes one unplayable
+  shape.ts            changes to a shape: move or remove a corner, split a wall, add or remove a room, add a door; an empty level
+  texture.ts          the pictures on walls, put together from their patches
   nodes.ts            the node builder, run on a shape to make a level the engine can play
   does.ts             what a wall or a room can be made to do
   things.ts           what can be placed in a level; written from the engine's table by scripts/gen-things.mjs
@@ -182,7 +194,7 @@ src/
   wifi/               the pairing itself: the code (signal.ts), the channel (link.ts), QR codes (qr.ts)
   shooter/keys.ts, touch.ts, gamepad.ts, audio.ts
   main.ts             this package's own page
-  editor/             the editor: App.svelte, Levels.svelte (the map), Thumb.svelte, and convert.ts (a dropped file to a lump)
+  editor/             the editor: App.svelte, Levels.svelte (the map), Thumb.svelte and Shown.svelte (pictures), and convert.ts (a dropped file to a lump)
 editor/index.html     the editor's page
 public/sw.js          keeps the page for playing offline
 scripts/              build-engine.mjs, toolchain.mjs, fetch-data.mjs, sources.mjs, gen-things.mjs

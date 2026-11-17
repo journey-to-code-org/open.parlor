@@ -16,6 +16,7 @@
   import { asset as fetched } from "../../host/assets.ts";
   import { type Asset, catalogue, isLevelKind, key, type Kind, KINDS } from "../../wad/catalogue.ts";
   import { wallNames } from "../../wad/level.ts";
+  import { composeWall, wallPictures as readWallPictures } from "../../wad/texture.ts";
   import { applyMod, type Change, modFromWad, modToWad } from "../../wad/mod.ts";
   import { type Palette, paletteOf } from "../../wad/picture.ts";
   import { loadMod, removeChange, saveChange } from "../../wad/saved.ts";
@@ -67,6 +68,14 @@
 
   const tabs = $derived([...KINDS.map((kind) => ({ value: kind, label: LABELS[kind]! })), { value: "level", label: "Levels" }, { value: "changed", label: `Changed (${changes.size})` }, { value: "play", label: "Try it" }]);
   const wallPictures = $derived(wallNames(wad));
+  const recipes = $derived(readWallPictures(wad));
+  /** The pieces wall pictures are put together from, by name. */
+  const pieces = $derived(new Map(assets.filter((asset) => asset.kind === "wall").map((asset) => [asset.name, asset])));
+  /** What a wall picture looks like, from its patches as they now are: one that has been changed shows changed. */
+  const wallPicture = (name: string) => {
+    const recipe = recipes.get(name);
+    return recipe ? composeWall(recipe, (patch) => (pieces.has(patch) ? now(pieces.get(patch)!) : undefined)) : null;
+  };
   /** The node builder, fetched and compiled the first time a level's walls are changed. */
   let nodes: Promise<WebAssembly.Module> | null = null;
   const builder = () => (nodes ??= WebAssembly.compileStreaming(fetch(nodesWasm)).catch((error) => ((nodes = null), Promise.reject(error))));
@@ -248,7 +257,7 @@
   <header class="top">
     <a class="home" href="../"><span aria-hidden="true">←</span> The game</a>
     <h1>Change the game</h1>
-    <p class="quiet">Swap the game's pictures and sounds for your own, and change what is placed in its levels. What you change is kept in this browser, and is what you play with when you play alone.</p>
+    <p class="quiet">Swap the game's pictures and sounds for your own, and change its levels or build your own. What you change is kept in this browser, and is what you play with when you play alone.</p>
   </header>
 
   {#if stage === "loading"}
@@ -307,7 +316,7 @@
       {/each}
       <section data-tab="level">
         {#if tab === "level"}
-          <Levels {wad} {assets} {palette} bind:level wallPictures={wallPictures} {builder} saved={(kind, name) => changes.get(key(kind, name))?.data} {keep} {restore} {toast} ontry={tryIn} />
+          <Levels {wad} {assets} {palette} bind:level wallPictures={wallPictures} {wallPicture} {builder} saved={(kind, name) => changes.get(key(kind, name))?.data} {keep} {restore} {toast} ontry={tryIn} />
         {/if}
       </section>
       <section data-tab="play">
