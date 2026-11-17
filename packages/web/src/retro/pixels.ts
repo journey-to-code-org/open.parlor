@@ -9,6 +9,12 @@
 
 export const RETRO_W = 256;
 export const RETRO_H = 224;
+/**
+ * How many real pixels there are to one of those, each way. Things are placed on the 256 by 224
+ * screen, as a Super Nintendo game places them, but drawn at twice that (its high-resolution mode,
+ * 512 by 448), so a tile is 32 pixels across and a curve has room to be a curve.
+ */
+export const RETRO_ZOOM = 2;
 
 /** The palette: every colour a hand-drawn sprite may use, by its letter. A dot is nothing at all. */
 export const PALETTE: Record<string, string> = {
@@ -79,9 +85,13 @@ export function polished(s: Sprite): Sprite {
   return out;
 }
 
-/** A sprite from rows of letters, lit and shaded. `swap` trades letters for others first: the same drawing in other colours. */
+/**
+ * A sprite from rows of letters, at the screen's fine size: made twice as big with its staircases
+ * smoothed, then lit and shaded. `swap` trades letters for others first: the same drawing in other
+ * colours.
+ */
 export function sprite(rows: readonly string[], swap: Record<string, string> = {}): Sprite {
-  return polished(flat(rows, swap));
+  return polished(smoothed(flat(rows, swap)));
 }
 /** A sprite exactly as its letters say, with no light or shade added. */
 export function flat(rows: readonly string[], swap: Record<string, string> = {}): Sprite {
@@ -131,6 +141,29 @@ export function scaled(s: Sprite, by: number): Sprite {
   return out;
 }
 
+/**
+ * Twice the size, with the corners taken off the staircases: where two neighbours of a pixel agree
+ * and the others do not, the corner between them takes their colour. A drawing made at half size
+ * comes out with slopes instead of steps.
+ */
+export function smoothed(s: Sprite): Sprite {
+  const out = blank(s.w * 2, s.h * 2);
+  const at = (x: number, y: number) => { x = Math.min(s.w - 1, Math.max(0, x)); y = Math.min(s.h - 1, Math.max(0, y)); const i = (y * s.w + x) * 4; return ((s.data[i]! << 24) | (s.data[i + 1]! << 16) | (s.data[i + 2]! << 8) | s.data[i + 3]!) >>> 0; };
+  const put = (x: number, y: number, c: number) => out.data.set([c >>> 24, (c >>> 16) & 255, (c >>> 8) & 255, c & 255], (y * out.w + x) * 4);
+  for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) {
+    const p = at(x, y);
+    const a = at(x, y - 1);
+    const b = at(x + 1, y);
+    const c = at(x - 1, y);
+    const d = at(x, y + 1);
+    put(x * 2, y * 2, c === a && c !== d && a !== b ? a : p);
+    put(x * 2 + 1, y * 2, a === b && a !== c && b !== d ? b : p);
+    put(x * 2, y * 2 + 1, d === c && d !== b && c !== a ? c : p);
+    put(x * 2 + 1, y * 2 + 1, b === d && b !== a && d !== c ? d : p);
+  }
+  return out;
+}
+
 /** A number from two places and a seed, the same every time: where the tufts of grass go. */
 export function speck(x: number, y: number, seed: number): number {
   let n = (Math.imul(x + 37, 0x9e3779b1) ^ Math.imul(y + 101, 0x85ebca6b) ^ Math.imul(seed + 7, 0xc2b2ae35)) >>> 0;
@@ -149,52 +182,86 @@ export interface BlitOptions {
   clip?: { x: number; y: number; w: number; h: number };
 }
 
-/** The screen: somewhere to draw. */
+/**
+ * The screen: somewhere to draw. Everything is placed in the screen's own measure (256 by 224) and
+ * drawn `zoom` times finer: a rectangle or a line of words is that many times bigger in real
+ * pixels, a round spot is properly round, and a sprite, which is drawn at the fine size already,
+ * is only put where it is told. `raw` and `pw` by `ph` are the real pixels, for what works on them.
+ */
 export class Screen {
   readonly data: Uint8ClampedArray;
-  constructor(readonly w = RETRO_W, readonly h = RETRO_H) {
-    this.data = new Uint8ClampedArray(w * h * 4);
+  readonly pw: number;
+  readonly ph: number;
+  constructor(readonly w = RETRO_W, readonly h = RETRO_H, readonly zoom = RETRO_ZOOM) {
+    this.pw = w * zoom;
+    this.ph = h * zoom;
+    this.data = new Uint8ClampedArray(this.pw * this.ph * 4);
     this.fill([0, 0, 0]);
   }
   fill(c: Rgb) {
     for (let i = 0; i < this.data.length; i += 4) { this.data[i] = c[0]; this.data[i + 1] = c[1]; this.data[i + 2] = c[2]; this.data[i + 3] = 255; }
   }
-  dot(x: number, y: number, c: Rgb) {
-    if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
-    const i = (Math.floor(y) * this.w + Math.floor(x)) * 4;
+  /** One real pixel. */
+  pdot(px: number, py: number, c: Rgb) {
+    if (px < 0 || py < 0 || px >= this.pw || py >= this.ph) return;
+    const i = (Math.floor(py) * this.pw + Math.floor(px)) * 4;
     this.data[i] = c[0]; this.data[i + 1] = c[1]; this.data[i + 2] = c[2];
   }
+  private each(x: number, y: number, w: number, h: number, to: (i: number) => void) {
+    const z = this.zoom;
+    const x0 = Math.max(0, Math.round(x * z));
+    const y0 = Math.max(0, Math.round(y * z));
+    const x1 = Math.min(this.pw, Math.round((x + w) * z));
+    const y1 = Math.min(this.ph, Math.round((y + h) * z));
+    for (let py = y0; py < y1; py++) for (let px = x0; px < x1; px++) to((py * this.pw + px) * 4);
+  }
+  dot(x: number, y: number, c: Rgb) {
+    this.rect(Math.floor(x), Math.floor(y), 1, 1, c);
+  }
   rect(x: number, y: number, w: number, h: number, c: Rgb) {
-    for (let py = Math.max(0, y); py < Math.min(this.h, y + h); py++) for (let px = Math.max(0, x); px < Math.min(this.w, x + w); px++) {
-      const i = (py * this.w + px) * 4;
-      this.data[i] = c[0]; this.data[i + 1] = c[1]; this.data[i + 2] = c[2];
-    }
+    this.each(x, y, w, h, (i) => { this.data[i] = c[0]; this.data[i + 1] = c[1]; this.data[i + 2] = c[2]; });
   }
   /** Darken what is there: 256 leaves it, 0 is black. */
   shade(x: number, y: number, w: number, h: number, keep: number) {
-    for (let py = Math.max(0, y); py < Math.min(this.h, y + h); py++) for (let px = Math.max(0, x); px < Math.min(this.w, x + w); px++) {
-      const i = (py * this.w + px) * 4;
-      this.data[i] = (this.data[i]! * keep) >> 8; this.data[i + 1] = (this.data[i + 1]! * keep) >> 8; this.data[i + 2] = (this.data[i + 2]! * keep) >> 8;
-    }
+    this.each(x, y, w, h, (i) => { this.data[i] = (this.data[i]! * keep) >> 8; this.data[i + 1] = (this.data[i + 1]! * keep) >> 8; this.data[i + 2] = (this.data[i + 2]! * keep) >> 8; });
+  }
+  /** Lay a colour over what is there: 0 leaves it, 256 covers it. The see-through layers a Super Nintendo was proud of. */
+  tint(x: number, y: number, w: number, h: number, c: Rgb, much: number) {
+    this.each(x, y, w, h, (i) => {
+      this.data[i] = this.data[i]! + (((c[0] - this.data[i]!) * much) >> 8);
+      this.data[i + 1] = this.data[i + 1]! + (((c[1] - this.data[i + 1]!) * much) >> 8);
+      this.data[i + 2] = this.data[i + 2]! + (((c[2] - this.data[i + 2]!) * much) >> 8);
+    });
   }
   /** A filled round spot. */
   disc(cx: number, cy: number, r: number, c: Rgb) {
-    for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) if (x * x + y * y <= r * r + r * 0.6) this.dot(cx + x, cy + y, c);
+    const z = this.zoom;
+    const pr = r * z + z / 2;
+    for (let y = -Math.ceil(pr); y <= pr; y++) for (let x = -Math.ceil(pr); x <= pr; x++) if (x * x + y * y <= pr * pr) this.pdot(cx * z + x, cy * z + y, c);
   }
   /** The shadow something casts on the ground: a flat oval, darker. */
   shadow(cx: number, cy: number, rx: number) {
-    for (let y = -2; y <= 2; y++) {
-      const half = Math.round(rx * Math.sqrt(1 - (y * y) / 6.5));
-      this.shade(Math.round(cx) - half, Math.round(cy) + y, half * 2, 1, 168);
+    const z = this.zoom;
+    const ry = 2.6 * z;
+    for (let y = -Math.ceil(ry); y <= ry; y++) {
+      const half = Math.round(rx * z * Math.sqrt(Math.max(0, 1 - (y * y) / (ry * ry))));
+      for (let x = -half; x < half; x++) {
+        const px = Math.round(cx * z) + x;
+        const py = Math.round(cy * z) + y;
+        if (px < 0 || py < 0 || px >= this.pw || py >= this.ph) continue;
+        const i = (py * this.pw + px) * 4;
+        this.data[i] = (this.data[i]! * 168) >> 8; this.data[i + 1] = (this.data[i + 1]! * 168) >> 8; this.data[i + 2] = (this.data[i + 2]! * 176) >> 8;
+      }
     }
   }
   blit(s: Sprite, x: number, y: number, o: BlitOptions = {}) {
-    x = Math.round(x);
-    y = Math.round(y);
-    const cx = o.clip?.x ?? 0;
-    const cy = o.clip?.y ?? 0;
-    const cw = o.clip ? o.clip.x + o.clip.w : this.w;
-    const ch = o.clip ? o.clip.y + o.clip.h : this.h;
+    const z = this.zoom;
+    x = Math.round(x * z);
+    y = Math.round(y * z);
+    const cx = (o.clip?.x ?? 0) * z;
+    const cy = (o.clip?.y ?? 0) * z;
+    const cw = o.clip ? (o.clip.x + o.clip.w) * z : this.pw;
+    const ch = o.clip ? (o.clip.y + o.clip.h) * z : this.ph;
     for (let sy = 0; sy < s.h; sy++) {
       const py = y + sy;
       if (py < cy || py >= ch) continue;
@@ -203,7 +270,7 @@ export class Screen {
         if (px < cx || px >= cw) continue;
         const from = (sy * s.w + (o.flip ? s.w - 1 - sx : sx)) * 4;
         if (!s.data[from + 3] || (o.thin && (px + py) % 2)) continue;
-        const to = (py * this.w + px) * 4;
+        const to = (py * this.pw + px) * 4;
         this.data[to] = o.flash ? o.flash[0] : s.data[from]!;
         this.data[to + 1] = o.flash ? o.flash[1] : s.data[from + 1]!;
         this.data[to + 2] = o.flash ? o.flash[2] : s.data[from + 2]!;
@@ -212,38 +279,57 @@ export class Screen {
   }
   /** Words, in the font below. Returns how wide they came out. `to` fades the letters from their colour at the top to another at the bottom. */
   text(words: string, x: number, y: number, c: Rgb, shadow: Rgb | null = [11, 11, 20], size = 1, to: Rgb | null = null): number {
+    const z = this.zoom;
     let at = x;
     for (const letter of words.toUpperCase()) {
-      const rows = FONT[letter] ?? FONT["?"]!;
-      for (let pass = shadow ? 0 : 1; pass < 2; pass++) for (let gy = 0; gy < 7; gy++) for (let gx = 0; gx < 5; gx++) {
-        if (!(rows[gy]! & (16 >> gx))) continue;
+      const glyph = glyphOf(letter, z);
+      const tall = 7 * z;
+      const wide = 5 * z;
+      for (let pass = shadow ? 0 : 1; pass < 2; pass++) for (let gy = 0; gy < tall; gy++) for (let gx = 0; gx < wide; gx++) {
+        if (!glyph[gy * wide + gx]) continue;
         const off = pass === 0 ? size : 0;
-        this.rect(at + gx * size + off, y + gy * size + off, size, size, pass === 0 ? shadow! : to ? [c[0] + ((to[0] - c[0]) * gy) / 6, c[1] + ((to[1] - c[1]) * gy) / 6, c[2] + ((to[2] - c[2]) * gy) / 6] : c);
+        const t = gy / (tall - 1);
+        const ink = pass === 0 ? shadow! : to ? ([c[0] + (to[0] - c[0]) * t, c[1] + (to[1] - c[1]) * t, c[2] + (to[2] - c[2]) * t] as Rgb) : c;
+        for (let sy = 0; sy < size; sy++) for (let sx = 0; sx < size; sx++) this.pdot(at * z + gx * size + sx + off, y * z + gy * size + sy + off, ink);
       }
       at += 6 * size;
     }
     return at - x;
   }
-  /** Lay a colour over what is there: 0 leaves it, 256 covers it. The see-through layers a Super Nintendo was proud of. */
-  tint(x: number, y: number, w: number, h: number, c: Rgb, much: number) {
-    for (let py = Math.max(0, y); py < Math.min(this.h, y + h); py++) for (let px = Math.max(0, x); px < Math.min(this.w, x + w); px++) {
-      const i = (py * this.w + px) * 4;
-      this.data[i] = this.data[i]! + (((c[0] - this.data[i]!) * much) >> 8);
-      this.data[i + 1] = this.data[i + 1]! + (((c[1] - this.data[i + 1]!) * much) >> 8);
-      this.data[i + 2] = this.data[i + 2]! + (((c[2] - this.data[i + 2]!) * much) >> 8);
-    }
-  }
   /** A box for words to go in: rounded, a pale line round it, and a fill that deepens from top to bottom. */
   panel(x: number, y: number, w: number, h: number, fill: Rgb = [40, 56, 150], edge: Rgb = [232, 236, 248], deep: Rgb = [fill[0] * 0.35, fill[1] * 0.35, fill[2] * 0.45]) {
-    const round = (px: number, py: number, inset: number) => (px === x + inset || px === x + w - 1 - inset) && (py === y + inset || py === y + h - 1 - inset);
+    const z = this.zoom;
+    x *= z; y *= z; w *= z; h *= z;
+    // How far in from the nearest edge, with the corners rounded.
+    const far = (px: number, py: number) => {
+      const dx = Math.min(px - x, x + w - 1 - px);
+      const dy = Math.min(py - y, y + h - 1 - py);
+      const r = 2 * z;
+      return dx < r && dy < r ? r - Math.sqrt((r - dx) * (r - dx) + (r - dy) * (r - dy)) : Math.min(dx, dy);
+    };
     for (let py = y; py < y + h; py++) for (let px = x; px < x + w; px++) {
-      if (round(px, py, 0)) continue;
-      const rim = px === x || py === y || px === x + w - 1 || py === y + h - 1;
-      const line = !rim && (px === x + 1 || py === y + 1 || px === x + w - 2 || py === y + h - 2 || round(px, py, 2));
+      const d = far(px, py);
+      if (d < 0) continue;
       const t = (py - y) / Math.max(1, h - 1);
-      this.dot(px, py, rim ? [11, 11, 20] : line ? (py > y + h / 2 ? [edge[0] * 0.72, edge[1] * 0.72, edge[2] * 0.8] : edge) : [fill[0] + (deep[0] - fill[0]) * t, fill[1] + (deep[1] - fill[1]) * t, fill[2] + (deep[2] - fill[2]) * t]);
+      this.pdot(px, py, d < 1 ? [11, 11, 20] : d < z + 1 ? (t > 0.5 ? [edge[0] * 0.7, edge[1] * 0.7, edge[2] * 0.8] : edge) : d < z + 2 ? [fill[0] * 0.3, fill[1] * 0.3, fill[2] * 0.4] : [fill[0] + (deep[0] - fill[0]) * t, fill[1] + (deep[1] - fill[1]) * t, fill[2] + (deep[2] - fill[2]) * t]);
     }
   }
+}
+
+const glyphs = new Map<string, Uint8Array>();
+/** A letter's dots at a zoom: at 2, with the corners taken off its staircases, so an O is round. */
+function glyphOf(letter: string, zoom: number): Uint8Array {
+  const key = `${letter}:${zoom}`;
+  let got = glyphs.get(key);
+  if (got) return got;
+  const rows = FONT[letter] ?? FONT["?"]!;
+  let s = blank(5, 7);
+  for (let gy = 0; gy < 7; gy++) for (let gx = 0; gx < 5; gx++) if (rows[gy]! & (16 >> gx)) s.data.set([255, 255, 255, 255], (gy * 5 + gx) * 4);
+  for (let z = zoom; z > 1; z >>= 1) s = smoothed(s);
+  got = new Uint8Array(s.w * s.h);
+  for (let i = 0; i < got.length; i++) got[i] = s.data[i * 4 + 3]! ? 1 : 0;
+  glyphs.set(key, got);
+  return got;
 }
 
 export const textWidth = (words: string, size = 1) => words.length * 6 * size - size;

@@ -9,7 +9,7 @@
 // Nothing here touches the page (see retro/pixels.ts): `draw` returns the frame's pixels.
 import { QUEST_TILE, type ArcadeEvent, type ArcadeRealm, type ArcadeThing, type ArcadeView } from "@journey-to-code/games";
 import { RETRO_H, RETRO_W, Screen, ink, scaled, speck, textWidth, turned, wrapped, type Rgb, type Sprite } from "../retro/pixels";
-import { ARROWS, BOSSES, FOES, FOLK, HEARTS, HOOK_HEAD, ITEMS, SWORD_SLANT, ZUB, ZUB_BIG, tileArt } from "./art";
+import { ARROWS, BOSSES, FOES, FOLK, HEARTS, HOOK_HEAD, ITEMS, SWORD_SLANT, ZUB, tileArt } from "./art";
 
 /** How tall the strip along the top is, and the room under it. */
 export const QUEST_HUD = 48;
@@ -91,9 +91,17 @@ export function questScreen(): QuestScreen {
     if (found && --found.t <= 0) found = null;
   }
 
+  // The room's ground is the same from one frame to the next unless a tile changes or the water moves, so it is painted once and copied.
+  const ground = new Uint8ClampedArray(field.data.length);
+  let groundKey = "";
   function drawRoom(realm: ArcadeRealm, frame: number) {
     const { cols, rows, tiles } = realm;
     const T = QUEST_TILE;
+    let sum = 0;
+    for (let i = 0; i < tiles.length; i++) sum = (sum * 31 + tiles[i]! + i) | 0;
+    const key = `${realm.room}:${(frame >> 3) % 4}:${sum}`;
+    if (key === groundKey) { field.data.set(ground); return; }
+    groundKey = key;
     const at = (tx: number, ty: number) => (tx < 0 || ty < 0 || tx >= cols || ty >= rows ? -1 : tiles[ty * cols + tx]!);
     for (let ty = 0; ty < rows; ty++) for (let tx = 0; tx < cols; tx++) {
       const tile = at(tx, ty);
@@ -111,6 +119,7 @@ export function questScreen(): QuestScreen {
       if (tall(at(tx - 1, ty))) { field.shade(tx * 16, ty * 16, 2, 16, 190); field.shade(tx * 16 + 2, ty * 16, 2, 16, 224); }
       else if (tall(at(tx - 1, ty - 1)) && !tall(at(tx, ty - 1))) field.shade(tx * 16, ty * 16, 3, 3, 200);
     }
+    ground.set(field.data);
   }
 
   /** The light of the place, laid over everything in it. */
@@ -119,33 +128,54 @@ export function questScreen(): QuestScreen {
     if (realm.area === "over") {
       if (realm.biome === "marsh") {
         // Mist, in bands that drift.
-        for (let y = 0; y < FIELD_H; y++) { const much = Math.round(26 + 22 * Math.sin(y / 13 + frame / 90) + 10 * Math.sin(y / 5 - frame / 60)); if (much > 0) field.tint(0, y, RETRO_W, 1, [200, 232, 224], much); }
+        for (let y = 0; y < FIELD_H; y += 0.5) { const much = Math.round(26 + 22 * Math.sin(y / 13 + frame / 90) + 10 * Math.sin(y / 5 - frame / 60)); if (much > 0) field.tint(0, y, RETRO_W, 0.5, [200, 232, 224], much); }
         return;
       }
       // The shadows of clouds, going over.
       for (let n = 0; n < 3; n++) {
         const cx = ((frame * (0.22 + n * 0.07) + n * 140) % (RETRO_W + 160)) - 80;
         const cy = 30 + n * 60 + Math.sin(frame / 200 + n) * 10;
-        for (let y = -22; y <= 22; y++) { const half = Math.round(58 * Math.sqrt(1 - (y * y) / 500)); field.shade(Math.round(cx) - half, Math.round(cy + y), half * 2, 1, 226); }
+        for (let y = -22; y <= 22; y += 0.5) { const half = 58 * Math.sqrt(1 - (y * y) / 500); field.shade(cx - half, cy + y, half * 2, 0.5, 226); }
       }
       return;
     }
-    // Under the ground it is dark, but for the hero's lamp and the torches.
-    const lamps: [number, number, number][] = viewHero ? [[viewHero.x, viewHero.y, 1]] : [];
-    for (let i = 0; i < tiles.length; i++) if (tiles[i] === QUEST_TILE.torch) lamps.push([(i % cols) * 16 + 8, Math.floor(i / cols) * 16 + 6, 0.8 + 0.06 * Math.sin(frame / 5 + i)]);
+    // Under the ground it is dark, but for the hero's lamp and the torches. How far each pixel is
+    // from the nearest torch does not change, so it is worked out once for a room.
+    const z = field.zoom;
+    const wide = field.pw;
+    const high = rows * 16 * z;
+    let sum = realm.room;
+    for (let i = 0; i < tiles.length; i++) if (tiles[i] === QUEST_TILE.torch) sum = (sum * 31 + i) | 0;
+    if (sum !== torchKey) {
+      torchKey = sum;
+      torchFar.fill(1e9);
+      for (let i = 0; i < tiles.length; i++) {
+        if (tiles[i] !== QUEST_TILE.torch) continue;
+        const lx = ((i % cols) * 16 + 8) * z;
+        const ly = (Math.floor(i / cols) * 16 + 6) * z;
+        for (let py = 0; py < high; py++) for (let px = 0; px < wide; px++) { const d = ((px - lx) * (px - lx) + (py - ly) * (py - ly)) / 0.72; if (d < torchFar[py * wide + px]!) torchFar[py * wide + px] = d; }
+      }
+    }
     const dim = realm.area === "cave" ? 168 : 132;
-    for (let y = 0; y < rows * 16; y++) for (let x = 0; x < RETRO_W; x++) {
-      let near = 1e9;
-      for (const [lx, ly, reach] of lamps) near = Math.min(near, ((x - lx) * (x - lx) + (y - ly) * (y - ly)) / (reach * reach));
+    const hx = viewHero ? viewHero.x * z : -9999;
+    const hy = viewHero ? viewHero.y * z : -9999;
+    const data = field.data;
+    for (let py = 0; py < high; py++) for (let px = 0; px < wide; px++) {
+      const mine = (px - hx) * (px - hx) + (py - hy) * (py - hy);
+      const near = Math.min(mine, torchFar[py * wide + px]!);
+      // Lit all the way out to forty pixels: nothing to do there, and no root to take.
+      if (near < 6400) continue;
       // Fading with distance, in many small steps, each broken up along its edge.
-      const d = Math.sqrt(near) + ((x + y) % 2 ? 2.5 : 0) + (x % 2 && y % 2 ? 1.2 : 0);
-      const keep = Math.max(dim, Math.min(256, 256 - Math.floor(Math.max(0, d - 40) / 6) * 9));
+      const d = Math.sqrt(near) / z + ((px + py) % 2 ? 1.6 : 0) + (px % 2 && py % 2 ? 0.8 : 0);
+      const keep = Math.max(dim, 256 - Math.floor((d - 40) / 4) * 6);
       if (keep < 256) {
-        const i = (y * RETRO_W + x) * 4;
-        field.data[i] = (field.data[i]! * keep) >> 8; field.data[i + 1] = (field.data[i + 1]! * keep) >> 8; field.data[i + 2] = (field.data[i + 2]! * (keep + 20 > 256 ? 256 : keep + 20)) >> 8;
+        const i = (py * wide + px) * 4;
+        data[i] = (data[i]! * keep) >> 8; data[i + 1] = (data[i + 1]! * keep) >> 8; data[i + 2] = (data[i + 2]! * Math.min(256, keep + 20)) >> 8;
       }
     }
   }
+  const torchFar = new Float32Array(field.pw * field.ph);
+  let torchKey = -1;
 
   function drawHero(t: ArcadeThing, realm: ArcadeRealm, frame: number) {
     const x = Math.round(t.x / PX);
@@ -154,14 +184,14 @@ export function questScreen(): QuestScreen {
     field.shadow(x, y + 5, 5);
     if (found) {
       // Held up over his head for everyone to see.
-      field.blit(ZUB[1]![0], x - 8, y - 11);
+      field.blit(ZUB[1]![0]!, x - 8, y - 19);
       const item = ITEMS[found.what === "bosskey" ? "bosskey" : found.what] ?? ITEMS.coin!;
-      field.blit(item, x - item.w / 2, y - 27 - (found.t > 60 ? 70 - found.t : 10) / 3);
+      field.blit(item, x - 8, y - 35 - (found.t > 60 ? 70 - found.t : 10) / 3);
       return;
     }
     if (t.ghost && (frame >> 1) % 2) return;
     const walking = t.mark === "walk";
-    const body = ZUB[face]![walking ? 1 + ((frame >> 3) % 2) : 0];
+    const body = ZUB[face]![walking ? 1 + ((frame >> 2) % 4) : 0];
     const swing = t.mark === "swing" ? 16 - (t.level ?? 0) : -1;
     const sword = () => {
       if (swing < 0) return;
@@ -174,7 +204,7 @@ export function questScreen(): QuestScreen {
       field.blit(art, x + ox - 8, y + oy - 10);
     };
     if (face === 3) sword();
-    field.blit(body!, x - 8, y - 11);
+    field.blit(body!, x - 8, y - 19);
     if (face !== 3) sword();
   }
 
@@ -183,7 +213,7 @@ export function questScreen(): QuestScreen {
     const y = Math.round(t.y / PX);
     const [type, name = ""] = t.kind.split(":");
     if (type === "hero") return drawHero(t, realm, frame);
-    if (type === "folk") { field.shadow(x, y + 5, 5); field.blit(FOLK[name] ?? FOLK.elder!, x - 8, y - 11); return; }
+    if (type === "folk") { field.shadow(x, y + 5, 5); field.blit(FOLK[name] ?? FOLK.elder!, x - 8, y - 19); return; }
     if (type === "ware") {
       const art = ITEMS[name] ?? ITEMS.coin!;
       field.shadow(x, y + 6, 5);
@@ -333,7 +363,7 @@ export function questScreen(): QuestScreen {
     const jolt = shake > 0 ? Math.round((speck(frame, 1, 9) - 0.5) * Math.min(6, shake)) : 0;
     const jolt2 = shake > 0 ? Math.round((speck(frame, 2, 9) - 0.5) * Math.min(4, shake)) : 0;
     const clip = { x: 0, y: QUEST_HUD, w: RETRO_W, h: FIELD_H };
-    const whole = (s: Screen, x: number, y: number) => out.blit({ w: s.w, h: s.h, data: s.data }, x, QUEST_HUD + y, { clip });
+    const whole = (s: Screen, x: number, y: number) => out.blit({ w: s.pw, h: s.ph, data: s.data }, x, QUEST_HUD + y, { clip });
     if (slide && slide.side >= 0 && slide.side < 4) {
       // The room before goes out the way he came, and this one follows it in.
       const far = 1 - slide.t / 16;
@@ -346,7 +376,8 @@ export function questScreen(): QuestScreen {
       if (slide && viewHero) {
         // Down steps or through a door: the dark opens from where he stands.
         const r = slide.t * 14;
-        for (let y = 0; y < FIELD_H; y++) for (let x = 0; x < RETRO_W; x++) if ((x - viewHero.x) * (x - viewHero.x) + (y - viewHero.y) * (y - viewHero.y) > r * r) out.dot(x, QUEST_HUD + y, DARK);
+        const z = out.zoom;
+        for (let py = 0; py < FIELD_H * z; py++) for (let px = 0; px < out.pw; px++) if ((px / z - viewHero.x) * (px / z - viewHero.x) + (py / z - viewHero.y) * (py / z - viewHero.y) > r * r) out.pdot(px, QUEST_HUD * z + py, DARK);
       }
     }
     if (view.boss && view.boss.name) {
@@ -371,12 +402,13 @@ export function questScreen(): QuestScreen {
   function title(frame: number, lines: readonly string[], choice: number): Uint8ClampedArray {
     // A sky going from night at the top to dawn at the hills, without a step in it.
     const bands: Rgb[] = [[16, 12, 52], [36, 24, 88], [72, 40, 118], [124, 56, 124], [188, 84, 112], [240, 132, 96], [252, 188, 108], [255, 228, 150]];
-    for (let y = 0; y < RETRO_H; y++) {
+    const z = out.zoom;
+    for (let y = 0; y < RETRO_H; y += 1 / z) {
       const at = Math.min(bands.length - 1.001, (y / 150) * (bands.length - 1));
       const lo = bands[Math.floor(at)]!;
       const hi = bands[Math.floor(at) + 1]!;
       const t = at - Math.floor(at);
-      out.rect(0, y, RETRO_W, 1, [lo[0] + (hi[0] - lo[0]) * t, lo[1] + (hi[1] - lo[1]) * t, lo[2] + (hi[2] - lo[2]) * t]);
+      out.rect(0, y, RETRO_W, 1 / z, [lo[0] + (hi[0] - lo[0]) * t, lo[1] + (hi[1] - lo[1]) * t, lo[2] + (hi[2] - lo[2]) * t]);
     }
     for (let n = 0; n < 46; n++) { const tw = speck(n, 5, 1) * 60 + frame / 6; if (Math.sin(tw) > -0.3) out.dot(Math.floor(speck(n, 1, 1) * RETRO_W), Math.floor(speck(n, 2, 1) * 76), Math.sin(tw) > 0.7 ? WHITE : [190, 180, 230]); }
     // The sun coming up behind the far hills, with its glow round it, and the hills, each lit along its crest.
@@ -384,9 +416,10 @@ export function questScreen(): QuestScreen {
     out.disc(128, 150, 32, [255, 244, 196]);
     out.disc(128, 150, 27, [255, 252, 228]);
     const hill = (base: number, tall: number, wide: number, shift: number, c: Rgb) => {
-      for (let x = 0; x < RETRO_W; x++) {
-        const top = base - Math.round(tall * (0.5 + 0.5 * Math.sin((x + shift) / wide)) + 4 * Math.sin((x + shift) / 9));
-        for (let y = top; y < RETRO_H; y++) { const deep = Math.min(1, (y - top) / 46); const lit = y - top < 2 ? 1.45 : y - top < 5 ? 1.18 : 1 - deep * 0.45; out.dot(x, y, [Math.min(255, c[0] * lit), Math.min(255, c[1] * lit), Math.min(255, c[2] * lit)]); }
+      for (let px = 0; px < out.pw; px++) {
+        const x = px / z;
+        const top = Math.round((base - (tall * (0.5 + 0.5 * Math.sin((x + shift) / wide)) + 4 * Math.sin((x + shift) / 9))) * z);
+        for (let py = top; py < out.ph; py++) { const down = (py - top) / z; const lit = down < 1.5 ? 1.45 : down < 4 ? 1.18 : 1 - Math.min(1, down / 46) * 0.45; out.pdot(px, py, [Math.min(255, c[0] * lit), Math.min(255, c[1] * lit), Math.min(255, c[2] * lit)]); }
       }
     };
     hill(158, 26, 38, 20, [98, 58, 124]);
@@ -401,9 +434,9 @@ export function questScreen(): QuestScreen {
     for (let x = nx; x < nx + textWidth(name, 3); x += 18) out.dot(x + 4, 29, WHITE);
     const under = "THE THREE GREAT STRIPES";
     out.text(under, Math.round((RETRO_W - textWidth(under)) / 2), 58, GOLD);
-    const zub = scaled(ZUB_BIG, 2);
-    out.shadow(52, 205, 14);
-    out.blit(zub, 36, 174 + (frame % 40 < 20 ? 0 : 1));
+    const zub = scaled(ZUB[1]![0]!, 2);
+    out.shadow(58, 201, 16);
+    out.blit(zub, 26, 152 + (frame % 40 < 20 ? 0 : 1));
     out.blit(scaled(ITEMS.stripe!, 2), 190, 168 + Math.round(Math.sin(frame / 12) * 3));
     lines.forEach((line, n) => {
       const y = 92 + n * 14;
