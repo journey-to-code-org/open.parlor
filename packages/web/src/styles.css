@@ -3096,3 +3096,43 @@ button.word-tile:active:not(:disabled) { transform: translateY(2px); }
 .quest-buttons button:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45); }
 .quest-a { background: #c8283c; }
 .quest-b { background: #2850b0; margin-top: 26px; }
+
+/* Delbie's Counter: a page of forms. The components bring their own looks; this is only where they sit. */
+/* It is a pad of paper on a counter: cream, with ink on it, so every component is dark on light whatever the table's felt is. */
+.counter-page {
+  --card: #fffdf7; --border: #d6cfba; --input: #fffdf7; --background: var(--cream); --foreground: var(--ink); --muted-foreground: #646b60;
+  --primary: var(--felt); --primary-foreground: #fffdf7; --accent: #efe8d4; --accent-foreground: var(--ink); --ring: var(--gold); --switch-off: #cfc8b4;
+  --muted: #ebe4cf; --secondary: #ebe4cf; --secondary-foreground: var(--ink); --card-foreground: var(--ink);
+  min-height: 100dvh; background: var(--cream); color: var(--ink);
+}
+.counter-page > * { box-sizing: border-box; width: 100%; max-width: 46rem; margin-left: auto; margin-right: auto; padding-left: 0.9rem; padding-right: 0.9rem; }
+.counter-page > :last-child { padding-bottom: 5rem; }
+.counter-top { padding-top: 0.75rem; }
+.counter-top .arcade-btn { color: var(--ink); border-color: var(--border); background: var(--card); }
+.counter-form[hidden] { display: none; }
+.counter-top { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.6rem; }
+.counter-top h1 { margin: 0; font-size: 1.15rem; }
+.counter { display: grid; gap: 0.8rem; min-width: 0; }
+.counter > *, .counter-form > *, .counter-lookup > *, .counter-pay > * { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.counter tab-list, .counter data-table, .counter select-field, .counter combo-box, .counter money-input { display: block; }
+.counter data-table { overflow-x: auto; }
+.counter-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.counter-line { display: flex; align-items: flex-end; gap: 0.75rem; min-height: 4.6rem; padding: 0.5rem 0.25rem; overflow-x: auto; border-bottom: 3px solid var(--border, #dde); }
+.counter-who { display: grid; justify-items: center; gap: 0.25rem; flex: none; }
+.counter-who.first { margin-right: 0.75rem; padding-right: 1rem; border-right: 1px dashed var(--border, #dde); }
+.counter-quiet, .counter-hint, .counter-receipt { color: var(--muted-foreground, #667); margin: 0; }
+.counter-says { font-size: 1.02rem; line-height: 1.45; }
+.counter-tender { display: block; margin-top: 0.4rem; }
+.counter-form { display: grid; gap: 0.85rem; padding-top: 0.75rem; }
+.counter-lookup { display: grid; gap: 0.6rem; }
+.counter-part { display: block; }
+.counter-add { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+.counter-totals { margin: 0; display: grid; gap: 0.2rem; font-variant-numeric: tabular-nums; }
+.counter-totals div { display: flex; justify-content: space-between; }
+.counter-totals dd { margin: 0; }
+.counter-totals .total { margin-top: 0.3rem; padding-top: 0.4rem; border-top: 1px solid var(--border, #dde); font-weight: 800; font-size: 1.2rem; }
+.counter-pay { display: grid; gap: 0.6rem; }
+.counter-dream { margin: 0 0 0.5rem; font-size: 1.15rem; font-style: italic; }
+.counter-dream span { font-style: normal; color: var(--muted-foreground, #667); }
+.counter-final { margin: 0.4rem 0 0; font-size: 2.4rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+@media (min-width: 720px) { .counter-lookup { grid-template-columns: 1fr 1.4fr; } .counter-add { grid-column: 1 / -1; } }

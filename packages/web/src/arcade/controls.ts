@@ -187,6 +187,9 @@ export function controlsFor(game: ArcadeGameId, options: { autofire: () => boole
     case "airhockey":
       // It has a table of its own (AirHockeyTable.tsx), where a finger is the mallet.
       throw new Error("Air Hockey is played at its own table");
+    case "counter":
+      // It has a screen of its own (counter/Counter.vue), made of forms.
+      throw new Error("Delbie's Counter is played on its own screen");
     case "zubraquest":
       // It has a screen of its own (quest/QuestTable.tsx), with a pad and two buttons.
       throw new Error("Zubra Quest is played on its own screen");
