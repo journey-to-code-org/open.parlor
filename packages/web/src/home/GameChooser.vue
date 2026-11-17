@@ -45,7 +45,7 @@ const props = defineProps<{
   /** Whether this parlor takes requests for games it doesn't have. */
   canAsk?: boolean;
 }>();
-const emit = defineEmits<{ pick: [id: string]; house: [slug: string]; lobby: []; wifi: []; ask: [] }>();
+const emit = defineEmits<{ pick: [id: string]; house: [slug: string]; lobby: []; wifi: []; move: []; ask: [] }>();
 const gameOf = (id: string) => props.games.find((g) => g.id === id);
 const waitingAt = computed(() => props.open.slice(0, 4));
 
@@ -262,6 +262,7 @@ const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : "Spa
     <p class="fine links">
       <a class="design" href="watch/">👀 Watch a game</a>
       <a class="design" href="designer/">🎨 Design your own deck of cards</a>
+      <button type="button" class="design" @click="emit('move')">📱 Use the parlor on another device</button>
       <button v-if="canAsk" type="button" class="design" @click="emit('ask')">💡 Don't see your game? Ask for it</button>
     </p>
   </div>

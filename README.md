@@ -394,6 +394,22 @@ before anything is sent, and can change any of it, put their own words back, go 
 none. If it fails, the player is told and their own words go. One browser can ask for 8 tidy-ups in
 ten minutes, and the parlor 200 a day (counted against the key's daily ceiling too).
 
+## The same you on another device
+
+A player is a browser, not an account, so a new phone starts as a stranger to your houses, your
+standing on a leaderboard and the decks and courses you made. **Use the parlor on another device**,
+at the foot of the front page, hands you over: the device that is you shows a code (and a QR code
+of a link); typed on the new one, that device becomes the same player, and is told your name and
+your houses. Both are you from then on.
+
+The code is eight letters and digits, good once, for ten minutes (`POST /me/move`, then
+`POST /me/move/<code>`; [`packages/server/src/devices.ts`](packages/server/src/devices.ts)). An
+address that gets eight codes wrong waits ten minutes. Anyone who has the code becomes you, which
+is the whole of the security: it is for moving between your own devices, not for sharing.
+
+What lives only in a browser doesn't come along: table settings, practice games, and scores that
+were never sent to a house.
+
 ## Packages
 
 The game engine and the rooms live in their own repositories and come in from npm: [open.games](https://github.com/journey-to-code-org/open.games) (the `@journey-to-code/games`, `rules`, `palace`, `physics` and `decks` packages) and [open.rooms](https://github.com/journey-to-code-org/open.rooms) (`@journey-to-code/rooms`); reporting a problem and asking for a game come from [open.relay](https://github.com/journey-to-code-org/open.relay) (`@journey-to-code/relay` and `relay-ui`). This repository is the app built from them. Paths such as [`packages/games/src/...`](https://github.com/journey-to-code-org/open.games/tree/main/packages/games/src/...) in the sections below are in open.games.
@@ -691,6 +707,8 @@ they sat down. The admin app never sees the cookies, only a reference that's eno
 someone with. A blocked person who clears their cookies is a new player, so blocking is for
 keeping a family room friendly, not for keeping a determined stranger out; for that, don't share
 the room's address.
+
+The same cookie can be on more than one device: see **The same you on another device**.
 
 ## Adding a game
 
