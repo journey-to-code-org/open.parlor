@@ -3,8 +3,8 @@
 // this page runs the game for everyone (kit/LocalKit.tsx).
 //
 // It is a first version, to find out how well it holds up on real phones and real routers:
-// - a guest who drops off can't come back to the same game yet;
-// - the game stops if this device sleeps or leaves (the screen is kept awake while it runs).
+// - a guest who drops off is let back in to the same seat from the table (wifi/WifiRejoin.tsx);
+// - the game ends if this device leaves (the screen is kept awake while it runs).
 import { kitGame, type KitGameId } from "@journey-to-code/games";
 import { useEffect, useRef, useState } from "react";
 import { LocalKit } from "../kit/LocalKit";

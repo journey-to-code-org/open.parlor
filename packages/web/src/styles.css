@@ -3034,3 +3034,7 @@ button.word-tile:active:not(:disabled) { transform: translateY(2px); }
 .pass-card h2 { margin: 8px 0 0; font-family: Georgia, "Times New Roman", serif; font-size: 2rem; color: var(--gold); }
 .pass-card p { margin: 10px 0 22px; color: #d6e6dc; }
 .pass-card .primary { width: 100%; }
+
+.wifi-gone { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
+.wifi-gone p { margin: 0; width: 100%; text-align: center; }
+.wifi-rejoin .qr, .wifi-rejoin svg.qr { max-width: 260px; margin: 0 auto; display: block; }
