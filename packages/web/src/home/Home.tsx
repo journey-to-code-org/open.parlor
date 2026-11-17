@@ -149,7 +149,7 @@ const DICE: Record<string, number[]> = {
 };
 
 /** An arcade game's tile shows a little screen: a ship at the bottom, what it is up against, and what is coming at it. */
-type MiniScreen = { ship: [x: number, y: number]; foes: [x: number, y: number][]; bullets: [x: number, y: number][]; /** A game that builds: a road (an SVG path), and where towers stand beside it. */ road?: string; towers?: [x: number, y: number][]; /** A clicker: one big chip, and a few it has earned. */ chip?: boolean; /** A store: a shopfront with its sign. */ shop?: boolean; /** A drag strip: two lanes, the tree, and two cars leaving. */ strip?: boolean; /** An air hockey table from above: a mallet at each end and the puck between. */ rink?: boolean };
+type MiniScreen = { ship: [x: number, y: number]; foes: [x: number, y: number][]; bullets: [x: number, y: number][]; /** A game that builds: a road (an SVG path), and where towers stand beside it. */ road?: string; towers?: [x: number, y: number][]; /** A clicker: one big chip, and a few it has earned. */ chip?: boolean; /** A store: a shopfront with its sign. */ shop?: boolean; /** A drag strip: two lanes, the tree, and two cars leaving. */ strip?: boolean; /** An air hockey table from above: a mallet at each end and the puck between. */ rink?: boolean; /** An adventure: its hero, in his own pixels, on the grass. */ quest?: boolean };
 const SCREENS: Record<string, MiniScreen> = {
   // A row of drones, a fan of bullets on its way down, and a gap to fly through.
   skyfire: { ship: [50, 82], foes: [[22, 18], [50, 12], [78, 18]], bullets: [[30, 44], [44, 52], [62, 40], [72, 58], [18, 64]] },
@@ -160,6 +160,7 @@ SCREENS.chipstack = { ship: [0, 0], foes: [], bullets: [[20, 80], [34, 86], [70,
 SCREENS.delbies = { ship: [0, 0], foes: [], bullets: [], shop: true };
 SCREENS.pinkslips = { ship: [0, 0], foes: [], bullets: [], strip: true };
 SCREENS.airhockey = { ship: [0, 0], foes: [], bullets: [], rink: true };
+SCREENS.zubraquest = { ship: [0, 0], foes: [], bullets: [], quest: true };
 const EMPTY_SCREEN: MiniScreen = { ship: [50, 82], foes: [], bullets: [] };
 
 const SEATS: Record<string, { seats: [number, number]; teams: boolean }> = {

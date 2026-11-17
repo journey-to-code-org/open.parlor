@@ -61,6 +61,8 @@ export function ArcadeSetup({ game: id, onHome, onPlay, onTogether }: Props) {
 
   // Air hockey is one against another: no score to beat or post, and a second seat is a second person at this screen.
   const versus = id === "airhockey";
+  // Zubra Quest is hours long and kept on this device as it goes: its runs are not sent to a house.
+  const quest = id === "zubraquest";
   const crews: [string, string][] = [];
   for (let n = game.seats.min; n <= game.seats.max; n++) crews.push([String(n), versus ? (n === 1 ? "Against the house" : "Two players at this screen") : n === 1 ? "On your own" : n === 2 ? "With a computer player" : `With ${n - 1} computer players`]);
 
@@ -93,7 +95,7 @@ export function ArcadeSetup({ game: id, onHome, onPlay, onTogether }: Props) {
               "No score with these rules yet."
             )}
           </p>
-          {houses.length > 0 && !versus && (
+          {houses.length > 0 && !versus && !quest && (
             <SelectField
               label="Scores go to"
               value={house?.slug ?? ""}
@@ -104,7 +106,7 @@ export function ArcadeSetup({ game: id, onHome, onPlay, onTogether }: Props) {
               }}
             />
           )}
-          {house && !versus && (
+          {house && !versus && !quest && (
             <section className="arcade-house" aria-label={`${house.name}'s best`}>
               <h3>{house.name}'s best with these rules</h3>
               {board.length === 0 ? (
@@ -194,7 +196,7 @@ export function ArcadeSetup({ game: id, onHome, onPlay, onTogether }: Props) {
           </ul>
         </>
       }
-      more={<p className="fine">{versus ? "Played on this device: it needs no connection." : house ? `A finished run is sent to ${house.name}, which plays it back to check the score. "Take it on" gives you the very same game a housemate had.` : "Scores are kept in this browser."}</p>}
+      more={<p className="fine">{quest ? "Played on this device: it needs no connection. Your quest is kept here between visits, and every new one is a new land." : versus ? "Played on this device: it needs no connection." : house ? `A finished run is sent to ${house.name}, which plays it back to check the score. "Take it on" gives you the very same game a housemate had.` : "Scores are kept in this browser."}</p>}
     />
   );
 }
