@@ -1004,7 +1004,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
           <PlayAgain onAgain={onAgain} onLeave={onLeave} />
         </div>
       )}
-      <p className="sr-only">{game.name}</p>
+      <h1 className="sr-only">{game.name}</h1>
     </main>
   );
 }

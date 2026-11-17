@@ -218,7 +218,7 @@ export function KitTable({
         >
           ←
         </button>
-        <div className="kit-scores" aria-label="Scores">
+        <div role="group" className="kit-scores" aria-label="Scores">
           {view.scores.map((s, i) => (
             <span
               key={i}
@@ -367,7 +367,7 @@ export function KitTable({
         </div>
         {!view.handHidden && <HandSortBar {...holding.bar} />}
         {view.handHidden === "none" ? null : view.handHidden ? (
-          <div
+          <div role="group"
             className="my-pile"
             aria-label={`Your pile: ${view.players[me]?.cards ?? 0} cards, face down`}
           >
@@ -461,7 +461,7 @@ export function KitTable({
           <PlayAgain onAgain={onAgain} onLeave={onLeave} />
         </div>
       )}
-      <p className="sr-only">{game.name}</p>
+      <h1 className="sr-only">{game.name}</h1>
     </main>
   );
 }
@@ -522,7 +522,7 @@ function CenterArea({
     if (!center.plays.length && view.melds.length) return null;
     const n = view.seats;
     return (
-      <div className="kit-trick" aria-label="Cards on the table">
+      <div role="group" className="kit-trick" aria-label="Cards on the table">
         {center.plays.map((p) => {
           // Each card sits toward the player who played it: you at the bottom, then round to your left.
           const k = (p.seat - view.me + n) % n;
@@ -584,7 +584,7 @@ function CenterArea({
       );
     return (
       <div className="pyr">
-        <div className="pyr-rows" aria-label="The pyramid">
+        <div role="group" className="pyr-rows" aria-label="The pyramid">
           {center.rows.map((row, r) => (
             <div key={r} className="pyr-row">
               {row.map((c, i) =>
@@ -624,7 +624,7 @@ function CenterArea({
   if (center.kind === "pairs") {
     return (
       <div className="pairs-area">
-        <div className="pairs-stock" aria-label={`${center.stock} to draw, ${center.trumpLabel}`}>
+        <div role="group" className="pairs-stock" aria-label={`${center.stock} to draw, ${center.trumpLabel}`}>
           {center.trumpCard && (
             <span className="pairs-trump">
               <PlayingCard card={center.trumpCard} size="table" />
@@ -637,7 +637,7 @@ function CenterArea({
           )}
           <small>{center.stock ? `${center.stock} to draw · ${center.trumpLabel}` : center.trumpLabel}</small>
         </div>
-        <div className="pairs" aria-label="The attack">
+        <div role="group" className="pairs" aria-label="The attack">
           {center.pairs.length ? (
             center.pairs.map((p) => (
               <div key={p.attack.id} className={`pair${p.defense ? " beaten" : ""}`}>
@@ -660,7 +660,7 @@ function CenterArea({
     // Their hand, face down and fanned: tap the card you want.
     const n = center.count;
     return (
-      <div
+      <div role="group"
         className="kit-fan-area"
         aria-label={center.label ? named(center.label, names) : "Their cards"}
       >
@@ -702,7 +702,7 @@ function CenterArea({
   if (center.kind === "piles") {
     const top = center.discard.slice(-3);
     return (
-      <div className="pile-area kit-piles" aria-label="The piles">
+      <div role="group" className="pile-area kit-piles" aria-label="The piles">
         <div className="deck kit-stock">
           {center.stock === null ? null : center.stock > 0 ? (
             center.drawMove ? (
@@ -997,7 +997,7 @@ function SolitaireArea({
       </span>
     );
   const slot = (label: string, key: string, place?: string) => (
-    <div key={key} className="sol-slot" aria-label={label} data-drop={place}>
+    <div role="group" key={key} className="sol-slot" aria-label={label} data-drop={place}>
       <span>{label}</span>
     </div>
   );
@@ -1063,7 +1063,7 @@ function SolitaireArea({
       </div>
       <div className="sol-cols">
         {center.columns.map((col, ci) => (
-          <div key={ci} className="sol-col" aria-label={`Column ${ci + 1}`} data-drop={drop ? `column:${ci}` : undefined}>
+          <div role="group" key={ci} className="sol-col" aria-label={`Column ${ci + 1}`} data-drop={drop ? `column:${ci}` : undefined}>
             {col.down === 0 && col.up.length === 0 && slot("", `col-${ci}`)}
             {Array.from({ length: col.down }, (_, i) => (
               <span key={`d${i}`} className="sol-card down">
@@ -1089,7 +1089,7 @@ function CrossArea({
   const AREAS = ["n", "e", "s", "w", "nw", "ne", "se", "sw"];
   return (
     <div className={`cross${center.layout === "row" ? " row" : ""}`}>
-      <div className="cross-stock" aria-label={`${center.stock} to draw`}>
+      <div role="group" className="cross-stock" aria-label={`${center.stock} to draw`}>
         {center.stock > 0 ? <PlayingCard back size="table" /> : <div className="sol-slot" />}
         <small>{center.stock ? `${center.stock} to draw` : "None to draw"}</small>
       </div>
@@ -1126,7 +1126,7 @@ function CrossArea({
             {body}
           </button>
         ) : (
-          <div key={i} className={`cross-pile${bottom ? " deep" : ""}`} style={center.layout === "row" ? undefined : { gridArea: AREAS[i] }} aria-label={p.label}>
+          <div role="group" key={i} className={`cross-pile${bottom ? " deep" : ""}`} style={center.layout === "row" ? undefined : { gridArea: AREAS[i] }} aria-label={p.label}>
             {body}
           </div>
         );
@@ -1147,7 +1147,7 @@ function ScoreTrack({
 }) {
   const at = (n: number) => `${(Math.min(n, track.to) / track.to) * 100}%`;
   return (
-    <div className="score-track" aria-label="The board">
+    <div role="group" className="score-track" aria-label="The board">
       {track.pegs.map((p, i) => (
         <div
           key={i}
@@ -1181,7 +1181,7 @@ function CardGrid({
   send?: (move: Record<string, unknown>) => void;
 }) {
   return (
-    <div
+    <div role="group"
       className={`card-grid ${size}`}
       style={{ "--cols": grid.cols } as React.CSSProperties}
       aria-label="Cards on the table"
@@ -1282,7 +1282,7 @@ function MeldRow({
   return (
     <div className={`kit-melds ${size}`}>
       {melds.map((m, i) => (
-        <div key={i} className="kit-meld" aria-label={m.label ?? "Meld"}>
+        <div role="group" key={i} className="kit-meld" aria-label={m.label ?? "Meld"}>
           <div className="kit-meld-cards">
             {m.cards.map((c) => (
               <PlayingCard key={c.id} card={c} size={size} data-flip={c.id} />

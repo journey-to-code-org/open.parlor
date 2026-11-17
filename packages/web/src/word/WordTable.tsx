@@ -274,7 +274,7 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
         <button type="button" className="leave" aria-label="Leave game" onClick={() => (view.over || confirm("Leave this game?")) && onLeave()}>
           ←
         </button>
-        <div className="kit-scores" aria-label="Scores">
+        <div role="group" className="kit-scores" aria-label="Scores">
           {view.scores.map((s, i) => (
             <span key={i} className={`kit-score${s.seats.includes(me) ? " us" : ""}`}>
               <small>{sideName(s.seats, names)}</small>
@@ -292,7 +292,7 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
 
       <div className="felt word-felt">
         {others.length > 0 && (
-          <div className="word-others" aria-label="The other players">
+          <div role="group" className="word-others" aria-label="The other players">
             {others.map((seat) => (
               <WordSeat key={seat} view={view} seat={seat} name={names[seat] ?? `Player ${seat + 1}`} />
             ))}
@@ -348,7 +348,7 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
         {view.rack && (
           <div className="word-rack-area">
             {pool && (
-              <div className="word-tiles typed" aria-label={typed ? `Your word: ${typed}` : "Your word: nothing yet"} aria-live="polite">
+              <div role="group" className="word-tiles typed" aria-label={typed ? `Your word: ${typed}` : "Your word: nothing yet"} aria-live="polite">
                 {Array.from({ length: Math.max(entry!.max, 1) }, (_, i) => (
                   <span key={i} className={`word-tile${typed[i] ? " filled" : " empty"}`} aria-hidden>
                     {typed[i] ?? ""}
@@ -391,7 +391,7 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
         {/* What has been traced, and the buttons to send it or start again. */}
         {traceBoard && entry && (
           <div className="word-rack-area">
-            <div className="word-tiles typed" aria-live="polite" aria-label={typed ? `Your word: ${typed}` : "Your word: nothing yet"}>
+            <div role="group" className="word-tiles typed" aria-live="polite" aria-label={typed ? `Your word: ${typed}` : "Your word: nothing yet"}>
               {typed ? [...typed].map((letter, i) => (
                 <span key={i} className="word-tile filled small-tile" aria-hidden>
                   {letter}
@@ -563,7 +563,7 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
           <PlayAgain onAgain={onAgain} onLeave={onLeave} />
         </div>
       )}
-      <p className="sr-only">{game.name}</p>
+      <h1 className="sr-only">{game.name}</h1>
     </main>
   );
 }
@@ -577,7 +577,7 @@ function Board({ board, label, typing }: { board: WordBoard; label: boolean; typ
       {board.rows.map((row, r) => {
         const live = r === firstEmpty;
         return (
-          <div key={r} className={`word-tiles row${live ? " typing" : ""}`} aria-label={live ? `Typing: ${typing || "nothing yet"}` : describeRow(row)}>
+          <div role="group" key={r} className={`word-tiles row${live ? " typing" : ""}`} aria-label={live ? `Typing: ${typing || "nothing yet"}` : describeRow(row)}>
             {row.map((tile, i) => {
               const letter = live ? (typing![i] ?? "") : tile.letter;
               return (
