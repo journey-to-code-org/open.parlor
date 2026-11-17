@@ -12,8 +12,8 @@ yourself (Docker or Railway), and practice games work anywhere, including the Gi
 The parlor is also the proving ground for [Zubra](https://github.com/journey-to-code-org/zubra): its
 components are written once and used from React, Vue, Svelte, Solid and Angular, each in a different
 part of the app. [How the parlor is built](https://journey-to-code-org.github.io/open.parlor/conformance/)
-shows the checks that they behave the same in every one, how the last run went, and what the checks
-have found.
+shows the checks that they behave the same in every one (and in Preact and Lit, in Chrome, Firefox
+and WebKit), how the last run went, and what the checks have found.
 
 This repository is the app. The games and the rooms they are played in come from two packages' repositories:
 [open.games](https://github.com/journey-to-code-org/open.games) (the engine and every game) and

@@ -15,6 +15,7 @@ import "./report.css";
 type Status = "passed" | "failed" | "known" | "skipped";
 interface Cell {
   status: Status;
+  engines?: Record<string, Status>;
   as?: string;
   note?: string;
 }
@@ -25,6 +26,7 @@ interface Row {
 interface Results {
   ranAt: string;
   zubra: string;
+  engines?: string[];
   commit: string | null;
   repository: string;
   totals: { checks: number; passed: number; failed: number; known: number };
@@ -56,10 +58,13 @@ const PAGES = [
   { id: "svelte", name: "Svelte", does: "In the parlor: the card designer." },
   { id: "solid", name: "Solid", does: "In the parlor: the page for watching a game." },
   { id: "angular", name: "Angular", does: "In the parlor: the admin app." },
+  { id: "preact", name: "Preact", does: "Not in the parlor. Here because Zubra supports it, and it is the one page that found something in its first run." },
+  { id: "lit", name: "Lit", does: "Not in the parlor. Here for what the others don't do: the whole fixture sits inside a shadow root." },
 ];
 
 /** What the checks have found so far, newest first. */
 const FOUND = [
+  { what: "Preact 11 couldn't reorder a keyed list inside a component", where: "Preact, in browsers that have moveBefore(). A Zubra host passes insertBefore on to its slots but not moveBefore. Open, and listed as a known difference.", links: [["zubra#370", `${REPO}/zubra/issues/370`]] },
   { what: "A disabled Angular form left three controls usable", where: "The switch, the colour swatches and the segmented control had no disabled state. Fixed in the parlor's copies; upstream the switch has a fix waiting and the rest are open.", links: [["zubra-ui#20", `${REPO}/zubra-ui/issues/20`], ["zubra-ui#22", `${REPO}/zubra-ui/issues/22`]] },
   { what: "Named-slot elements stayed after the framework removed them", where: "Vue, Svelte and Solid. Fixed in Zubra 5.15.0.", links: [["zubra#269", `${REPO}/zubra/issues/269`]] },
   { what: "Signal text as a component's direct child never updated", where: "Solid. Fixed in Zubra 5.15.0.", links: [["zubra#268", `${REPO}/zubra/issues/268`]] },
@@ -69,6 +74,16 @@ const FOUND = [
 ] as const;
 
 const MARK: Record<Status, string> = { passed: "✓", failed: "✗ failed", known: "⚠ known", skipped: "skipped" };
+const ENGINE: Record<string, string> = { chrome: "Chrome", firefox: "Firefox", webkit: "WebKit" };
+const engineName = (id: string) => ENGINE[id] ?? id;
+
+/** A cell's mark, naming the browsers when they don't agree. */
+function mark(cell: Cell): string {
+  const engines = Object.entries(cell.engines ?? {});
+  const odd = engines.filter(([, status]) => status === cell.status);
+  const where = cell.status !== "passed" && odd.length < engines.length ? ` in ${odd.map(([id]) => engineName(id)).join(", ")}` : "";
+  return [MARK[cell.status] + where, cell.as].filter(Boolean).join(" ");
+}
 
 /** A table of checks against frameworks. A feature's cell says what it is called there. */
 function matrix(label: string, rows: Row[]): HTMLElement {
@@ -80,7 +95,7 @@ function matrix(label: string, rows: Row[]): HTMLElement {
     ...Object.fromEntries(
       frameworks.map((page) => {
         const cell = row.cells[page.id];
-        return [page.id, cell ? [MARK[cell.status], cell.as].filter(Boolean).join(" ") : "–"];
+        return [page.id, cell ? mark(cell) : "–"];
       }),
     ),
   }));
@@ -99,13 +114,14 @@ function results(data: Results): HTMLElement[] {
       el("stat-card", { label: `Passing, of ${totals.checks}`, value: String(totals.passed) }),
       el("stat-card", { label: "Failing", value: String(totals.failed) }),
       el("stat-card", { label: "Known differences", value: String(totals.known) }),
+      el("stat-card", { label: (data.engines ?? []).map(engineName).join(", ") || "Browsers", value: `${data.engines?.length ?? 1} ${data.engines?.length === 1 ? "browser" : "browsers"}` }),
       el("stat-card", { label: "Zubra", value: data.zubra }),
     ),
-    el("p", { class: "fine" }, `Run in Chrome on ${when}, from `, run, ". A known difference is one already reported upstream; its check is expected to fail until it is fixed."),
+    el("p", { class: "fine" }, `Run on ${when}, from `, run, ". A known difference is one already reported upstream; its check is expected to fail until it is fixed."),
     ...(totals.failed ? [el("alert-banner", { variant: "danger", heading: `${totals.failed} failing` }, "Something behaves differently from the last time this ran. The failing cells are marked in the tables below.")] : []),
     ...(known.length ? [el("alert-banner", { variant: "warning", heading: "Known differences" }, el("ul", {}, ...known.map((line) => el("li", {}, line))))] : []),
     el("h2", {}, "The components behave the same everywhere"),
-    p("The same fixture is written six times, once in each framework and once with none, and the same checks run against every page. A check that passes in five and fails in one is a difference in how Zubra works there."),
+    p("The same fixture is written eight times, once in each framework and once with none, and the same checks run against every page. A check that passes in five and fails in one is a difference in how Zubra works there."),
     matrix("Component checks", data.components),
     el("h2", {}, "Each framework's own features still work"),
     p("What a framework adds on top of a component: forms, transitions, keyed lists, context, portals, lazy loading. A check runs where the framework has the feature, and the cell says what it is called there."),
@@ -122,10 +138,10 @@ const tryIt = () => [
 ];
 
 const how = () => [
-  el("h2", {}, "Why five frameworks"),
+  el("h2", {}, "Why so many frameworks"),
   p("open.parlor is a place to play card, board and arcade games. It is also the proving ground for ", link(`${REPO}/zubra`, "Zubra"), ", a way of writing a component once and using it from any framework. The claim only means something if one real app uses the same components from all of them, so the parlor does: its buttons, fields, tables, dialogs and playing cards are one set of Zubra components, and each part of the parlor is written in a different framework on top of them."),
   el("h2", {}, "What a check is"),
-  p("A fixture page puts the components through the things a page does with them: set a prop, hear an event, bind a value both ways, fill a slot, take a component away and bring it back. The page is written six times, as each framework's own documentation would have you write it. Then one set of browser tests runs against all six in Chrome, using the same names on every page."),
+  p("A fixture page puts the components through the things a page does with them: set a prop, hear an event, bind a value both ways, fill a slot, take a component away and bring it back. The page is written eight times, as each framework's own documentation would have you write it: the five frameworks the parlor uses, Preact and Lit, and once with no framework. Then one set of browser tests runs against all eight, in Chrome, Firefox and WebKit, using the same names on every page."),
   p("Nothing in a framework's page works around a difference. If Vue needs something React doesn't, that is a finding, and it goes to Zubra as an issue instead of into the page as a patch."),
   el("h2", {}, "When something differs"),
   p("The check is listed as a known difference with the issue it was reported in, so the run stays green and the gap stays visible. When Zubra fixes it, the check passes, the run says it expected a failure, and the entry and any workaround in the parlor come out."),
@@ -142,7 +158,7 @@ const found = () => [
       el("li", {}, el("span", { class: "what" }, item.what), el("span", {}, item.where), el("cluster-layout", { gap: "0.5rem" }, ...item.links.map(([text, href]) => link(href, text)))),
     ),
   ),
-  el("p", { class: "fine" }, "The first run, on Zubra 5.9, found the five Zubra differences and a gap in its typings. The disabled-state gap came from the framework feature checks."),
+  el("p", { class: "fine" }, "The first run, on Zubra 5.9, found the five fixed Zubra differences and a gap in its typings. The disabled-state gap came from the framework feature checks, and the Preact one from adding a Preact page."),
 ];
 
 async function start(): Promise<void> {
@@ -159,8 +175,8 @@ async function start(): Promise<void> {
     el(
       "header",
       {},
-      el("h1", {}, "One set of components, checked in five frameworks"),
-      el("p", { class: "lede" }, "open.parlor's games are made of Zubra components, used from React, Vue, Svelte, Solid and Angular. These are the checks that they behave the same in each."),
+      el("h1", {}, "One set of components, checked in seven frameworks"),
+      el("p", { class: "lede" }, "open.parlor's games are made of Zubra components, used from React, Vue, Svelte, Solid and Angular. These are the checks that they behave the same in each, and in Preact and Lit besides."),
       el(
         "cluster-layout",
         { gap: "0.5rem" },

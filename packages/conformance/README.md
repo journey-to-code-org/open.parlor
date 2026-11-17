@@ -1,12 +1,18 @@
 # Zubra conformance
 
-One fixture of Zubra components, written six times (plain elements, React, Vue, Svelte, Solid,
-Angular), and one set of browser tests run against all six. A check that passes in five and fails
-in the sixth is a difference in how the components behave in that framework.
+One fixture of Zubra components, written eight times (plain elements, React, Vue, Svelte, Solid,
+Angular, Preact, Lit), and one set of browser tests run against all eight, in Chrome, Firefox and
+WebKit. A check that passes in seven and fails in the eighth is a difference in how the components
+behave in that framework.
+
+The parlor itself uses the first five frameworks. Preact and Lit are here because Zubra supports
+them and each adds a case the others don't: Preact 11 moves keyed children with `moveBefore()`,
+and the Lit page puts the whole fixture inside a shadow root.
 
 ```sh
-npm run build -w @open-parlor/conformance        # the six pages
-npm run conformance -w @open-parlor/conformance  # 18 checks × 6 frameworks, and each framework's own features, in Chrome
+npm run build -w @open-parlor/conformance        # the eight pages
+npm run conformance -w @open-parlor/conformance  # 18 checks × 8 frameworks, and each framework's own features, in Chrome
+npm run conformance:engines -w @open-parlor/conformance  # the same in Chrome, Firefox and WebKit (CI runs this)
 npm run dev -w @open-parlor/conformance          # http://localhost:4179/react/ and friends (not Angular)
 ```
 
@@ -61,7 +67,17 @@ names that start `f-`. A check runs in the frameworks that have the feature:
 | Forms | | `v-model.trim` | | | reactive forms: values both ways, validity and touched, `disable()`, `reset()`, over the text field, switch, select, segmented control and swatches |
 | Only there | | `v-show` | `use:` actions, `#key`, snippets | `Dynamic` | `ng-content` in the page's own wrapper |
 
-That is 45 checks: 7 in React, 10 in Vue, 9 in Svelte, 7 in Solid and 12 in Angular.
+That is 45 checks: 7 in React, 10 in Vue, 9 in Svelte, 7 in Solid and 12 in Angular. Preact has 6
+of them (keys, context, `class` and `style`, `createPortal`, `lazy` and `Suspense`, spread) and Lit
+has 6 (`repeat`, `@lit/context`, `classMap` and `styleMap`, `until`, `cache`, `keyed`), which makes
+57. With the 144 component checks the suite is 201, each run in three browsers.
+
+## Browsers
+
+`npm run conformance` runs Chrome alone, the one already on the machine. Firefox and WebKit are
+Playwright's own builds: `npx playwright install firefox webkit`, then
+`npm run conformance:engines`. CI and the Pages build run all three. The results page shows a
+check as failing if any browser fails it, and says which.
 
 Not covered yet: Angular's router with lazy routes and template-driven `<form>` validation, Vue's
 `Suspense` and template refs, Solid's stores and resources, server rendering and hydration in any
@@ -74,7 +90,7 @@ That is Solid's rule for every custom element, not a difference in Zubra.
 ## The page
 
 The build has a page at its root (`index.html`, `src/report/`): how the last run went, check by
-check and framework by framework, links to the six fixture pages, how the suite works and what it
+check and framework by framework, links to the eight fixture pages, how the suite works and what it
 has found. It is made of the same Zubra components, as plain elements. The run writes what it
 shows: `tests/results-reporter.ts` is a Playwright reporter that writes `dist/results.json`, and
 `dist/badge.json` for the badge in the parlor's README.
@@ -86,8 +102,13 @@ relative, so it works there and at `/` for the tests. To see it here, run the ch
 
 ## Known differences
 
-None today: the 18 component checks pass in all six frameworks, and the 45 feature checks pass
-in the frameworks that have each feature, on Zubra 5.15.0.
+One, on Zubra 5.15.0. Preact 11 can't reorder a keyed list inside a component
+([zubra#370](https://github.com/journey-to-code-org/zubra/issues/370)): it moves children with
+`moveBefore()` where the browser has it, and a Zubra host passes `insertBefore` on to its slots
+but not `moveBefore`, so the move throws and the list keeps its old order. The check is expected
+to fail only in browsers that have `moveBefore()`; elsewhere Preact uses `insertBefore`, which
+works. Everything else passes: the 18 component checks in all eight frameworks, and the feature
+checks in the frameworks that have each feature.
 
 `KNOWN` in each spec is where a difference goes when one turns up: the check's title and the
 Zubra issue it was reported in. A listed check is expected to fail, so the run stays
@@ -106,7 +127,7 @@ copies have one now. Upstream it is zubra-ui#20 (the switch, fixed in zubra-ui#2
 
 ## Adding a check
 
-Add what it needs to all six pages (same `data-t` names), then one `check(...)` in the spec. For a
+Add what it needs to all eight pages (same `data-t` names), then one `check(...)` in the spec. For a
 framework's own feature, add it to that framework's features page and one entry to `FEATURES` in
 `tests/features.spec.ts`, naming the frameworks that have it. If a
 framework fails it, report it upstream and add it to `KNOWN` with the link.

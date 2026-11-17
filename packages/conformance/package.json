@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build && npm run build:angular",
     "build:angular": "zubra build --lib ../ui/src --out angular/zubra --name @open-parlor/conformance-zubra && ng build --project conformance",
-    "conformance": "playwright test",
+    "conformance": "playwright test --project=chrome",
+    "conformance:engines": "playwright test",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
@@ -17,7 +18,10 @@
     "@angular/core": "^22.2.0",
     "@angular/forms": "^22.2.0",
     "@angular/platform-browser": "^22.2.0",
+    "@lit/context": "^1.1.6",
     "@zubra/runtime": "^5.15.0",
+    "lit": "^3.3.3",
+    "preact": "^11.2.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "rxjs": "^7.8.0",
