@@ -425,7 +425,7 @@ export function BoardTable({ view, names, act, onLeave, banner, watching, togeth
         <button type="button" className="leave" aria-label="Leave game" onClick={() => (view.over || confirm("Leave this game?")) && onLeave()}>
           ←
         </button>
-        <div className="kit-scores" aria-label="Scores">
+        <div role="group" className="kit-scores" aria-label="Scores">
           {view.scores.map((s, i) => (
             <span key={i} className={`kit-score${s.seats.includes(me) ? " us" : ""}`}>
               <small>{sideName(s.seats, names)}</small>
@@ -511,7 +511,7 @@ export function BoardTable({ view, names, act, onLeave, banner, watching, togeth
           <PlayAgain onAgain={onAgain} onLeave={onLeave} />
         </div>
       )}
-      <p className="sr-only">{game.name}</p>
+      <h1 className="sr-only">{game.name}</h1>
     </main>
     </PieceSet.Provider>
   );

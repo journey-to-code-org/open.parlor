@@ -293,6 +293,7 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
 
   return (
     <main className={`table palace${three ? " three" : ""}`} ref={root}>
+      <h1 className="sr-only">Palace</h1>
       <header className="palace-bar">
         <button type="button" className="leave" aria-label="Leave game" onClick={() => (view.phase === "finished" || confirm("Leave this game?")) && onLeave()}>
           ←
@@ -331,8 +332,8 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
         ))}
 
         <div className="center">
-          <div className="pile-area" aria-label="The pile">
-            <div className="deck" aria-label={`${view.deck} cards left to draw`}>
+          <div role="group" className="pile-area" aria-label="The pile">
+            <div role="group" className="deck" aria-label={`${view.deck} cards left to draw`}>
               {view.deck > 0 ? <PlayingCard back size="table" style={{ "--depth": Math.min(6, Math.ceil(view.deck / 8)) } as React.CSSProperties} /> : <div className="empty-slot">No deck</div>}
               <small>{view.deck} to draw</small>
             </div>
@@ -410,7 +411,7 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
         </div>
 
         <div className="mine-on-table" data-seat={me}>
-          <div className={`my-table${choosingUp ? " drop-up" : ""}`} ref={myTableRef} aria-label="Your table cards">
+          <div role="group" className={`my-table${choosingUp ? " drop-up" : ""}`} ref={myTableRef} aria-label="Your table cards">
             {Array.from({ length: Math.max(mine.up.length, mine.down) }, (_, i) => {
               const up = mine.up[i] as PCard | undefined;
               // While choosing, the cards picked so far (tapped or dragged) sit on the face-down ones.

@@ -128,6 +128,7 @@ export function Table({ table: t, names, onLeave, banner, chat, settings }: Prop
 
   return (
     <main className={`table spades${three ? " three" : ""}`} ref={root}>
+      <h1 className="sr-only">Spades</h1>
       <ScoreBoard
         us={{ name: `${names[me]} & ${names[partner]}`, ...view.scores[myTeam] }}
         them={{ name: `${names[left]} & ${names[right]}`, ...view.scores[(1 - myTeam) as Team] }}
@@ -146,7 +147,7 @@ export function Table({ table: t, names, onLeave, banner, chat, settings }: Prop
           </div>
         ))}
 
-        <div className="trick" aria-label="Cards on the table">
+        <div role="group" className="trick" aria-label="Cards on the table">
           {t.trickOnTable.map((play) => (
             <div key={cardId(play.card)} className={`played ${side(play.seat)}`}>
               <PlayingCard card={play.card} size="table" won={t.trickWinner === play.seat} data-flip={cardId(play.card)} data-from={`[data-seat="${play.seat}"]`} />

@@ -46,13 +46,13 @@ export function RiversArea({ center, me, names }: { center: Rivers; me: number; 
   return (
     <div className="mj-rivers" role="group" aria-label="The discards">
       {center.rivers.map((r) => (
-        <div key={r.seat} className={`mj-river ${place(r.seat)}`} aria-label={`${names[r.seat] ?? `Seat ${r.seat + 1}`}'s discards`}>
+        <div role="group" key={r.seat} className={`mj-river ${place(r.seat)}`} aria-label={`${names[r.seat] ?? `Seat ${r.seat + 1}`}'s discards`}>
           <small>{names[r.seat]}</small>
           <div className="mj-river-tiles">{r.tiles.map((t, i) => tile(t.card, t.riichi, t.claimed, `${i}`, center.last?.seat === r.seat && center.last.index === i))}</div>
         </div>
       ))}
       <div className="mj-core">
-        <div className="mj-dora" aria-label="Dora indicators">
+        <div role="group" className="mj-dora" aria-label="Dora indicators">
           {center.indicators.map((c) => (
             <CardFace key={c.id} card={c} size="mini" />
           ))}

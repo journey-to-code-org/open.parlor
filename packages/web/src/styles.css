@@ -1842,7 +1842,7 @@ html[data-motion="off"] .die, html[data-motion="off"] .die.tumbling { animation:
 .score-sheet thead th.mine { color: var(--felt); }
 .score-sheet td.last { background-image: linear-gradient(rgba(232, 196, 106, 0.55), rgba(232, 196, 106, 0.55)); }
 /* Lines nobody fills in (a bonus): worked out, so written smaller and lighter. */
-.score-sheet tr.worked th, .score-sheet tr.worked td { font-size: 0.82em; font-style: italic; color: var(--muted); background: #f1e8d6; height: 2em; }
+.score-sheet tr.worked th, .score-sheet tr.worked td { font-size: 0.82em; font-style: italic; color: #5c5449; background: #f1e8d6; height: 2em; }
 .score-sheet tr.worked td.mine { background: #eadfc6; }
 .score-sheet tfoot tr:first-child th, .score-sheet tfoot tr:first-child td { border-top: 2px solid var(--ink); border-bottom: 0; font-family: Georgia, "Times New Roman", serif; font-size: 1.15em; font-weight: 700; height: 2em; }
 /* A box you can score in now: a button the width of the cell, showing what it would give. */
