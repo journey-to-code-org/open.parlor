@@ -22,13 +22,13 @@ engine, standing in until the game has its own.
 | Controller | Left stick to move, right stick to turn, right trigger or X to fire, A to use, the bumpers for weapons, Start for the menu |
 | Together | Up to four, each on a device of their own, against the monsters or each other. One starts a game and sends the others its link or its four-letter code |
 | Watching | Anyone with the link can watch, through any player's eyes, and is run through the game so far if they come late. A game its host lists also shows on the parlor's watch page |
-| Changing it | An editor at `/wasm/editor/` swaps any of the game's pictures and sounds for a file of your own, and the game is played with them, alone |
+| Changing it | An editor at `/wasm/editor/` swaps any of the game's pictures and sounds for a file of your own, and changes what is placed in its levels; the game is played with the changes, alone |
 | Sound | Effects, through Web Audio. No music yet |
 | Saved games and settings | Kept in the browser (IndexedDB), under the engine's own menus |
 | Offline | After the first visit the page, the engine and the game's data are kept on the device |
 
 Not there yet: music (the songs are MUS data, which wants an OPL or MIDI synthesiser), joining a
-game that has started as a player, replays of games that are over, and an editor for the game's levels.
+game that has started as a player, replays of games that are over, and changing a level's walls.
 
 ## The editor
 
@@ -46,6 +46,29 @@ letters) and the sound effects. Any of them can be swapped for a file:
 - **Try it** runs the game on the page with the changes as they stand.
 - **Save my changes as a file** writes them as a small WAD of the kind other Doom engines load on
   top of a game; **Load changes from a file** reads one back.
+
+### Levels
+
+The **Levels** tab draws a level from above and changes what is placed in it: where the players
+start, the monsters, what can be picked up, the scenery.
+
+- **Choose and move**: tap a thing to choose it, drag it to move it. Drag the map to move about;
+  pinch, or the wheel, to come closer.
+- **Add**: pick what, and tap where.
+- **A chosen thing** can be made something else, turned to face any of eight ways, left out of
+  easy, medium or hard games, made to wait in ambush (a monster), kept for games with other
+  players, or taken away. A level keeps a place for the first player to start.
+- **From the keyboard**, with the map in focus: arrows move the chosen thing (Shift for bigger
+  steps), `[` and `]` choose the one before or after, Delete takes it away.
+- **Play this level** starts the game in it, with the changes.
+
+What can be placed, and what each thing looks like and how wide it is, comes from the engine's own
+table (`engine/info.c`), read by `scripts/gen-things.mjs` into `wad/things.ts`.
+
+The walls can't be changed yet. A level's walls are stored with a tree the engine draws and
+collides by (the "nodes"), which has to be rebuilt whenever a wall moves; what is placed in a
+level needs nothing rebuilt. Saved as a file, a changed level goes in whole, walls and all, since
+other engines can only replace a level whole.
 
 The changes are kept in the browser (IndexedDB) and laid over the game's WAD each time it is
 played alone. A game with other devices is played on the data as it came. Pictures and sounds
@@ -104,7 +127,9 @@ wad/                  the Doom engine's data, read and written. No browser, no S
   wad.ts              a WAD file: its lumps, in and out
   picture.ts          the engine's pictures (columns of posts; 64 by 64 floors) and its palette
   sound.ts            its sound effects
-  catalogue.ts        which lumps are sprites, walls, floors, other pictures and sounds
+  catalogue.ts        which lumps are sprites, walls, floors, other pictures, sounds and levels
+  level.ts            a level: its walls, to draw, and what is placed in it, to change
+  things.ts           what can be placed in a level; written from the engine's table by scripts/gen-things.mjs
   mod.ts              someone's changes: laid over a game, or as a WAD of their own
 net/                  for any lockstep game, and for a server: nothing here knows about Doom either
   protocol.ts         what a device and a room say to each other
@@ -125,10 +150,10 @@ src/
   wifi/               the pairing itself: the code (signal.ts), the channel (link.ts), QR codes (qr.ts)
   shooter/keys.ts, touch.ts, gamepad.ts, audio.ts
   main.ts             this package's own page
-  editor/             the editor: App.svelte, Thumb.svelte, and convert.ts (a dropped file to a lump)
+  editor/             the editor: App.svelte, Levels.svelte (the map), Thumb.svelte, and convert.ts (a dropped file to a lump)
 editor/index.html     the editor's page
 public/sw.js          keeps the page for playing offline
-scripts/              build-engine.mjs, toolchain.mjs, fetch-data.mjs, sources.mjs
+scripts/              build-engine.mjs, toolchain.mjs, fetch-data.mjs, sources.mjs, gen-things.mjs
 lib/                  net/ compiled for a server to import (npm run build:net); git ignores it
 ```
 

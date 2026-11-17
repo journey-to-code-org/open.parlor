@@ -20,13 +20,14 @@
   import { readWad, type Wad } from "../../wad/wad.ts";
   import { mountShooter, type Shooter } from "../shooter/player.ts";
   import { download, type Fit, isSound, pictureLump, pictureOf, play, png, soundLump } from "./convert.ts";
+  import Levels from "./Levels.svelte";
   import Thumb from "./Thumb.svelte";
 
   type News<T> = CustomEvent<T>;
-  type Tab = Kind | "changed" | "play";
+  type Tab = Kind | "level" | "changed" | "play";
 
-  const LABELS: Record<Kind, string> = { sprite: "Sprites", wall: "Walls", floor: "Floors", screen: "Screens", sound: "Sounds" };
-  const HINTS: Record<Kind, string> = {
+  const LABELS: Record<string, string> = { sprite: "Sprites", wall: "Walls", floor: "Floors", screen: "Screens", sound: "Sounds" };
+  const HINTS: Record<string, string> = {
     sprite: "Everything that stands in a level: monsters, the weapon in your hand, things to pick up. A name is four letters for the thing, a letter for the moment, and a number for the side it is seen from.",
     wall: "The pieces walls are built from. A new picture is made the size of the piece it replaces.",
     floor: "Floors and ceilings. Each is 64 by 64 pixels and repeats.",
@@ -41,7 +42,7 @@
   let progress = $state("Fetching the game");
   let failure = $state("");
   // The game's own data, read once, then never changed.
-  let wad: Wad = { kind: "IWAD", lumps: [] };
+  let wad = $state.raw<Wad>({ kind: "IWAD", lumps: [] });
   let palette = $state.raw<Palette>(new Uint8Array(768));
   let assets = $state.raw<Asset[]>([]);
   /** What has been changed, by kind and name. */
@@ -58,8 +59,11 @@
   let chooser = $state<HTMLInputElement>();
   let importer = $state<HTMLInputElement>();
   let stageElement = $state<HTMLElement>();
+  /** The level open in the Levels tab, and the one "Try it" starts in (none: the title screen). */
+  let level = $state("");
+  let tryLevel = $state("");
 
-  const tabs = $derived([...KINDS.map((kind) => ({ value: kind, label: LABELS[kind] })), { value: "changed", label: `Changed (${changes.size})` }, { value: "play", label: "Try it" }]);
+  const tabs = $derived([...KINDS.map((kind) => ({ value: kind, label: LABELS[kind]! })), { value: "level", label: "Levels" }, { value: "changed", label: `Changed (${changes.size})` }, { value: "play", label: "Try it" }]);
   const original = (asset: Asset) => wad.lumps[asset.index]!.data;
   const now = (asset: Asset) => changes.get(key(asset.kind, asset.name))?.data ?? original(asset);
   const isChanged = (asset: Asset) => changes.has(key(asset.kind, asset.name));
@@ -100,9 +104,9 @@
     saveChange(change);
   }
 
-  function restore(asset: Asset) {
-    changes.delete(key(asset.kind, asset.name));
-    removeChange(asset.kind, asset.name);
+  function restore(kind: Kind, name: string) {
+    changes.delete(key(kind, name));
+    removeChange(kind, name);
   }
 
   /** Puts a file in an asset's place. True if it took. */
@@ -134,7 +138,7 @@
       const lost: string[] = [];
       for (const file of files) {
         const name = file.name.replace(/\.[^.]*$/, "").toUpperCase();
-        const named = assets.filter((asset) => asset.name === name);
+        const named = assets.filter((asset) => asset.name === name && asset.kind !== "things");
         // A name two kinds share (a floor and a wall piece) goes to the kind whose tab is open.
         const target = named.find((asset) => asset.kind === tab) ?? named[0];
         if (target && (await replace(target, file))) took++;
@@ -164,7 +168,7 @@
     if (picture) download(`${asset.name}.png`, await png(picture, palette));
   }
 
-  const exportMod = () => download("my-changes.wad", new Blob([modToWad(changes.values()) as BlobPart], { type: "application/octet-stream" }));
+  const exportMod = () => download("my-changes.wad", new Blob([modToWad(changes.values(), wad) as BlobPart], { type: "application/octet-stream" }));
 
   async function importMod(event: Event) {
     const input = event.currentTarget as HTMLInputElement;
@@ -172,7 +176,7 @@
     input.value = "";
     if (!file) return;
     try {
-      const { changes: found, skipped } = modFromWad(new Uint8Array(await file.arrayBuffer()), assets);
+      const { changes: found, skipped } = modFromWad(new Uint8Array(await file.arrayBuffer()), assets, wad);
       found.forEach(keep);
       toast(found.length ? `${found.length} ${found.length === 1 ? "change" : "changes"} taken from ${file.name}.` : `Nothing in ${file.name} is something this game has.`, found.length ? "success" : "danger");
       if (found.length && skipped.length) toast(`${skipped.length} of its lumps were left out: this game has no place for them.`);
@@ -189,20 +193,38 @@
   }
 
   function choose(to: Tab) {
+    // Chosen from the tabs, "Try it" starts at the title; from a level, in that level.
+    if (to === "play" && tab !== "play") tryLevel = "";
     tab = to;
     search = "";
     shown = PAGE;
+  }
+
+  /** Opens something from the list: a picture or a sound in the dialog, a level in the Levels tab. */
+  function open(asset: Asset) {
+    if (asset.kind !== "things") return void (picked = asset);
+    level = asset.name;
+    choose("level");
+  }
+
+  /** Plays a level with the changes as they stand. */
+  function tryIn(name: string) {
+    tryLevel = name;
+    tab = "play";
   }
 
   // "Try it": the game itself, on this page, with the changes as they stand. It is taken off the
   // page again when another tab is chosen, so it isn't left running, or holding the keyboard.
   $effect(() => {
     if (tab !== "play" || !stageElement || stage !== "ready") return;
+    // "E2M3" is episode 2, map 3 to the engine's command line; "MAP07" is map 7.
+    const where = tryLevel.match(/^E(\d)M(\d)$/)?.slice(1) ?? tryLevel.match(/^MAP(\d\d)$/)?.slice(1).map((map) => String(Number(map)));
     const mounted: Shooter = mountShooter(stageElement, {
       wasm,
       wad: { url: address, name: "freedoom1.wad", megabytes: game.megabytes },
-      title: "Try it",
+      title: where ? `Try ${tryLevel}` : "Try it",
       blurb: changes.size ? "The game, with what you have changed." : "The game as it came: nothing is changed yet.",
+      args: where ? ["-warp", ...where] : [],
       levels: { episodes: 4, maps: 9 },
       own: { apply: async (data) => applyMod(data, changes.values()), note: async () => "" },
     });
@@ -220,7 +242,7 @@
   <header class="top">
     <a class="home" href="../"><span aria-hidden="true">←</span> The game</a>
     <h1>Change the game</h1>
-    <p class="quiet">Swap the game's pictures and sounds for your own. What you change is kept in this browser, and is what you play with when you play alone.</p>
+    <p class="quiet">Swap the game's pictures and sounds for your own, and change what is placed in its levels. What you change is kept in this browser, and is what you play with when you play alone.</p>
   </header>
 
   {#if stage === "loading"}
@@ -249,9 +271,11 @@
               <ul class="tiles">
                 {#each listed.slice(0, shown) as asset (key(asset.kind, asset.name))}
                   <li>
-                    <button type="button" class="tile" class:changed={isChanged(asset)} onclick={() => (picked = asset)}>
+                    <button type="button" class="tile" class:changed={isChanged(asset)} onclick={() => open(asset)}>
                       <span class="thumb">
-                        {#if isSound(asset.kind)}
+                        {#if asset.kind === "things"}
+                          <span class="sound" aria-hidden="true">▦</span>
+                        {:else if isSound(asset.kind)}
                           <span class="sound" aria-hidden="true">♪</span>
                         {:else}
                           <Thumb kind={asset.kind} data={now(asset)} {palette} label="" />
@@ -269,12 +293,17 @@
               {/if}
             {:else}
               <empty-state heading={panel === "changed" && !search ? "Nothing is changed yet" : "Nothing by that name"}>
-                <span>{panel === "changed" && !search ? "Open a sprite, a wall, a floor, a screen or a sound and give it a file of your own." : "Try fewer letters."}</span>
+                <span>{panel === "changed" && !search ? "Open a sprite, a wall, a floor, a screen or a sound and give it a file of your own, or move something in a level." : "Try fewer letters."}</span>
               </empty-state>
             {/if}
           {/if}
         </section>
       {/each}
+      <section data-tab="level">
+        {#if tab === "level"}
+          <Levels {wad} {assets} {palette} bind:level saved={(name) => changes.get(key("things", name))?.data} {keep} {restore} {toast} ontry={tryIn} />
+        {/if}
+      </section>
       <section data-tab="play">
         <div class="stage" bind:this={stageElement}></div>
       </section>
@@ -323,7 +352,7 @@
     </div>
     <cluster-layout slot="actions" gap="0.6rem">
       {#if !isSound(asset.kind)}<action-button variant="outline" size="sm" onclick={() => savePng(asset)}>Save as a PNG</action-button>{/if}
-      {#if changed}<action-button variant="outline" size="sm" onclick={() => restore(asset)}>Put the original back</action-button>{/if}
+      {#if changed}<action-button variant="outline" size="sm" onclick={() => restore(asset.kind, asset.name)}>Put the original back</action-button>{/if}
       <action-button size="sm" data-close>Done</action-button>
     </cluster-layout>
   {/if}

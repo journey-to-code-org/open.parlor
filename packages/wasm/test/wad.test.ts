@@ -9,6 +9,7 @@ import data from "../games/shooter/data.json";
 import { startEngine } from "../src/shooter/engine.ts";
 import { KEY } from "../src/shooter/keys.ts";
 import { catalogue, key } from "../wad/catalogue.ts";
+import { decodeThings, encodeThings, FLAG_EASY, FLAG_HARD, FLAG_MEDIUM, levelLumps, levelNames, readLevel, THING_KINDS, thingKind } from "../wad/level.ts";
 import { applyMod, type Change, fits, modFromWad, modToWad } from "../wad/mod.ts";
 import { decodeFlat, decodePatch, encodeFlat, encodePatch, fromRgba, paletteOf, type Picture, toRgba } from "../wad/picture.ts";
 import { decodeDmx, encodeDmx, mixDown, resample } from "../wad/sound.ts";
@@ -118,7 +119,10 @@ describe.skipIf(!existsSync(file))("the real game", () => {
     expect(assets.filter((asset) => !fits(asset.kind, wad.lumps[asset.index]!.data)).map((asset) => asset.name)).toEqual([]);
     expect(new Set(assets.map((asset) => key(asset.kind, asset.name))).size).toBe(assets.length);
     // Nothing of a level, and none of the game's own tables, is offered as a picture.
-    expect(assets.filter((asset) => /^(THINGS|PLAYPAL|COLORMAP|E1M1|TEXTURE1|D_E1M1|DEMO1)$/.test(asset.name))).toEqual([]);
+    expect(assets.filter((asset) => asset.kind !== "things" && /^(THINGS|PLAYPAL|COLORMAP|E1M1|TEXTURE1|D_E1M1|DEMO1)$/.test(asset.name))).toEqual([]);
+    // Each level is there once, for what is placed in it.
+    expect(assets.filter((asset) => asset.kind === "things").map((asset) => asset.name)).toEqual(levelNames(wad));
+    expect(levelNames(wad)).toHaveLength(36);
     expect(find("screen", "TITLEPIC").note).toBe("Title screen");
     expect(find("sprite", "TROOA1").note).toBe("Fireball thrower");
     expect(find("sound", "DSPISTOL").note).toBe("Pistol shot");
@@ -204,6 +208,85 @@ describe.skipIf(!existsSync(file))("the real game", () => {
     const other = writeWad({ kind: "PWAD", lumps: [{ name: "TITLEPIC", data: new Uint8Array(50) }, { name: "MAP01", data: new Uint8Array(0) }, { name: "THINGS", data: new Uint8Array(10) }, { name: "DSPISTOL", data: lump("sound", "DSPISTOL") }] });
     const partly = modFromWad(other, assets);
     expect(partly.changes.map((change) => change.name)).toEqual(["DSPISTOL"]);
-    expect(partly.skipped.sort()).toEqual(["THINGS", "TITLEPIC"]);
+    expect(partly.skipped.sort()).toEqual(["MAP01", "TITLEPIC"]);
+  });
+
+  test("a level is its walls, to draw, and its things, each of them something the engine knows", () => {
+    const level = readLevel(wad, "E1M1");
+    expect(level.lines.length).toBeGreaterThan(300);
+    expect(level.lines.some((line) => line.solid) && level.lines.some((line) => !line.solid) && level.lines.some((line) => line.special)).toBe(true);
+    expect(level.bounds.right - level.bounds.left).toBeGreaterThan(1000);
+    // One start for each of four players, and everything inside the level's corners.
+    expect([1, 2, 3, 4].map((player) => level.things.filter((thing) => thing.type === player).length)).toEqual([1, 1, 1, 1]);
+    expect(level.things.every((thing) => thing.x >= level.bounds.left && thing.x <= level.bounds.right && thing.y >= level.bounds.bottom && thing.y <= level.bounds.top)).toBe(true);
+    // Across the whole game, nothing is placed that the table of things can't name.
+    const unknown = new Set(levelNames(wad).flatMap((name) => readLevel(wad, name).things.map((thing) => thing.type)).filter((type) => !thingKind(type).sprite));
+    expect([...unknown]).toEqual([]);
+    expect(encodeThings(level.things)).toEqual(levelLumps(wad, "E1M1")!.get("THINGS")!.lump.data.slice());
+    expect(thingKind(3004).name).toBe("Zombie with a pistol");
+    expect(thingKind(1).group).toBe("start");
+    expect(thingKind(2001)).toMatchObject({ name: "Shotgun to pick up", group: "pickup" });
+    expect(thingKind(18).name).toBe("Zombie with a pistol, dead");
+    expect(new Set(THING_KINDS.map((kind) => kind.number)).size).toBe(THING_KINDS.length);
+  });
+
+  test("a level with its things changed is the level the engine plays", async () => {
+    const level = readLevel(wad, "E1M1");
+    const start = level.things.find((thing) => thing.type === 1)!;
+    const second = level.things.find((thing) => thing.type === 2)!;
+    // No monsters, a shotgun at the player's feet, and the player started where the second player would have, turned round.
+    const things = [
+      ...level.things.filter((thing) => thingKind(thing.type).group !== "monster" && thing.type !== 1),
+      { ...start, x: second.x, y: second.y, angle: (start.angle + 180) % 360 },
+      { x: second.x, y: second.y, angle: 0, type: 2001, flags: FLAG_EASY | FLAG_MEDIUM | FLAG_HARD },
+    ];
+    const change: Change = { kind: "things", name: "E1M1", data: encodeThings(things) };
+    const changed = applyMod(game, [change]);
+    expect(decodeThings(levelLumps(readWad(changed), "E1M1")!.get("THINGS")!.lump.data)).toEqual(things);
+
+    const play = async (data: Uint8Array) => {
+      let clock = 0;
+      let picture = new Uint8ClampedArray(0);
+      const lumps: number[] = [];
+      const engine = await startEngine(module, new Map([["freedoom1.wad", data]]), "freedoom1.wad", { now: () => clock, frame: (pixels) => (picture = pixels.slice()), sound: { start: (_c, lump) => void lumps.push(lump), update() {}, stop() {}, playing: () => false } }, ["-warp", "1", "1"]);
+      const run = (tics: number) => {
+        for (let i = 0; i < tics; i++) {
+          clock += 1000 / 35;
+          engine.frame();
+        }
+      };
+      run(60);
+      const stood = picture;
+      // A step: things are picked up by walking into them, not by standing on them.
+      engine.analog(50, 0, 0);
+      run(6);
+      return { engine, picture: stood, lumps };
+    };
+    const [before, after] = [await play(game), await play(changed)];
+    expect(after.engine.stopped).toBeNull();
+    // Somewhere else, looking another way.
+    let same = 0;
+    for (let i = 0; i < 320 * 160 * 4; i++) same += before.picture[i] === after.picture[i] ? 1 : 0;
+    expect(same / (320 * 160 * 4)).toBeLessThan(0.6);
+    // The shotgun was picked up where the player stood: the sound of taking a weapon, which the game as it came doesn't make at its start.
+    const taking = wad.lumps.findIndex((one) => one.name === "DSWPNUP");
+    expect(after.lumps).toContain(taking);
+    expect(before.lumps).not.toContain(taking);
+  });
+
+  test("a changed level is saved whole, for other engines, and comes back as what was placed in it", () => {
+    const things = readLevel(wad, "E1M3").things.slice(0, 20);
+    const change: Change = { kind: "things", name: "E1M3", data: encodeThings(things) };
+    const kept = readWad(modToWad([change], wad));
+    expect(kept.lumps.map((one) => one.name)).toEqual(["E1M3", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
+    const back = modFromWad(modToWad([change], wad), assets, wad);
+    expect(back.skipped).toEqual([]);
+    expect(back.changes).toHaveLength(1);
+    expect(decodeThings(back.changes[0]!.data)).toEqual(things);
+    // Without the game to copy the walls from, there is no whole level to save.
+    expect(readWad(modToWad([change])).lumps).toEqual([]);
+    // Someone else's level under the same name has walls of its own: not something to lay things over.
+    const theirs = kept.lumps.map((one) => (one.name === "VERTEXES" ? { name: one.name, data: one.data.slice().fill(0) } : one));
+    expect(modFromWad(writeWad({ kind: "PWAD", lumps: theirs }), assets, wad)).toEqual({ changes: [], skipped: ["E1M3"] });
   });
 });
