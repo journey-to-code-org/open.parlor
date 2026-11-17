@@ -257,7 +257,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
     if (canShootRef.current && ball && v.shoot && !throwing) {
       const a = aimRef.current;
       const from = pool && v.shoot.place ? { x: a.at ?? ball.x, y: v.shoot.place.y } : ball;
-      aiming = { x: from.x, y: from.y, r: ball.r, angle: (a.angle * Math.PI) / 18000, power: a.power / 1000, pulling: !!pull.current, cancel: !!pull.current?.cancel };
+      aiming = { x: from.x, y: from.y, r: ball.r, angle: (a.angle * Math.PI) / 18000, power: a.power / 1000, pulling: !!pull.current, cancel: !!pull.current?.cancel, ...(v.game === "billiards" ? { tool: "cue" as const } : v.game === "minigolf" ? { tool: "putter" as const } : {}) };
     }
     const shownGuide = canShootRef.current && throwing ? guide.current : null;
     const scene = { table, discs, aim: aiming, trace: r?.jump && r.rested !== null ? r.trace : shownGuide, trails: r ? [...r.trails.values()] : [], effects, time: now, still: reducedMotion(), hurry: !!r || !!pull.current || slides.current.size > 0 };
