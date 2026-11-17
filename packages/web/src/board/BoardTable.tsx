@@ -23,6 +23,7 @@
 // crossings are closer together than a finger is wide, so there a stone takes two taps: the first
 // shows it (and it can be nudged with the arrows under the board), the second, or "Play", puts it
 // down. When that happens is this device's choice (⚙︎: see `Placing` in display.ts).
+import { PlayAgain } from "../kit/PlayAgain";
 import { HowToButton } from "../HowToPlay";
 import { cellName, cellsAfter, colOf, kitGame, rowOf, type BoardGrid, type BoardPiece, type BoardReserve, type BoardView, type Choice } from "@journey-to-code/games";
 import { type TableSettings } from "@journey-to-code/rules";
@@ -46,6 +47,8 @@ import { isPointsTrack, Track } from "./Track";
 import { SoundButton } from "../SoundButton";
 
 export interface BoardTableProps {
+  /** The same game again at once (a practice table): without it, "Play again" goes back to the game's page. */
+  onAgain?: () => void;
   /** Open how to play (HowToPlay.tsx): the "?" in the top bar. */
   onHelp?: () => void;
   view: BoardView;
@@ -104,7 +107,7 @@ interface Asking {
   options: BoardPiece[];
 }
 
-export function BoardTable({ view, names, act, onLeave, banner, watching, together, chat, settings, onHelp}: BoardTableProps) {
+export function BoardTable({ view, names, act, onLeave, banner, watching, together, chat, settings, onHelp, onAgain}: BoardTableProps) {
   const game = kitGame(view.game)!;
   const me = view.me;
   const [error, setError] = useState<string | null>(null);
@@ -490,9 +493,7 @@ export function BoardTable({ view, names, act, onLeave, banner, watching, togeth
           {won && !together && !view.result && !view.over.title.includes(`{${me}}`) && <p className="won-line">{named(view.over.title, names)}</p>}
           {best && <p className="won-line">{best.was === null ? "That's your score to beat." : (view.scores[0]?.value ?? 0) > best.was ? `A new best! It was ${best.was}.` : `Your best is ${best.was}.`}</p>}
           {view.result && <ResultTable result={view.result} names={names} me={me} untitled />}
-          <button type="button" className="primary" onClick={onLeave}>
-            Play again
-          </button>
+          <PlayAgain onAgain={onAgain} onLeave={onLeave} />
           {/* A game with a record can be gone back over once it's done: the sheet gets out of the way. */}
           {view.record && moves.length > 0 && (
             <button type="button" className="secondary" onClick={() => setLookingOver(true)}>
@@ -504,9 +505,7 @@ export function BoardTable({ view, names, act, onLeave, banner, watching, togeth
       {view.over && lookingOver && (
         <div className="board-over-bar">
           <span>{named(view.over.title, names)}</span>
-          <button type="button" className="primary" onClick={onLeave}>
-            Play again
-          </button>
+          <PlayAgain onAgain={onAgain} onLeave={onLeave} />
         </div>
       )}
       <p className="sr-only">{game.name}</p>
