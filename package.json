@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @open-parlor/courses -w @open-parlor/server -w @open-parlor/web -w @open-parlor/designer -w @open-parlor/admin -w @open-parlor/watch",
+    "build": "npm run build -w @open-parlor/courses -w @open-parlor/server -w @open-parlor/web -w @open-parlor/designer -w @open-parlor/admin -w @open-parlor/watch -w @open-parlor/wasm",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present && tsc -p .railway/tsconfig.json",
     "start": "npm start -w @open-parlor/server",

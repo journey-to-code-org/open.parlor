@@ -549,6 +549,15 @@ void G_BuildTiccmd (ticcmd_t* cmd, int maketic)
     }
     
     mousex = mousey = 0; 
+
+    // [open.wasm] A thumb-stick on a touch screen: see web_analog in platform/web.c.
+    {
+        extern int web_forward, web_side, web_turn;
+
+        forward += web_forward;
+        side += web_side;
+        cmd->angleturn += web_turn;
+    }
 	 
     if (forward > MAXPLMOVE) 
 	forward = MAXPLMOVE; 

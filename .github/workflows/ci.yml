@@ -32,6 +32,9 @@ jobs:
           curl -fs localhost:8790/designer/ | grep -q "Card designer"
           curl -fs localhost:8790/admin/ | grep -q "open.parlor admin"
           curl -fs localhost:8790/watch/ | grep -q "Watch a game"
+          # The WebAssembly games: the page, and the engine served as WebAssembly.
+          curl -fs localhost:8790/wasm/ | grep -q "Freedoom"
+          curl -fsI "localhost:8790/wasm/assets/$(basename packages/wasm/dist/assets/shooter-*.wasm)" | grep -qi "content-type: application/wasm"
           curl -fs localhost:8790/catalogue | grep -q '"spades"'
           curl -fs localhost:8790/spectate | grep -q '"tables"'
           curl -fs localhost:8790/designs | grep -q '"designs"'

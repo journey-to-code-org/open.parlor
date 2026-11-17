@@ -166,6 +166,18 @@ extern  boolean setsizeneeded;
 extern  int             showMessages;
 void R_ExecuteSetViewSize (void);
 
+// [open.wasm] See where it is registered, in D_DoomMain.
+static void D_CheckDemoStatusAtExit (void)
+{
+    G_CheckDemoStatus ();
+}
+
+// [open.wasm] A wipe in progress (the platform tells the page, which holds its touch controls
+// until it is over), and the tic of its last step.
+boolean wipe_running = false;
+static int wipe_last;
+static void D_WipeStep (void);
+
 void D_Display (void)
 {
     static  boolean		viewactivestate = false;
@@ -174,11 +186,7 @@ void D_Display (void)
     static  boolean		fullscreen = false;
     static  gamestate_t		oldgamestate = -1;
     static  int			borderdrawcount;
-    int				nowtime;
-    int				tics;
-    int				wipestart;
     int				y;
-    boolean			done;
     boolean			wipe;
     boolean			redrawsbar;
 
@@ -308,24 +316,30 @@ void D_Display (void)
     // wipe update
     wipe_EndScreen(0, 0, SCREENWIDTH, SCREENHEIGHT);
 
-    wipestart = I_GetTime () - 1;
+    // [open.wasm] The loop that ran the whole wipe here, sleeping between steps, is D_WipeStep
+    // below: a page can't sleep, so each call to doomgeneric_Tick takes one step until it is done.
+    wipe_running = true;
+    wipe_last = I_GetTime () - 1;
+    D_WipeStep ();
+}
 
-    do
+// [open.wasm] One step of the wipe D_Display started, if a tic has passed since the last.
+static void D_WipeStep (void)
+{
+    int nowtime = I_GetTime ();
+    int tics = nowtime - wipe_last;
+
+    if (tics <= 0)
     {
-	do
-	{
-	    nowtime = I_GetTime ();
-	    tics = nowtime - wipestart;
-            I_Sleep(1);
-	} while (tics <= 0);
-        
-	wipestart = nowtime;
-	done = wipe_ScreenWipe(wipe_Melt
-			       , 0, 0, SCREENWIDTH, SCREENHEIGHT, tics);
-	I_UpdateNoBlit ();
-	M_Drawer ();                            // menu is drawn even on top of wipes
-	I_FinishUpdate ();                      // page flip or blit buffer
-    } while (!done);
+	return;
+    }
+
+    wipe_last = nowtime;
+    wipe_running = !wipe_ScreenWipe(wipe_Melt
+				    , 0, 0, SCREENWIDTH, SCREENHEIGHT, tics);
+    I_UpdateNoBlit ();
+    M_Drawer ();                            // menu is drawn even on top of wipes
+    I_FinishUpdate ();                      // page flip or blit buffer
 }
 
 //
@@ -404,6 +418,13 @@ boolean D_GrabMouseCallback(void)
 
 void doomgeneric_Tick()
 {
+    // [open.wasm] While the screen wipes, the game waits, as it did when the wipe was a loop.
+    if (wipe_running)
+    {
+        D_WipeStep ();
+        return;
+    }
+
     // frame syncronous IO operations
     I_StartFrame ();
 
@@ -450,10 +471,9 @@ void D_DoomLoop (void)
 
     D_StartGameLoop();
 
-    if (testcontrols)
-    {
-        wipegamestate = gamestate;
-    }
+    // [open.wasm] Was only for testcontrols. The first frame otherwise wipes from an empty screen
+    // to an empty screen, a second of black before the title.
+    wipegamestate = gamestate;
 
     doomgeneric_Tick();
 }
@@ -1510,7 +1530,9 @@ void D_DoomMain (void)
         printf("Playing demo %s.\n", file);
     }
 
-    I_AtExit((atexit_func_t) G_CheckDemoStatus, true);
+    // [open.wasm] Was G_CheckDemoStatus itself, cast to a function returning nothing. WebAssembly
+    // checks a function's type when it is called through a pointer, and stops the program.
+    I_AtExit(D_CheckDemoStatusAtExit, true);
 
     // Generate the WAD hash table.  Speed things up a bit.
     W_GenerateHashTable();

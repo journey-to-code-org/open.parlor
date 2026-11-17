@@ -18,9 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#if defined(FEATURE_SOUND) && !defined(__DJGPP__)
-#include <SDL_mixer.h>
-#endif
+// [open.wasm] The SDL_mixer include was here: sound is the page's (platform/sound.c).
 
 #include "config.h"
 #include "doomfeatures.h"
@@ -394,8 +392,6 @@ boolean I_MusicIsPlaying(void)
 
 void I_BindSoundVariables(void)
 {
-    extern int use_libsamplerate;
-    extern float libsamplerate_scale;
 
     M_BindVariable("snd_musicdevice",   &snd_musicdevice);
     M_BindVariable("snd_sfxdevice",     &snd_sfxdevice);
@@ -408,7 +404,9 @@ void I_BindSoundVariables(void)
     M_BindVariable("snd_samplerate",    &snd_samplerate);
     M_BindVariable("snd_cachesize",     &snd_cachesize);
 
-#ifdef FEATURE_SOUND
+#ifdef FEATURE_SOUND_LIBSAMPLERATE // [open.wasm] was FEATURE_SOUND: there is no resampler here
+    extern int use_libsamplerate;
+    extern float libsamplerate_scale;
     M_BindVariable("use_libsamplerate",   &use_libsamplerate);
     M_BindVariable("libsamplerate_scale", &libsamplerate_scale);
 #endif

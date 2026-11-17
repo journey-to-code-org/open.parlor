@@ -781,7 +781,10 @@ void TryRunTics (void)
 	    return;
 	}
 
-        I_Sleep(1);
+        // [open.wasm] The engine slept here and looked again, until a tic came due. A page
+        // can't wait (nothing is drawn, and no clock it is shown moves, until it returns):
+        // it goes back, and the next frame's call finds the tic.
+        return;
     }
 
     // run the count * ticdup dics

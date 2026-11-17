@@ -1,5 +1,6 @@
 // The open.parlor server: rooms (moves, seats, bots), the sync log, and the built apps: the parlor
-// itself at /, the card designer at /designer/, the watch page at /watch/ and the admin app at /admin/.
+// itself at /, the card designer at /designer/, the watch page at /watch/, the admin app at /admin/
+// and the WebAssembly games at /wasm/.
 //
 //   PORT=8787 CARDROOM_DB=cardroom.db node dist/index.js
 //
@@ -31,6 +32,7 @@ const apps = [
   { at: "/designer/", root: resolve(setting("DESIGNER") ?? fileURLToPath(new URL("../../designer/dist", import.meta.url))), build: "npm run build -w @open-parlor/designer" },
   { at: "/watch/", root: resolve(setting("WATCH") ?? fileURLToPath(new URL("../../watch/dist", import.meta.url))), build: "npm run build -w @open-parlor/watch" },
   { at: "/admin/", root: resolve(setting("ADMIN") ?? fileURLToPath(new URL("../../admin/dist/browser", import.meta.url))), build: "npm run build -w @open-parlor/admin" },
+  { at: "/wasm/", root: resolve(setting("WASM") ?? fileURLToPath(new URL("../../wasm/dist", import.meta.url))), build: "npm run build -w @open-parlor/wasm" },
 ];
 
 // A SQLite log keeps tables across restarts; without CARDROOM_DB, they live in memory.
@@ -91,6 +93,9 @@ const TYPES: Record<string, string> = {
   ".json": "application/json",
   ".webmanifest": "application/manifest+json",
   ".woff2": "font/woff2",
+  // A browser compiles a .wasm file as it downloads only when it is served as one.
+  ".wasm": "application/wasm",
+  ".txt": "text/plain; charset=utf-8",
 };
 
 const server = createServer(async (req, res) => {
@@ -111,11 +116,13 @@ const server = createServer(async (req, res) => {
     // The embed's files are fetched by other sites' pages: a missing one is a 404, never the app.
     const embed = !app && path.startsWith("/embed/");
     if (embed && (!existsSync(file) || statSync(file).isDirectory())) return void res.writeHead(404).end();
+    // Nor is a game's data that isn't there: the page would take the app's HTML for the game.
+    if (app?.at === "/wasm/" && path.startsWith("/wasm/data/") && !existsSync(file)) return void res.writeHead(404).end();
     if (!existsSync(file) || statSync(file).isDirectory()) file = join(root, "index.html"); // the app routes itself
     if (!existsSync(file)) return void res.writeHead(404).end(`Build the app first: ${app?.build ?? "npm run build -w @open-parlor/web"}`);
     // The page and the service worker must never be stale; the hashed assets can be cached for good.
     const fresh = file.endsWith("index.html") || file.endsWith("sw.js") || file.endsWith(".webmanifest");
-    const hashed = /[.-][A-Za-z0-9_-]{8,}\.(js|css|woff2)$/.test(file);
+    const hashed = /[.-][A-Za-z0-9_-]{8,}\.(js|css|woff2|wasm)$/.test(file);
     res.writeHead(200, {
       "content-type": TYPES[extname(file)] ?? "application/octet-stream",
       "cache-control": fresh ? "no-cache" : path.startsWith("/assets/") || (app && hashed) ? "public, max-age=31536000, immutable" : embed ? "public, max-age=300" : "public, max-age=3600",

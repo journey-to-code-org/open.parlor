@@ -447,6 +447,7 @@ The game engine and the rooms live in their own repositories and come in from np
 | [`packages/designer`](packages/designer) | The card designer (Svelte): draw a deck, keep it or share it, play with it |
 | [`packages/courses`](packages/courses) | Mini Golf courses and bowling lanes people make: painted on a grid, checked, and turned into a hole or a lane the game plays |
 | [`packages/watch`](packages/watch) | The watch page (Solid): the tables playing now, and tables of computer players to learn from |
+| [`packages/wasm`](packages/wasm) | Games compiled to WebAssembly, at `/wasm/`. The first is a shooter on the open-source Doom engine, playing Freedoom. Its engine is GPL-2.0: see the package's README |
 | [`packages/admin`](packages/admin) | The admin app (Angular): the host moderates tables, players, shared designs and shared golf courses |
 | [`packages/conformance`](packages/conformance) | One fixture of the components in every framework, and one set of browser tests run against them all |
 | [`packages/ui`](packages/ui) | Components in Zubra: our own (cards, seats), the ones copied from zubra-ui, and the `<card-room>` embed |
@@ -854,6 +855,7 @@ docker run -p 8787:8787 -v spades:/data cardroom
 | `CARDROOM_DESIGNER` | Where the built card designer is, if not `packages/designer/dist` |
 | `CARDROOM_WATCH` | Where the built watch page is, if not `packages/watch/dist` |
 | `CARDROOM_ADMIN` | Where the built admin app is, if not `packages/admin/dist/browser` |
+| `CARDROOM_WASM` | Where the built WebAssembly games are, if not `packages/wasm/dist` |
 | `PORT` | The port to listen on (8787; Railway sets its own) |
 
 The older `SPADES_*` names for these still work; `CARDROOM_*` wins if both are set. Keep the

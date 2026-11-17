@@ -282,6 +282,11 @@ void I_GetEvent(void)
     int pressed;
     unsigned char key;
 
+    // [open.wasm] The mouse, gathered by the page since the last tic (platform/web.c).
+    {
+        extern void web_input(void);
+        web_input();
+    }
     
 	while (DG_GetKey(&pressed, &key))
     {

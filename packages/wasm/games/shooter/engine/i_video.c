@@ -181,9 +181,11 @@ void cmap_to_fb(uint8_t *out, uint8_t *in, int in_pixels)
         else if (s_Fb.bits_per_pixel == 32)
         {
             // Assuming RGBA8888
+            // [open.wasm] Alpha is set, so the frame can be put on a canvas as it is.
             pix = (c.r << s_Fb.red.offset) |
                   (c.g << s_Fb.green.offset) |
-                  (c.b << s_Fb.blue.offset);
+                  (c.b << s_Fb.blue.offset) |
+                  (0xffu << s_Fb.transp.offset);
 
 #ifdef SYS_BIG_ENDIAN
             pix = swapLE32(pix);
@@ -239,9 +241,10 @@ void I_InitGraphics (void)
 		s_Fb.red.length = 8;
 		s_Fb.transp.length = 8;
 
-		s_Fb.blue.offset = 0;
+		// [open.wasm] Red first, not blue: a canvas's ImageData is red, green, blue, alpha.
+		s_Fb.red.offset = 0;
 		s_Fb.green.offset = 8;
-		s_Fb.red.offset = 16;
+		s_Fb.blue.offset = 16;
 		s_Fb.transp.offset = 24;
 	}
 
