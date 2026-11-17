@@ -1,19 +1,350 @@
 <!--
-  The parlor on any page: a blog post, a WordPress site, plain HTML. Shows a game (Palace, Spades,
-  or both) with a button to play right there against the computer, a button to challenge the site's
+  The parlor on any page: a blog post, a WordPress site, plain HTML. Shows a game (any of the
+  parlor's games that can be played against the computer; Palace and Spades when none is named) with a button to play right there against the computer, a button to challenge the site's
   owner, and a link into the parlor for family tables.
 
   A practice game runs inside the page in a frame. Challenges and family tables open the parlor in
   a new tab, because browsers don't let a game in a frame on someone else's site keep you signed in.
 
-  `server` is the parlor's address (required). `game` is "palace", "spades" or "" for both.
+  `server` is the parlor's address (required). `game` is a game's id ("hearts", "chess", "minigolf"…),
+  or "" for Spades and Palace to choose between.
   `challenge` is a challenge link's code; `who` is the name to show on that button.
 -->
 <script>
+  // GAMES: written by packages/web/scripts/embed-games.mjs
   const GAMES = {
-    palace: { name: "Palace", emoji: "🏰", blurb: "Shed every card first. Don't get stuck holding the pile." },
-    spades: { name: "Spades", emoji: "♠\uFE0E", blurb: "Partners, bids and nils, with computer partners who talk back." },
+    "palace": {
+      "name": "Palace",
+      "emoji": "🏰",
+      "blurb": "Shed every card first. Don't get stuck holding the pile."
+    },
+    "spades": {
+      "name": "Spades",
+      "emoji": "♠︎",
+      "blurb": "Partners, bids and nils, with computer partners who talk back."
+    },
+    "hearts": {
+      "name": "Hearts",
+      "emoji": "♥︎",
+      "blurb": "Every heart is a point and the queen of spades is 13. Lowest score wins."
+    },
+    "ohhell": {
+      "name": "Oh Hell",
+      "emoji": "🎯",
+      "blurb": "Bid exactly how many tricks you'll take. Hands go up and down the river."
+    },
+    "euchre": {
+      "name": "Euchre",
+      "emoji": "🃏",
+      "blurb": "Partners call trump and take three of five tricks. Jacks are the best trumps."
+    },
+    "crazy8": {
+      "name": "Crazy Eights",
+      "emoji": "8️⃣",
+      "blurb": "Match the top card by suit or number. Eights are wild. First one out wins."
+    },
+    "gin": {
+      "name": "Gin Rummy",
+      "emoji": "🍸",
+      "blurb": "Make sets and runs. Knock with 10 or less, or go gin with none."
+    },
+    "pinochle": {
+      "name": "Pinochle",
+      "emoji": "👑",
+      "blurb": "Bid, name trump, meld, then take the aces, tens and kings. Partners across."
+    },
+    "canasta": {
+      "name": "Canasta",
+      "emoji": "🧺",
+      "blurb": "Meld sevens of a kind into canastas, grab the pile when you can, and go out together. Partners across."
+    },
+    "gofish": {
+      "name": "Go Fish",
+      "emoji": "🐟",
+      "blurb": "Got any sevens? Ask for cards, go fish when they've got none, and make the most books."
+    },
+    "oldmaid": {
+      "name": "Old Maid",
+      "emoji": "👵",
+      "blurb": "Make pairs, take a card from your neighbour, and don't be the one left holding the Old Maid."
+    },
+    "war": {
+      "name": "War",
+      "emoji": "⚔️",
+      "blurb": "Everybody flips, the highest card takes them all, and a tie means war."
+    },
+    "whist": {
+      "name": "Whist",
+      "emoji": "🎩",
+      "blurb": "The old parlour game: trump is turned up, partners sit across, and every trick over six counts."
+    },
+    "golf": {
+      "name": "Golf",
+      "emoji": "⛳",
+      "blurb": "Six cards in front of you, most of them face down: swap your way to the lowest score over nine holes."
+    },
+    "rummy500": {
+      "name": "Rummy 500",
+      "emoji": "🃏",
+      "blurb": "Dig into the discard pile, meld sets and runs, lay off on anyone's, and race to 500."
+    },
+    "president": {
+      "name": "President",
+      "emoji": "🎖️",
+      "blurb": "Beat the last play or pass, get rid of your cards first, and climb from Scum to President."
+    },
+    "klondike": {
+      "name": "Klondike Solitaire",
+      "emoji": "♦️",
+      "blurb": "The classic solitaire: build down in alternating colours and get every suit home, ace to king."
+    },
+    "freecell": {
+      "name": "FreeCell",
+      "emoji": "🗝️",
+      "blurb": "Every card face up, four free cells to park in, and nearly every deal can be won."
+    },
+    "handfoot": {
+      "name": "Hand and Foot",
+      "emoji": "🦶",
+      "blurb": "Play out your hand, pick up your foot, and close books of seven with your partner."
+    },
+    "cribbage": {
+      "name": "Cribbage",
+      "emoji": "🪵",
+      "blurb": "Lay two away for the crib, peg to 31, then count your hand: fifteen two, fifteen four…"
+    },
+    "fivedraw": {
+      "name": "Five Card Draw",
+      "emoji": "🎲",
+      "blurb": "The friendliest poker: five cards, swap up to three, and the best hand takes the pot. Chips only."
+    },
+    "holdem": {
+      "name": "Texas Hold'em",
+      "emoji": "♣️",
+      "blurb": "Two cards of your own, five on the board for everyone, and the best five win. Chips only."
+    },
+    "bluff": {
+      "name": "Bluff",
+      "emoji": "🤥",
+      "blurb": "Also called Cheat or I Doubt It: put your cards down face down, say what they are, and hope nobody calls your bluff."
+    },
+    "liarspoker": {
+      "name": "Liar's Poker",
+      "emoji": "🗣️",
+      "blurb": "Bid a poker hand that's somewhere in all the cards on the table, raise the bid, or call liar."
+    },
+    "switch": {
+      "name": "Switch",
+      "emoji": "🔀",
+      "blurb": "Match the card, twos make them pick up, eights skip, jacks reverse, aces change the suit. Don't forget \"Last card!\""
+    },
+    "thirtyone": {
+      "name": "Thirty-One",
+      "emoji": "🎯",
+      "blurb": "Draw and throw away to build the best suit. Knock when you're happy; the lowest hand loses a life."
+    },
+    "kingscorner": {
+      "name": "Kings in the Corner",
+      "emoji": "👑",
+      "blurb": "Build down in alternating colours, kings in the corners. First one out wins."
+    },
+    "blackjack": {
+      "name": "Blackjack",
+      "emoji": "🃏",
+      "blurb": "Everyone against the dealer. Hit, stand, double or split, and don't go over 21. Chips only."
+    },
+    "spite": {
+      "name": "Spite and Malice",
+      "emoji": "😈",
+      "blurb": "Build up from ace to queen, kings wild. First to play off their whole pay-off pile wins."
+    },
+    "pitch": {
+      "name": "Pitch",
+      "emoji": "⚾",
+      "blurb": "Win the bid, pitch the first card to set trump, and take High, Low, Jack and Game."
+    },
+    "fivehundred": {
+      "name": "Five Hundred",
+      "emoji": "💯",
+      "blurb": "Partners bid how many tricks they'll take, and in what. The joker is the best card. First to 500."
+    },
+    "durak": {
+      "name": "Durak",
+      "emoji": "🤡",
+      "blurb": "Beat off every attack with higher cards or trumps. Don't be the last one holding cards!"
+    },
+    "bridge": {
+      "name": "Bridge",
+      "emoji": "🌉",
+      "blurb": "Bid a contract with your partner, then make it, with dummy's cards face up. Four deals a Chicago."
+    },
+    "fruitsalad": {
+      "name": "Fruit Salad",
+      "emoji": "🥗",
+      "blurb": "Match the fruit or the face. Hop, Turn, +2 and wild Salads. Call \"Last bite!\" and clear the bowl first."
+    },
+    "slapjack": {
+      "name": "Slapjack",
+      "emoji": "👋",
+      "blurb": "Take turns flipping cards into the middle. See a jack? Slap it first and the pile is yours!"
+    },
+    "speed": {
+      "name": "Speed",
+      "emoji": "⚡",
+      "blurb": "No turns, no waiting: play one higher or one lower on the middle piles, faster than your opponent."
+    },
+    "memory": {
+      "name": "Memory",
+      "emoji": "🧠",
+      "blurb": "Turn over two cards: find a pair and go again. Remember where everything is!"
+    },
+    "sevens": {
+      "name": "Sevens",
+      "emoji": "7️⃣",
+      "blurb": "Build each suit out from its 7, down to the ace and up to the king. Can't play? Pass. First out wins."
+    },
+    "cuckoo": {
+      "name": "Cuckoo",
+      "emoji": "🐦",
+      "blurb": "Keep your card or swap it with your neighbour. Lowest card loses a life. Kings stop a swap!"
+    },
+    "contractrummy": {
+      "name": "Contract Rummy",
+      "emoji": "📜",
+      "blurb": "Each round has a contract: sets, runs, or both. Lay it down, lay off the rest, and go out first."
+    },
+    "spider": {
+      "name": "Spider",
+      "emoji": "🕷️",
+      "blurb": "Ten columns, two decks. Build runs of one suit from king down to ace and they go home."
+    },
+    "pyramid": {
+      "name": "Pyramid",
+      "emoji": "🔺",
+      "blurb": "Clear the pyramid two cards at a time: pairs that add up to 13. Kings go on their own."
+    },
+    "ridethebus": {
+      "name": "Ride the Bus",
+      "emoji": "🚌",
+      "blurb": "A drinking game. Guess your four cards, match the pyramid, and whoever's left holding the most rides the bus."
+    },
+    "kingscup": {
+      "name": "Kings Cup",
+      "emoji": "👑",
+      "blurb": "A drinking game. Draw a card and follow its rule. Whoever draws the fourth king drinks the King's Cup!"
+    },
+    "horserace": {
+      "name": "Horse Race",
+      "emoji": "🏇",
+      "blurb": "A drinking game. Bet sips on an ace, then turn cards to move the horses. Backers of the winner hand out drinks."
+    },
+    "drinkingpyramid": {
+      "name": "Drinking Pyramid",
+      "emoji": "🍻",
+      "blurb": "A drinking game. Memorize four cards, then claim matches as the pyramid turns, and hand out drinks. Bluff if you dare."
+    },
+    "mahjongshanghai": {
+      "name": "Mahjong Shanghai",
+      "emoji": "🀄",
+      "blurb": "Take pairs of free tiles off the stack. Alone, or racing the family on the same deal."
+    },
+    "mahjongriichi": {
+      "name": "Mahjong Riichi",
+      "emoji": "🀄",
+      "blurb": "Build a hand of four sets and a pair, call discards, declare riichi, and win by tsumo or ron."
+    },
+    "tictactoe": {
+      "name": "Tic-Tac-Toe",
+      "emoji": "⭕",
+      "blurb": "Xs and Os: get yours in a row first. Try Ultimate when three in a row gets too easy."
+    },
+    "dropfour": {
+      "name": "Drop Four",
+      "emoji": "🔴",
+      "blurb": "Drop a disc in a column and line up four before the other player does."
+    },
+    "combat": {
+      "name": "Combat",
+      "emoji": "🚢",
+      "blurb": "Lay out your ships where nobody can see, then take turns calling shots. First to sink the other fleet wins."
+    },
+    "reversi": {
+      "name": "Reversi",
+      "emoji": "⚫",
+      "blurb": "Dark against light: trap a line of their discs between two of yours and they all turn over. Most discs at the end wins."
+    },
+    "checkers": {
+      "name": "Checkers",
+      "emoji": "👑",
+      "blurb": "Draughts the way your family plays it: American, International on the big board, Russian, or friendly with no forced jumps."
+    },
+    "go": {
+      "name": "Go",
+      "emoji": "⚪",
+      "blurb": "Go, also called Weiqi and Baduk: black and white stones on the crossings of a grid. Surround empty points to own them, and take away the last breathing space of their stones to capture them."
+    },
+    "chess": {
+      "name": "Chess",
+      "emoji": "♟️",
+      "blurb": "The whole game: castling, en passant, promotion and every kind of draw, with a chess clock, Chess960, and the moves written down as you play."
+    },
+    "yacht": {
+      "name": "Yacht",
+      "emoji": "🎲",
+      "blurb": "Roll five dice up to three times, then pick the box they score best in. Fill your sheet with the highest total."
+    },
+    "backgammon": {
+      "name": "Backgammon",
+      "emoji": "🎲",
+      "blurb": "Two dice and fifteen checkers each: a friendly game, a money game with the doubling cube, or a match to 3, 5 or 7 points."
+    },
+    "secretword": {
+      "name": "Secret Word",
+      "emoji": "🟩",
+      "blurb": "One hidden word, six guesses, and a clue in every letter."
+    },
+    "anagrams": {
+      "name": "Anagrams",
+      "emoji": "🔀",
+      "blurb": "Everyone gets the same letters. Who finds the longest word?"
+    },
+    "hangman": {
+      "name": "Hangman",
+      "emoji": "🪢",
+      "blurb": "A hidden word, and a letter at a time to find it."
+    },
+    "wordhunt": {
+      "name": "Word Hunt",
+      "emoji": "🔠",
+      "blurb": "One square of letters, a few minutes, and every word you can trace."
+    },
+    "crisscross": {
+      "name": "Criss-Crosswords",
+      "emoji": "🧩",
+      "blurb": "Seven tiles, one board, and every word has to cross."
+    },
+    "minigolf": {
+      "name": "Mini Golf",
+      "emoji": "⛳",
+      "blurb": "Pull back, let go, and hope for a hole in one. Fewest strokes round the course wins."
+    },
+    "bowling": {
+      "name": "Bowling",
+      "emoji": "🎳",
+      "blurb": "Pull back, let go, and knock them all down. Strikes and spares earn bonus pins; the highest score wins."
+    },
+    "billiards": {
+      "name": "Billiards",
+      "emoji": "🎱",
+      "blurb": "Pool for the family table: pick your spot, line it up and shoot."
+    },
+    "carrom": {
+      "name": "Carrom",
+      "emoji": "🪙",
+      "blurb": "Flick the striker from your baseline and pocket your pieces before they pocket theirs."
+    }
   }
+  // GAMES end
   // No regular expressions here: Zubra's render ahead (open.blog's build) can't evaluate them yet.
   const trimmed = String(server || "").trim()
   const base = trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed

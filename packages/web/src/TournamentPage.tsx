@@ -86,23 +86,51 @@ export function TournamentPage({ slug, id, onOpenTable, onBack }: Props) {
         </section>
       )}
 
+      {t.status !== "signup" && t.standings && (
+        <section className="house-block league-table" aria-label="The league table">
+          <h2>The table</h2>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Who</th>
+                <th scope="col">Played</th>
+                <th scope="col">Won</th>
+                <th scope="col">Drawn</th>
+              </tr>
+            </thead>
+            <tbody>
+              {t.standings.map((row, i) => (
+                <tr key={row.entrant} className={row.entrant === t.mine ? "mine" : undefined}>
+                  <td>{i + 1}</td>
+                  <td>{t.entrants[row.entrant]?.name}</td>
+                  <td>{row.played}</td>
+                  <td>{row.won}</td>
+                  <td>{row.drawn}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
       {t.status === "signup" ? (
         <Signup t={t} house={house} canManage={canManage} act={act} />
       ) : (
-        <section className="house-block bracket" aria-label="Bracket">
+        <section className="house-block bracket" aria-label={t.format === "league" ? "The games" : "Bracket"}>
           {t.rounds.map((round, r) => (
             <div key={r} className="round">
               <h2>{round.name}</h2>
               <ul className="matches">
                 {round.matches.map((m, i) => {
                   const mine = t.mine !== null && (m.a === t.mine || m.b === t.mine);
-                  const ready = !!m.table && m.winner === null;
+                  const ready = !!m.table && m.winner === null && m.how !== "drawn";
                   return (
                     <li key={i} className={`match${mine ? " mine" : ""}`}>
                       {[m.a, m.b].map((side, s) => (
                         <div key={s} className={`side${m.winner === s ? " won" : m.winner !== null ? " lost" : ""}`}>
                           <span>{name(side)}</span>
-                          {m.winner === s && <span aria-label="went through">✓</span>}
+                          {m.winner === s && <span aria-label={t.format === "league" ? "won" : "went through"}>✓</span>}
                         </div>
                       ))}
                       <div className="match-foot">
@@ -112,13 +140,13 @@ export function TournamentPage({ slug, id, onOpenTable, onBack }: Props) {
                             {mine ? (m.playing ? "Back to your table" : "Go to your table") : "Watch"}
                           </button>
                         )}
-                        {!ready && m.table && m.how === "played" && (
+                        {!ready && m.table && (m.how === "played" || m.how === "drawn") && (
                           <button type="button" className="link" onClick={() => onOpenTable(m.table!)}>
                             See the game
                           </button>
                         )}
                       </div>
-                      {canManage && m.winner === null && typeof m.a === "number" && typeof m.b === "number" && (
+                      {canManage && m.winner === null && m.how !== "drawn" && typeof m.a === "number" && typeof m.b === "number" && (
                         <CallMatch a={name(m.a)} b={name(m.b)} onCall={(winner) => act("call", { round: r, match: i, winner })} />
                       )}
                     </li>
@@ -133,7 +161,7 @@ export function TournamentPage({ slug, id, onOpenTable, onBack }: Props) {
       {t.status !== "finished" && <NotifyButton what="your match is ready" />}
       {problem && <p className="error">{problem}</p>}
       {canManage && t.status !== "finished" && (
-        <button type="button" className="link danger" onClick={() => confirm(`Call off ${t.name}? Its tables stay, but the bracket is gone.`) && act("cancel")}>
+        <button type="button" className="link danger" onClick={() => confirm(`Call off ${t.name}? Its tables stay, but the ${t.format === "league" ? "league" : "bracket"} is gone.`) && act("cancel")}>
           Call off the tournament
         </button>
       )}
@@ -148,6 +176,7 @@ function matchLine(m: Tournament["rounds"][number]["matches"][number]): string {
   if (m.how === "bye") return "A bye: straight through";
   if (m.how === "called") return "Called by the organizer";
   if (m.how === "played") return m.score ? `Final: ${m.score}` : "Played";
+  if (m.how === "drawn") return m.score ? `Drawn: ${m.score}` : "Drawn";
   if (m.playing) return m.score ? `Playing · ${m.score}` : "Playing now";
   if (m.table) return "Ready to play";
   return "Waiting for the round before";
@@ -287,9 +316,12 @@ export function NewTournament(props: {
   const { house, game } = props;
   const gameName = GAME_LIST.find((g) => g.id === game)?.name ?? "Spades";
   const [name, setName] = useState(`${house.name} ${gameName} Cup`);
+  // A league is a League, a knockout a Cup: the name follows unless it has been changed.
+  const named = (f: "bracket" | "league") => `${house.name} ${gameName} ${f === "league" ? "League" : "Cup"}`;
   const [problem, setProblem] = useState<string | null>(null);
   const rules: { id: string; name: string }[] = isKitGame(game) ? (house.kitRules[game]?.presets ?? []) : game === "palace" ? house.palacePresets : house.presets;
   const [presetId, setPresetId] = useState(props.presetId);
+  const [format, setFormat] = useState<"bracket" | "league">("bracket");
   return (
     <div className="sheet" role="dialog" aria-label="New tournament">
       <h2>New {gameName} tournament</h2>
@@ -298,7 +330,22 @@ export function NewTournament(props: {
         <input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
       </label>
       {rules.length > 1 && <Choice label="Rules" value={presetId} options={rules.map((p): [string, string] => [p.id, p.name])} onChange={setPresetId} />}
-      <p>{teamGame(game) ? "Single elimination, fixed teams of two." : "Single elimination, one against one."} Everyone in the house gets a buzz to sign up.</p>
+      <Choice
+        label="Format"
+        value={format}
+        options={[
+          ["bracket", "Knockout: lose once and you're out"],
+          ["league", "League: everyone plays everyone"],
+        ]}
+        onChange={(v) => {
+          const next = v === "league" ? "league" : "bracket";
+          if (name === named(format)) setName(named(next));
+          setFormat(next);
+        }}
+      />
+      <p>
+        {format === "league" ? "Everyone plays everyone once, a round at a time; most wins takes it (up to twelve entrants)." : "Single elimination."} {teamGame(game) ? "Fixed teams of two." : "One against one."} Everyone in the house gets a buzz to sign up.
+      </p>
       {problem && <p className="error">{problem}</p>}
       <div className="sheet-actions">
         <button
@@ -306,7 +353,7 @@ export function NewTournament(props: {
           className="primary"
           onClick={async () => {
             try {
-              props.onMade((await houses.newTournament(house.slug, name, game, presetId, props.settings)).id);
+              props.onMade((await houses.newTournament(house.slug, name, game, presetId, props.settings, format)).id);
             } catch (e) {
               setProblem(e instanceof Error ? e.message : String(e));
             }

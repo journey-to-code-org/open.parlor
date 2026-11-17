@@ -1,5 +1,6 @@
-// Tournaments: a house runs a single-elimination bracket, of spades (fixed teams of two) or Palace
-// (one against one). Members sign up during signup; an owner or admin can add or remove entrants,
+// Tournaments: a house runs a single-elimination bracket, or a league where everyone plays everyone
+// (round by round, most wins takes it), of spades (fixed teams of two) or any other game (one
+// against one). Members sign up during signup; an owner or admin can add or remove entrants,
 // fill a gap with the computer, then start the bracket. Each match gets its own table with the
 // players already seated, and they get a push to come and play, whenever suits them. When a table
 // finishes, its winner moves on; the last one standing is the champion.
@@ -33,11 +34,14 @@ export interface Match {
   table: string | null;
   /** 0 when side a won, 1 when side b won. */
   winner: 0 | 1 | null;
-  /** How it was decided: at the table, a bye, or called by the organizer. */
-  how: "played" | "bye" | "called" | null;
+  /** How it was decided: at the table, a bye, or called by the organizer; or, in a league, drawn (and `winner` stays null). */
+  how: "played" | "bye" | "called" | "drawn" | null;
 }
 
 export type Status = "signup" | "playing" | "finished" | "cancelled";
+
+/** A knockout bracket, or a league: everyone plays everyone once, round by round. */
+export type Format = "bracket" | "league";
 
 export interface Tournament {
   id: string;
@@ -47,6 +51,8 @@ export interface Tournament {
   rules: RulePreset | PalaceRules | ({ id: string; name: string } & Record<string, unknown>);
   settings: TableSettings;
   status: Status;
+  /** Left out by tournaments made before leagues: a bracket. */
+  format?: Format;
   entrants: Entrant[];
   /** Round 1 first; the last round has one match, the final. */
   rounds: Match[][];
@@ -118,6 +124,64 @@ export function bracket(count: number, rand: () => number = Math.random): Match[
   return rounds;
 }
 
+/**
+ * A league's rounds: everyone plays everyone once (the circle method), shuffled with this random
+ * function. With an odd number one entrant sits each round out. Every match is known from the start.
+ */
+export function league(count: number, rand: () => number = Math.random): Match[][] {
+  if (count < 2) throw new Error("A league needs at least two entrants.");
+  const order: Side[] = Array.from({ length: count }, (_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [order[i], order[j]] = [order[j]!, order[i]!];
+  }
+  if (order.length % 2) order.push("bye");
+  const n = order.length;
+  const rounds: Match[][] = [];
+  const ring = [...order];
+  for (let r = 0; r < n - 1; r++) {
+    const round: Match[] = [];
+    for (let i = 0; i < n / 2; i++) {
+      const [a, b] = [ring[i]!, ring[n - 1 - i]!];
+      // A sit-out isn't a match.
+      if (a !== "bye" && b !== "bye") round.push(r % 2 && i === 0 ? { a: b, b: a, table: null, winner: null, how: null } : { a, b, table: null, winner: null, how: null });
+    }
+    rounds.push(round);
+    // Keep the first in place and turn the rest round by one.
+    ring.splice(1, 0, ring.pop()!);
+  }
+  return rounds;
+}
+
+/** A league's table: each entrant's games and wins, best first. Two level on wins: the one who won the game between them; otherwise whoever signed up first. */
+export function standings(t: Pick<Tournament, "entrants" | "rounds">): { entrant: number; played: number; won: number; drawn: number }[] {
+  const rows = t.entrants.map((_, entrant) => ({ entrant, played: 0, won: 0, drawn: 0 }));
+  const beat = new Set<string>();
+  for (const m of t.rounds.flat()) {
+    if (m.how === "drawn" && typeof m.a === "number" && typeof m.b === "number") {
+      for (const side of [m.a, m.b]) rows[side]!.played++, rows[side]!.drawn++;
+      continue;
+    }
+    const won = winnerOf(m);
+    if (typeof won !== "number" || typeof m.a !== "number" || typeof m.b !== "number") continue;
+    const lost = won === m.a ? m.b : m.a;
+    rows[m.a]!.played++;
+    rows[m.b]!.played++;
+    rows[won]!.won++;
+    beat.add(`${won}>${lost}`);
+  }
+  // Most wins first; level on wins, more draws (a draw is better than a loss).
+  rows.sort((x, y) => y.won - x.won || y.drawn - x.drawn || x.entrant - y.entrant);
+  // Two level on wins: the one who won the game between them goes first. (Three or more level can
+  // have beaten each other round in a circle, so they stay in signup order.)
+  for (let i = 0; i + 1 < rows.length; i++) {
+    const [x, y] = [rows[i]!, rows[i + 1]!];
+    const level = rows.filter((row) => row.won === x.won && row.drawn === x.drawn).length === 2;
+    if (level && x.won === y.won && x.drawn === y.drawn && beat.has(`${y.entrant}>${x.entrant}`)) [rows[i], rows[i + 1]] = [y, x];
+  }
+  return rows;
+}
+
 /** The entrant who won a match, or null. */
 export const winnerOf = (m: Match): Side => (m.winner === null ? null : m.winner === 0 ? m.a : m.b);
 
@@ -126,6 +190,16 @@ export const winnerOf = (m: Match): Side => (m.winner === null ? null : m.winner
  * and the final's winner is the champion. Returns the matches that are ready for a table now.
  */
 export function settle(t: Tournament): Match[] {
+  if (t.format === "league") {
+    // One round at a time: its tables open together, and the next round's when it is done.
+    const current = t.rounds.find((round) => round.some((m) => m.winner === null && m.how !== "drawn"));
+    if (!current) {
+      t.champion = standings(t)[0]?.entrant ?? null;
+      t.status = "finished";
+      return [];
+    }
+    return current.filter((m) => m.winner === null && m.how !== "drawn" && !m.table);
+  }
   const ready: Match[] = [];
   for (let r = 0; r < t.rounds.length; r++) {
     t.rounds[r]!.forEach((m, i) => {
@@ -149,6 +223,21 @@ export function settle(t: Tournament): Match[] {
     });
   }
   return ready;
+}
+
+/** A finished kit table that nobody won outright: both sides among the winners, or neither of them. */
+export function wasDrawn(game: GameId, summary: unknown): boolean {
+  if (!isKitGame(game)) return false;
+  const k = summary as KitSummary | null;
+  if (!k?.over || !k.winners) return false;
+  return k.winners.includes(0) === k.winners.includes(1);
+}
+
+/** What a finished table means for its match: a winner, or (in a league) a draw; null while it's playing. */
+export function resultOf(t: Pick<Tournament, "game" | "format">, summary: unknown): Pick<Match, "winner" | "how"> | null {
+  if (t.format === "league" && wasDrawn(t.game, summary)) return { winner: null, how: "drawn" };
+  const won = sideThatWon(t.game, summary);
+  return won === null ? null : { winner: won, how: "played" };
 }
 
 /** Which side won a finished table: spades by team (seats 0 and 2 are side a), Palace by first out. */
@@ -176,8 +265,8 @@ export function createTournaments(rooms: Rooms, { push, saveHouse }: { push?: Pu
   async function get(id: string): Promise<Tournament | undefined> {
     const doc = (await docs).get("tournaments", id) as unknown as Tournament | undefined;
     if (!doc?.id) return undefined;
-    const { id: i, house, name, game, rules, settings, status, entrants, rounds, champion, by, created } = doc;
-    return structuredClone({ id: i, house, name, game, rules, settings, status, entrants, rounds, champion, by, created });
+    const { id: i, house, name, game, rules, settings, status, format, entrants, rounds, champion, by, created } = doc;
+    return structuredClone({ id: i, house, name, game, rules, settings, status, ...(format ? { format } : {}), entrants, rounds, champion, by, created });
   }
   const save = (t: Tournament) => rooms.sync.write("tournaments", t.id, { ...t });
 
@@ -282,9 +371,9 @@ export function createTournaments(rooms: Rooms, { push, saveHouse }: { push?: Pu
     let changed = false;
     for (const round of t.rounds)
       for (const m of round) {
-        if (m.winner !== null || !m.table) continue;
-        const won = sideThatWon(t.game, (await rooms.room(m.table))?.summary);
-        if (won !== null) Object.assign(m, { winner: won, how: "played" }), (changed = true);
+        if (m.winner !== null || m.how === "drawn" || !m.table) continue;
+        const result = resultOf(t, (await rooms.room(m.table))?.summary);
+        if (result) Object.assign(m, result), (changed = true);
       }
     if (changed) await advance(house, t);
   }
@@ -304,6 +393,8 @@ export function createTournaments(rooms: Rooms, { push, saveHouse }: { push?: Pu
       created: t.created,
       by: memberOf(house, t.by)?.name ?? "Someone",
       mine: mineIdx >= 0 ? mineIdx : null,
+      format: t.format ?? "bracket",
+      ...(t.format === "league" && t.rounds.length ? { standings: standings(t) } : {}),
       entrants: t.entrants.map((e) => ({ id: e.id, name: e.name, players: e.players.map((p) => ("bot" in p ? { bot: true, name: p.bot } : { bot: false, id: p.member, name: playerName(house, p) })) })),
       rounds: t.rounds.map((round, r) => ({
         name: roundName(t, r),
@@ -345,9 +436,9 @@ export function createTournaments(rooms: Rooms, { push, saveHouse }: { push?: Pu
     const house = await houseOf(link.house);
     if (!t || !house || t.status !== "playing") return;
     const m = t.rounds.flat().find((x) => x.table === tableId);
-    const won = sideThatWon(t.game, summary);
-    if (!m || m.winner !== null || won === null) return;
-    Object.assign(m, { winner: won, how: "played" });
+    const result = resultOf(t, summary);
+    if (!m || m.winner !== null || m.how === "drawn" || !result) return;
+    Object.assign(m, result);
     await advance(house, t);
   }
 
@@ -385,6 +476,7 @@ export function createTournaments(rooms: Rooms, { push, saveHouse }: { push?: Pu
         rules: structuredClone(chosen),
         settings: cleanSettings(input.settings),
         status: "signup",
+        format: input.format === "league" ? "league" : "bracket",
         entrants: [],
         rounds: [],
         champion: null,
@@ -453,7 +545,9 @@ export function createTournaments(rooms: Rooms, { push, saveHouse }: { push?: Pu
       if (!signup) return no("It's already started.", 409);
       if (t.entrants.length < 2) return no("A tournament needs at least two entrants.", 409);
       if (t.entrants.length > 32) return no("That's more than 32 entrants.", 409);
-      t.rounds = bracket(t.entrants.length);
+      // Everyone against everyone grows fast: twelve entrants is already 66 games.
+      if (t.format === "league" && t.entrants.length > 12) return no("A league is for twelve entrants at most. Try a bracket.", 409);
+      t.rounds = t.format === "league" ? league(t.entrants.length) : bracket(t.entrants.length);
       t.status = "playing";
       await advance(house, t);
       return done();
@@ -461,7 +555,7 @@ export function createTournaments(rooms: Rooms, { push, saveHouse }: { push?: Pu
     // POST …/call { round, match, winner: 0 | 1 }: decide a match that won't be played
     if (action === "call") {
       const m = t.rounds[Number(input.round)]?.[Number(input.match)];
-      if (t.status !== "playing" || !m || m.winner !== null || typeof m.a !== "number" || typeof m.b !== "number") return no("That match can't be called.", 409);
+      if (t.status !== "playing" || !m || m.winner !== null || m.how === "drawn" || typeof m.a !== "number" || typeof m.b !== "number") return no("That match can't be called.", 409);
       if (input.winner !== 0 && input.winner !== 1) return no("Pick who goes through.");
       Object.assign(m, { winner: input.winner, how: "called" });
       await advance(house, t);
@@ -481,9 +575,10 @@ export function createTournaments(rooms: Rooms, { push, saveHouse }: { push?: Pu
 }
 
 /** "Final", "Semifinals", "Quarterfinals", else "Round 1"… */
-export function roundName(t: Pick<Tournament, "rounds">, r: number): string {
+export function roundName(t: Pick<Tournament, "rounds" | "format">, r: number): string {
   const fromEnd = t.rounds.length - 1 - r;
   if (r < 0) return "";
+  if (t.format === "league") return `Round ${r + 1} of ${t.rounds.length}`;
   if (fromEnd === 0) return "Final";
   if (fromEnd === 1) return "Semifinals";
   if (fromEnd === 2) return "Quarterfinals";

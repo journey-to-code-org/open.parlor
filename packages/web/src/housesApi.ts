@@ -80,10 +80,14 @@ export interface Tournament {
   by: string;
   /** Your entry's index, if you're playing. */
   mine: number | null;
+  /** A knockout bracket, or a league where everyone plays everyone. */
+  format: "bracket" | "league";
+  /** A league's table, best first. */
+  standings?: { entrant: number; played: number; won: number; drawn: number }[];
   entrants: { id: string; name: string; players: ({ bot: true; name: string } | { bot: false; id: string; name: string })[] }[];
   rounds: {
     name: string;
-    matches: { a: Side; b: Side; table: string | null; winner: 0 | 1 | null; how: "played" | "bye" | "called" | null; playing: boolean; score: string | null }[];
+    matches: { a: Side; b: Side; table: string | null; winner: 0 | 1 | null; how: "played" | "bye" | "called" | "drawn" | null; playing: boolean; score: string | null }[];
   }[];
 }
 
@@ -158,7 +162,7 @@ export const houses = {
   aiModels: (slug: string, provider: AiProvider | "server", key?: string) => call<{ models: string[]; suggested: string }>(at(slug, "ai-models"), { provider, key }),
   testAi: (slug: string) => call<{ line: string }>(at(slug, "ai-test"), {}),
   tournament: (slug: string, id: string) => call<Tournament>(at(slug, `tournaments/${encodeURIComponent(id)}`)),
-  newTournament: (slug: string, name: string, game: GameId, presetId: string, settings: TableSettings) => call<Tournament>(at(slug, "tournaments"), { name, game, presetId, settings }),
+  newTournament: (slug: string, name: string, game: GameId, presetId: string, settings: TableSettings, format: "bracket" | "league" = "bracket") => call<Tournament>(at(slug, "tournaments"), { name, game, presetId, settings, format }),
   /** enter { partner? } · leave · add { players } · remove { entrant } · start · call { round, match, winner } · cancel */
   tournamentAction: (slug: string, id: string, action: string, body: Record<string, unknown> = {}) =>
     call<Tournament>(at(slug, `tournaments/${encodeURIComponent(id)}/${action}`), body),
