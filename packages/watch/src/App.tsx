@@ -174,7 +174,7 @@ export function App() {
         👾
       </span>
       <span class="what">
-        <strong>Delbie's Daycare &amp; Geriatrics</strong>
+        <strong>Delbie's Doomsday</strong>
         <span class="who">{listed(props.game.players)}</span>
         <span class="where">
           {[props.game.settings.mode === "coop" ? "Together" : "Against each other", props.game.minutes ? `${props.game.minutes} min in` : "Just started"].join(" · ")}
@@ -245,7 +245,7 @@ export function App() {
 
             <Show when={live.shooters.length}>
               <section aria-labelledby="shooters-heading">
-                <h2 id="shooters-heading">Delbie's Daycare &amp; Geriatrics, playing now</h2>
+                <h2 id="shooters-heading">Delbie's Doomsday, playing now</h2>
                 <ul class="rows">
                   <For each={live.shooters}>{(game) => <ShooterRow game={game} />}</For>
                 </ul>

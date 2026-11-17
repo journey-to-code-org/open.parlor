@@ -1,4 +1,4 @@
-// Delbie's Daycare & Geriatrics, laid over Freedoom: the game's own title picture and levels
+// Delbie's Doomsday, laid over Freedoom: the game's own title picture and levels
 // (games/shooter/delbies), fetched once and kept for playing with no connection.
 import over from "../../games/shooter/delbies/delbies.wad?url";
 import { asset } from "../../host/assets.ts";

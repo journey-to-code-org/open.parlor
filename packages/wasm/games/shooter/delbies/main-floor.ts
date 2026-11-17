@@ -70,52 +70,59 @@ export const exit = { x: 0, y: 608 + 24 * STEPS, picture: "SW1BRN2" };
 const ALL = FLAG_EASY | FLAG_MEDIUM | FLAG_HARD;
 const at = (type: number, x: number, y: number, angle = 270, flags = ALL): Thing => ({ x, y, angle, type, flags });
 const PLAYERS = [1, 2, 3, 4];
-const [ZOMBIE, SERGEANT, IMP, DEMON] = [3004, 9, 3001, 3002];
+// The rats take the place of two of the engine's monsters: a grease rat is its charging one, a
+// brake-fluid mutant the one that throws.
+const [GREASE_RAT, MUTANT] = [3002, 3001];
 const [SHOTGUN, SHELLS, SHELL_BOX, CLIP, CHAINSAW] = [2001, 2008, 2049, 2007, 2005];
 const [STIMPACK, MEDIKIT, ARMOUR, HEALTH_BONUS, ARMOUR_BONUS, SOULSPHERE] = [2011, 2012, 2018, 2014, 2015, 2013];
 const [BLUE_KEY, BARREL, DEATHMATCH] = [5, 2035, 11];
 
-// The monsters are the game's own until there are rats to put in their place.
 export const things: Thing[] = [
   // On the porch, facing the door.
   ...PLAYERS.map((type, i) => at(type, -96 + 64 * i, -640, 90)),
   at(CLIP, 0, -576),
-  // The aisles.
-  at(ZOMBIE, -272, -360),
-  at(ZOMBIE, 0, -300),
-  at(ZOMBIE, 272, -360),
+  at(CLIP, -32, -576),
+  // The aisles: grease rats between the shelves.
+  at(GREASE_RAT, -272, -360),
+  at(GREASE_RAT, -272, -420),
+  at(GREASE_RAT, 0, -300),
+  at(GREASE_RAT, 272, -360),
+  at(GREASE_RAT, 272, -420),
+  at(GREASE_RAT, -416, -300, 0, FLAG_MEDIUM | FLAG_HARD),
+  at(GREASE_RAT, 416, -300, 180, FLAG_MEDIUM | FLAG_HARD),
   at(SHELLS, -272, -300),
   at(SHELLS, 272, -300),
   // Behind the counter.
-  at(SERGEANT, -200, -112),
+  at(MUTANT, -200, -112),
   at(SHOTGUN, 320, -112),
-  at(DEMON, 0, -112, 270, FLAG_HARD),
-  // The break room: someone's leftover pasta.
-  at(IMP, -300, 100),
-  at(IMP, -200, 160),
+  at(GREASE_RAT, 0, -112, 270, FLAG_HARD),
+  // The break room: someone's leftover pasta, and what came for it.
+  at(GREASE_RAT, -300, 100),
+  at(GREASE_RAT, -200, 160),
+  at(GREASE_RAT, -360, 60),
   at(STIMPACK, -420, 190),
   at(STIMPACK, -380, 190),
   at(STIMPACK, -340, 190),
   at(MEDIKIT, -420, 0),
   // Returns: the bathroom key is on George's desk.
-  at(DEMON, 280, 100),
-  at(ZOMBIE, 400, 100, 180),
+  at(MUTANT, 280, 100),
+  at(GREASE_RAT, 400, 100, 180),
   at(ARMOUR, 420, 190),
   at(BLUE_KEY, 220, 190),
   at(BARREL, 200, 20),
   at(BARREL, 240, 20),
   // The hall.
-  at(IMP, 0, 300),
+  at(GREASE_RAT, 0, 300),
   ...[40, 120, 200, 420].map((y) => at(HEALTH_BONUS, 0, y)),
   // The bathroom.
   at(CHAINSAW, -290, 390),
   at(SOULSPHERE, -200, 330),
   // The office.
-  at(SERGEANT, 250, 340, 180),
+  at(MUTANT, 250, 340, 180),
   at(SHELL_BOX, 320, 390),
   ...[150, 190, 230, 270].map((x) => at(ARMOUR_BONUS, x, 280)),
   // The top of the stairs.
-  at(IMP, 0, 480 + 24 * STEPS + 80),
+  at(MUTANT, 0, 480 + 24 * STEPS + 80),
   // For playing against each other.
   at(DEATHMATCH, -400, -480, 0),
   at(DEATHMATCH, 400, -480, 180),

@@ -88,7 +88,10 @@ describe("the game's own levels", () => {
   test("delbies.wad is what the plans and the art now make (if not: npm run delbies -w @open-parlor/wasm)", async () => {
     const built = await buildGame(nodes, art());
     expect(Buffer.from(built).equals(readFileSync(here("../games/shooter/delbies/delbies.wad")))).toBe(true);
-    expect(readWad(built).lumps.map((lump) => lump.name)).toEqual(["TITLEPIC", "M_DOOM", "E1M1", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
+    const names = readWad(built).lumps.map((lump) => lump.name);
+    expect(names.slice(0, 3)).toEqual(["TITLEPIC", "M_DOOM", "SS_START"]);
+    expect(names.slice(-12)).toEqual(["SS_END", "E1M1", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
+    expect(names).toHaveLength(15 + 175);
   });
 });
 
@@ -110,7 +113,12 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
   test("all of it has a place, and the rest of the game is as it was", () => {
     const { changes, skipped } = modFromWad(over, catalogue(wad), wad);
     expect(skipped).toEqual([]);
-    expect(changes.map((change) => `${change.kind}/${change.name}`).sort()).toEqual(["screen/M_DOOM", "screen/TITLEPIC", "things/E1M1", "walls/E1M1"]);
+    expect(changes.filter((change) => change.kind !== "sprite").map((change) => `${change.kind}/${change.name}`).sort()).toEqual(["screen/M_DOOM", "screen/TITLEPIC", "things/E1M1", "walls/E1M1"]);
+    // The rats: every picture of the three monsters they take the place of, and of what the mutant spits; none left as it was.
+    const drawn = new Set(changes.filter((change) => change.kind === "sprite").map((change) => change.name));
+    const theirs = wad.lumps.map((lump) => lump.name).filter((name) => /^(SARG|TROO|BOSS)[A-Z][0-8]|^BAL1/.test(name));
+    expect(theirs.filter((name) => !drawn.has(name))).toEqual([]);
+    expect(drawn.size).toBe(theirs.length);
     const laid = readWad(layer(game, over));
     expect(laid.lumps).toHaveLength(wad.lumps.length);
     expect(readLevel(laid, "E1M1").shape.rooms).toHaveLength(levels()[0]!.shape.rooms.length);
@@ -124,7 +132,7 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
     const sounds: string[] = [];
     const laid = layer(game, over);
     const names = readWad(laid).lumps.map((lump) => lump.name);
-    const running = await startEngine(engine, new Map([["freedoom1.wad", laid]]), "freedoom1.wad", { now: () => clock, frame: (pixels) => (picture = pixels.slice()), sound: { start: (_channel, lump) => void sounds.push(names[lump]!), update() {}, stop() {}, playing: () => false } }, ["-warp", "1", "1", "-nomonsters"]);
+    const running = await startEngine(engine, new Map([["freedoom1.wad", laid]]), "freedoom1.wad", { now: () => clock, frame: (pixels) => (picture = pixels.slice()), sound: { start: (_channel, lump) => void sounds.push(names[lump]!), update() {}, stop() {}, playing: () => false } }, ["-warp", "1", "1"]);
     const run = (tics: number) => {
       for (let i = 0; i < tics; i++) {
         clock += 1000 / 35;
@@ -152,5 +160,10 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
     expect(running.stopped).toBeNull();
     // Inside, among the shelves, it looks nothing like the porch.
     expect(differ(porch, picture)).toBeGreaterThan(0.6);
+    // And the rats have noticed: the engine's sound for its charging monster waking.
+    run(60);
+    expect(sounds).toContain("DSSGTSIT");
+    expect(running.stopped).toBeNull();
+    (await import("node:fs")).writeFileSync("/tmp/rats_ingame.rgba", picture);
   });
 });

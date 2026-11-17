@@ -23,3 +23,5 @@ Every change is marked `[open.wasm]` where it is made. First changed 17 November
 | `i_video.c` | The frame is written red, green, blue, 255, the order a canvas takes, not blue, green, red, 0. |
 | `i_sound.c` | No `SDL_mixer.h`, and no resampler settings: the page plays the sound. |
 | `m_config.c` | The settings file is read and written again (doomgeneric had switched both off). |
+| `info.c` | The pink demon (`MT_SERGEANT`) is the game's grease rat, and is given a rat's numbers: 45 health for 150, speed 13 for 10, 24 across for 30, 36 tall for 56. |
+| `p_enemy.c` | `A_SargAttack`, the grease rat's bite, does 2 to 8 where the demon's did 4 to 40: they come in numbers. |

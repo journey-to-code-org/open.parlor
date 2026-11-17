@@ -1,11 +1,12 @@
-// Delbie's Daycare & Geriatrics: what is the game's own, laid over Freedoom. A WAD of the title
-// picture, the name over the menu, and the levels there are so far, built from their plans.
+// Delbie's Doomsday: what is the game's own, laid over Freedoom. A WAD of the title
+// picture, the name over the menu, the rats, and the levels there are so far, built from their plans.
 //
 // scripts/build-delbies.mjs writes it to delbies.wad, which is committed; the page fetches that
 // and lays it over the game's data (wad/mod.ts: layer), for a game alone or with others.
 import { encodeThings, type Shape, type Thing } from "../../../wad/level.ts";
 import { buildLevel } from "../../../wad/nodes.ts";
-import { encodePatch } from "../../../wad/picture.ts";
+import { modToWad } from "../../../wad/mod.ts";
+import { encodePatch, type Picture } from "../../../wad/picture.ts";
 import { fromPlan, wallNear } from "../../../wad/plan.ts";
 import { roomAt, trouble } from "../../../wad/shape.ts";
 import { type Lump, readWad, writeWad } from "../../../wad/wad.ts";
@@ -50,6 +51,8 @@ export interface Art {
   title: Uint8Array;
   /** The lettering for over the menu, its size, and where it is see-through. */
   logo: { pixels: Uint8Array; solid: Uint8Array; width: number; height: number };
+  /** The rats and what they spit: each a picture, under the name of the sprite it takes the place of. */
+  sprites: (Picture & { name: string })[];
 }
 
 /** The whole of it as a WAD. `nodes` is the node builder, compiled. */
@@ -58,6 +61,8 @@ export async function buildGame(nodes: WebAssembly.Module, art: Art): Promise<Ui
     { name: "TITLEPIC", data: encodePatch({ width: 320, height: 200, left: 0, top: 0, pixels: art.title, solid: new Uint8Array(64000).fill(1) }) },
     { name: "M_DOOM", data: encodePatch({ width: art.logo.width, height: art.logo.height, left: 0, top: 0, pixels: art.logo.pixels, solid: art.logo.solid }) },
   ];
+  // Sprites go between their markers, as the engine and other tools expect.
+  lumps.push(...readWad(modToWad(art.sprites.map((sprite) => ({ kind: "sprite" as const, name: sprite.name, data: encodePatch(sprite) })))).lumps);
   for (const level of levels()) {
     const wrong = faults(level);
     if (wrong.length) throw new Error(`${level.name} (${level.title}) can't be built: ${wrong.join(" ")}`);
