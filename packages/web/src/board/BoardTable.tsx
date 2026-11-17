@@ -23,6 +23,7 @@
 // crossings are closer together than a finger is wide, so there a stone takes two taps: the first
 // shows it (and it can be nudged with the arrows under the board), the second, or "Play", puts it
 // down. When that happens is this device's choice (⚙︎: see `Placing` in display.ts).
+import { useBoardSounds, useOverSound } from "../feedback/useKitSounds";
 import { PlayAgain } from "../kit/PlayAgain";
 import { HowToButton } from "../HowToPlay";
 import { cellName, cellsAfter, colOf, kitGame, rowOf, type BoardGrid, type BoardPiece, type BoardReserve, type BoardView, type Choice } from "@journey-to-code/games";
@@ -109,6 +110,8 @@ interface Asking {
 
 export function BoardTable({ view, names, act, onLeave, banner, watching, together, chat, settings, onHelp, onAgain}: BoardTableProps) {
   const game = kitGame(view.game)!;
+  useOverSound(view.over, view.me, watching || together);
+  useBoardSounds(view.grids, watching);
   const me = view.me;
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<Picked | null>(null);

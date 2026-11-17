@@ -14,6 +14,7 @@
 // its events as they happen. While it rolls, the scores, the story and the sheets stay as they
 // were: nobody is told the putt dropped before they have watched it drop. When it stops the
 // screen shows the server's table, and a check confirms that is where the roll ended.
+import { useOverSound } from "../feedback/useKitSounds";
 import { PlayAgain } from "../kit/PlayAgain";
 import { HowToButton } from "../HowToPlay";
 import { angleTo, kitGame, UNITS_PER_METRE, type SportBody, type SportCard, type SportView } from "@journey-to-code/games";
@@ -760,6 +761,8 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
   }, [words.long]);
 
   // ---- The rest of the table --------------------------------------------------------------------
+  // After the last ball has rolled (what's shown), not when the server says it's over.
+  useOverSound(shown.over, me, together || shown.seats === 1);
   const tie = !!shown.over && shown.over.winners.length === shown.seats && shown.seats > 1;
   const won = !!shown.over && !tie && shown.seats > 1 && shown.over.winners.includes(me);
 
