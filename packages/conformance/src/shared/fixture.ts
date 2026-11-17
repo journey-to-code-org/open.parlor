@@ -36,3 +36,7 @@ export const CARDS = [
 ] as const;
 
 export const ITEMS = ["one", "two"];
+
+// The framework features page (tests/features.spec.ts).
+export const FACES = ["ace", "king", "queen"];
+export const WORDS = ["hello", "howdy"] as const;

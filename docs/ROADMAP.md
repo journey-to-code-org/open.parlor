@@ -156,8 +156,10 @@ The plan is to keep these **turn-based on the same rooms**, so no new netcode:
 | 16 | Carrom | 2, or 4 as partners | The flick board: a striker, nine pieces a side, the queen and four corner pockets. Discs and pockets from #15 with a flick from the baseline in place of a cue. House rules: covering the queen, fouls and dues, points or first to clear. | M |
 | 17 | Bowling | 1 to 6 | Ten-pin, top-down pins as discs or a faked-3D lane. Aim, power and hook. Scoring and frames are the easy part. Later: duckpin, candlepin. | L |
 
-After that, if it is wanted: real-time play (air hockey, mini golf as a race), which does need
-new netcode and is a separate decision.
+Air Hockey is here as an arcade game, played on one device: against the house, or two people at
+one screen with an end each (`packages/web/src/arcade/AirHockeyTable.tsx`). Playing it between two
+devices is not built: it would be flown over a socket the way Shitstorm is. Mini golf as a race is
+still a separate decision.
 
 ## Running alongside
 

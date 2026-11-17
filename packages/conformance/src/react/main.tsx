@@ -17,6 +17,7 @@ import ToggleSwitch from "@open-parlor/ui/zubra-ui/toggle-switch.zb";
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { CARDS, COLUMNS, EXTRA_ROW, ITEMS, ROWS, SEGMENTS, TABS, VARIANTS } from "../shared/fixture";
+import { Features } from "./features";
 import "../shared/styles.css";
 
 function App() {
@@ -213,4 +214,9 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("app")!).render(<App />);
+createRoot(document.getElementById("app")!).render(
+  <>
+    <App />
+    <Features />
+  </>,
+);

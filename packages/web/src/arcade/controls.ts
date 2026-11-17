@@ -184,6 +184,9 @@ export function controlsFor(game: ArcadeGameId, options: { autofire: () => boole
       return bulwarkControls();
     case "chipstack":
       return chipStackControls();
+    case "airhockey":
+      // It has a table of its own (AirHockeyTable.tsx), where a finger is the mallet.
+      throw new Error("Air Hockey is played at its own table");
     case "mountainroad":
     case "pinkslips":
       // It has a screen of its own (drive/Strip.tsx), with a pedal and a shifter.

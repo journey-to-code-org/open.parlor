@@ -11,7 +11,8 @@ import { cardKey } from "../src/handOrder";
 describe("which games have a scene", () => {
   it("every game played at the arcade table has one", () => {
     // Road to the Shootout has a screen of its own, and its own strip in 3-D (drive/strip3d.ts).
-    for (const g of ARCADE_GAMES.filter((a) => a.id !== "pinkslips")) expect(hasArcade3d(g.id), g.id).toBe(true);
+    // Air hockey has a table of its own too (arcade/AirHockeyTable.tsx), seen from straight above.
+    for (const g of ARCADE_GAMES.filter((a) => a.id !== "pinkslips" && a.id !== "airhockey")) expect(hasArcade3d(g.id), g.id).toBe(true);
   });
   it("every board of squares has one, and a card game never asks for one", () => {
     for (const id of ["chess", "checkers", "reversi", "go", "tictactoe", "dropfour", "combat"]) expect(hasBoard3d(id), id).toBe(true);

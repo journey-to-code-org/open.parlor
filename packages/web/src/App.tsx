@@ -23,6 +23,7 @@ import { PinkSlips } from "./drive/PinkSlips";
 import type { SoloGameId } from "./GamePicker";
 import { ArcadeSetup } from "./arcade/ArcadeSetup";
 import { ArcadeTable, isLiveArcade } from "./arcade/ArcadeTable";
+import { AirHockeyTable } from "./arcade/AirHockeyTable";
 import { KitSetup } from "./kit/KitSetup";
 import { CourseEditor } from "./golf/CourseEditor";
 import { onCourse } from "./golf/CoursePicker";
@@ -289,6 +290,8 @@ export function App() {
   if (screen.kind === "tournament") {
     return <TournamentPage key={screen.id} slug={screen.slug} id={screen.id} onOpenTable={(id) => openTable(id, screen.slug)} onBack={() => openHouse(screen.slug)} />;
   }
+  // Air hockey is two ends of one table, with a finger at each: it has a table of its own.
+  if (screen.kind === "arcade" && screen.game === "airhockey") return <AirHockeyTable key={screen.seed} rules={screen.rules} seats={screen.seats} seed={screen.seed} onLeave={() => setScreen({ kind: "setup" })} />;
   if (screen.kind === "arcade") return <ArcadeTable key={`${screen.seed}:${screen.rival?.name ?? ""}`} {...screen} onLeave={() => setScreen({ kind: "setup" })} />;
   if (isIdleGame(game)) return <IdleTable key={game} game={game} onHome={home} />;
   // Road to the Shootout has a garage in front of its races, so it has a screen of its own.
