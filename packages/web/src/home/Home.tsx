@@ -96,6 +96,12 @@ const BOARDS: Record<string, MiniBoard> = {
   // A rack of letters over the word they make.
   anagrams: { cols: 5, shade: "words", cells: [...tiles("tsnae", "ppppp"), ...tiles("_ant_", "phhhp")] },
   // The word as far as it is uncovered, and the letters that weren't in it.
+  // A square of letters with a word traced in it.
+  wordhunt: { cols: 4, shade: "words", cells: [...tiles("cats", "pphp"), ...tiles("orex", "hpmp"), ...tiles("ldnp", "pphp"), ...tiles("eigh", "pppp")] },
+  // Two words crossing.
+  crisscross: { cols: 5, shade: "words", cells: [...tiles("__w__", "ppp"), ...tiles("crane", "pppnp"), ...tiles("__d__", "ppp"), ...tiles("__e__", "ppp")] },
+  // The word, hidden, and one guessed.
+  drawguess: { cols: 5, shade: "words", cells: [...tiles("_____", "ppppp"), ...tiles("house", "hhhhh")] },
   hangman: { cols: 5, shade: "words", cells: [...tiles("_a__a", "phpph"), ...tiles("zqk__", "mmm")] },
   tictactoe: { cols: 3, cells: [X, O, null, null, X, O, O, null, X] },
   // The bottom of a rack: red about to make four on the slant.

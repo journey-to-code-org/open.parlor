@@ -2896,7 +2896,7 @@ main.setup.wifi { max-width: 520px; }
 }
 .word-tile.empty { background: rgba(0, 0, 0, 0.22); border-color: rgba(251, 246, 236, 0.25); box-shadow: none; }
 .word-tiles.typing .word-tile.filled { border-color: var(--gold); transform: scale(1.04); }
-.word-tile.tone-hit, .word-tile.answer { background: var(--hit); color: #fff; }
+.word-tile.tone-hit, .word-tile.word-answer { background: var(--hit); color: #fff; }
 .word-tile.tone-near { background: var(--near); color: #241a00; }
 .word-tile.tone-miss { background: var(--miss); color: #f1ece4; }
 .word-tile.hidden { background: rgba(0, 0, 0, 0.3); border-color: rgba(251, 246, 236, 0.5); border-style: dashed; box-shadow: none; }
@@ -2907,7 +2907,7 @@ main.setup.wifi { max-width: 520px; }
 .word-played { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; width: 100%; }
 .word-played li { display: flex; align-items: center; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .word-played li.mine .word-who { color: var(--gold); }
-.word-played .word-tile.played { background: var(--tile); }
+.word-played .word-tile.word-said { background: var(--tile); }
 .word-who small { opacity: 0.75; }
 .word-rack-area { display: grid; gap: 12px; justify-items: center; width: 100%; max-width: 560px; }
 .word-tiles.rack .word-tile { --size: clamp(38px, 11vw, 54px); }
@@ -2938,3 +2938,49 @@ button.word-tile:active:not(:disabled) { transform: translateY(2px); }
 .gallows { width: min(40vw, 150px); height: auto; }
 .gallows .frame { fill: none; stroke: #c9a46a; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
 .gallows .figure { fill: none; stroke: var(--cream); stroke-width: 4.5; stroke-linecap: round; }
+
+/* Word Hunt's square (word/WordPieces.tsx): big tiles, the path numbered as it is traced. */
+.trace-grid { display: grid; grid-template-columns: repeat(var(--cols), 1fr); gap: 8px; width: min(92vw, 380px); touch-action: none; user-select: none; -webkit-user-select: none; }
+.trace-tile { --size: 100%; position: relative; aspect-ratio: 1; width: 100%; height: auto; font-size: clamp(22px, 8vw, 34px); }
+.trace-tile.on { background: var(--gold); color: #241a00; transform: scale(0.94); }
+.trace-tile.last { box-shadow: 0 0 0 3px var(--cream); }
+.trace-tile.next:not(.on) { outline: 2px dashed rgba(251, 246, 236, 0.45); outline-offset: 2px; }
+.trace-tile small { position: absolute; top: 3px; right: 6px; font-size: 0.7rem; font-weight: 700; opacity: 0.7; }
+.word-tiles.typed .small-tile { --size: 30px; }
+.word-tiles.typed .fine { margin: 6px 0; }
+
+/* Criss-Crosswords' board: as wide as the screen allows, with the bonus squares marked. */
+.place-board { display: grid; gap: 1px; width: min(96vw, 560px); padding: 3px; border-radius: 8px; background: #3b2a17; box-shadow: var(--elev-2); }
+.place-row { display: grid; grid-template-columns: repeat(var(--cols), 1fr); gap: 1px; }
+.place-square {
+  position: relative; display: grid; place-items: center; aspect-ratio: 1; min-width: 0; padding: 0; border: 0; border-radius: 2px;
+  font: inherit; font-weight: 800; color: var(--ink); background: #e9dcc0; cursor: pointer;
+  font-size: clamp(9px, calc(min(96vw, 560px) / var(--cols) * 0.55), 22px);
+}
+.place-square:disabled { cursor: default; }
+.place-square.bonus-dl { background: #a9d3e8; }
+.place-square.bonus-tl { background: #3f86c2; color: #fff; }
+.place-square.bonus-dw { background: #efb2a8; }
+.place-square.bonus-tw { background: #c8463a; color: #fff; }
+.place-square.bonus-start { background: #efb2a8; }
+.place-bonus { font-size: 0.62em; font-weight: 700; opacity: 0.85; }
+.place-square.filled, .place-square.pending { background: #fbf3df; color: #1d1a16; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18); }
+.place-square.pending { background: var(--gold); }
+.place-square.fresh { box-shadow: inset 0 0 0 2px #3f9a52; }
+.place-letter { text-transform: uppercase; line-height: 1; }
+.place-value { position: absolute; right: 1px; bottom: 0; font-size: 0.45em; font-weight: 700; }
+.word-tiles.word-hand .rack-tile { position: relative; }
+.word-tiles.word-hand .rack-tile.chosen { background: var(--gold); transform: translateY(-6px); }
+.tile-value { position: absolute; right: 3px; bottom: 1px; font-size: 0.6rem; font-weight: 700; }
+
+/* Draw & Guess's page and pens. */
+.draw-area { display: grid; gap: 8px; justify-items: center; width: 100%; }
+.draw-canvas { width: min(92vw, 460px); aspect-ratio: 1; border-radius: 10px; background: #fff; box-shadow: var(--elev-2); touch-action: none; }
+.draw-canvas.drawing { cursor: crosshair; }
+.draw-pens { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; }
+.draw-pen { width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 2px solid rgba(0, 0, 0, 0.35); cursor: pointer; }
+.draw-pen.on { outline: 3px solid var(--gold); outline-offset: 2px; }
+.draw-sizes { display: flex; gap: 4px; margin-left: 6px; }
+.draw-size { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border-radius: 8px; border: 0; background: rgba(0, 0, 0, 0.3); cursor: pointer; }
+.draw-size span { display: block; border-radius: 50%; background: var(--cream); }
+.draw-size.on { outline: 2px solid var(--gold); }

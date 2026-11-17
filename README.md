@@ -572,7 +572,8 @@ threads (a think on a custom course carries the course with it), and the browser
 
 ## Word games
 
-Secret Word, Anagrams and Hangman have a table of their own
+The six word games (Secret Word, Anagrams, Hangman, Word Hunt, Criss-Crosswords and Draw & Guess)
+have a table of their own
 ([`packages/web/src/word/WordTable.tsx`](packages/web/src/word/WordTable.tsx)), drawn from the
 games' `WordView`: rows of letter tiles, a rack, and a keyboard coloured by what is known of each
 letter (green in its place, gold in the word, grey not in it). A phone uses the keyboard on the
@@ -585,6 +586,13 @@ the right length is sent, and a word that isn't one comes back refused, in words
   can be shuffled on your own screen.
 - **Hangman:** played in turn, with a gallows that fills in as the shared misses run out. It can be
   shared on one device.
+- **Word Hunt:** a grid of letters against the clock. Drag (or tap) from letter to touching letter;
+  a word someone else also found scores for nobody. What you found stays hidden until the end.
+- **Criss-Crosswords:** tiles from a hand onto a 15×15 board with its own bonus squares. Tap a tile,
+  then a square; Take back lifts them again. Your hand is yours alone, and watchers never see it.
+- **Draw & Guess:** the artist picks one of three words and draws it; everyone else types guesses,
+  and the sooner you get it the more it scores. It needs people (computer players can't draw), so
+  it has no practice table: start a family table or play on this wifi.
 
 The word list is in open.games (ENABLE, with SCOWL's frequency levels for which words are common),
 and it is part of the app's download: about a quarter of a megabyte compressed in the main
