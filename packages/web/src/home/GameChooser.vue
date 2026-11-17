@@ -174,7 +174,6 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
         <h2>Open tables</h2>
         <span class="open-ways">
           <button type="button" class="house" @click="emit('lobby')">{{ open.length ? `See all ${open.length}` : "See open tables" }}</button>
-          <button type="button" class="house" @click="emit('wifi')"><span aria-hidden="true">📶</span> Join on this wifi</button>
         </span>
       </div>
       <ul v-if="open.length">

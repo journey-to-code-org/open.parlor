@@ -263,7 +263,7 @@ export function KitSetup({
         <>
           {game.practice === false ? (
             // A game that needs people (Draw & Guess): computer players can only keep it moving.
-            <p className="fine">This one needs people: computer players can't draw. Start a family table, or play on this wifi.</p>
+            <p className="fine">This one needs people: computer players can't draw. Start a family table{online ? "" : ", or play on this wifi"}.</p>
           ) : (
             <button
               type="button"
@@ -323,7 +323,8 @@ export function KitSetup({
           <SameRulesToggle />
             </>
           )}
-          {!solo && onWifi && (
+          {/* Hosting on this wifi is for when the internet is out; online, a family table does it better. */}
+          {!solo && onWifi && !online && (
             <button
               type="button"
               className="secondary"
