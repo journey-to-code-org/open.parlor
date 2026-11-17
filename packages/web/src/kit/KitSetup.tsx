@@ -1,5 +1,6 @@
 // The setup screen for any kit game: your name, house rules, how many players, then a family table
-// or practice against the computer.
+// or practice against the computer. A game with nothing hidden (sameDevice.ts) can also seat
+// several people at this device.
 import { kitGame, type KitGameId } from "@journey-to-code/games";
 import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
 import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
@@ -8,23 +9,29 @@ import { ChallengeLink } from "../ChallengeLink";
 import { lobbyProblem } from "../lobbyApi";
 import { Choice, SameRulesToggle } from "../RulesEditor";
 import { SetupLayout } from "../SetupLayout";
+import { OFFLINE_LINE, useOnline } from "../offline";
 import {
   deleteKitPreset,
   loadKitRules,
   loadKitSeats,
   loadMyHouses,
   loadName,
+  loadOthersHere,
+  loadPeopleHere,
   loadSavedKit,
   saveKitPreset,
   saveKitRules,
   saveKitSeats,
   saveName,
+  saveOthersHere,
+  savePeopleHere,
   type GameId,
 } from "../storage";
 import { OpponentSettings } from "../TableSettings";
 import { KitRulesFields, KitRulesSheet } from "./KitRules";
 import { CoursePicker, onCourse } from "../golf/CoursePicker";
 import { LanePicker, onLane } from "../golf/LanePicker";
+import { personName, sharesDevice } from "./sameDevice";
 
 type Rules = { id: string; name: string } & Record<string, unknown>;
 
@@ -32,7 +39,8 @@ interface Props {
   game: KitGameId;
   /** Back to the open.parlor's front page, with every game. */
   onHome: () => void;
-  onPractice: (name: string, rules: Rules, seats: number) => void;
+  /** `others`: the other people playing at this device, when there are any (see sameDevice.ts). */
+  onPractice: (name: string, rules: Rules, seats: number, others?: string[]) => void;
   onFamilyTable: (rules: Rules, seats: number) => Promise<void>;
   /** Sit at an open table that's waiting for this game, or open one with these rules and wait. */
   onFindPlayers: (name: string, rules: Rules, seats: number) => Promise<void>;
@@ -59,9 +67,16 @@ export function KitSetup({
   const [name, setName] = useState(loadName);
   const [rules, setRules] = useState<Rules>(() => loadKitRules(id));
   const [seats, setSeats] = useState(() => loadKitSeats(id));
+  // Several people at this device, for a game that can be shared on one screen.
+  const shared = sharesDevice(id);
+  const [peopleHere, setPeopleHere] = useState(() => (shared ? loadPeopleHere(id) : 1));
+  const [others, setOthers] = useState(loadOthersHere);
+  const tableSeats = game.teams ? 4 : seats;
+  const people = Math.min(peopleHere, tableSeats);
   const [saved, setSaved] = useState(() => loadSavedKit(id));
   const [showRules, setShowRules] = useState(false);
   const [busy, setBusy] = useState(false);
+  const online = useOnline();
   const [problem, setProblem] = useState<string | null>(null);
   const myHouses = loadMyHouses();
   const all: Rules[] = useMemo(() => [...game.presets, ...saved], [saved, id]);
@@ -72,6 +87,10 @@ export function KitSetup({
     saveName(name);
     saveKitRules(id, rules);
     saveKitSeats(id, seats);
+    if (shared) {
+      savePeopleHere(id, people);
+      if (people > 1) saveOthersHere(others);
+    }
   };
 
   function saveAs() {
@@ -166,6 +185,29 @@ export function KitSetup({
               />
             )
           )}
+          {shared && (
+            <>
+              <Choice
+                label="On this device"
+                value={people}
+                options={Array.from({ length: tableSeats }, (_, i) => [
+                  String(i + 1),
+                  i === 0 ? "Just me, against the computer" : i + 1 === tableSeats ? `${i + 1} of us, taking turns` : `${i + 1} of us, and ${tableSeats - i - 1} computer player${tableSeats - i - 1 === 1 ? "" : "s"}`,
+                ])}
+                onChange={(v) => setPeopleHere(Number(v))}
+              />
+              {Array.from({ length: people - 1 }, (_, i) => (
+                <TextField
+                  key={i}
+                  label={`Player ${i + 2}'s name`}
+                  value={others[i] ?? ""}
+                  maxlength={20}
+                  onValueChange={(e: CustomEvent<string>) => setOthers((names) => Array.from({ length: Math.max(names.length, i + 1) }, (_, j) => (j === i ? e.detail : (names[j] ?? ""))))}
+                />
+              ))}
+              {people > 1 && <p className="fine">No connection needed: the screen turns to whoever's move it is.</p>}
+            </>
+          )}
         </>
       }
       table={<OpponentSettings solo={solo} />}
@@ -220,7 +262,7 @@ export function KitSetup({
             <button
               type="button"
               className="primary deal"
-              disabled={errors.length > 0 || busy}
+              disabled={errors.length > 0 || busy || !online}
               onClick={async () => {
                 setBusy(true);
                 setProblem(null);
@@ -243,7 +285,7 @@ export function KitSetup({
             <button
               type="button"
               className="secondary"
-              disabled={errors.length > 0 || busy}
+              disabled={errors.length > 0 || busy || !online}
               onClick={async () => {
                 setBusy(true);
                 setProblem(null);
@@ -267,11 +309,12 @@ export function KitSetup({
             disabled={errors.length > 0}
             onClick={() => {
               remember();
-              onPractice(name.trim() || "You", rules, game.teams ? 4 : seats);
+              onPractice(name.trim() || "You", rules, tableSeats, people > 1 ? Array.from({ length: people - 1 }, (_, i) => personName(others[i], i + 1)) : undefined);
             }}
           >
-            {!solo ? "Practice against the computer" : "Deal"}
+            {solo ? "Deal" : people > 1 ? "Play together on this device" : "Practice against the computer"}
           </button>
+          {!online && <p className="fine">{OFFLINE_LINE}</p>}
           {problem && <p className="error">{problem}</p>}
         </>
       }

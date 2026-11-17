@@ -1,6 +1,10 @@
 // A kit game in this browser: you in seat 0 and computer players from the roster, who play in
 // their own styles, at the table's speed, and chat a little.
-import { GameError, kitGame, kitGreet, reactToKit, type KitGameId, type KitRemark } from "@journey-to-code/games";
+//
+// With `others`, more people sit at the same device (see sameDevice.ts): they take the seats after
+// yours, computer players fill whatever is left, and the screen shows the table of whoever's move
+// it is. Nothing here needs the server, so all of it works with no connection.
+import { GameError, isBoardGame, kitGame, kitGreet, reactToKit, type KitGameId, type KitRemark } from "@journey-to-code/games";
 import { palaceReplyTo } from "@journey-to-code/palace";
 import type { ChatMessage } from "@journey-to-code/rooms/client";
 import { mulberry32, paceDelay, personaFor, pickPersonas, styleFor } from "@journey-to-code/rules";
@@ -11,12 +15,18 @@ import { TurnClock } from "../TurnClock";
 import { GameTable } from "./GameTable";
 import { botMove, type BotJob } from "./botMove";
 import { THINK_BUDGET, thinkElsewhere, warmThinker } from "./botThinker";
+import { personName, seatAtScreen } from "./sameDevice";
 
-export function LocalKit({ game: id, name, rules, seats, seed, onLeave }: { game: KitGameId; name: string; rules: unknown; seats: number; seed: number; onLeave: () => void }) {
+/** On a board the screen stays with the person who moved for a moment, so they see the piece land before the board turns to the next person. */
+const HANDOVER_MS = 900;
+
+export function LocalKit({ game: id, name, others, rules, seats, seed, onLeave }: { game: KitGameId; name: string; /** The other people at this device, in seat order after you. */ others?: string[]; rules: unknown; seats: number; seed: number; onLeave: () => void }) {
   const game = kitGame(id)!;
-  const bots = useMemo(() => pickPersonas(seats - 1, mulberry32(seed)).map((p) => p.name), [seats, seed]);
-  const names = useMemo(() => [name, ...bots], [name, bots]);
-  const cast = useMemo(() => ({ bots: bots.map((n, i) => ({ seat: i + 1, name: n })) }), [bots]);
+  /** Seats 0 to people - 1 are people at this device; the rest are computer players. */
+  const people = Math.min(seats, 1 + (others?.length ?? 0));
+  const bots = useMemo(() => pickPersonas(seats - people, mulberry32(seed)).map((p) => p.name), [seats, people, seed]);
+  const names = useMemo(() => [people > 1 ? personName(name === "You" ? "" : name, 0) : name, ...(others ?? []).slice(0, people - 1).map((n, i) => personName(n, i + 1)), ...bots], [name, others, people, bots]);
+  const cast = useMemo(() => ({ bots: bots.map((n, i) => ({ seat: i + people, name: n })) }), [bots, people]);
   const [state, setState] = useState(() => game.newGame(game.normalize(rules), seats, seed));
   const [settings, setSettings] = useState(loadTableSettings);
   const latest = useRef(state);
@@ -42,7 +52,36 @@ export function LocalKit({ game: id, name, rules, seats, seed, onLeave }: { game
       throw e;
     }
   }, []);
-  const act = useCallback((move: Record<string, unknown>) => moveAs(0, move), []);
+  // Whose table the screen shows: yours, or with several people here, whoever's move it is.
+  const [here, setHere] = useState(0);
+  const hereNow = useRef(here);
+  hereNow.current = here;
+  const next = useMemo(() => seatAtScreen(game, state, people, here), [state, here]);
+  useEffect(() => {
+    if (next === here) return;
+    const timer = setTimeout(() => setHere(next), isBoardGame(id) ? HANDOVER_MS : 0);
+    return () => clearTimeout(timer);
+  }, [next, here]);
+  const act = useCallback(async (move: Record<string, unknown>) => {
+    const seat = hereNow.current;
+    const before = game.view(latest.current, seat) as { result: unknown; over: unknown };
+    const refused = await moveAs(seat, move);
+    // After a hole, a frame or a game of a match, one press moves everyone here on: the others
+    // have seen the same scores on the same screen.
+    if (!refused && people > 1 && before.result && !before.over) {
+      for (let other = 0; other < people; other++) {
+        if (other === seat) continue;
+        try {
+          const moved = game.apply(latest.current, other, move, { elapsed: 0 });
+          latest.current = moved;
+          setState(moved);
+        } catch (e) {
+          if (!(e instanceof GameError)) throw e;
+        }
+      }
+    }
+    return refused;
+  }, []);
 
   // A clock of the game's own (Drop Four's shot clock in drinking mode) runs here as it does at a
   // family table: on your seat only, from the moment the state changed, with the game's timeout move
@@ -54,7 +93,7 @@ export function LocalKit({ game: id, name, rules, seats, seed, onLeave }: { game
   const insideTheClock = (seat: number, delay: number) => (own && own.seat === seat ? Math.min(delay, Math.round(own.after * 0.6)) : delay);
   const [deadline, setDeadline] = useState<{ at: number; seat: number } | null>(null);
   useEffect(() => {
-    if (!own || (own.seat !== 0 && !own.strict)) return setDeadline(null);
+    if (!own || (own.seat >= people && !own.strict)) return setDeadline(null);
     setDeadline({ at: since + own.after, seat: own.seat });
     const timer = setTimeout(() => {
       // Only if nothing has happened since: a move made as the clock ran out is the one that counts.
@@ -82,11 +121,11 @@ export function LocalKit({ game: id, name, rules, seats, seed, onLeave }: { game
   }, []);
   useEffect(() => {
     if (game.summary(state).over || pending.current) return;
-    const style = (s: number) => styleFor(personaFor(bots[s - 1]!).style, settings.skill);
+    const style = (s: number) => styleFor(personaFor(bots[s - people]!).style, settings.skill);
     // A heavy think isn't done here just to find out whether there is one: the game says so itself.
-    const seat = bots.map((_, i) => i + 1).find((s) => game.heavy?.(state, s) || game.bot(state, s, style(s)) !== null);
+    const seat = bots.map((_, i) => i + people).find((s) => game.heavy?.(state, s) || game.bot(state, s, style(s)) !== null);
     if (seat === undefined) return;
-    const job = (of: unknown): BotJob => ({ game: id, state: of, seat, name: bots[seat - 1]!, skill: settings.skill, budget: THINK_BUDGET });
+    const job = (of: unknown): BotJob => ({ game: id, state: of, seat, name: bots[seat - people]!, skill: settings.skill, budget: THINK_BUDGET });
     const ask = (of: unknown) => (game.heavy?.(of, seat) ? thinkElsewhere(job(of)) : null);
     const mine = {};
     turn.current = mine;
@@ -133,7 +172,7 @@ export function LocalKit({ game: id, name, rules, seats, seed, onLeave }: { game
       });
       setTick((t) => t + 1);
     };
-    pending.current = setTimeout(() => void play(), game.reactionTime?.(state, seat, style(seat)) ?? insideTheClock(seat, paceDelay(settings.pace, () => Math.round(game.thinkingTime(state, seat) * personaFor(bots[seat - 1]!).pace * (0.8 + Math.random() * 0.5)))));
+    pending.current = setTimeout(() => void play(), game.reactionTime?.(state, seat, style(seat)) ?? insideTheClock(seat, paceDelay(settings.pace, () => Math.round(game.thinkingTime(state, seat) * personaFor(bots[seat - people]!).pace * (0.8 + Math.random() * 0.5)))));
   }, [state, bots, settings, tick]);
   useEffect(
     () => () => {
@@ -175,12 +214,12 @@ export function LocalKit({ game: id, name, rules, seats, seed, onLeave }: { game
   const send = async (text: string) => {
     const clean = text.replace(/\s+/g, " ").trim().slice(0, 280);
     if (!clean) return "Say something first.";
-    setMessages((m) => [...m, { seat: 0, name, text: clean, at: Date.now(), bot: false }]);
+    setMessages((m) => [...m, { seat: hereNow.current, name: names[hereNow.current]!, text: clean, at: Date.now(), bot: false }]);
     speak(palaceReplyTo(clean, cast), true);
     return null;
   };
 
-  const view = useMemo(() => game.view(state, 0), [state]);
+  const view = useMemo(() => game.view(state, here), [state, here]);
   return (
     <TableTime.Provider value={time}>
       <GameTable
@@ -188,7 +227,9 @@ export function LocalKit({ game: id, name, rules, seats, seed, onLeave }: { game
         names={names}
         act={act}
         onLeave={onLeave}
-        chat={{ messages, mySeat: 0, send }}
+        // People round one screen talk across it; the chat is for the computer players' table talk.
+        chat={bots.length > 0 ? { messages, mySeat: here, send } : undefined}
+        together={people > 1}
         settings={{
           value: settings,
           change: (next) => {
@@ -197,7 +238,7 @@ export function LocalKit({ game: id, name, rules, seats, seed, onLeave }: { game
           },
         }}
       />
-      <TurnClock deadline={deadline} mySeat={0} now={Date.now} />
+      <TurnClock deadline={deadline} mySeat={here} now={Date.now} />
     </TableTime.Provider>
   );
 }

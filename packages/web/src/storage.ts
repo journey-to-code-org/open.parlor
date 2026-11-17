@@ -204,3 +204,17 @@ export const loadDriveHouse = (): { slug: string; name: string; rev: number } | 
   return kept && typeof kept.slug === "string" && typeof kept.name === "string" ? { slug: kept.slug, name: kept.name, rev: typeof kept.rev === "number" ? kept.rev : 0 } : null;
 };
 export const saveDriveHouse = (house: { slug: string; name: string; rev: number } | null) => write("cardroom:pinkslips:house", house);
+
+// ---- Several people at this device (kit/sameDevice.ts) ------------------------------------------
+/** How many people play this game at this device: 1 is you against the computer. */
+export const loadPeopleHere = (game: KitGameId): number => {
+  const n = read<number>(`cardroom:${game}:people`, 1);
+  return Number.isInteger(n) && n >= 1 && n <= kitGame(game)!.seats.max ? n : 1;
+};
+export const savePeopleHere = (game: KitGameId, n: number) => write(`cardroom:${game}:people`, n);
+/** The names of the others who play here, in seat order after you: the same family at every game. */
+export const loadOthersHere = (): string[] => {
+  const names = read<unknown>("cardroom:people", []);
+  return Array.isArray(names) ? names.filter((n): n is string => typeof n === "string").slice(0, 9) : [];
+};
+export const saveOthersHere = (names: string[]) => write("cardroom:people", names);

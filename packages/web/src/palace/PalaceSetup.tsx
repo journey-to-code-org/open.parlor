@@ -12,6 +12,7 @@ import { lobbyProblem } from "../lobbyApi";
 import { ChallengeLink } from "../ChallengeLink";
 import { Choice, SameRulesToggle } from "../RulesEditor";
 import { SetupLayout } from "../SetupLayout";
+import { OFFLINE_LINE, useOnline } from "../offline";
 import {
   deletePalacePreset,
   loadMyHouses,
@@ -50,6 +51,7 @@ export function PalaceSetup({
   const [saved, setSaved] = useState(loadSavedPalace);
   const [showRules, setShowRules] = useState(false);
   const [busy, setBusy] = useState(false);
+  const online = useOnline();
   const [problem, setProblem] = useState<string | null>(null);
   const myHouses = loadMyHouses();
   const all = useMemo(() => [...PALACE_PRESETS, ...saved], [saved]);
@@ -184,7 +186,7 @@ export function PalaceSetup({
           <button
             type="button"
             className="primary deal"
-            disabled={errors.length > 0 || busy}
+            disabled={errors.length > 0 || busy || !online}
             onClick={async () => {
               setBusy(true);
               setProblem(null);
@@ -204,7 +206,7 @@ export function PalaceSetup({
           <button
             type="button"
             className="secondary"
-            disabled={errors.length > 0 || busy}
+            disabled={errors.length > 0 || busy || !online}
             onClick={async () => {
               setBusy(true);
               setProblem(null);
@@ -231,6 +233,7 @@ export function PalaceSetup({
           >
             Practice against the computer
           </button>
+          {!online && <p className="fine">{OFFLINE_LINE}</p>}
           {problem && <p className="error">{problem}</p>}
         </>
       }

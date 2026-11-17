@@ -53,6 +53,8 @@ export interface BoardTableProps {
   banner?: React.ReactNode;
   /** Looking on without a seat: nothing to press, offers included. */
   watching?: boolean;
+  /** Several people share this screen and take turns at it: say whose turn it is by name, not "your". */
+  together?: boolean;
   chat?: ChatProps;
   settings?: {
     value: TableSettings;
@@ -99,7 +101,7 @@ interface Asking {
   options: BoardPiece[];
 }
 
-export function BoardTable({ view, names, act, onLeave, banner, watching, chat, settings }: BoardTableProps) {
+export function BoardTable({ view, names, act, onLeave, banner, watching, together, chat, settings }: BoardTableProps) {
   const game = kitGame(view.game)!;
   const me = view.me;
   const [error, setError] = useState<string | null>(null);
@@ -258,7 +260,7 @@ export function BoardTable({ view, names, act, onLeave, banner, watching, chat, 
     // A piece whose only place to go is where it already is (a disc popped out of a rack) is tapped twice.
     <span className="mine">{view.grids.some((g) => g.id === held.grid && g.select?.sources.some((s) => s.from === held.from && s.to.length === 1 && s.to[0] === s.from)) ? "Tap it again to take it out" : "Now pick where it goes"}</span>
   ) : !watching && (view.turn === me || (view.turn === null && canMove)) ? (
-    <span className="mine">Your turn</span>
+    <span className="mine">{together ? `${names[me] ?? "Someone"}'s turn` : "Your turn"}</span>
   ) : view.turn !== null ? (
     `${names[view.turn] ?? "Someone"} is thinking…`
   ) : view.choices ? null : (
@@ -480,8 +482,8 @@ export function BoardTable({ view, names, act, onLeave, banner, watching, chat, 
       {view.over && !lookingOver && (
         <div className="sheet won-sheet board-over">
           {/* Alone at the table there was nobody to beat: the score is the news. */}
-          <h2>{won && view.seats > 1 ? "You won! 🏆" : named(view.over.title, names)}</h2>
-          {won && !view.result && !view.over.title.includes(`{${me}}`) && <p className="won-line">{named(view.over.title, names)}</p>}
+          <h2>{won && view.seats > 1 && !together ? "You won! 🏆" : named(view.over.title, names)}</h2>
+          {won && !together && !view.result && !view.over.title.includes(`{${me}}`) && <p className="won-line">{named(view.over.title, names)}</p>}
           {best && <p className="won-line">{best.was === null ? "That's your score to beat." : (view.scores[0]?.value ?? 0) > best.was ? `A new best! It was ${best.was}.` : `Your best is ${best.was}.`}</p>}
           {view.result && <ResultTable result={view.result} names={names} me={me} untitled />}
           <button type="button" className="primary" onClick={onLeave}>

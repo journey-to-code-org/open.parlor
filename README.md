@@ -88,6 +88,23 @@ the other player's disc lands you have three seconds to drop yours, or you take 
 your turn. Yacht's drinking mode is a table called Shotzee: roll five of a kind and everyone else
 takes a shot; put a zero on your scorecard and you drink.
 
+## With no connection, and at one device
+
+Once the parlor has been opened on a device, the games that need no server start with no
+connection at all: practice against the computer, the solitaires, the arcade. The service worker
+keeps a copy of the app (about 4 MB) and says "Ready to play offline" when it has it. Family
+tables, houses, the lobby and challenges are rooms on the server, so their buttons wait for the
+connection to come back.
+
+A game with nothing hidden can also be **shared on one device**: on its setup screen, *On this
+device* seats two or more of you (computer players take any seats left), and the screen turns to
+whoever's move it is. That is Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon,
+Yacht, Memory, Mini Golf, Bowling and Billiards. A game with a hand of cards can't be: one screen
+can't keep a secret from the person holding it.
+
+[docs/LOCAL-PLAY.md](docs/LOCAL-PLAY.md) has how both work, and what it would take for several
+devices on the same wifi to play when the internet is out.
+
 ## Backgammon
 
 The board is the kit's first track of points: twenty-four long triangles, the bar and a tray each.

@@ -43,6 +43,8 @@ export interface KitTableProps {
   };
   /** Nobody's playing `view.me` from here: the table is being watched. */
   watching?: boolean;
+  /** Several people share this screen and take turns at it: say whose turn it is by name, not "your". */
+  together?: boolean;
 }
 
 /** Engines name seats as {0}, {1}…: put the players' names in. */
@@ -137,6 +139,7 @@ export function KitTable({
   chat,
   settings,
   watching,
+  together,
 }: KitTableProps) {
   const game = kitGame(view.game)!;
   const me = view.me;
@@ -240,7 +243,7 @@ export function KitTable({
     <span className="error">{error}</span>
   ) : view.over || view.seats === 1 ? null : view.turn === me && !watching ? (
     <span className="mine">
-      {view.pick?.prompt || view.gridTap?.prompt || "Your turn"}
+      {view.pick?.prompt || view.gridTap?.prompt || (together ? `${names[me] ?? "Someone"}'s turn` : "Your turn")}
     </span>
   ) : view.turn === null && (view.pick || view.gridTap) ? (
     <span className="mine">{view.pick?.prompt ?? view.gridTap?.prompt}</span>
@@ -506,7 +509,7 @@ export function KitTable({
       {view.over && (
         <div className="sheet won-sheet">
           <h2>
-            {view.over.winners.includes(me)
+            {view.over.winners.includes(me) && !together
               ? view.teams
                 ? "You won! 🎉"
                 : "You won! 🏆"

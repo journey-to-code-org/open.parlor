@@ -1,4 +1,5 @@
 import { SetupLayout } from "./SetupLayout";
+import { OFFLINE_LINE, useOnline } from "./offline";
 import { OpponentSettings } from "./TableSettings";
 import { validatePreset, type RulePreset } from "@journey-to-code/rules";
 import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
@@ -56,6 +57,7 @@ export function Setup({
   const [rules, setRules] = useState<RulePreset>(loadLastPreset);
   const [showRules, setShowRules] = useState(false);
   const [busy, setBusy] = useState(false);
+  const online = useOnline();
   const myHouses = loadMyHouses();
   const [making, setMaking] = useState(false);
   const [houseName, setHouseName] = useState("");
@@ -248,7 +250,7 @@ export function Setup({
           <button
             type="button"
             className="primary deal"
-            disabled={errors.length > 0 || busy}
+            disabled={errors.length > 0 || busy || !online}
             onClick={async () => {
               setBusy(true);
               setProblem(null);
@@ -269,7 +271,7 @@ export function Setup({
           <button
             type="button"
             className="secondary"
-            disabled={errors.length > 0 || busy}
+            disabled={errors.length > 0 || busy || !online}
             onClick={async () => {
               setBusy(true);
               setProblem(null);
@@ -294,6 +296,7 @@ export function Setup({
           >
             Practice against the computer
           </button>
+          {!online && <p className="fine">{OFFLINE_LINE}</p>}
           {problem && <p className="error">{problem}</p>}
         </>
       }
@@ -326,7 +329,7 @@ export function Setup({
               <button
                 type="button"
                 className="primary"
-                disabled={busy || errors.length > 0}
+                disabled={busy || errors.length > 0 || !online}
                 onClick={async () => {
                   setBusy(true);
                   setProblem(null);

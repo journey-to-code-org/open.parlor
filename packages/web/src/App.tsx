@@ -38,7 +38,7 @@ type Screen =
   | { kind: "lobby" }
   | { kind: "local"; name: string; preset: RulePreset; seed: number }
   | { kind: "local-palace"; name: string; rules: PalaceRules; seats: number; seed: number }
-  | { kind: "local-kit"; game: KitGameId; name: string; rules: unknown; seats: number; seed: number; /** Leaving goes back to the course (or lane) editor, at this one. */ back?: string }
+  | { kind: "local-kit"; game: KitGameId; name: string; /** The other people playing at this device, after `name`. */ others?: string[]; rules: unknown; seats: number; seed: number; /** Leaving goes back to the course (or lane) editor, at this one. */ back?: string }
   | { kind: "arcade"; game: ArcadeGameId; rules: ArcadeRules; seats: number; seed: number; autofire: boolean; rival?: { name: string; score: number } }
   | { kind: "golf"; id: string }
   | { kind: "lane"; id: string }
@@ -259,7 +259,7 @@ export function App() {
         key={game}
         game={game}
         onHome={home}
-        onPractice={(name, rules, seats) => setScreen({ kind: "local-kit", game, name, rules, seats, seed: Math.floor(Math.random() * 2 ** 31) })}
+        onPractice={(name, rules, seats, others) => setScreen({ kind: "local-kit", game, name, others, rules, seats, seed: Math.floor(Math.random() * 2 ** 31) })}
         onFamilyTable={async (rules, seats) => openTable(await createRoom({ game, rules, seats }, { settings: loadTableSettings() }), null)}
         onFindPlayers={(name, rules, seats) => findPlayers(game, name, rules, seats)}
         onOpenHouse={openHouse}

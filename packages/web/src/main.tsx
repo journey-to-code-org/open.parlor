@@ -5,6 +5,7 @@ import { noteError, openReport, watchForErrors } from "./bugReport";
 import { unlockAudioOnFirstTap } from "./feedback/sounds";
 import { registerServiceWorker } from "./notifications";
 import { GameRequest } from "./GameRequest";
+import { OfflineNotice } from "./offline";
 import { ReportProblem, useReports } from "./ReportProblem";
 import { applyDisplay } from "./display";
 import { DECK_KEY, applyDeck, savedDeck } from "@journey-to-code/decks";
@@ -67,6 +68,7 @@ createRoot(document.getElementById("root")!).render(
     <Crashed>
       <App />
     </Crashed>
+    <OfflineNotice />
     <ReportProblem />
     <GameRequest />
   </StrictMode>,
