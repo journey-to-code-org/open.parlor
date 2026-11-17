@@ -1,5 +1,5 @@
 // The open.parlor's start page: the Vue game chooser, mounted inside the React app.
-import { ARCADE_GAMES, IDLE_GAMES, isArcadeGame, isBoardGame, isIdleGame, isSportGame, KIT_GAMES } from "@journey-to-code/games";
+import { ARCADE_GAMES, IDLE_GAMES, isArcadeGame, isBoardGame, isIdleGame, isSportGame, isWordGame, KIT_GAMES } from "@journey-to-code/games";
 import { createApp, h, reactive } from "vue";
 import { useEffect, useRef, useState } from "react";
 import { bugs } from "../bugReport";
@@ -65,7 +65,7 @@ const FANS: Record<string, object[]> = {
 };
 
 /** A board game's tile shows a little board instead: a position that says what the game is about. */
-type MiniBoard = { cols: number; cells: ({ glyph: string; tone: string; shade?: "dark" | "point-down" | "point-up" } | null)[]; shade?: "green" | "wood" | "points" };
+type MiniBoard = { cols: number; cells: ({ glyph: string; tone: string; shade?: "dark" | "point-down" | "point-up" } | null)[]; shade?: "green" | "wood" | "points" | "words" };
 const X = { glyph: "✕", tone: "red" };
 const O = { glyph: "◯", tone: "blue" };
 const DARK = { glyph: "●", tone: "dark" };
@@ -88,7 +88,15 @@ const DOWN = { glyph: "", tone: "none", shade: "point-down" as const };
 const UP = { glyph: "", tone: "none", shade: "point-up" as const };
 const CHECKER_LIGHT = { glyph: "●", tone: "light" };
 const CHECKER_DARK = { glyph: "●", tone: "dark" };
+/** A word game's tile: letter tiles, coloured the way its table colours them. */
+const tiles = (word: string, tones: string) => [...word].map((glyph, i) => (glyph === "_" ? { glyph: "", tone: "blank" } : { glyph: glyph.toUpperCase(), tone: { h: "hit", n: "near", m: "miss", p: "plain" }[tones[i] ?? "p"]! }));
 const BOARDS: Record<string, MiniBoard> = {
+  // Two guesses at the hidden word, the second nearly there.
+  secretword: { cols: 5, shade: "words", cells: [...tiles("slate", "mnhmh"), ...tiles("crane", "hhhmh")] },
+  // A rack of letters over the word they make.
+  anagrams: { cols: 5, shade: "words", cells: [...tiles("tsnae", "ppppp"), ...tiles("_ant_", "phhhp")] },
+  // The word as far as it is uncovered, and the letters that weren't in it.
+  hangman: { cols: 5, shade: "words", cells: [...tiles("_a__a", "phpph"), ...tiles("zqk__", "mmm")] },
   tictactoe: { cols: 3, cells: [X, O, null, null, X, O, O, null, X] },
   // The bottom of a rack: red about to make four on the slant.
   dropfour: { cols: 4, cells: [null, null, null, null, null, null, RED, YEL, null, RED, YEL, RED, RED, YEL, YEL, RED] },
@@ -104,7 +112,7 @@ BOARDS.go = { cols: 5, shade: "wood", cells: [null, null, null, null, null, null
 const EMPTY_BOARD: MiniBoard = { cols: 3, cells: Array(9).fill(null) };
 
 /** A table sport's tile shows a little table from above: its surface, a hole, a ball or two (in a 100 × 100 box). */
-type MiniTable = { surface: "green" | "felt" | "lane"; cup?: [x: number, y: number]; balls: { x: number; y: number; tone: string }[] };
+type MiniTable = { surface: "green" | "felt" | "lane" | "wood"; cup?: [x: number, y: number]; balls: { x: number; y: number; tone: string }[] };
 /** A bowling lane: six pins in a triangle at the far end, and a ball on its way. */
 const PINS = [[50, 14], [43, 22], [57, 22], [36, 30], [50, 30], [64, 30]].map(([x, y]) => ({ x: x!, y: y!, tone: "white" }));
 const TABLES: Record<string, MiniTable> = {
@@ -112,6 +120,8 @@ const TABLES: Record<string, MiniTable> = {
   bowling: { surface: "lane", balls: [...PINS, { x: 50, y: 80, tone: "red" }] },
   minigolf: { surface: "green", cup: [66, 32], balls: [{ x: 36, y: 72, tone: "white" }, { x: 70, y: 62, tone: "red" }] },
   // A cue ball lined up on a little rack.
+  // The queen in the middle of a ring of pieces, and the striker on its line.
+  carrom: { surface: "wood", balls: [{ x: 50, y: 46, tone: "red" }, ...[0, 1, 2, 3, 4, 5].map((i) => ({ x: Math.round(50 + 13 * Math.cos((i * Math.PI) / 3)), y: Math.round(46 + 13 * Math.sin((i * Math.PI) / 3)), tone: i % 2 ? "black" : "cream" })), { x: 38, y: 80, tone: "gold" }] },
   billiards: { surface: "felt", balls: [{ x: 28, y: 74, tone: "white" }, { x: 62, y: 30, tone: "red" }, { x: 72, y: 36, tone: "red" }, { x: 52, y: 38, tone: "red" }] },
 };
 const EMPTY_TABLE: MiniTable = { surface: "green", balls: [] };
@@ -152,7 +162,7 @@ export function Home({ last, onPick, onOpenHouse, onLobby, onWifi, onMove }: { l
 
   useEffect(() => {
     // The games the parlor's host offers, in their order (every game, where there's no server).
-    const games = () => arranged(EVERY_GAME).map((g) => ({ ...g, category: categoryOf(g.id), screen: isArcadeGame(g.id) || isIdleGame(g.id) ? (SCREENS[g.id] ?? EMPTY_SCREEN) : undefined, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: isBoardGame(g.id) && !DICE[g.id] ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
+    const games = () => arranged(EVERY_GAME).map((g) => ({ ...g, category: categoryOf(g.id), screen: isArcadeGame(g.id) || isIdleGame(g.id) ? (SCREENS[g.id] ?? EMPTY_SCREEN) : undefined, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: (isBoardGame(g.id) && !DICE[g.id]) || isWordGame(g.id) ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
     const props = reactive({
       games: games(),
       categories: GAME_CATEGORIES,

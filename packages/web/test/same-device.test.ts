@@ -10,9 +10,9 @@ const start = (id: string, seats: number, rules?: unknown) => {
 
 describe("sharing a device", () => {
   it("is for games with nothing hidden: boards, dice, table sports and Memory", () => {
-    for (const id of ["chess", "checkers", "go", "reversi", "tictactoe", "dropfour", "backgammon", "yacht", "memory", "minigolf", "bowling", "billiards"]) expect(sharesDevice(id), id).toBe(true);
+    for (const id of ["chess", "checkers", "go", "reversi", "tictactoe", "dropfour", "backgammon", "yacht", "memory", "minigolf", "bowling", "billiards", "carrom", "hangman"]) expect(sharesDevice(id), id).toBe(true);
     // A hand of cards, or a fleet, is a secret one screen can't keep.
-    for (const id of ["hearts", "gin", "holdem", "combat", "gofish", "spades", "palace", "skyfire"]) expect(sharesDevice(id), id).toBe(false);
+    for (const id of ["hearts", "gin", "holdem", "combat", "gofish", "spades", "palace", "skyfire", "secretword", "anagrams"]) expect(sharesDevice(id), id).toBe(false);
     // A game for one has nobody to share with.
     for (const game of KIT_GAMES) if (game.seats.max === 1) expect(sharesDevice(game.id), game.id).toBe(false);
   });

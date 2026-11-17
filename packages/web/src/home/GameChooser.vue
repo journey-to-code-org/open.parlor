@@ -369,6 +369,13 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 }
 .mini-board.shade-wood .mini-cell.tone-light { text-shadow: 0 0 1px #1d1a16, 0 1px 1px rgba(0, 0, 0, 0.5); }
 /* A board of points (Backgammon): long triangles from both edges, and no lines between the cells. */
+/* A word game: letter tiles, green in place, gold elsewhere, grey not in the word. */
+.mini-board.shade-words { width: calc(var(--tile-card) * 2.5); gap: 3px; rotate: -4deg; background: none; box-shadow: none; border-radius: 0; overflow: visible; aspect-ratio: 5 / 2; grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.mini-board.shade-words .mini-cell { aspect-ratio: 1; border-radius: 4px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); font-size: calc(var(--tile-card) * 1.5 / var(--cols) * 0.55); font-weight: 800; color: #1d1a16; background: #fbf6ec; }
+.mini-board.shade-words .mini-cell.tone-hit { background: #3f9a52; color: #fff; }
+.mini-board.shade-words .mini-cell.tone-near { background: #d2a52a; color: #241a00; }
+.mini-board.shade-words .mini-cell.tone-miss { background: #5b5650; color: #f1ece4; }
+.mini-board.shade-words .mini-cell.tone-blank { background: rgba(0, 0, 0, 0.25); }
 .mini-board.shade-points { background: #c9a36b; gap: 0; border: 2px solid #5b3a22; box-sizing: border-box; }
 .mini-board.shade-points .mini-cell { background: none; font-size: calc(var(--tile-card) * 1.5 / var(--cols) * 0.98); }
 .mini-board.shade-points .mini-cell.shade-point-down, .mini-board.shade-points .mini-cell.shade-point-up { position: relative; isolation: isolate; }
@@ -405,6 +412,9 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .mini-table.surface-green .cloth { fill: #3aa15a; stroke: rgba(8, 40, 16, 0.5); stroke-width: 2; }
 .mini-table.surface-felt .cloth { fill: #2f8a5b; }
 .mini-table.surface-lane .cloth { fill: #e0b877; }
+.mini-table.surface-wood .rail { fill: #6b3f1e; stroke: #3a210d; stroke-width: 2; }
+.mini-table.surface-wood .cloth { fill: #ecd09c; rx: 4px; }
+.mini-table .ball.tone-cream { fill: #fbf3df; stroke: #8c6a3c; stroke-width: 1; }
 .mini-table .aim { stroke: rgba(255, 255, 255, 0.8); stroke-width: 2.5; stroke-dasharray: 1 6; stroke-linecap: round; }
 .mini-table .cup { fill: #1d1a16; stroke: rgba(255, 255, 255, 0.7); stroke-width: 1.5; }
 .mini-table .pole { stroke: #fbf6ec; stroke-width: 2.5; stroke-linecap: round; }

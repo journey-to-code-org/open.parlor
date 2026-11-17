@@ -117,6 +117,9 @@ function aimWords(v: SportView, aim: AimAt): { short: string; long: string } {
   return { short: `${where} · ${percent}%`, long: `${where.replace("°", " degrees")}, power ${percent} percent. ${hole[0]!.toUpperCase()}${hole.slice(1)} is ${metres(pocket.far)} away.` };
 }
 
+/** A game whose shot starts anywhere along a line, aimed any way: pool with the cue ball in hand, and Carrom's striker on its baseline. (Bowling's line is a throw: aimed up the lane.) */
+const onLine = (game: string) => game === "billiards" || game === "carrom";
+
 export function SportTable({ view, names, act, onLeave, banner, chat, together, settings }: SportTableProps) {
   const game = kitGame(view.game)!;
   const me = view.me;
@@ -215,8 +218,9 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
       // A bowler stands where they've chosen to on the foul line: the ball is there.
       const placed = mine && v.shoot?.place ? v.shoot.place : null;
       const x = placed ? (aimRef.current.at ?? b.x) : b.x;
-      // In pool the cue ball is put anywhere along a line across the table, not on the bowler's line.
-      const y = placed && v.game === "billiards" ? placed.y : b.y;
+      // In pool the cue ball is put anywhere along a line across the table, and in Carrom the striker
+      // anywhere along your baseline: not on the bowler's line.
+      const y = placed && onLine(v.game) ? placed.y : b.y;
       discs.push({ id: b.id, x, y, r: b.r, look: looks.get(b.id), mine });
     }
     for (const g of still.table.ghosts) {
@@ -248,7 +252,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
     }
     let aiming: Aim | null = null;
     const ball = strikable(v);
-    const pool = v.game === "billiards";
+    const pool = onLine(v.game);
     const throwing = !!v.shoot?.place && !pool;
     if (canShootRef.current && ball && v.shoot && !throwing) {
       const a = aimRef.current;
@@ -529,9 +533,16 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
   const ballKey = shown.shoot && ball ? `${shown.table.key}/${ball.id}/${ball.x}/${ball.y}` : "";
   useEffect(() => {
     if (!ball || !shown.shoot) return;
-    if (shown.shoot.place && shown.game === "billiards") {
-      // Pool, with the cue ball in hand: start in the middle of the line, aimed up the table.
+    if (shown.shoot.place && onLine(shown.game)) {
+      // Pool, with the cue ball in hand: start in the middle of the line, aimed up the table. Carrom:
+      // the striker where it lies on your baseline, aimed at the middle of the board.
       const pl = shown.shoot.place;
+      if (shown.game === "carrom") {
+        const frame = shown.table.look.frame;
+        const middle = { x: frame.x + frame.w / 2, y: frame.y + frame.h / 2 };
+        setAim({ angle: angleTo({ x: ball.x, y: pl.y }, middle), power: Math.min(shown.shoot.maxPower, Math.max(shown.shoot.minPower, 450)), at: Math.round(ball.x), call: null });
+        return;
+      }
       setAim({ angle: 0, power: Math.min(shown.shoot.maxPower, Math.max(shown.shoot.minPower, 400)), at: Math.round((pl.min + pl.max) / 2), call: null });
       return;
     }
@@ -547,7 +558,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
   // The guide follows the throw as it stands, whichever way it was set (a swipe, the buttons, the keys).
   useEffect(() => {
     const ballNow = strikable(shown);
-    if (!canShoot || !shown.shoot?.place || shown.game === "billiards" || !ballNow) {
+    if (!canShoot || !shown.shoot?.place || onLine(shown.game) || !ballNow) {
       guide.current = null;
       return;
     }
@@ -558,7 +569,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
   const turn = (by: number) => {
     if (!canShoot) return;
     // Down a lane, the aim is a few degrees either side of straight.
-    const angle = shown.shoot?.place && shown.game !== "billiards" ? 27000 + Math.max(-AIM_LIMIT, Math.min(AIM_LIMIT, aimRef.current.angle - 27000 + by)) : wrap(aimRef.current.angle + by);
+    const angle = shown.shoot?.place && !onLine(shown.game) ? 27000 + Math.max(-AIM_LIMIT, Math.min(AIM_LIMIT, aimRef.current.angle - 27000 + by)) : wrap(aimRef.current.angle + by);
     setAim({ ...aimRef.current, angle });
   };
   const push = (by: number) => canShoot && setAim({ ...aimRef.current, power: clampPower(aimRef.current.power + by) });
@@ -605,7 +616,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
 
   function onPointerDown(e: React.PointerEvent) {
     if (!canShoot || !shown.shoot || (e.pointerType === "mouse" && e.button !== 0)) return;
-    if (shown.shoot.place && shown.game !== "billiards") {
+    if (shown.shoot.place && !onLine(shown.game)) {
       if (swipe.current) return cancelPull();
       swipe.current = { pointer: e.pointerId, path: [{ x: e.clientX, y: e.clientY, t: e.timeStamp }], mode: "unsure", from: aimRef.current.at ?? 0 };
       try {
@@ -629,7 +640,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
   }
   function onPointerMove(e: React.PointerEvent) {
     const sw = swipe.current;
-    if (sw && sw.pointer === e.pointerId && shown.shoot?.place && shown.game !== "billiards") {
+    if (sw && sw.pointer === e.pointerId && shown.shoot?.place && !onLine(shown.game)) {
       sw.path.push({ x: e.clientX, y: e.clientY, t: e.timeStamp });
       if (sw.mode === "unsure") sw.mode = sideways(sw.path) ? "stand" : Math.abs(e.clientY - sw.path[0]!.y) > 12 ? "throw" : "unsure";
       if (sw.mode === "stand") {
@@ -705,7 +716,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
     if (!canShoot || e.target !== e.currentTarget) return;
     const fine = e.altKey ? 10 : e.shiftKey ? 500 : 100;
     const step = e.shiftKey ? 100 : 20;
-    if (shown.shoot?.place && shown.game !== "billiards") {
+    if (shown.shoot?.place && !onLine(shown.game)) {
       // Bowling: Shift and the arrows move along the foul line; [ and ] set the hook.
       if (e.shiftKey && e.key === "ArrowLeft") stand(-400);
       else if (e.shiftKey && e.key === "ArrowRight") stand(400);
@@ -783,9 +794,9 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
   const status = error ? (
     <span className="error">{error}</span>
   ) : shooter !== null ? (
-    shooter === me && !together ? "There it goes…" : `${names[shooter] ?? "Someone"} ${shown.game === "bowling" ? "bowls" : shown.game === "billiards" ? "shoots" : "putts"}…`
+    shooter === me && !together ? "There it goes…" : `${names[shooter] ?? "Someone"} ${shown.game === "bowling" ? "bowls" : shown.game === "billiards" ? "shoots" : shown.game === "carrom" ? "flicks" : "putts"}…`
   ) : shown.over || shown.result ? null : canShoot ? (
-    <span className="mine">{together ? `${names[shown.me] ?? "Someone"}: ` : ""}{shown.game === "bowling" ? "Drag sideways to stand, swipe up to bowl" : shown.shoot?.place && shown.game === "billiards" ? "Place the cue ball, then pull back and let go" : shown.seats > 1 && !together ? "Your shot" : "Pull back and let go"}</span>
+    <span className="mine">{together ? `${names[shown.me] ?? "Someone"}: ` : ""}{shown.game === "bowling" ? "Drag sideways to stand, swipe up to bowl" : shown.shoot?.place && shown.game === "billiards" ? "Place the cue ball, then pull back and let go" : shown.shoot?.place && shown.game === "carrom" ? "Slide the striker along your line, then pull back and flick" : shown.seats > 1 && !together ? "Your shot" : "Pull back and let go"}</span>
   ) : sending ? (
     "…"
   ) : shown.turn !== null ? (
@@ -800,7 +811,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
   const pocket = mine && mine.pocketed === undefined ? nearestPocket(shown, mine) : null;
   const picture = `${shown.table.name}. ${shown.info.join(". ")}.${pocket ? ` Your ball is ${metres(pocket.far)} from ${shown.table.look.pockets === "cup" ? "the cup" : "the nearest pocket"}.` : ""}`;
   const percent = Math.round(aim.power / 10);
-  const throwing = (!!shown.shoot?.place && shown.game !== "billiards") || shown.game === "bowling";
+  const throwing = (!!shown.shoot?.place && !onLine(shown.game)) || shown.game === "bowling";
 
   return (
     <main className={`table kit sport sport-${shown.game}`} onKeyDown={(e) => e.key === "Escape" && onKeyDown(e)}>
@@ -892,7 +903,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
                 </button>
               </div>
               )}
-              {shown.game === "billiards" && (shown.shoot?.place || shown.shoot?.call) && (
+              {onLine(shown.game) && (shown.shoot?.place || shown.shoot?.call) && (
                 <PoolControls view={shown} aim={aim} stand={stand} call={(call) => setAim({ ...aimRef.current, call })} />
               )}
               <div className="sport-row">
@@ -914,7 +925,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
                   +
                 </button>
                 <button type="button" className="primary sport-go" onClick={() => void shoot()}>
-                  {shown.game === "bowling" ? "Roll" : shown.game === "billiards" ? "Shoot" : "Putt"}
+                  {shown.game === "bowling" ? "Roll" : shown.game === "billiards" ? "Shoot" : shown.game === "carrom" ? "Flick" : "Putt"}
                 </button>
               </div>
             </div>
@@ -1205,15 +1216,16 @@ function PoolControls({ view, aim, stand, call }: { view: SportView; aim: AimAt;
   const asks = view.shoot?.call ?? null;
   const labels = new Map(view.table.bodies.map((b) => [b.id, b.label]));
   const pick = (ball: string | undefined, pocket: string | undefined) => call(ball && pocket ? { ball, pocket } : null);
+  const what = view.game === "carrom" ? "striker" : "cue ball";
   return (
     <div className="sport-row pool-controls">
       {place && (
         <>
-          <button type="button" aria-label="Move the cue ball left" onClick={() => stand(-300)}>
+          <button type="button" aria-label={`Move the ${what} left`} onClick={() => stand(-300)}>
             ◀
           </button>
-          <output className="sport-aim">Cue ball in hand</output>
-          <button type="button" aria-label="Move the cue ball right" onClick={() => stand(300)}>
+          <output className="sport-aim">{view.game === "carrom" ? "Striker on your line" : "Cue ball in hand"}</output>
+          <button type="button" aria-label={`Move the ${what} right`} onClick={() => stand(300)}>
             ▶
           </button>
         </>

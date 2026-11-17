@@ -99,8 +99,8 @@ connection to come back.
 A game with nothing hidden can also be **shared on one device**: on its setup screen, *On this
 device* seats two or more of you (computer players take any seats left), and the screen turns to
 whoever's move it is. That is Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon,
-Yacht, Memory, Mini Golf, Bowling and Billiards. A game with a hand of cards can't be: one screen
-can't keep a secret from the person holding it.
+Yacht, Memory, Hangman, Mini Golf, Bowling, Billiards and Carrom. A game with a hand of cards can't
+be: one screen can't keep a secret from the person holding it.
 
 And when the internet is out but the wifi is up, one device can **host a table on the wifi**:
 *Play on this wifi* shows a QR code, the others scan it (or tap *Join on this wifi* on the front
@@ -420,7 +420,7 @@ The game engine and the rooms live in their own repositories and come in from np
 | [`@journey-to-code/rules`](https://github.com/journey-to-code-org/open.games/tree/main/packages/rules), [`palace`](https://github.com/journey-to-code-org/open.games/tree/main/packages/palace), [`physics`](https://github.com/journey-to-code-org/open.games/tree/main/packages/physics), [`decks`](https://github.com/journey-to-code-org/open.games/tree/main/packages/decks) | Spades and the computer players' personas, Palace, the deterministic physics for the table sports, and card designs |
 | [`@journey-to-code/rooms`](https://github.com/journey-to-code-org/open.rooms) | Turn-based rooms over `@zubra/sync`: seats, server-decided moves, private views, bots |
 | [`packages/server`](packages/server) | The server: every game's rooms, houses, challenges, tournaments, the lobby, the sync log and the web app |
-| [`packages/web`](packages/web) | The app (React, with the game chooser in Vue): the card table, the board table and the canvas table for table sports, setup screens, houses, practice |
+| [`packages/web`](packages/web) | The app (React, with the game chooser in Vue): the card table, the board table, the word table and the canvas table for table sports, setup screens, houses, practice |
 | [`packages/designer`](packages/designer) | The card designer (Svelte): draw a deck, keep it or share it, play with it |
 | [`packages/courses`](packages/courses) | Mini Golf courses and bowling lanes people make: painted on a grid, checked, and turned into a hole or a lane the game plays |
 | [`packages/watch`](packages/watch) | The watch page (Solid): the tables playing now, and tables of computer players to learn from |
@@ -569,6 +569,26 @@ hole from a description with `hole()`. [`packages/courses`](packages/courses) tu
 description and puts the course in `COURSES` wherever the game runs: the server, its bot worker
 threads (a think on a custom course carries the course with it), and the browser for practice games
 (and the practice table's Web Worker, the same way).
+
+## Word games
+
+Secret Word, Anagrams and Hangman have a table of their own
+([`packages/web/src/word/WordTable.tsx`](packages/web/src/word/WordTable.tsx)), drawn from the
+games' `WordView`: rows of letter tiles, a rack, and a keyboard coloured by what is known of each
+letter (green in its place, gold in the word, grey not in it). A phone uses the keyboard on the
+screen; a computer's keyboard types too. A word is checked by the server, not the page: anything of
+the right length is sent, and a word that isn't one comes back refused, in words.
+
+- **Secret Word:** everyone guesses the same word on their own board. You see how the others'
+  guesses went as coloured squares, never their letters, and neither does anyone watching.
+- **Anagrams:** a word is handed in unseen, and all of them are turned over together. The rack
+  can be shuffled on your own screen.
+- **Hangman:** played in turn, with a gallows that fills in as the shared misses run out. It can be
+  shared on one device.
+
+The word list is in open.games (ENABLE, with SCOWL's frequency levels for which words are common),
+and it is part of the app's download: about a quarter of a megabyte compressed in the main
+bundle, and the same again in the computer players' worker and the course playtester's.
 
 ## Bowling
 
