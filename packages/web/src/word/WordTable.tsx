@@ -14,6 +14,7 @@
 //
 // A typed word can't be checked here (that needs the word list, which is the engine's): anything of
 // the right shape is sent, and a refusal comes back in words.
+import { useOverSound } from "../feedback/useKitSounds";
 import { PlayAgain } from "../kit/PlayAgain";
 import { HowToButton } from "../HowToPlay";
 import { kitGame, type Choice, type PlacedTile, type WordBoard, type WordStroke, type WordTile, type WordTone, type WordView } from "@journey-to-code/games";
@@ -61,6 +62,7 @@ const missesLeft = (info: string[]) => {
 export function WordTable({ view, names, act, onLeave, banner, chat, settings, watching, together, onHelp, onAgain}: WordTableProps) {
   const game = kitGame(view.game)!;
   const me = view.me;
+  useOverSound(view.over, me, watching || together);
   const [typed, setTyped] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

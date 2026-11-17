@@ -1,6 +1,7 @@
 // One table for every game on the card kit. The engine's view says everything: your hand and what
 // a tap does, cards to pick, buttons to press, the trick or the piles in the middle, the melds on
 // the table, the scores. This only lays it out: others around you, the middle, your hand below.
+import { useDealSound, useOverSound } from "../feedback/useKitSounds";
 import { PlayAgain } from "./PlayAgain";
 import { HowToButton } from "../HowToPlay";
 import {
@@ -89,6 +90,8 @@ export function KitTable({
   const myTurn =
     view.turn === me || (view.turn === null && (!!view.pick || !!view.choices || !!view.tap));
   const breathe = useFlash(view.turn === me, 700, false) && view.turn === me;
+  useOverSound(view.over, me, watching || together);
+  useDealSound(view.handHidden ? 0 : view.hand.length, undefined);
   const holding = useHandOrder(view.game, view.handHidden ? NO_CARDS : view.hand, (c) => c.id, cardKey);
 
   // A pick starts empty whenever what's being picked changes.
