@@ -9,6 +9,7 @@
 // the people here, played from their own device over a channel. This page is their server: it is
 // sent their moves and sends each of them their own seat's view, so a hand stays hidden from the
 // other guests exactly as it does at a family table.
+import { addGame, harder, RecordShown, type GameRecord } from "../record";
 import { GameError, isBoardGame, kitGame, kitGreet, reactToKit, type KitGameId, type KitRemark } from "@journey-to-code/games";
 import { palaceReplyTo } from "@journey-to-code/palace";
 import type { ChatMessage } from "@journey-to-code/rooms/client";
@@ -41,8 +42,19 @@ export function LocalKit({ game: id, name, others, guests, rules, seats, seed, o
   const cast = useMemo(() => ({ bots: bots.map((n, i) => ({ seat: i + humans, name: n })) }), [bots, humans]);
   const [state, setState] = useState(() => game.newGame(game.normalize(rules), seats, seed));
   const [settings, setSettings] = useState(loadTableSettings);
+  // Your record: only a game you played alone (against computer players, or a solitaire) counts.
+  const counted = people === 1 && !(guests?.length);
+  const [record, setRecord] = useState<GameRecord | null>(null);
+  const recorded = useRef(false);
   const latest = useRef(state);
   latest.current = state;
+  useEffect(() => {
+    if (!counted || recorded.current || !game.summary(state).over) return;
+    recorded.current = true;
+    const over = (game.view(state, 0) as { over?: { winners?: number[] } | null }).over;
+    const won = over?.winners ? over.winners.includes(0) : game.summary(state).order?.[0] === 0;
+    setRecord(addGame(id, won, settings.skill));
+  }, [state]);
 
   // When the table last changed, so your own moves can say how long they took: a game's clock keeps
   // running while an offer is made and answered (offers.ts), and that is how the game knows.
@@ -250,6 +262,22 @@ export function LocalKit({ game: id, name, others, guests, rules, seats, seed, o
 
   const view = useMemo(() => game.view(state, here), [state, here]);
   return (
+    <RecordShown.Provider
+      value={
+        record && {
+          record,
+          harder: harder(record),
+          raise: () => {
+            const up = harder(record);
+            if (!up) return;
+            const next = { ...settings, skill: up };
+            saveTableSettings(next);
+            setSettings(next);
+            setRecord({ ...record, streakSkill: undefined });
+          },
+        }
+      }
+    >
     <TableTime.Provider value={time}>
       <GameTable
         view={view}
@@ -272,5 +300,6 @@ export function LocalKit({ game: id, name, others, guests, rules, seats, seed, o
       />
       <TurnClock deadline={deadline} mySeat={here} now={Date.now} />
     </TableTime.Provider>
+    </RecordShown.Provider>
   );
 }

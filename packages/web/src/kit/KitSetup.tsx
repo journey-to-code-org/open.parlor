@@ -33,6 +33,7 @@ import { CoursePicker, onCourse } from "../golf/CoursePicker";
 import { LanePicker, onLane } from "../golf/LanePicker";
 import { personName, sharesDevice } from "./sameDevice";
 import { categoryOf } from "../categories";
+import { loadRecord, recordLine } from "../record";
 
 type Rules = { id: string; name: string } & Record<string, unknown>;
 
@@ -78,6 +79,7 @@ export function KitSetup({
   const people = Math.min(peopleHere, tableSeats);
   const [saved, setSaved] = useState(() => loadSavedKit(id));
   const [showRules, setShowRules] = useState(false);
+  const record = useMemo(() => loadRecord(id), [id]);
   const [busy, setBusy] = useState(false);
   const online = useOnline();
   const [problem, setProblem] = useState<string | null>(null);
@@ -277,6 +279,7 @@ export function KitSetup({
               {solo ? "Deal" : people > 1 ? "Play together on this device" : "Practice against the computer"}
             </button>
           )}
+          {record.played > 0 && <p className="record-line">Your record: {recordLine(record)}</p>}
           {!solo && <p className="with-people">{game.practice === false ? "Play" : "Play with people"}</p>}
           {!solo && (
             <button
