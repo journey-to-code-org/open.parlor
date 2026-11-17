@@ -1,8 +1,14 @@
-// A level, as far as placing things in it goes: its walls, to draw, and its things, to change.
+// A level: what is placed in it, and what it is built of.
 //
 // A level in a WAD is a marker lump with its name (E1M1, MAP01) and then ten lumps of fixed names.
 // THINGS is everything that starts in the level: the players, the monsters, what can be picked up,
-// the scenery. Changing it needs nothing else rebuilt, which changing the walls would.
+// the scenery. Changing it needs nothing else rebuilt.
+//
+// Four lumps are the level's shape: VERTEXES (corners), LINEDEFS (walls, each between two
+// corners), SIDEDEFS (what a wall looks like from one side, and which room that side is in) and
+// SECTORS (rooms: a floor, a ceiling, how bright). The other five (SEGS, SSECTORS, NODES, REJECT,
+// BLOCKMAP) are worked out from the shape by a node builder (nodes.ts) and must be worked out
+// again when it changes.
 import { describe } from "./names.ts";
 import { THING_TYPES, type ThingType } from "./things.ts";
 import type { Lump, Wad } from "./wad.ts";
@@ -40,9 +46,80 @@ export interface Line {
   special: boolean;
 }
 
+/** Where walls meet. */
+export interface Corner {
+  x: number;
+  y: number;
+}
+
+/** A wall, from one corner to another. Its front is on the right, going from `from` to `to`. */
+export interface Wall {
+  from: number;
+  to: number;
+  /** See the WALL_ bits. */
+  flags: number;
+  /** What it does when crossed, pushed or shot (a door, a switch, an exit); 0 for nothing. */
+  special: number;
+  /** Which rooms it does it to: those with the same tag. */
+  tag: number;
+  /** Its sides, in `sides`. A wall with nothing behind it has no back: -1. */
+  front: number;
+  back: number;
+}
+
+/** A wall seen from one side: up to three pictures, by name ("-" for none), and the room that side is in. */
+export interface Side {
+  x: number;
+  y: number;
+  /** Above the opening to the next room, where its ceiling is lower. */
+  upper: string;
+  /** Below the opening, where its floor is higher: a step. */
+  lower: string;
+  /** The whole wall where there is no opening; across an opening, something seen through (bars). */
+  middle: string;
+  room: number;
+}
+
+/** A room: one floor and one ceiling. */
+export interface Room {
+  floor: number;
+  ceiling: number;
+  floorFlat: string;
+  ceilingFlat: string;
+  /** 0 (dark) to 255. */
+  light: number;
+  /** What the room does: hurts, flickers, counts as a secret; 0 for nothing. */
+  special: number;
+  tag: number;
+}
+
+/** What a level is built of. */
+export interface Shape {
+  corners: Corner[];
+  walls: Wall[];
+  sides: Side[];
+  rooms: Room[];
+}
+
+/** Players and monsters can't cross. */
+export const WALL_BLOCKS = 1;
+/** Monsters can't cross. */
+export const WALL_BLOCKS_MONSTERS = 2;
+/** Has a room on both sides. */
+export const WALL_TWO_SIDED = 4;
+/** The upper picture hangs from the ceiling, not up from the opening. */
+export const WALL_UPPER_UNPEGGED = 8;
+/** The lower picture is drawn from the ceiling down: it stays still when the floor moves. */
+export const WALL_LOWER_UNPEGGED = 16;
+/** Drawn on the map as a plain wall: a hidden door. */
+export const WALL_SECRET = 32;
+/** Sound doesn't pass. */
+export const WALL_BLOCKS_SOUND = 64;
+
 export interface Level {
   name: string;
   lines: Line[];
+  shape: Shape;
   things: Thing[];
   /** The corners of everything in it. */
   bounds: { left: number; bottom: number; right: number; top: number };
@@ -83,7 +160,7 @@ export function levelLumps(wad: Wad, name: string): Map<string, { lump: Lump; in
   if (marker < 0) return null;
   const lumps = new Map<string, { lump: Lump; index: number }>();
   for (let index = marker + 1; index < wad.lumps.length && LEVEL_LUMPS.includes(wad.lumps[index]!.name); index++) lumps.set(wad.lumps[index]!.name, { lump: wad.lumps[index]!, index });
-  return lumps.has("THINGS") && lumps.has("LINEDEFS") && lumps.has("VERTEXES") ? lumps : null;
+  return lumps.has("THINGS") && SHAPE_LUMPS.every((lump) => lumps.has(lump)) ? lumps : null;
 }
 
 /** The names of a WAD's levels, in the order they are in it. */
@@ -91,30 +168,133 @@ export function levelNames(wad: Wad): string[] {
   return [...new Set(wad.lumps.filter((lump) => isLevelName(lump.name)).map((lump) => lump.name))].filter((name) => levelLumps(wad, name));
 }
 
-/** A level to draw and to place things in. `things`, if given, are used in place of the level's own. */
-export function readLevel(wad: Wad, name: string, things?: Uint8Array): Level {
+const NONE = 0xffff;
+const view = (data: Uint8Array) => new DataView(data.buffer, data.byteOffset, data.byteLength);
+/** A name of up to eight characters, as a lump keeps it: upper case, padded with zeros. */
+const nameAt = (data: Uint8Array, at: number) => String.fromCharCode(...data.subarray(at, at + 8)).replace(/\0.*$/, "").toUpperCase();
+function putName(data: Uint8Array, at: number, name: string) {
+  for (let i = 0; i < 8; i++) data[at + i] = i < name.length ? name.charCodeAt(i) : 0;
+}
+
+/** The four lumps of a level's shape, by name. */
+export type ShapeLumps = Record<"VERTEXES" | "LINEDEFS" | "SIDEDEFS" | "SECTORS", Uint8Array>;
+export const SHAPE_LUMPS = ["VERTEXES", "LINEDEFS", "SIDEDEFS", "SECTORS"] as const;
+
+/** Whether these could be a level's shape: each lump a whole number of its records, and some of each. */
+export const isShape = (lumps: Partial<ShapeLumps>): lumps is ShapeLumps =>
+  ([["VERTEXES", 4], ["LINEDEFS", 14], ["SIDEDEFS", 30], ["SECTORS", 26]] as const).every(([name, bytes]) => !!lumps[name]?.length && lumps[name]!.length % bytes === 0);
+
+/** A level's shape, from its lumps. A wall that names a corner or a side that isn't there is left out. */
+export function decodeShape(lumps: ShapeLumps): Shape {
+  const corner = view(lumps.VERTEXES);
+  const corners: Corner[] = [];
+  for (let at = 0; at + 4 <= lumps.VERTEXES.length; at += 4) corners.push({ x: corner.getInt16(at, true), y: corner.getInt16(at + 2, true) });
+  const side = view(lumps.SIDEDEFS);
+  const sides: Side[] = [];
+  // Thirty bytes: where the pictures start, three names, and the room.
+  for (let at = 0; at + 30 <= lumps.SIDEDEFS.length; at += 30)
+    sides.push({ x: side.getInt16(at, true), y: side.getInt16(at + 2, true), upper: nameAt(lumps.SIDEDEFS, at + 4), lower: nameAt(lumps.SIDEDEFS, at + 12), middle: nameAt(lumps.SIDEDEFS, at + 20), room: side.getUint16(at + 28, true) });
+  const room = view(lumps.SECTORS);
+  const rooms: Room[] = [];
+  // Twenty-six bytes: two heights, two names, light, what it does, a tag.
+  for (let at = 0; at + 26 <= lumps.SECTORS.length; at += 26)
+    rooms.push({ floor: room.getInt16(at, true), ceiling: room.getInt16(at + 2, true), floorFlat: nameAt(lumps.SECTORS, at + 4), ceilingFlat: nameAt(lumps.SECTORS, at + 12), light: room.getInt16(at + 20, true), special: room.getInt16(at + 22, true), tag: room.getInt16(at + 24, true) });
+  const wall = view(lumps.LINEDEFS);
+  const walls: Wall[] = [];
+  // Fourteen bytes: two corners, flags, what it does, a tag, and the side on each side (65535 for none).
+  for (let at = 0; at + 14 <= lumps.LINEDEFS.length; at += 14) {
+    const [from, to, front, back] = [wall.getUint16(at, true), wall.getUint16(at + 2, true), wall.getUint16(at + 10, true), wall.getUint16(at + 12, true)];
+    if (from >= corners.length || to >= corners.length || front >= sides.length || (back !== NONE && back >= sides.length)) continue;
+    walls.push({ from, to, flags: wall.getUint16(at + 4, true), special: wall.getUint16(at + 6, true), tag: wall.getUint16(at + 8, true), front, back: back === NONE ? -1 : back });
+  }
+  return { corners, walls, sides, rooms };
+}
+
+/** The lumps of a shape. Corners and sides no wall uses are left out: a node builder adds corners of its own, and they would pile up. */
+export function encodeShape(shape: Shape): ShapeLumps {
+  // In the order they were in, so a shape nothing was done to is written as it was read.
+  const used = (indices: number[]) => new Map([...new Set(indices)].sort((a, b) => a - b).map((index, at) => [index, at]));
+  const cornerAt = used(shape.walls.flatMap((wall) => [wall.from, wall.to]));
+  const sideAt = used(shape.walls.flatMap((wall) => (wall.back >= 0 ? [wall.front, wall.back] : [wall.front])));
+  const lumps: ShapeLumps = { VERTEXES: new Uint8Array(cornerAt.size * 4), LINEDEFS: new Uint8Array(shape.walls.length * 14), SIDEDEFS: new Uint8Array(sideAt.size * 30), SECTORS: new Uint8Array(shape.rooms.length * 26) };
+  const [corner, wall, side, room] = [view(lumps.VERTEXES), view(lumps.LINEDEFS), view(lumps.SIDEDEFS), view(lumps.SECTORS)];
+  for (const [index, at] of cornerAt) {
+    corner.setInt16(at * 4, shape.corners[index]!.x, true);
+    corner.setInt16(at * 4 + 2, shape.corners[index]!.y, true);
+  }
+  for (const [index, to] of sideAt) {
+    const one = shape.sides[index]!;
+    const at = to * 30;
+    side.setInt16(at, one.x, true);
+    side.setInt16(at + 2, one.y, true);
+    putName(lumps.SIDEDEFS, at + 4, one.upper);
+    putName(lumps.SIDEDEFS, at + 12, one.lower);
+    putName(lumps.SIDEDEFS, at + 20, one.middle);
+    side.setUint16(at + 28, one.room, true);
+  }
+  shape.walls.forEach((one, i) => {
+    const at = i * 14;
+    wall.setUint16(at, cornerAt.get(one.from)!, true);
+    wall.setUint16(at + 2, cornerAt.get(one.to)!, true);
+    wall.setUint16(at + 4, one.flags, true);
+    wall.setUint16(at + 6, one.special, true);
+    wall.setUint16(at + 8, one.tag, true);
+    wall.setUint16(at + 10, sideAt.get(one.front)!, true);
+    wall.setUint16(at + 12, one.back < 0 ? NONE : sideAt.get(one.back)!, true);
+  });
+  shape.rooms.forEach((one, i) => {
+    const at = i * 26;
+    room.setInt16(at, one.floor, true);
+    room.setInt16(at + 2, one.ceiling, true);
+    putName(lumps.SECTORS, at + 4, one.floorFlat);
+    putName(lumps.SECTORS, at + 12, one.ceilingFlat);
+    room.setInt16(at + 20, one.light, true);
+    room.setInt16(at + 22, one.special, true);
+    room.setInt16(at + 24, one.tag, true);
+  });
+  return lumps;
+}
+
+/** A shape's walls as lines to draw, and the corners of everything. */
+export function outline(shape: Shape): Pick<Level, "lines" | "bounds"> {
+  const bounds = { left: Infinity, bottom: Infinity, right: -Infinity, top: -Infinity };
+  const lines = shape.walls.map((wall): Line => {
+    const [a, b] = [shape.corners[wall.from]!, shape.corners[wall.to]!];
+    bounds.left = Math.min(bounds.left, a.x, b.x);
+    bounds.right = Math.max(bounds.right, a.x, b.x);
+    bounds.bottom = Math.min(bounds.bottom, a.y, b.y);
+    bounds.top = Math.max(bounds.top, a.y, b.y);
+    return { x1: a.x, y1: a.y, x2: b.x, y2: b.y, solid: wall.back < 0, special: wall.special !== 0 };
+  });
+  return { lines, bounds };
+}
+
+/**
+ * A level to draw and to change. `things`, if given, are used in place of the level's own; so is
+ * `shape`: the lumps of a changed shape (what a "walls" change holds, see mod.ts).
+ */
+export function readLevel(wad: Wad, name: string, things?: Uint8Array, shape?: Partial<ShapeLumps>): Level {
   const lumps = levelLumps(wad, name);
   if (!lumps) throw new Error(`This game has no level ${name}.`);
-  const corners = lumps.get("VERTEXES")!.lump.data;
-  const walls = lumps.get("LINEDEFS")!.lump.data;
-  const corner = new DataView(corners.buffer, corners.byteOffset, corners.byteLength);
-  const wall = new DataView(walls.buffer, walls.byteOffset, walls.byteLength);
-  const count = corners.length >> 2;
-  const lines: Line[] = [];
-  const bounds = { left: Infinity, bottom: Infinity, right: -Infinity, top: -Infinity };
-  // A line is fourteen bytes: its two corners, flags, what it does, a tag, and the wall on each side (65535 for none).
-  for (let at = 0; at + 14 <= walls.length; at += 14) {
-    const a = wall.getUint16(at, true);
-    const b = wall.getUint16(at + 2, true);
-    if (a >= count || b >= count) continue;
-    const line: Line = { x1: corner.getInt16(a * 4, true), y1: corner.getInt16(a * 4 + 2, true), x2: corner.getInt16(b * 4, true), y2: corner.getInt16(b * 4 + 2, true), solid: wall.getUint16(at + 12, true) === 0xffff, special: wall.getUint16(at + 6, true) !== 0 };
-    lines.push(line);
-    bounds.left = Math.min(bounds.left, line.x1, line.x2);
-    bounds.right = Math.max(bounds.right, line.x1, line.x2);
-    bounds.bottom = Math.min(bounds.bottom, line.y1, line.y2);
-    bounds.top = Math.max(bounds.top, line.y1, line.y2);
+  const own = Object.fromEntries(SHAPE_LUMPS.map((lump) => [lump, lumps.get(lump)?.lump.data])) as Partial<ShapeLumps>;
+  const from = shape && isShape(shape) ? shape : own;
+  if (!isShape(from)) throw new Error(`${name} isn't a whole level.`);
+  const built = decodeShape(from);
+  return { name, ...outline(built), shape: built, things: decodeThings(things ?? lumps.get("THINGS")!.lump.data) };
+}
+
+/** The names of the wall pictures a game has: what a side's upper, lower and middle can be. */
+export function wallNames(wad: Wad): string[] {
+  const names = new Set<string>();
+  for (const lump of wad.lumps.filter((one) => /^TEXTURE[12]$/.test(one.name) && one.data.length >= 4)) {
+    const table = view(lump.data);
+    const count = table.getInt32(0, true);
+    for (let i = 0; i < count && 8 + i * 4 <= lump.data.length; i++) {
+      const at = table.getInt32(4 + i * 4, true);
+      if (at >= 0 && at + 8 <= lump.data.length) names.add(nameAt(lump.data, at));
+    }
   }
-  return { name, lines, things: decodeThings(things ?? lumps.get("THINGS")!.lump.data), bounds };
+  return [...names].sort();
 }
 
 /** What a thing in a level is, for someone choosing or looking at one. */

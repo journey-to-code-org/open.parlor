@@ -9,18 +9,21 @@ import type { Wad } from "./wad.ts";
 
 /**
  * A sprite, a piece of wall, a floor or ceiling, any other picture (screens, menus, the status
- * bar), a sound effect; and "things": everything placed in one level, named by the level.
+ * bar), a sound effect; and two that are a level, named by the level: "things", everything
+ * placed in it, and "walls", what it is built of.
  */
-export type Kind = "sprite" | "wall" | "floor" | "screen" | "sound" | "things";
+export type Kind = "sprite" | "wall" | "floor" | "screen" | "sound" | "things" | "walls";
+/** The kinds that are part of a level, not a picture or a sound. */
+export const isLevelKind = (kind: Kind) => kind === "things" || kind === "walls";
 
 /** The kinds that are a picture or a sound: one lump, swapped for a file. */
 export const KINDS: Kind[] = ["sprite", "wall", "floor", "screen", "sound"];
-export const EVERY_KIND: Kind[] = [...KINDS, "things"];
+export const EVERY_KIND: Kind[] = [...KINDS, "things", "walls"];
 
 export interface Asset {
   kind: Kind;
   name: string;
-  /** Which lump of the WAD it is. */
+  /** Which lump of the WAD it is. A level's walls are several lumps: this is the level's marker. */
   index: number;
   /** What the engine uses it for, when that is known. */
   note: string;
@@ -45,7 +48,10 @@ export function catalogue(wad: Wad): Asset[] {
   let section: Kind | null = null;
   wad.lumps.forEach(({ name, data }, index) => {
     // A level: its marker, then its lumps, the first of them what is placed in it.
-    if (isLevelName(name) && wad.lumps[index + 1]?.name === "THINGS") found.set(key("things", name), { kind: "things", name, index: index + 1, note: "What is placed in this level" });
+    if (isLevelName(name) && wad.lumps[index + 1]?.name === "THINGS") {
+      found.set(key("things", name), { kind: "things", name, index: index + 1, note: "What is placed in this level" });
+      found.set(key("walls", name), { kind: "walls", name, index, note: "The walls and rooms of this level" });
+    }
     const opening = SECTIONS.find(([start]) => start.test(name));
     if (opening) return void (section = opening[2]);
     if (SECTIONS.some(([, end]) => end.test(name))) return void (section = null);

@@ -12,7 +12,8 @@
     "engine": "node scripts/build-engine.mjs shooter",
     "typecheck": "tsc -p tsconfig.json --noEmit && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
-    "build:net": "tsc -p tsconfig.net.json"
+    "build:net": "tsc -p tsconfig.net.json",
+    "nodes": "node scripts/build-engine.mjs shooter/nodes"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
