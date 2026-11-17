@@ -1,7 +1,7 @@
 # open.parlor
 
 Formerly Card Room. Family card and board games online: fifty-six games with house rules saved as presets, family
-**houses** with their own tables, leaderboards and tournaments, computer players with personalities,
+**houses** with their own tables, leaderboards and tournaments (a knockout or a league), computer players with personalities,
 challenge links, and a widget that puts a game on any site, including [open.blog](https://github.com/journey-to-code-org/open.blog) ones.
 
 Built first for Grammi and Grammi's House. Everything runs in one small server you can host
@@ -783,7 +783,7 @@ open.blog post, a WordPress HTML block, a Squarespace code block), with the parl
 | Attribute | |
 | --- | --- |
 | `server` | The parlor's address. Required. |
-| `game` | `palace`, `spades`, or leave it out to offer both. (The widget plays these two; the other games open in the parlor.) |
+| `game` | Any game that can be played against the computer, by its id (`hearts`, `chess`, `minigolf`, `secretword`…), or leave it out to offer Spades and Palace. |
 | `challenge` | Your challenge link's code (the end of `?challenge=…`), for a "Challenge Grammi" button. |
 | `who` | The name on that button. |
 

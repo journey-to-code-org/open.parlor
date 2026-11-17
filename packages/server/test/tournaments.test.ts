@@ -3,7 +3,7 @@
 import { memoryLog } from "@zubra/sync/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCardRoom } from "../src/app.js";
-import { bracket, roundName, settle, sideThatWon, type Tournament } from "../src/tournaments.js";
+import { bracket, league, resultOf, roundName, settle, sideThatWon, standings, type Tournament } from "../src/tournaments.js";
 
 const BASE = "http://test";
 let open: ReturnType<typeof createCardRoom>[] = [];
@@ -106,6 +106,71 @@ async function playPalace(send: ReturnType<ReturnType<typeof setup>["phone"]>, i
   }
   throw new Error("the game didn't finish");
 }
+
+describe("a league", () => {
+  it.each([2, 3, 4, 5, 8, 12])("%i entrants: everyone plays everyone exactly once, nobody twice in a round", (n) => {
+    const rounds = league(n);
+    expect(rounds).toHaveLength(n % 2 ? n : n - 1);
+    const pairs = new Set<string>();
+    for (const round of rounds) {
+      const busy = round.flatMap((m) => [m.a, m.b]);
+      expect(new Set(busy).size).toBe(busy.length);
+      for (const m of round) {
+        expect(typeof m.a === "number" && typeof m.b === "number").toBe(true);
+        pairs.add([m.a, m.b].sort().join("-"));
+      }
+    }
+    expect(pairs.size).toBe((n * (n - 1)) / 2);
+  });
+
+  it("opens one round at a time, and most wins takes it", () => {
+    const t: Tournament = { ...fake(4), format: "league" };
+    t.rounds = league(4, () => 0.5);
+    expect(roundName(t, 0)).toBe("Round 1 of 3");
+    for (let r = 0; r < 3; r++) {
+      const ready = settle(t);
+      expect(ready).toHaveLength(2);
+      expect(ready.every((m) => t.rounds[r]!.includes(m))).toBe(true);
+      // Entrant 2 wins everything; otherwise the lower number wins.
+      for (const m of ready) m.winner = m.a === 2 ? 0 : m.b === 2 ? 1 : (m.a as number) < (m.b as number) ? 0 : 1;
+    }
+    expect(settle(t)).toHaveLength(0);
+    expect(t.status).toBe("finished");
+    expect(t.champion).toBe(2);
+    expect(standings(t).map((row) => [row.entrant, row.won])).toEqual([[2, 3], [0, 2], [1, 1], [3, 0]]);
+  });
+
+  it("counts a drawn game as a draw: played, no win, and the round still finishes", () => {
+    const drawn = { over: true, order: [0, 1], winners: [0, 1] };
+    const won = { over: true, order: [1, 0], winners: [1] };
+    const t: Tournament = { ...fake(2), game: "tictactoe", format: "league" };
+    expect(resultOf(t, drawn)).toEqual({ winner: null, how: "drawn" });
+    expect(resultOf(t, won)).toEqual({ winner: 1, how: "played" });
+    // A knockout still needs someone to go through.
+    expect(resultOf({ ...t, format: "bracket" }, drawn)).toEqual({ winner: 0, how: "played" });
+    t.rounds = league(2, () => 0.5);
+    const [m] = settle(t);
+    Object.assign(m!, resultOf(t, drawn));
+    expect(settle(t)).toHaveLength(0);
+    expect(t.status).toBe("finished");
+    expect(standings(t).map((row) => [row.played, row.won, row.drawn])).toEqual([[1, 0, 1], [1, 0, 1]]);
+  });
+
+  it("puts the one who won the game between them ahead when two are level", () => {
+    const t: Tournament = { ...fake(3), format: "league" };
+    const game = (a: number, b: number, won: number) => [{ a, b, table: null, winner: (won === a ? 0 : 1) as 0 | 1, how: "played" as const }];
+    // 1 and 2 have a win each, and 2 beat 1: 2 goes first though 1 signed up first.
+    t.rounds = [game(0, 1, 1), game(1, 2, 2), game(2, 0, 0)];
+    expect(standings(t).map((row) => [row.entrant, row.won])).toEqual([[0, 1], [1, 1], [2, 1]]);
+    const four: Tournament = { ...fake(4), format: "league" };
+    // 1 and 2 both win twice, and 2 beat 1; 0 and 3 both win once, and 0 beat 3.
+    four.rounds = [game(0, 1, 1), game(0, 2, 2), game(1, 2, 2), game(1, 3, 1), game(2, 3, 3), game(0, 3, 0)];
+    expect(standings(four).map((row) => [row.entrant, row.won])).toEqual([[2, 2], [1, 2], [0, 1], [3, 1]]);
+    t.rounds = [game(0, 1, 1), game(1, 2, 2), game(0, 2, 0)];
+    // All three level, having beaten each other in a circle: signup order.
+    expect(standings(t).map((row) => row.entrant)).toEqual([0, 1, 2]);
+  });
+});
 
 describe("a house tournament", () => {
   it("Palace: sign up, start, play the matches, and crown a champion", async () => {
@@ -260,6 +325,33 @@ describe("a house tournament", () => {
       await sleep(20);
     }
     throw new Error("the computer match didn't finish");
+  }, 30_000);
+
+  it("a league of computer players plays every round and tops its table", async () => {
+    const { phone } = setup();
+    const grammi = phone();
+    await grammi("/houses", { name: "Grammi's House", you: "brokennil" });
+    const made = await grammi("/houses/grammis-house/tournaments", { name: "Tic League", game: "tictactoe", format: "league", settings: { pace: "instant" } });
+    expect(made.body.format).toBe("league");
+    const at = `/houses/grammis-house/tournaments/${made.body.id}`;
+    for (let i = 0; i < 3; i++) await grammi(`${at}/add`, { players: ["computer"] });
+    const t = (await grammi(`${at}/start`, {})).body;
+    // Three entrants: three rounds of one game each (one sits out every round).
+    expect(t.rounds.map((r: { name: string }) => r.name)).toEqual(["Round 1 of 3", "Round 2 of 3", "Round 3 of 3"]);
+    expect(t.rounds[0].matches[0].table).toBeTruthy();
+    expect(t.rounds[1].matches[0].table).toBeNull(); // the next round waits for this one
+    const deadline = Date.now() + 25_000;
+    while (Date.now() < deadline) {
+      const now = (await grammi(at)).body;
+      if (now.status === "finished") {
+        const table = now.standings as { entrant: number; played: number; won: number }[];
+        expect(table.map((row) => row.played)).toEqual([2, 2, 2]);
+        expect(table[0]!.entrant).toBe(now.champion);
+        return;
+      }
+      await sleep(20);
+    }
+    throw new Error("the league didn't finish");
   }, 30_000);
 
   it("strangers and other houses can't see a tournament; a cancelled one disappears", async () => {
