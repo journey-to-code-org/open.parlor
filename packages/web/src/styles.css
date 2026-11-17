@@ -3014,3 +3014,7 @@ button.word-tile:active:not(:disabled) { transform: translateY(2px); }
 .howto-button { font-weight: 800; font-size: 1.15rem; color: var(--cream); }
 @keyframes howto-in { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .howto-backdrop { animation: none; } }
+
+/* ---------- Your record (record.ts) ---------- */
+.record-line { margin: 4px 0 0; text-align: center; font-weight: 600; color: var(--gold); }
+.record-nudge { margin: 2px 0 6px; text-align: center; font-size: 0.92rem; }
