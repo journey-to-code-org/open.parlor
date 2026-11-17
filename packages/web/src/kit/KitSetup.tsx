@@ -32,6 +32,7 @@ import { KitRulesFields, KitRulesSheet } from "./KitRules";
 import { CoursePicker, onCourse } from "../golf/CoursePicker";
 import { LanePicker, onLane } from "../golf/LanePicker";
 import { personName, sharesDevice } from "./sameDevice";
+import { categoryOf } from "../categories";
 
 type Rules = { id: string; name: string } & Record<string, unknown>;
 
@@ -212,7 +213,7 @@ export function KitSetup({
           )}
         </>
       }
-      table={<OpponentSettings solo={solo} />}
+      table={<OpponentSettings solo={solo} cards={categoryOf(id) === "cards"} />}
       about={
         <>
           <KitRulesSheet game={game} rules={rules} />
@@ -260,10 +261,27 @@ export function KitSetup({
       }
       actions={
         <>
-          {!solo && (
+          {game.practice === false ? (
+            // A game that needs people (Draw & Guess): computer players can only keep it moving.
+            <p className="fine">This one needs people: computer players can't draw. Start a family table, or play on this wifi.</p>
+          ) : (
             <button
               type="button"
               className="primary deal"
+              disabled={errors.length > 0}
+              onClick={() => {
+                remember();
+                onPractice(name.trim() || "You", rules, tableSeats, people > 1 ? Array.from({ length: people - 1 }, (_, i) => personName(others[i], i + 1)) : undefined);
+              }}
+            >
+              {solo ? "Deal" : people > 1 ? "Play together on this device" : "Practice against the computer"}
+            </button>
+          )}
+          {!solo && <p className="with-people">{game.practice === false ? "Play" : "Play with people"}</p>}
+          {!solo && (
+            <button
+              type="button"
+              className={game.practice === false ? "primary deal" : "secondary"}
               disabled={errors.length > 0 || busy || !online}
               onClick={async () => {
                 setBusy(true);
@@ -304,22 +322,6 @@ export function KitSetup({
             </button>
           <SameRulesToggle />
             </>
-          )}
-          {game.practice === false ? (
-            // A game that needs people (Draw & Guess): computer players can only keep it moving.
-            <p className="fine">This one needs people: computer players can't draw. Start a family table, or play on this wifi.</p>
-          ) : (
-            <button
-              type="button"
-              className={!solo ? "secondary" : "primary deal"}
-              disabled={errors.length > 0}
-              onClick={() => {
-                remember();
-                onPractice(name.trim() || "You", rules, tableSeats, people > 1 ? Array.from({ length: people - 1 }, (_, i) => personName(others[i], i + 1)) : undefined);
-              }}
-            >
-              {solo ? "Deal" : people > 1 ? "Play together on this device" : "Practice against the computer"}
-            </button>
           )}
           {!solo && onWifi && (
             <button

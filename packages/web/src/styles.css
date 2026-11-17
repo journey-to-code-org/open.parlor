@@ -891,10 +891,17 @@ html[data-motion="off"] .kit-seat.active strong::before, html[data-motion="calm"
 .setup-part { display: flex; flex-direction: column; gap: 16px; }
 .s-houses { order: 0; }
 .s-you { order: 1; }
-.s-table { order: 2; }
+.s-actions { order: 2; }
 .s-about { order: 3; }
-.s-actions { order: 4; }
+.s-table { order: 4; }
 .s-more { order: 5; }
+.s-actions .with-people { margin: 10px 0 0; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #b9d0c2; text-align: center; }
+.setup-settings > summary { cursor: pointer; padding: 12px 14px; border: 1px solid var(--edge, rgba(255, 255, 255, 0.2)); border-radius: 12px; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; }
+.setup-settings > summary::-webkit-details-marker { display: none; }
+.setup-settings > summary::before { content: "⚙︎"; }
+.setup-settings > summary::after { content: "▾"; margin-left: auto; transition: rotate 0.2s; }
+.setup-settings[open] > summary::after { rotate: 180deg; }
+.setup-settings[open] > summary { margin-bottom: 12px; }
 .desk-only { display: none; }
 
 /* Laptops: how it's played on the left, who's playing (and the buttons) on the right. */
