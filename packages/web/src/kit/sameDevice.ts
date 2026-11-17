@@ -7,8 +7,27 @@
 // list below is the games where every seat sees the same table: the board games, the dice, the
 // table sports, Memory and Hangman (Secret Word and Anagrams keep each player's words to themselves). Combat is a board game and still isn't here: the fleets are hidden.
 import { QUICK_BUDGET, QUICK_STYLE, isKitGame, kitGame, type KitGameId, type TableGame } from "@journey-to-code/games";
+import { categoryOf } from "../categories";
 
 const SHARED: ReadonlySet<KitGameId> = new Set<KitGameId>(["tictactoe", "dropfour", "reversi", "checkers", "go", "chess", "backgammon", "yacht", "memory", "minigolf", "bowling", "billiards", "carrom", "hangman"]);
+
+/**
+ * Games played at once, or against each other's speed: a phone can't be passed round for these.
+ * (Word Hunt races the clock; Speed and Slapjack race each other; Mahjong's calls come from anyone.)
+ */
+const RACES: ReadonlySet<string> = new Set(["speed", "slapjack", "war", "mahjongshanghai", "mahjongriichi", "wordhunt", "drawguess"]);
+
+/**
+ * Whether a game with something hidden (a hand of cards, a fleet, a rack of tiles) can still be
+ * played round one device by passing it: the screen covers the table between people (a curtain:
+ * "Pass to Ann"), so nobody sees anyone else's hand.
+ */
+export const passesDevice = (id: unknown): id is KitGameId => {
+  if (!isKitGame(id) || SHARED.has(id) || RACES.has(id)) return false;
+  const game = kitGame(id)!;
+  const kind = categoryOf(id);
+  return game.seats.max > 1 && game.practice !== false && (kind === "cards" || kind === "words" || id === "combat");
+};
 
 /** Whether a game can be shared on one device: nothing hidden, and more than one seat. */
 export const sharesDevice = (id: unknown): id is KitGameId => isKitGame(id) && SHARED.has(id) && kitGame(id)!.seats.max > 1;

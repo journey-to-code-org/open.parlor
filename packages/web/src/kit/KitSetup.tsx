@@ -31,7 +31,7 @@ import { OpponentSettings } from "../TableSettings";
 import { KitRulesFields, KitRulesSheet } from "./KitRules";
 import { CoursePicker, onCourse } from "../golf/CoursePicker";
 import { LanePicker, onLane } from "../golf/LanePicker";
-import { personName, sharesDevice } from "./sameDevice";
+import { passesDevice, personName, sharesDevice } from "./sameDevice";
 import { categoryOf } from "../categories";
 import { loadRecord, recordLine } from "../record";
 
@@ -75,7 +75,9 @@ export function KitSetup({
   const [rules, setRules] = useState<Rules>(() => loadKitRules(id));
   const [seats, setSeats] = useState(() => loadKitSeats(id));
   // Several people at this device, for a game that can be shared on one screen.
-  const shared = sharesDevice(id);
+  const shared = sharesDevice(id) || passesDevice(id);
+  /** Shared by passing the device round, with the screen covered between people (hands are hidden). */
+  const passed = passesDevice(id);
   const [peopleHere, setPeopleHere] = useState(() => (shared ? loadPeopleHere(id) : 1));
   const [others, setOthers] = useState(loadOthersHere);
   const tableSeats = game.teams ? 4 : seats;
@@ -213,7 +215,13 @@ export function KitSetup({
                   onValueChange={(e: CustomEvent<string>) => setOthers((names) => Array.from({ length: Math.max(names.length, i + 1) }, (_, j) => (j === i ? e.detail : (names[j] ?? ""))))}
                 />
               ))}
-              {people > 1 && <p className="fine">No connection needed: the screen turns to whoever's move it is.</p>}
+              {people > 1 && (
+                <p className="fine">
+                  {passed
+                    ? "No connection needed: pass the device round. Between turns the screen hides the table until the next person taps, so nobody sees anyone else's hand."
+                    : "No connection needed: the screen turns to whoever's move it is."}
+                </p>
+              )}
             </>
           )}
         </>

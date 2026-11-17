@@ -9,6 +9,7 @@
 // the people here, played from their own device over a channel. This page is their server: it is
 // sent their moves and sends each of them their own seat's view, so a hand stays hidden from the
 // other guests exactly as it does at a family table.
+import { PassCurtain } from "./PassCurtain";
 import { addGame, harder, RecordShown, type GameRecord } from "../record";
 import { GameError, isBoardGame, kitGame, kitGreet, reactToKit, type KitGameId, type KitRemark } from "@journey-to-code/games";
 import { palaceReplyTo } from "@journey-to-code/palace";
@@ -21,7 +22,7 @@ import { TurnClock } from "../TurnClock";
 import { GameTable } from "./GameTable";
 import { botMove, type BotJob } from "./botMove";
 import { THINK_BUDGET, thinkElsewhere, warmThinker } from "./botThinker";
-import { personName, seatAtScreen } from "./sameDevice";
+import { passesDevice, personName, seatAtScreen } from "./sameDevice";
 import type { PeerLink } from "../wifi/link";
 
 /** On a board the screen stays with the person who moved for a moment, so they see the piece land before the board turns to the next person. */
@@ -81,8 +82,17 @@ export function LocalKit({ game: id, name, others, guests, rules, seats, seed, o
   const hereNow = useRef(here);
   hereNow.current = here;
   const next = useMemo(() => seatAtScreen(game, state, people, here), [state, here]);
+  // A game with hands to hide is passed round: between people the screen is covered until the next
+  // one taps, so nobody sees a hand that isn't theirs.
+  const passing = people > 1 && passesDevice(id);
+  const [curtain, setCurtain] = useState<number | null>(null);
   useEffect(() => {
     if (next === here) return;
+    if (passing) {
+      setCurtain(next);
+      setHere(next);
+      return;
+    }
     const timer = setTimeout(() => setHere(next), isBoardGame(id) ? HANDOVER_MS : 0);
     return () => clearTimeout(timer);
   }, [next, here]);
@@ -299,6 +309,7 @@ export function LocalKit({ game: id, name, others, guests, rules, seats, seed, o
         }}
       />
       <TurnClock deadline={deadline} mySeat={here} now={Date.now} />
+      {curtain !== null && <PassCurtain name={names[curtain] ?? "the next player"} onReady={() => setCurtain(null)} />}
     </TableTime.Provider>
     </RecordShown.Provider>
   );

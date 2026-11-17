@@ -3026,3 +3026,11 @@ button.word-tile:active:not(:disabled) { transform: translateY(2px); }
 .sketch-canvas { width: 100%; }
 .sketch-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
 .sketch-actions .primary { grid-column: 1 / -1; }
+
+/* ---------- Passing one device round (kit/PassCurtain.tsx) ---------- */
+.pass-curtain { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 24px; background: radial-gradient(circle at 50% 35%, #245a43, #0d2a1d 75%); }
+.pass-card { width: min(380px, 100%); text-align: center; color: var(--cream); }
+.pass-icon { font-size: 3.2rem; }
+.pass-card h2 { margin: 8px 0 0; font-family: Georgia, "Times New Roman", serif; font-size: 2rem; color: var(--gold); }
+.pass-card p { margin: 10px 0 22px; color: #d6e6dc; }
+.pass-card .primary { width: 100%; }

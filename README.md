@@ -112,8 +112,10 @@ connection to come back.
 A game with nothing hidden can also be **shared on one device**: on its setup screen, *On this
 device* seats two or more of you (computer players take any seats left), and the screen turns to
 whoever's move it is. That is Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon,
-Yacht, Memory, Hangman, Mini Golf, Bowling, Billiards and Carrom. A game with a hand of cards can't
-be: one screen can't keep a secret from the person holding it.
+Yacht, Memory, Hangman, Mini Golf, Bowling, Billiards and Carrom. A game with a hand to hide (every
+turn-based card game, Combat, Criss-Crosswords, Secret Word, Anagrams) is **passed round** instead:
+between people the screen is covered ("Pass to Grammi") until the next person taps. Games played at
+once (Speed, Slapjack, War, Word Hunt, the Mahjongs) can't be shared on one device.
 
 And when the internet is out but the wifi is up, one device can **host a table on the wifi**:
 *Play on this wifi* shows a QR code, the others scan it (or tap *Join a game on this wifi*) and
