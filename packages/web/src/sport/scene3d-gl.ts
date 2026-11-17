@@ -398,6 +398,91 @@ function ballSkin(tone: SportTone | undefined): Texture {
   return t;
 }
 
+/** The six places a pool ball's number goes: each a direction out of the ball, and which way is right and up for the number there (right × up points out, so it reads the right way round from outside). */
+const SPOTS: [out: [number, number, number], right: [number, number, number], up: [number, number, number]][] = [
+  [[0, 0, 1], [1, 0, 0], [0, 1, 0]],
+  [[0, 0, -1], [-1, 0, 0], [0, 1, 0]],
+  [[1, 0, 0], [0, 0, -1], [0, 1, 0]],
+  [[-1, 0, 0], [0, 0, 1], [0, 1, 0]],
+  [[0, 1, 0], [1, 0, 0], [0, 0, -1]],
+  [[0, -1, 0], [1, 0, 0], [0, 0, 1]],
+];
+/** How far round the ball a number's white spot reaches from its middle, in radians. */
+const SPOT = 0.46;
+/**
+ * A pool ball's skin: its colour all over, or a band of it round a white ball for a stripe, and its
+ * number on white spots. A solid has six, one each way, so there is one to read however the ball
+ * has rolled; a stripe has the four that sit in its band, and white to either side of it. It is worked out a pixel at a time,
+ * because a round spot is not round on the flat map that is wrapped on a ball.
+ */
+export function poolSkin(tone: SportTone | undefined, mark: string, striped: boolean): Texture {
+  const colour = toneColour(tone);
+  const key = `${colour}|${mark}|${striped}`;
+  let t = ballMaps.get(key);
+  if (t) return t;
+  const SIZE = 512;
+  const FACE = 128;
+  // The number as it is printed on a spot, to be copied onto each one.
+  const face = document.createElement("canvas");
+  face.width = face.height = FACE;
+  const f = face.getContext("2d", { willReadFrequently: true })!;
+  f.fillStyle = "#fdfdf8";
+  f.fillRect(0, 0, FACE, FACE);
+  f.fillStyle = "#16130f";
+  f.font = `800 ${mark.length > 1 ? 66 : 84}px system-ui, sans-serif`;
+  f.textAlign = "center";
+  f.textBaseline = "middle";
+  f.fillText(mark, FACE / 2, FACE / 2 + 4);
+  // A 6 and a 9 are told apart by the line under them, as on a real ball.
+  if (mark === "6" || mark === "9") f.fillRect(FACE / 2 - 22, FACE - 24, 44, 8);
+  const print = f.getImageData(0, 0, FACE, FACE).data;
+  const rgb = (hex: string) => {
+    const c = new Color(hex).convertLinearToSRGB();
+    return [Math.round(c.r * 255), Math.round(c.g * 255), Math.round(c.b * 255)] as const;
+  };
+  const body = rgb(colour);
+  const white = rgb("#fdfdf8");
+  // A stripe's band goes round the ball through the top (as it is set down) and the front and back,
+  // with the white to either side; its numbers are the four in the band.
+  const spots = striped ? SPOTS.filter(([o]) => o[0] === 0) : SPOTS;
+  const reach = Math.cos(SPOT);
+  const span = Math.sin(SPOT);
+  t = texture(SIZE, (g) => {
+    const image = g.createImageData(SIZE, SIZE);
+    const out = image.data;
+    for (let py = 0; py < SIZE; py++) {
+      const theta = ((py + 0.5) / SIZE) * Math.PI;
+      const sin = Math.sin(theta);
+      const y = Math.cos(theta);
+      for (let px = 0; px < SIZE; px++) {
+        // The way out of the ball at this place on the map, as a sphere is wrapped.
+        const phi = ((px + 0.5) / SIZE) * Math.PI * 2;
+        const x = -Math.cos(phi) * sin;
+        const z = Math.sin(phi) * sin;
+        let [r, gr, b] = striped && Math.abs(x) > 0.52 ? white : body;
+        for (const [o, right, up] of spots) {
+          if (x * o[0] + y * o[1] + z * o[2] < reach) continue;
+          const u = (x * right[0] + y * right[1] + z * right[2]) / span;
+          const v = (x * up[0] + y * up[1] + z * up[2]) / span;
+          const at = (Math.min(FACE - 1, Math.max(0, Math.round((0.5 - v / 2) * FACE))) * FACE + Math.min(FACE - 1, Math.max(0, Math.round((0.5 + u / 2) * FACE)))) * 4;
+          r = print[at]!;
+          gr = print[at + 1]!;
+          b = print[at + 2]!;
+          break;
+        }
+        const i = (py * SIZE + px) * 4;
+        out[i] = r;
+        out[i + 1] = gr;
+        out[i + 2] = b;
+        out[i + 3] = 255;
+      }
+    }
+    g.putImageData(image, 0, 0);
+  });
+  ballMaps.set(key, t);
+  return t;
+}
+
 let pinGeometry: BufferGeometry | null = null;
 /** A ten-pin: the real silhouette, white with two red bands on the neck. Radius 1, height 1. */
 export function pinMesh(): BufferGeometry {
@@ -475,7 +560,9 @@ function makeThing(d: Disc): Thing {
     skin.position.y = height / 2;
     group.add(skin);
   } else {
-    const m = new MeshPhysicalMaterial({ map: ballSkin(d.look?.tone), roughness: 0.22, clearcoat: 0.85, clearcoatRoughness: 0.15 });
+    // A pool ball has its number on it, and its stripe; any other ball is its colour with a seam.
+    const numbered = /^\d+$/.test(d.look?.mark ?? "");
+    const m = new MeshPhysicalMaterial({ map: numbered ? poolSkin(d.look?.tone, d.look!.mark!, !!d.look!.striped) : ballSkin(d.look?.tone), roughness: 0.22, clearcoat: 0.85, clearcoatRoughness: 0.15 });
     if (d.ghost) {
       m.transparent = true;
       m.opacity = 0.4;
@@ -484,6 +571,9 @@ function makeThing(d: Disc): Thing {
     skin = mesh(new SphereGeometry(1, 36, 24), m, !d.ghost);
     skin.scale.setScalar(r);
     skin.position.y = r;
+    // A pool ball is set down with a number uppermost, so a stripe's band lies across the top of
+    // it and is seen from above. It rolls from there like any other.
+    if (numbered) skin.rotation.x = -Math.PI / 2;
     group.add(skin);
     stuff.rolls = true;
   }
