@@ -103,9 +103,11 @@ Built, as a first version: `packages/web/src/wifi/`. The offline copy is what ma
 the host's QR code is a link to the parlor's own address, which opens from the copy with no
 connection.
 
-1. The host picks a game and **Play on this wifi**. The page makes a WebRTC offer with no ICE
+1. With no internet, the host picks a game and **Play on this wifi** (the button only shows while the
+   device is offline). The page makes a WebRTC offer with no ICE
    servers and shows it as a QR code of a link: `https://parlor…/?wifi=join#<offer>`.
-2. A guest scans it with their camera, or with **Join on this wifi** on the front page. Their page
+2. A guest scans it with their camera, or with **Join a game on this wifi**, in the note that
+   comes up at the foot of the screen while there is no internet. Their page
    makes the answer and shows it as a QR code.
 3. The host taps **Scan their code** and points at it. The channel opens. Each more guest is the
    same two scans; computer players take the seats nobody did.
@@ -139,7 +141,7 @@ Checked in Chrome, two separate browsers on one machine:
   and the join will fail with a message saying so.
 - **iPhones.** Safari should take the rebuilt offer (it is a plain data-channel SDP), but it hasn't
   been tried. An app added to the home screen keeps its own offline copy apart from Safari's: a
-  QR code scanned with the camera opens Safari, so on an iPhone "Join on this wifi" inside the app
+  QR code scanned with the camera opens Safari, so on an iPhone "Join a game on this wifi" inside the app
   is the surer way.
 - **Firefox** has long refused WebRTC when it believes it is offline.
 - **Chrome's coming permission prompt** for WebRTC on the local network: probably one tap.

@@ -43,13 +43,23 @@ async function copyKept(): Promise<boolean> {
   });
 }
 
+/** Already joining (or hosting) on this wifi: no need to offer it. */
+const joining = () => new URLSearchParams(location.search).has("wifi");
+
 /**
- * A small note at the top of every screen: that there's no connection (and what still works), and,
+ * With no connection, a note at the foot of the screen saying what still works and offering to join
+ * a game on this wifi; put away, it shrinks to a small one at the top. Otherwise, once, a small note
+ * at the top of every screen: that there's no connection (and what still works), and,
  * once, that the games are now kept on this device.
  */
 export function OfflineNotice() {
   const online = useOnline();
   const [ready, setReady] = useState(false);
+  // The bigger note offering wifi play: once per time the connection goes, until it is put away.
+  const [shut, setShut] = useState(false);
+  useEffect(() => {
+    if (online) setShut(false);
+  }, [online]);
   useEffect(() => {
     let told = true;
     try {
@@ -77,6 +87,25 @@ export function OfflineNotice() {
       navigator.serviceWorker?.removeEventListener("controllerchange", look);
     };
   }, []);
+  if (!online && !shut)
+    return (
+      <div className="offline-toast" role="status">
+        <p>
+          <strong><span aria-hidden>📴</span> No internet.</strong> Games on this device still work. Someone nearby can host a game on
+          this wifi and you can join it, or host one from any game's page.
+        </p>
+        <div className="offline-toast-actions">
+          {!joining() && (
+            <button type="button" className="primary small" onClick={() => location.assign(`${location.pathname}?wifi=join`)}>
+              📶 Join a game on this wifi
+            </button>
+          )}
+          <button type="button" className="link" onClick={() => setShut(true)}>
+            Not now
+          </button>
+        </div>
+      </div>
+    );
   if (!online)
     return (
       <p className="offline-note" role="status">

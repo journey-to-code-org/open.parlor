@@ -116,8 +116,11 @@ Yacht, Memory, Hangman, Mini Golf, Bowling, Billiards and Carrom. A game with a 
 be: one screen can't keep a secret from the person holding it.
 
 And when the internet is out but the wifi is up, one device can **host a table on the wifi**:
-*Play on this wifi* shows a QR code, the others scan it (or tap *Join on this wifi* on the front
-page) and show one back, and the host's browser runs the game with no server at all. It is a first
+*Play on this wifi* shows a QR code, the others scan it (or tap *Join a game on this wifi*) and
+show one back, and the host's browser runs the game with no server at all. Both only appear while
+there is no internet: a game's page then has *Play on this wifi*, and a note at the foot of the
+screen says what still works and offers *Join a game on this wifi*. With the internet up, a family
+table does the same job, so the wifi buttons stay out of the way. It is a first
 version: every kit game, no rejoining yet. A parlor run on a laptop at home also prints its wifi
 address, and a QR code for it, when it starts.
 
@@ -605,7 +608,7 @@ the right length is sent, and a word that isn't one comes back refused, in words
   then a square; Take back lifts them again. Your hand is yours alone, and watchers never see it.
 - **Draw & Guess:** the artist picks one of three words and draws it; everyone else types guesses,
   and the sooner you get it the more it scores. It needs people (computer players can't draw), so
-  it has no practice table: start a family table or play on this wifi.
+  it has no practice table: start a family table (or, with the internet out, play on this wifi).
 
 The word list is in open.games (ENABLE, with SCOWL's frequency levels for which words are common),
 and it is part of the app's download: about a quarter of a megabyte compressed in the main

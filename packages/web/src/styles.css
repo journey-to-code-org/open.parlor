@@ -2860,7 +2860,17 @@ button.mj-slot { cursor: pointer; }
 }
 .offline-note.ready { color: var(--ink, #1c1c1c); background: var(--gold); border-color: transparent; }
 /* A table has no room to spare, and a game that is running needs no telling: the note is for the screens that lead to one. */
-body:has(main.table) .offline-note { display: none; }
+body:has(main.table) .offline-note, body:has(main.table) .offline-toast, body:has(main.wifi) .offline-toast { display: none; }
+.offline-toast {
+  position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 60;
+  width: min(460px, calc(100vw - 24px)); padding: 14px 16px; border-radius: 16px;
+  color: var(--cream); background: rgba(10, 28, 20, 0.97); border: 1px solid rgba(232, 196, 106, 0.6);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45); animation: offline-up 0.25s ease-out;
+}
+.offline-toast p { margin: 0; font-size: 0.92rem; line-height: 1.4; }
+.offline-toast-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+@keyframes offline-up { from { opacity: 0; transform: translate(-50%, 12px); } }
+@media (prefers-reduced-motion: reduce) { .offline-toast { animation: none; } }
 
 /* ---------- A table on this wifi (wifi/) ---------- */
 main.setup.wifi { max-width: 520px; }
