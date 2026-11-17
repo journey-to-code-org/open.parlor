@@ -73,12 +73,8 @@ That is Solid's rule for every custom element, not a difference in Zubra.
 
 ## Known differences
 
-In the components: none today. All 18 checks pass in all six frameworks on Zubra 5.15.0.
-
-In the frameworks' own features: one, and it is in a component rather than in Zubra. A reactive
-form that is disabled disables `text-field` but not `toggle-switch`: `zubraModel` puts `disabled`
-on the element, and zubra-ui's switch has no disabled state, so its button can still be pressed.
-`color-swatches` is form-associated in the same way. It hasn't been reported upstream yet.
+None today: the 18 component checks pass in all six frameworks, and the 43 feature checks pass
+in the frameworks that have each feature, on Zubra 5.15.0.
 
 `KNOWN` in each spec is where a difference goes when one turns up: the check's title and the
 Zubra issue it was reported in. A listed check is expected to fail, so the run stays
@@ -88,6 +84,10 @@ passed", and the entry comes out (with any workaround in the parlor's apps).
 The first run of this suite, on Zubra 5.9, found five (zubra#261, #262, #267, #268, #269) and a
 gap in the typings (#270). All were fixed in 5.15.0, and the workarounds they needed are gone from
 the admin app and the parlor.
+
+The first run of the feature checks found one, in a component rather than in Zubra: a disabled
+reactive form disabled `text-field` but left `toggle-switch` pressable, because the switch had no
+disabled state (zubra-ui#20). The parlor's copy has it now, and the same change is zubra-ui#21.
 
 ## Adding a check
 

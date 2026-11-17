@@ -13,14 +13,9 @@ import { expect, test, type Page } from "@playwright/test";
 const FRAMEWORKS = ["react", "vue", "svelte", "solid", "angular"] as const;
 type Framework = (typeof FRAMEWORKS)[number];
 
-const SWITCH_OFF = "a disabled reactive form disables a control that has no disabled prop of its own";
-
-const KNOWN: Partial<Record<Framework, Record<string, string>>> = {
-  // zubraModel puts `disabled` on the element, and the browser tells a form-associated element so,
-  // but zubra-ui's toggle-switch does nothing with it: its button can still be pressed. The same
-  // would show in plain HTML inside <fieldset disabled>. Not reported upstream yet.
-  angular: { [SWITCH_OFF]: "zubra-ui: toggle-switch has no disabled state (to be reported)" },
-};
+// Nothing differs today. The one found when these were written (a disabled reactive form left
+// zubra-ui's toggle-switch pressable, zubra-ui#20) is fixed in the parlor's copy of the component.
+const KNOWN: Partial<Record<Framework, Record<string, string>>> = {};
 
 const t = (page: Page, name: string) => page.locator(`[data-t="${name}"]`);
 
@@ -206,7 +201,7 @@ const FEATURES: Feature[] = [
     },
   },
   {
-    title: SWITCH_OFF,
+    title: "a disabled reactive form disables every control, and enabling it brings them back",
     in: { angular: "disable()" },
     body: async (page) => {
       const button = t(page, "f-form-sound").getByRole("switch");
