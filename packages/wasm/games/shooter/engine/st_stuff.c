@@ -1392,6 +1392,15 @@ void ST_Start (void)
     if (!st_stopped)
 	ST_Stop();
 
+    // [open.wasm] The face's background is its player's colour, and was loaded once, for the
+    // player this device had when it started. A device that watches changes whose eyes it has.
+    {
+        char namebuf[9];
+
+        DEH_snprintf(namebuf, 9, "STFB%d", consoleplayer);
+        faceback = (patch_t *) W_CacheLumpName(namebuf, PU_STATIC);
+    }
+
     ST_initData();
     ST_createWidgets();
     st_stopped = false;

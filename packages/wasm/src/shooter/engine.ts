@@ -2,6 +2,7 @@
 // the page makes into it. Nothing here touches the DOM, so the same code boots the engine in Node
 // for the tests.
 import { Exit, wasi } from "../../host/wasi.ts";
+import type { Settings, Tic } from "../../net/protocol.ts";
 
 /** Where the engine's picture, sound and messages go. */
 export interface EngineHost {
@@ -9,6 +10,8 @@ export interface EngineHost {
   frame(pixels: Uint8ClampedArray, width: number, height: number): void;
   sound?: SoundHost;
   title?(title: string): void;
+  /** In a game with other devices: this device's command for a tic, to send them. */
+  command?(tic: number, command: Uint8Array): void;
   /** Milliseconds on the game's clock. The page's stops while the tab is hidden; by default it never does. */
   now?(): number;
   /** A line the engine printed. */
@@ -59,6 +62,18 @@ export interface Engine {
   analog(forward: number, side: number, turn: number): void;
   /** What the player is looking at: see the STATE_ bits. */
   state(): number;
+  /** In a game with other devices: the next tic, with every player's command. Tics are given in order from the first. */
+  tic(tic: Tic): void;
+  /** How many tics have been given and not run yet: more than a few is a device catching up. */
+  behind(): number;
+  /** How many tics the game has run. */
+  tics(): number;
+  /** Which players are in the game: bit 0 the first. */
+  players(): number;
+  /** For a device that watches: look through this player's eyes. */
+  view(player: number): void;
+  /** A number made from everything that moves: the same on every device that has run the same tics. */
+  checksum(): number;
   /** Why the engine stopped, once it has: exit code 0 is the player quitting. */
   stopped: { code: number; message: string } | null;
 }
@@ -73,6 +88,28 @@ interface Exports {
   web_mouse(buttons: number, dx: number, dy: number): void;
   web_analog(forward: number, side: number, turn: number): void;
   web_state(): number;
+  web_net_command_size(): number;
+  web_net_tic(commands: number, playing: number): void;
+  web_net_backlog(): number;
+  web_tics(): number;
+  web_players(): number;
+  web_view(player: number): void;
+  web_checksum(): number;
+}
+
+/** The engine keeps 128 tics that have arrived and not been run; it is given no more than this many at once. */
+const BACKLOG = 100;
+
+/** The command line for a game with other devices: the same on every device but for `slot`, its own player (-1 to watch). */
+export function netArgs(settings: Settings, players: number, slot: number): string[] {
+  return [
+    ...["-net", String(players), String(slot)],
+    ...["-skill", String(settings.skill)],
+    ...["-warp", String(settings.episode), String(settings.map)],
+    // Deathmatch where weapons stay and things come back, the kind most people mean.
+    ...(settings.mode === "deathmatch" ? ["-altdeath"] : []),
+    ...(settings.monsters ? [] : ["-nomonsters"]),
+  ];
 }
 
 /**
@@ -102,6 +139,8 @@ export async function startEngine(module: WebAssembly.Module, files: Map<string,
     host: {
       draw_frame: (at: number, width: number, height: number) => host.frame(new Uint8ClampedArray(memory().buffer, at, width * height * 4), width, height),
       now_ms: () => now() >>> 0,
+      // A copy: the engine's memory is its own once the call returns.
+      net_send: (tic: number, at: number, size: number) => host.command?.(tic, new Uint8Array(memory().buffer, at, size).slice()),
       set_title: (at: number, length: number) => host.title?.(decoder.decode(new Uint8Array(memory().buffer, at, length))),
       sound_start: (channel: number, lump: number, at: number, length: number, volume: number, separation: number) =>
         // A copy, taken only if the page hasn't this effect yet: the engine may reuse the memory.
@@ -113,9 +152,29 @@ export async function startEngine(module: WebAssembly.Module, files: Map<string,
   });
   exports = instance.exports as unknown as Exports;
 
+  /** Tics waiting for room in the engine, and the memory they are handed over in. */
+  const waiting: Tic[] = [];
+  let scratch = 0;
+
   const engine: Engine = {
     stopped: null,
-    frame: () => guarded(() => exports.web_frame()),
+    frame: () =>
+      guarded(() => {
+        // As many of the waiting tics as the engine has room for; it runs all it has been given.
+        while (waiting.length > 0 && exports.web_net_backlog() < BACKLOG) {
+          const next = waiting.shift()!;
+          scratch ||= exports.web_alloc(next.commands.length);
+          new Uint8Array(memory().buffer, scratch, next.commands.length).set(next.commands);
+          exports.web_net_tic(scratch, next.playing);
+        }
+        exports.web_frame();
+      }),
+    tic: (tic) => void waiting.push(tic),
+    behind: () => (engine.stopped ? 0 : waiting.length + exports.web_net_backlog()),
+    tics: () => (engine.stopped ? 0 : exports.web_tics()),
+    players: () => (engine.stopped ? 0 : exports.web_players()),
+    view: (player) => void guarded(() => exports.web_view(player)),
+    checksum: () => (engine.stopped ? 0 : exports.web_checksum() >>> 0),
     key: (pressed, key) => void guarded(() => exports.web_key(pressed ? 1 : 0, key)),
     mouse: (buttons, dx, dy) => void guarded(() => exports.web_mouse(buttons, dx, dy)),
     analog: (forward, side, turn) => void guarded(() => exports.web_analog(forward, side, turn)),

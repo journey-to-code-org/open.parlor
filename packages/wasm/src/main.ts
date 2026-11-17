@@ -15,6 +15,10 @@ mountShooter(document.getElementById("game")!, {
   wad: { url: wad, name: "freedoom1.wad", megabytes: FREEDOOM.megabytes },
   title: "Freedoom: Phase 1",
   blurb: "A first-person shooter on the open-source Doom engine, running in your browser.",
+  // Freedoom: Phase 1 is four episodes of nine maps.
+  levels: { episodes: 4, maps: 9 },
+  // The parlor's server has the rooms that let devices play together; a site without it plays alone.
+  rooms: `${import.meta.env.BASE_URL}play`,
 });
 
 // An older version of the game's data, kept by an earlier visit, is let go.

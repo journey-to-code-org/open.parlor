@@ -3,3 +3,5 @@
 .build/
 # The game's data, fetched by scripts/fetch-data.mjs.
 public/data/
+# The rooms, compiled for a server to import (npm run build:net).
+lib/

@@ -1,13 +1,19 @@
 // The game on a page: a canvas the engine draws to, the keyboard, mouse, touch and controller that
 // drive it, its sounds, and the screens around it (the invitation to start, the download, the end).
 //
+// With a server that has rooms, it is also where people gather to play together or to watch: the
+// host sets the game up, and every device starts the same game when the room says so.
+//
 // mountShooter is all another app needs to put the game on a page of its own.
 import { asset } from "../../host/assets.ts";
 import { store } from "../../host/store.ts";
 import { createAudio } from "./audio.ts";
-import { type Engine, screenOf, startEngine } from "./engine.ts";
+import type { Tic } from "../../net/protocol.ts";
+import { type Engine, netArgs, screenOf, startEngine } from "./engine.ts";
 import { createGamepad } from "./gamepad.ts";
 import { engineKey } from "./keys.ts";
+import { type Game, type Lobby, openSession, type Session } from "./session.ts";
+import { connect, hasRooms, openRoom, showLobby } from "./together.ts";
 import { createTouch } from "./touch.ts";
 
 export interface ShooterOptions {
@@ -19,8 +25,12 @@ export interface ShooterOptions {
   title: string;
   /** A line under the title. */
   blurb: string;
-  /** Added to the engine's command line. */
+  /** Added to the engine's command line when playing alone. */
   args?: string[];
+  /** Where the server's rooms are (…/play), for playing with other devices. Left out, or not there, and the game is played alone. */
+  rooms?: string;
+  /** How many episodes the game has, and maps in each, for the host to choose where to start. */
+  levels: { episodes: number; maps: number };
 }
 
 const WIDTH = 320;
@@ -47,28 +57,57 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): void {
   const pad = el("div", "pad");
   pad.hidden = true;
   const card = el("div", "shooter-card");
+  /** Over the picture in a game with other devices: who it is waiting for, whose eyes a watcher has, the way out. */
+  const bar = el("div", "shooter-bar");
+  bar.hidden = true;
   screen.append(canvas);
   root.classList.add("shooter");
-  root.append(screen, pad, card);
+  root.append(screen, pad, bar, card);
 
   const context = canvas.getContext("2d", { alpha: false })!;
   const image = context.createImageData(WIDTH, HEIGHT);
   const kept = store("shooter");
   const touchScreen = matchMedia("(pointer: coarse)").matches;
   let engine: Engine | null = null;
-  let module: Promise<WebAssembly.Module> | null = null;
 
-  /** The screens around the game: a heading, a line or two, and at most one thing to do. */
-  function show(heading: string, lines: string[], action?: { label: string; run: () => void }) {
-    card.replaceChildren(el("h1", "", heading), ...lines.map((line) => el("p", "", line)));
-    if (action) {
-      const button = el("button", "shooter-go", action.label);
-      button.type = "button";
-      button.addEventListener("click", action.run);
-      card.append(button);
-      button.focus();
-    }
+  /** A game with other devices: the room, the game it started, and what it has said since. */
+  interface Net {
+    code: string;
+    session: Session;
+    lobby: Lobby | null;
+    game: Game | null;
+    /** Tics that came while the engine was still starting; null once it has them. */
+    early: Tic[] | null;
+    /** The players the game is held up for. */
+    waiting: number[];
+    /** For a device that watches: whose eyes it has. */
+    viewing: number;
+    /** What the bar last showed, so it is only redrawn when that changes. */
+    shown: string;
+  }
+  let net: Net | null = null;
+  const watching = () => !!net?.game && net.game.slot < 0;
+
+  interface Action {
+    label: string;
+    run: () => void;
+  }
+
+  function button(action: Action, main: boolean): HTMLButtonElement {
+    const node = el("button", main ? "shooter-go" : "lobby-small", action.label);
+    node.type = "button";
+    node.addEventListener("click", action.run);
+    return node;
+  }
+
+  /** The screens around the game: a heading, a line or two, and the things to do, the first of them the main one. */
+  function show(heading: string, lines: string[], actions: Action[] = [], ...more: HTMLElement[]) {
+    const buttons = actions.map((action, i) => button(action, i === 0));
+    const row = el("div", "lobby-actions");
+    row.append(...buttons);
+    card.replaceChildren(el("h1", "", heading), ...lines.map((line) => el("p", "", line)), ...more, row);
     card.hidden = false;
+    if (more.length === 0) buttons[0]?.focus();
   }
 
   // The game's clock stops while the tab is hidden, so coming back isn't a burst of missed time.
@@ -144,10 +183,14 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): void {
     if (!locked()) releaseAll();
   });
   canvas.addEventListener("contextmenu", (event) => event.preventDefault());
-  addEventListener("touchstart", () => (pad.hidden = !engine || !!engine.stopped), { once: true, passive: true });
+  /** The touch controls are for someone playing, on a screen that is touched. */
+  let touched = touchScreen;
+  const fitPad = () => (pad.hidden = !touched || !engine || !!engine.stopped || watching());
+  addEventListener("touchstart", () => ((touched = true), fitPad()), { once: true, passive: true });
 
-  function loop() {
-    if (!engine) return;
+  /** A frame of this engine's game, for as long as it is the one running. */
+  function loop(running: Engine) {
+    if (engine !== running) return;
     const stick = touch.move();
     const sticks = gamepad.poll();
     engine.analog(stick.forward + sticks.forward, stick.side + sticks.side, sticks.turn);
@@ -156,40 +199,101 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): void {
       // What is on the screen, for styles (and for tests, which can't see into a canvas).
       const screen = screenOf(engine.state());
       if (root.dataset.screen !== screen) root.dataset.screen = screen;
-      return void requestAnimationFrame(loop);
+      if (net?.game) together(net, net.game, engine);
+      return void requestAnimationFrame(() => loop(running));
     }
-    delete root.dataset.screen;
     // The engine has stopped: the player quit from its menu, or it failed.
     const { code, message } = engine.stopped!;
-    engine = null;
-    pad.hidden = true;
-    if (document.pointerLockElement) document.exitPointerLock();
-    if (code === 0) show("Thanks for playing", [], { label: "Play again", run: start });
-    else show("The game stopped", [message || "Something went wrong inside the engine."], { label: "Start again", run: start });
+    put();
+    leave();
+    if (code === 0) show("Thanks for playing", [], [{ label: "Play again", run: home }]);
+    else show("The game stopped", [message || "Something went wrong inside the engine."], [{ label: "Start again", run: home }]);
   }
 
-  async function start() {
+  /** Puts the game away: nothing is running, and nothing of it is on the screen but its last picture. */
+  function put() {
+    engine = null;
+    releaseAll();
+    pad.hidden = bar.hidden = true;
+    delete root.dataset.screen;
+    delete root.dataset.together;
+    if (document.pointerLockElement) document.exitPointerLock();
+    audio.mute(false);
+  }
+
+  /** Leaves the room, if in one, without the leaving being news. */
+  function leave() {
+    const room = net;
+    net = null;
+    room?.session.close();
+    if (new URLSearchParams(location.search).has("room")) history.replaceState(null, "", location.pathname);
+  }
+
+  /** Once a frame in a game with other devices: the bar over the picture, and a watcher's view. */
+  function together(room: Net, game: Game, running: Engine) {
+    const behind = running.behind();
+    const players = running.players();
+    // A game being caught up on would play a minute's sounds in a second.
+    audio.mute(behind > 35);
+    if (game.slot < 0) {
+      // Whoever is being watched may have left: the first player still in the game, then.
+      if (!((players >> room.viewing) & 1)) room.viewing = Math.max(0, game.players.findIndex((_, slot) => (players >> slot) & 1));
+      running.view(room.viewing);
+    }
+    const names = room.waiting.filter((slot) => (players >> slot) & 1).map((slot) => game.players[slot]?.name ?? "a player");
+    const status = behind > 70 ? "Catching up…" : names.length ? `Waiting for ${names.join(" and ")}…` : "";
+    const shown = `${status}|${players}|${room.viewing}`;
+    if (shown === room.shown) return;
+    room.shown = shown;
+    root.dataset.together = behind > 70 ? "behind" : names.length ? "waiting" : "running";
+    const parts: HTMLElement[] = [];
+    if (game.slot < 0) {
+      parts.push(el("span", "", "Watching"));
+      game.players.forEach((player, slot) => {
+        if (!((players >> slot) & 1)) return;
+        const pick = button({ label: player.name, run: () => (room.viewing = slot) }, false);
+        pick.setAttribute("aria-pressed", String(slot === room.viewing));
+        parts.push(pick);
+      });
+    }
+    if (status) parts.push(el("span", "shooter-status", status));
+    parts.push(button({ label: "Leave", run: () => (put(), leave(), home()) }, false));
+    bar.replaceChildren(...parts);
+    bar.hidden = false;
+  }
+
+  /** The engine and the game's data, fetched once (with a count on the card the first time). */
+  let assets: Promise<{ compiled: WebAssembly.Module; wad: Uint8Array }> | null = null;
+  function ready() {
+    show("Getting the game ready", ["Starting…"]);
+    const status = card.querySelector("p")!;
+    assets ??= Promise.all([
+      // Compiled as it streams in, where the server says it is WebAssembly; from the whole file where it doesn't.
+      WebAssembly.compileStreaming(fetch(options.wasm)).catch(async () => WebAssembly.compile(await (await fetch(options.wasm)).arrayBuffer())),
+      asset(options.wad.url, {
+        progress(received, total) {
+          const megabytes = (received / 1048576).toFixed(0);
+          status.textContent = total ? `Downloading the game: ${megabytes} of ${(total / 1048576).toFixed(0)} MB` : `Downloading the game: ${megabytes} MB`;
+        },
+        // A WAD begins with the letters IWAD or PWAD.
+        valid: (bytes) => /^[IP]WAD$/.test(String.fromCharCode(...bytes.subarray(0, 4))),
+      }),
+    ]).then(([compiled, wad]) => ({ compiled, wad }));
+    // A failure isn't kept: the next try fetches again.
+    assets.catch(() => (assets = null));
+    return assets;
+  }
+
+  /** Why something didn't work, in a sentence. */
+  const reason = (error: unknown) => (navigator.onLine ? String(error instanceof Error ? error.message : error) : "There is no connection.");
+
+  /** Starts the engine: alone with `args`, or for the room's game. */
+  async function run(args: string[], room: Net | null) {
     audio.unlock();
     try {
-      show("Getting the game ready", ["Starting…"]);
-      const status = card.querySelector("p")!;
-      // Compiled as it streams in, where the server says it is WebAssembly; from the whole file where it doesn't.
-      module ??= WebAssembly.compileStreaming(fetch(options.wasm)).catch(async () => WebAssembly.compile(await (await fetch(options.wasm)).arrayBuffer()));
-      const [compiled, wad, files] = await Promise.all([
-        module,
-        asset(options.wad.url, {
-          progress(received, total) {
-            const megabytes = (received / 1048576).toFixed(0);
-            status.textContent = total ? `Downloading the game: ${megabytes} of ${(total / 1048576).toFixed(0)} MB` : `Downloading the game: ${megabytes} MB`;
-          },
-          // A WAD begins with the letters IWAD or PWAD.
-          valid: (bytes) => /^[IP]WAD$/.test(String.fromCharCode(...bytes.subarray(0, 4))),
-        }),
-        kept.load(),
-      ]);
+      const [{ compiled, wad }, files] = await Promise.all([ready(), kept.load()]);
       files.set(options.wad.name, wad);
-      status.textContent = "Starting…";
-      engine = await startEngine(
+      const started = await startEngine(
         compiled,
         files,
         options.wad.name,
@@ -200,21 +304,112 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): void {
           },
           sound: audio,
           now,
+          command: room ? (tic, command) => room.session.command(tic, command) : undefined,
           // The engine's own chatter is for the console; what it writes is kept for next time.
           log: (line) => console.debug(line),
           written: kept.save,
           removed: kept.remove,
         },
-        options.args,
+        args,
       );
+      // The room may have closed while the engine was starting.
+      if (net !== room) return;
+      engine = started;
+      room?.early?.forEach(started.tic);
+      if (room) room.early = null;
       card.hidden = true;
-      pad.hidden = !touchScreen;
-      requestAnimationFrame(loop);
+      fitPad();
+      requestAnimationFrame(() => loop(started));
     } catch (error) {
-      module = null;
-      show("The game couldn't start", [navigator.onLine ? String(error instanceof Error ? error.message : error) : "There is no connection, and the game hasn't been downloaded to this device yet."], { label: "Try again", run: start });
+      leave();
+      show("The game couldn't start", [navigator.onLine ? reason(error) : "There is no connection, and the game hasn't been downloaded to this device yet."], [{ label: "Try again", run: home }]);
     }
   }
 
-  show(options.title, [options.blurb, `The first time, it downloads about ${options.wad.megabytes} MB and keeps it on this device.`], { label: "Play", run: start });
+  /** Into a room: a new one, or the one with this code. */
+  async function join(code: string | null, name: string, watch: boolean) {
+    try {
+      localStorage.setItem("open-wasm-name", name);
+    } catch {}
+    try {
+      // The game is fetched before the room is joined, so nobody waits on a download once the host starts.
+      await ready();
+      show("Joining the game", ["Connecting…"]);
+      const room = code ?? (await openRoom(options.rooms!));
+      const transport = await connect(options.rooms!, room);
+      const link = new URL(`?room=${room}`, location.href).href;
+      history.replaceState(null, "", link);
+      const mine: Net = (net = { code: room, session: null as unknown as Session, lobby: null, game: null, early: [], waiting: [], viewing: 0, shown: "" });
+      mine.session = openSession(transport, name, watch, {
+        lobby(lobby) {
+          mine.lobby = lobby;
+          // Once the game is on, the lobby is only news of who has come and gone.
+          if (net === mine && !mine.game && !lobby.playing) showLobby(card, { code: room, link, lobby, session: mine.session, levels: options.levels, leave: () => (leave(), home()) });
+        },
+        start(game) {
+          if (net !== mine) return;
+          mine.game = game;
+          void run(netArgs(game.settings, game.players.length, game.slot), mine);
+        },
+        tics: (tics) => (mine.early ? mine.early.push(...tics) : tics.forEach((tic) => engine?.tic(tic))),
+        waiting: (slots) => (mine.waiting = slots),
+        closed(why) {
+          if (net !== mine) return;
+          net = null;
+          put();
+          history.replaceState(null, "", location.pathname);
+          show("The game has ended", [why], [{ label: "Back", run: home }]);
+        },
+      });
+    } catch (error) {
+      leave();
+      show("Couldn't join the game", [reason(error)], [{ label: "Back", run: home }]);
+    }
+  }
+
+  /** Asks who is playing, and whether to start a game or join one. */
+  function gather(code: string | null, watch = false) {
+    const name = el("input", "");
+    name.maxLength = 16;
+    name.setAttribute("autocomplete", "nickname");
+    try {
+      name.value = localStorage.getItem("open-wasm-name") ?? "";
+    } catch {}
+    const who = el("label", "lobby-field", "Your name");
+    who.append(name);
+    const named = () => name.value.trim() || "Player";
+    if (code) {
+      const play: Action = { label: "Join the game", run: () => void join(code, named(), false) };
+      const look: Action = { label: "Just watch", run: () => void join(code, named(), true) };
+      return show(`Game ${code}`, ["You have been invited to a game."], [...(watch ? [look, play] : [play, look]), { label: "Back", run: () => (leave(), home()) }], who);
+    }
+    const other = el("input", "");
+    other.maxLength = 4;
+    other.placeholder = "ABCD";
+    other.autocapitalize = "characters";
+    other.setAttribute("aria-label", "A game's code");
+    const enter = button({ label: "Join", run: () => /^[A-Za-z]{4}$/.test(other.value.trim()) && void join(other.value.trim().toUpperCase(), named(), false) }, false);
+    const joining = el("label", "lobby-field lobby-join", "Or join one, by its code");
+    joining.append(other, enter);
+    show("Play together", ["Up to four play, together or against each other, each on a device of their own. Anyone else with the link can watch."], [{ label: "Start a new game", run: () => void join(null, named(), false) }, { label: "Back", run: home }], who, joining);
+  }
+
+  /** The way in. */
+  function home() {
+    const alone: Action = { label: "Play", run: () => void run(options.args ?? [], null) };
+    show(options.title, [options.blurb, `The first time, it downloads about ${options.wad.megabytes} MB and keeps it on this device.`], [alone]);
+    if (!options.rooms) return;
+    // The server may have no rooms (a site with no server at all has none): then there is only playing alone.
+    void hasRooms(options.rooms).then((rooms) => {
+      const invited = new URLSearchParams(location.search);
+      const code = /^[A-Za-z]{4}$/.test(invited.get("room") ?? "") ? invited.get("room")!.toUpperCase() : null;
+      // Still on the way in, and not gone on to something else meanwhile.
+      if (engine || net || card.querySelector("h1")?.textContent !== options.title) return;
+      if (code && rooms) return gather(code, invited.has("watch"));
+      if (code) return show(options.title, ["That link is to a game with other people, and this site has no games like that: it has no server behind it. You can still play alone."], [alone]);
+      if (rooms) show(options.title, [options.blurb, `The first time, it downloads about ${options.wad.megabytes} MB and keeps it on this device.`], [alone, { label: "Play together", run: () => gather(null) }]);
+    });
+  }
+
+  home();
 }
