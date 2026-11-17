@@ -75,6 +75,11 @@ too), and one that draws any table sport on a canvas (Mini Golf is the first).
 | Go (Weiqi, Baduk) | 2 | A board game: surround more of the board than they do, on 9×9, 13×13 or 19×19, with Chinese or Japanese counting and handicaps |
 | Chess | 2 | A board game: the whole of it, with a chess clock (bullet, blitz, rapid, a day a move), Chess960, and the moves written down as you play |
 | Yacht | 1 to 6 | A dice game: five dice, three rolls and a scorecard to fill. The classic sheet, Yatzy's or a quick seven boxes, in turn or everyone at once; with drinking mode on it's Shotzee 🍺 |
+| Pig | 2 to 6 | A dice game: roll as often as you dare and add it up, but a one loses the turn. To 50, 100 or 200, with one die or two (where two ones lose everything) |
+| Ten Thousand | 2 to 6 | A dice game: six dice; set aside the ones that score and roll the rest for more, or bank before a bust takes it. To 2,500, 5,000 or 10,000, with or without a 500 turn to get on the board |
+| Ship, Captain, Crew | 2 to 6 | A dice game: three rolls to find a six, a five and a four in that order; the other two dice are your cargo, and the biggest takes the round |
+| Shut the Box | 1 to 6 | A dice game: roll and shut the tiles that add up to it, until a roll can't be made; what's left open is your score. Nine tiles or twelve, one round or several, or alone for a score |
+| Liar's Dice | 2 to 6 | A dice game: everyone's dice are hidden. Bid how many of a number are under all the cups, or call the last bidder a liar; lose a call, lose a die. Ones wild or not, three to five dice each |
 | Backgammon | 2 | A board game: race your checkers home and hit theirs on the way. A friendly game, a money game with the doubling cube, a match to 3, 5 or 7 points, or Nackgammon |
 | Mini Golf | 1 to 6 | A table sport: nine holes round a garden (a drainpipe, a pond, toadstools that kick, a mole's tunnels), in turn with balls that knock into each other, or everyone at once |
 
@@ -112,8 +117,8 @@ connection to come back.
 A game with nothing hidden can also be **shared on one device**: on its setup screen, *On this
 device* seats two or more of you (computer players take any seats left), and the screen turns to
 whoever's move it is. That is Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon,
-Yacht, Memory, Hangman, Mini Golf, Bowling, Billiards and Carrom. A game with a hand to hide (every
-turn-based card game, Combat, Criss-Crosswords, Secret Word, Anagrams) is **passed round** instead:
+Yacht, Pig, Ten Thousand, Ship, Captain, Crew, Shut the Box, Memory, Hangman, Mini Golf, Bowling, Billiards and Carrom. A game with a hand to hide (every
+turn-based card game, Combat, Liar's Dice, Criss-Crosswords, Secret Word, Anagrams) is **passed round** instead:
 between people the screen is covered ("Pass to Grammi") until the next person taps. Games played at
 once (Speed, Slapjack, War, Word Hunt, the Mahjongs) can't be shared on one device.
 

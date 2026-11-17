@@ -10,15 +10,15 @@ const start = (id: string, seats: number, rules?: unknown) => {
 
 describe("sharing a device", () => {
   it("is for games with nothing hidden: boards, dice, table sports and Memory", () => {
-    for (const id of ["chess", "checkers", "go", "reversi", "tictactoe", "dropfour", "backgammon", "yacht", "memory", "minigolf", "bowling", "billiards", "carrom", "hangman"]) expect(sharesDevice(id), id).toBe(true);
+    for (const id of ["chess", "checkers", "go", "reversi", "tictactoe", "dropfour", "backgammon", "yacht", "pig", "tenthousand", "shipcaptaincrew", "shutthebox", "memory", "minigolf", "bowling", "billiards", "carrom", "hangman"]) expect(sharesDevice(id), id).toBe(true);
     // A hand of cards, or a fleet, is a secret one screen can't keep.
-    for (const id of ["hearts", "gin", "holdem", "combat", "gofish", "spades", "palace", "skyfire", "secretword", "anagrams"]) expect(sharesDevice(id), id).toBe(false);
+    for (const id of ["hearts", "gin", "holdem", "combat", "liarsdice", "gofish", "spades", "palace", "skyfire", "secretword", "anagrams"]) expect(sharesDevice(id), id).toBe(false);
     // A game for one has nobody to share with.
     for (const game of KIT_GAMES) if (game.seats.max === 1) expect(sharesDevice(game.id), game.id).toBe(false);
   });
 
   it("passes a device round for games with hands to hide, but not for races", () => {
-    for (const id of ["hearts", "gin", "crazy8", "holdem", "euchre", "combat", "crisscross", "secretword"]) expect(passesDevice(id), id).toBe(true);
+    for (const id of ["hearts", "gin", "crazy8", "holdem", "euchre", "combat", "crisscross", "secretword", "liarsdice"]) expect(passesDevice(id), id).toBe(true);
     // Played at once, or against each other's speed.
     for (const id of ["speed", "slapjack", "war", "wordhunt", "drawguess", "mahjongriichi"]) expect(passesDevice(id), id).toBe(false);
     // Shared already (nothing hidden), or for one, or not a kit game.
@@ -36,6 +36,32 @@ describe("sharing a device", () => {
       now = game.apply(now, at, game.bot(now, at, QUICK_STYLE)!);
     }
     expect([...seen].sort()).toEqual([0, 1]);
+  });
+
+  it("passed round, Liar's Dice goes to each bidder, and to each person in turn once the cups are up", () => {
+    const { game, state } = start("liarsdice", 3);
+    let now = state;
+    let at = 0;
+    const bidders: number[] = [];
+    // Three people bid round the table, and then one calls.
+    for (let move = 0; move < 3; move++) {
+      at = seatAtScreen(game, now, 3, at);
+      expect((game.view(now, at) as { turn: number }).turn).toBe(at);
+      bidders.push(at);
+      now = game.apply(now, at, { type: "bid", count: move + 1, face: 2 });
+    }
+    expect([...bidders].sort()).toEqual([0, 1, 2]);
+    at = seatAtScreen(game, now, 3, at);
+    now = game.apply(now, at, { type: "liar" });
+    // Everyone looks and moves on, one after another.
+    const ready = new Set<number>();
+    while ((game.view(now, 0) as { phase: string }).phase === "reveal") {
+      at = seatAtScreen(game, now, 3, at);
+      expect(ready.has(at)).toBe(false);
+      ready.add(at);
+      now = game.apply(now, at, { type: "next" });
+    }
+    expect(ready.size).toBe(3);
   });
 
   it("names people who gave no name by their seat", () => {

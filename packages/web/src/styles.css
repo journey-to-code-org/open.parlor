@@ -1763,6 +1763,18 @@ html[data-motion="off"] .track .cube { animation: none; transition: none; }
    The dice sit in a row, as big as a phone's width allows. A held die sits up out of the row with a
    gold edge and a tag, so what's kept is plain without colour; dice left over from the last turn are dim. */
 .dice { --die: clamp(46px, 14.5vw, 72px); display: flex; justify-content: center; gap: calc(var(--die) * 0.2); padding: calc(var(--die) * 0.34) 4px calc(var(--die) * 0.1); }
+/* Shut the Box: an open tile is a dark number on the light wood; a shut one is turned face down, dark, its number faint. */
+.board-shutthebox .piece.kind-tile { color: #1d1a16; text-shadow: none; }
+.board-shutthebox .board-grid .cell:has(.kind-shut) { background: #2b231c; }
+.board-shutthebox .piece.kind-shut { color: #fffdf8; text-shadow: none; opacity: 0.4; }
+/* With a roll to make, the tiles that can't be part of it step back. */
+.board-shutthebox .board-grid:has(.cell.can) .cell:not(.can) .piece.kind-tile { opacity: 0.4; }
+/* Liar's Dice: the call across the top, and the bids three to a row under it, wide enough for their words. */
+.board-liarsdice .kit-choices.grid { grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(420px, calc(100vw - 24px)); max-width: none; box-sizing: border-box; }
+.board-liarsdice .kit-choices.grid button.primary { grid-column: 1 / -1; }
+.board-liarsdice .kit-choices.grid button.secondary { padding-inline: 4px; }
+/* Six dice in the row (Ten Thousand) are each a little smaller, so the row still fits a phone. */
+.board-tenthousand .dice { --die: clamp(38px, 12vw, 72px); }
 .die {
   position: relative; flex: none; width: var(--die); height: var(--die); padding: 0; border: 0; border-radius: 18%;
   background: linear-gradient(145deg, #fffdf6, #eadfc8); color: var(--ink); font: inherit;

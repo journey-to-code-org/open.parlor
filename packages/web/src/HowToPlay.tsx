@@ -31,6 +31,16 @@ export function controls(game: string): string[] {
       return ["Drag across the grid from letter to touching letter to spell a word, and let go to send it. Or tap the letters one by one and press Enter.", "Words found by someone else as well score for nobody."];
     case "crisscross":
       return ["Tap a tile in your hand, then a square on the board. Lay a whole word in one line, then press Play.", "Take back lifts your tiles again; Shuffle mixes your hand."];
+    case "pig":
+      return ["Two buttons under the dice: roll again, or stop and bank what the turn has made.", "The gold button is the one most players would press."];
+    case "shipcaptaincrew":
+      return ["Press Roll: the six, the five and the four are set aside for you as they turn up.", "With all three aboard, keep your cargo or roll both of its dice again."];
+    case "tenthousand":
+      return ["After a roll, every die that scores is kept for you. Tap one to put it back and roll it again.", "Then bank the turn's points, or roll the dice that are left."];
+    case "shutthebox":
+      return ["Roll, then tap tiles that add up to the roll. Only tiles that can be part of it can be tapped.", "Tap a tile you have just shut to open it again. The roll is made when the tiles add up."];
+    case "liarsdice":
+      return ["Your dice are yours alone: nobody else sees them.", "Tap a bid to make it, or Liar! to call the last one.", "After a call everyone's dice are shown. Press Next round when you've looked."];
     case "drawguess":
       return ["When it's your turn to draw, pick one of three words and draw it with your finger. Pick a pen colour and size under the canvas.", "Otherwise, type what you think the drawing is. The sooner you get it, the more it scores."];
   }

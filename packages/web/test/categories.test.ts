@@ -11,7 +11,7 @@ describe("categoryOf", () => {
   it("goes by what the game is, not the kit it is built on", () => {
     expect(categoryOf("hearts")).toBe("cards");
     expect(categoryOf("chess")).toBe("board");
-    expect(categoryOf("yacht")).toBe("dice");
+    for (const id of ["yacht", "pig", "tenthousand", "shipcaptaincrew", "shutthebox", "liarsdice"]) expect(categoryOf(id), id).toBe("dice");
     expect(categoryOf("minigolf")).toBe("sports");
     expect(categoryOf("bowling")).toBe("sports");
     expect(categoryOf("skyfire")).toBe("arcade");

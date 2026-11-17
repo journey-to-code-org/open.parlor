@@ -136,6 +136,16 @@ const EMPTY_TABLE: MiniTable = { surface: "green", balls: [] };
 const DICE: Record<string, number[]> = {
   // Three fives up and two to come: most of the way to a Yacht.
   yacht: [5, 5, 5],
+  // A six, and the one that takes it all away.
+  pig: [6, 1],
+  // A one and a five to set aside, and a die still to throw.
+  tenthousand: [1, 5, 3],
+  // The ship, the captain and the crew.
+  shipcaptaincrew: [6, 5, 4],
+  // A five and a four: the 9, or which tiles?
+  shutthebox: [5, 4],
+  // Three sixes, if you believe it.
+  liarsdice: [6, 6, 6],
 };
 
 /** An arcade game's tile shows a little screen: a ship at the bottom, what it is up against, and what is coming at it. */
