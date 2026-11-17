@@ -29,9 +29,14 @@ async function described(pc: RTCPeerConnection): Promise<string> {
   return pc.localDescription!.sdp;
 }
 
+/**
+ * The channel as a Transport. Made the moment the channel exists, before it is open, so that it is
+ * already listening: the other side may speak the instant its end opens, and a browser can hand
+ * that message over before it has said this end is open. Listening only from "open" loses it.
+ */
 function wrap(pc: RTCPeerConnection, channel: RTCDataChannel): Transport {
   channel.binaryType = "arraybuffer";
-  /** What arrived before anyone was listening: the other side may speak the moment the channel opens. */
+  /** What arrived before anyone was listening. */
   const early: (string | Uint8Array)[] = [];
   let hear: Transport["onmessage"] = null;
   let gone: Transport["onclose"] = null;
@@ -52,7 +57,8 @@ function wrap(pc: RTCPeerConnection, channel: RTCDataChannel): Transport {
   });
   channel.addEventListener("close", end);
   pc.addEventListener("connectionstatechange", () => {
-    if (pc.connectionState === "failed" || pc.connectionState === "closed" || pc.connectionState === "disconnected") end();
+    // Not "disconnected": that is a moment's trouble on the network, and may mend itself.
+    if (pc.connectionState === "failed" || pc.connectionState === "closed") end();
   });
   return {
     send(data) {
@@ -78,7 +84,8 @@ function wrap(pc: RTCPeerConnection, channel: RTCDataChannel): Transport {
   };
 }
 
-const opened = (pc: RTCPeerConnection, channel: RTCDataChannel) =>
+/** The channel's Transport, once the channel is open. */
+const opened = (pc: RTCPeerConnection, channel: RTCDataChannel, transport = wrap(pc, channel)) =>
   new Promise<Transport>((yes, no) => {
     const fail = () => {
       clearTimeout(timer);
@@ -88,7 +95,7 @@ const opened = (pc: RTCPeerConnection, channel: RTCDataChannel) =>
     pc.addEventListener("connectionstatechange", () => pc.connectionState === "failed" && fail());
     const ready = () => {
       clearTimeout(timer);
-      yes(wrap(pc, channel));
+      yes(transport);
     };
     if (channel.readyState === "open") ready();
     else channel.addEventListener("open", ready, { once: true });
@@ -101,13 +108,14 @@ export const canLink = () => typeof RTCPeerConnection === "function";
 export async function offerSeat(): Promise<{ code: string; answered(code: string): Promise<Transport>; cancel(): void }> {
   const pc = connection();
   const channel = pc.createDataChannel("game");
+  const transport = wrap(pc, channel);
   await pc.setLocalDescription(await pc.createOffer());
   const code = pack(fromSdp(await described(pc)));
   return {
     code,
     async answered(answer) {
       const shake = unpack(answer);
-      const link = opened(pc, channel);
+      const link = opened(pc, channel, transport);
       await pc.setRemoteDescription({ type: "answer", sdp: toSdp(shake, "answer") });
       return link;
     },
