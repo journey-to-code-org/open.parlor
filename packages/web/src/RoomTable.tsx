@@ -21,6 +21,7 @@ import { TableTime } from "./board/SeatClock";
 import { TurnClock } from "./TurnClock";
 import { seatAtTable, sharesDevice, type SeatSight } from "./kit/sameDevice";
 import { SECONDS, secondBase, secondRoom } from "./second";
+import { usesCards } from "./categories";
 
 type Summary = { game?: string; rules: string; scores?: { points: number }[]; hand?: number; finished?: number[] };
 type AnyRoom = Room<unknown, unknown, Summary>;
@@ -497,8 +498,8 @@ function Lobby(props: {
         </div>
         <h1>{doc.label ?? `${about.name} · Table ${room.id}`}</h1>
         <p>
-          {doc.open && !doc.started ? "An open table: anyone in the parlor can take a seat, and it deals as soon as every seat is taken. " : ""}
-          {doc.started ? "This game has started." : doc.locked ? (mySeat !== null ? "Your tournament match. Deal when you're ready; the game waits for whoever's turn it is." : "A tournament match. The seats are set.") : arcade ? "Everyone at the table plays the same game, on the same side, at the same time. Fill empty seats with bots." : game === "palace" ? "First one out wins. Fill empty seats with bots." : partners ? "Partners sit across from each other." : `${about.blurb}. Fill empty seats with bots.`}
+          {doc.open && !doc.started ? `An open table: anyone in the parlor can take a seat, and it ${usesCards(game) ? "deals" : "starts"} as soon as every seat is taken. ` : ""}
+          {doc.started ? "This game has started." : doc.locked ? (mySeat !== null ? `Your tournament match. ${usesCards(game) ? "Deal" : "Start"} when you're ready; the game waits for whoever's turn it is.` : "A tournament match. The seats are set.") : arcade ? "Everyone at the table plays the same game, on the same side, at the same time. Fill empty seats with bots." : game === "palace" ? "First one out wins. Fill empty seats with bots." : partners ? "Partners sit across from each other." : `${about.blurb}. Fill empty seats with bots.`}
           {info?.rules ? ` ${info.rules}.` : ""}
         </p>
       </header>
@@ -623,7 +624,8 @@ function Lobby(props: {
           <TurnTimerField settings={props.settings.value} onChange={(next) => attempt(() => props.settings!.change(next))} />
         </section>
       )}
-      {!arcade && <TableDeckPicker table={room.id} deck={(doc.deck ?? null) as TableDeck | null} canChoose={!doc.started && mySeat !== null} onProblem={props.setProblem} />}
+      {/* A deck is for a game played with cards: not a board, dice, words, a table sport, or Mahjong's tiles. */}
+      {usesCards(game) && <TableDeckPicker table={room.id} deck={(doc.deck ?? null) as TableDeck | null} canChoose={!doc.started && mySeat !== null} onProblem={props.setProblem} />}
       {!doc.started && props.settings && doc.seats.some((s) => s.bot) && (
         <section className="house-block" aria-label="Computer players">
           <TableSettingsFields settings={props.settings.value} onChange={(next) => attempt(() => props.settings!.change(next))} />
@@ -643,7 +645,7 @@ function Lobby(props: {
           )}
           {mySeat !== null && (
             <button type="button" className="primary deal" disabled={!full} onClick={() => attempt(() => room.start())}>
-              {full ? (arcade || isBoardGame(game) || isSportGame(game) || isWordGame(game) ? "Start the game" : "Deal") : doc.open ? "Waiting for players…" : "Waiting for every seat"}
+              {full ? (usesCards(game) ? "Deal" : "Start the game") : doc.open ? "Waiting for players…" : "Waiting for every seat"}
             </button>
           )}
         </>

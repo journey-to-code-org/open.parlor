@@ -437,7 +437,7 @@ export function BoardTable({ view, names, act, onLeave, banner, watching, togeth
           {onHelp && <HowToButton onClick={onHelp} />}
           {/* Resign, offer a draw, ask to take a move back: whatever the view says this seat may do. */}
           {view.offers && !watching && <OffersMenu can={view.offers.can} onSend={(move) => void send(move, true)} />}
-          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} stones={stones} depth={hasBoard3d(view.game) || view.grids.some(isPointsTrack)} />}
+          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} cards={false} stones={stones} depth={hasBoard3d(view.game) || view.grids.some(isPointsTrack)} />}
           <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>
       </header>
