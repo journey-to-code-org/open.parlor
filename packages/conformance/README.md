@@ -71,6 +71,19 @@ One thing learned writing the Solid page: Solid sets what it is given on a custo
 property, so a `data-` attribute with a value that isn't a plain string is written `attr:data-…`.
 That is Solid's rule for every custom element, not a difference in Zubra.
 
+## The page
+
+The build has a page at its root (`index.html`, `src/report/`): how the last run went, check by
+check and framework by framework, links to the six fixture pages, how the suite works and what it
+has found. It is made of the same Zubra components, as plain elements. The run writes what it
+shows: `tests/results-reporter.ts` is a Playwright reporter that writes `dist/results.json`, and
+`dist/badge.json` for the badge in the parlor's README.
+
+The GitHub Pages workflow builds the suite, runs it and publishes `dist` under `conformance/`:
+<https://journey-to-code-org.github.io/open.parlor/conformance/>. The build's addresses are
+relative, so it works there and at `/` for the tests. To see it here, run the checks and then
+`npx vite preview`: <http://localhost:4179/>.
+
 ## Known differences
 
 None today: the 18 component checks pass in all six frameworks, and the 45 feature checks pass

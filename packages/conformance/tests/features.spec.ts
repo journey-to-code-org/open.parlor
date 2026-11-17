@@ -363,7 +363,12 @@ for (const framework of FRAMEWORKS) {
     for (const feature of FEATURES) {
       const name = feature.in[framework];
       if (!name) continue;
-      test(`${feature.title} (${name})`, async ({ page }) => {
+      // The annotations are for the results page: the check, and what it is called here.
+      const annotation = [
+        { type: "check", description: feature.title },
+        { type: "as", description: name },
+      ];
+      test(`${feature.title} (${name})`, { annotation }, async ({ page }) => {
         const known = KNOWN[framework]?.[feature.title];
         test.fail(!!known, known);
         await feature.body(page, framework);

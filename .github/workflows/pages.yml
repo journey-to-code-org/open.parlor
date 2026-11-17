@@ -35,6 +35,13 @@ jobs:
       - run: npm run build -w @open-parlor/watch && cp -r packages/watch/dist packages/web/dist/watch
         env:
           BASE_PATH: /${{ github.event.repository.name }}/watch/
+      # How the parlor is built, under conformance/: the same Zubra components in every framework,
+      # the checks run against them here in the runner's Chrome, and a page of how they went. A
+      # failing check doesn't stop the parlor being published; the page says what failed.
+      - run: npm run build -w @open-parlor/conformance
+      - run: npm run conformance -w @open-parlor/conformance
+        continue-on-error: true
+      - run: cp -r packages/conformance/dist packages/web/dist/conformance
       - uses: actions/upload-pages-artifact@v3
         with:
           path: packages/web/dist

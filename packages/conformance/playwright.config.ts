@@ -7,7 +7,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [["github"], ["list"]] : "list",
+  // results-reporter writes dist/results.json, which the page at the root of the build shows.
+  reporter: [...(process.env.CI ? ([["github"]] as const) : []), ["list"], ["./tests/results-reporter.ts"]],
   use: { baseURL: "http://localhost:4179", channel: "chrome", launchOptions: { args: ["--no-sandbox"] } },
   webServer: { command: "npx vite preview", url: "http://localhost:4179/element/", reuseExistingServer: !process.env.CI, timeout: 60_000 },
 });
