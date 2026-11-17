@@ -90,8 +90,10 @@ const SKILLS: [number, string][] = [
 
 export interface LobbyView {
   code: string;
-  /** The address that brings someone else to this room. */
-  link: string;
+  /** The address that brings someone else to this room; null for a game on the wifi, which has none. */
+  link: string | null;
+  /** On the wifi, for the host: adds someone, by showing them a code. */
+  invite?: () => void;
   lobby: Lobby;
   session: Session;
   /** How many episodes the game has, and maps in each. */
@@ -116,7 +118,7 @@ export function showLobby(card: HTMLElement, view: LobbyView): void {
   const share = el("div", "lobby-share");
   const address = el("input");
   address.readOnly = true;
-  address.value = view.link;
+  address.value = view.link ?? "";
   address.setAttribute("aria-label", "Link to this game");
   address.addEventListener("focus", () => address.select());
   const canShare = "share" in navigator;
@@ -125,9 +127,9 @@ export function showLobby(card: HTMLElement, view: LobbyView): void {
   copy.dataset.key = "share";
   copy.addEventListener("click", async () => {
     try {
-      if (canShare) await navigator.share({ title: document.title, url: view.link });
+      if (canShare) await navigator.share({ title: document.title, url: address.value });
       else {
-        await navigator.clipboard.writeText(view.link);
+        await navigator.clipboard.writeText(address.value);
         copy.textContent = "Copied";
       }
     } catch {
@@ -144,8 +146,9 @@ export function showLobby(card: HTMLElement, view: LobbyView): void {
       choice("Episode", "episode", Array.from({ length: view.levels.episodes }, (_, i) => [i + 1, String(i + 1)] as [number, string]), settings.episode, (episode) => set({ episode })),
       choice("Map", "map", Array.from({ length: view.levels.maps }, (_, i) => [i + 1, String(i + 1)] as [number, string]), settings.map, (map) => set({ map })),
       tick("Monsters", "monsters", settings.monsters, (monsters) => set({ monsters })),
-      tick("List this game for anyone to watch", "listed", settings.listed, (listed) => set({ listed })),
     );
+    // There is nowhere to list a game that is only on this wifi.
+    if (view.link) setup.append(tick("List this game for anyone to watch", "listed", settings.listed, (listed) => set({ listed })));
   } else {
     const mode = settings.mode === "coop" ? "Together, against the monsters" : `Against each other${settings.monsters ? ", with monsters" : ""}`;
     setup.append(el("p", "", `${mode}. ${SKILLS[settings.skill - 1]![1]} skill, episode ${settings.episode}, map ${settings.map}.`));
@@ -166,13 +169,19 @@ export function showLobby(card: HTMLElement, view: LobbyView): void {
   } else {
     actions.append(el("p", "lobby-wait", `Waiting for ${lobby.members.find((member) => member.id === lobby.host)?.name ?? "the host"} to start.`));
   }
+  if (view.invite) actions.append(button("Add someone", "invite", view.invite));
   const full = players.length >= 4 && me?.watching;
   if (!full) actions.append(button(me?.watching ? "Play instead" : "Watch instead", "watch", () => session.watch(!me?.watching)));
   actions.append(button("Leave", "leave", view.leave));
 
-  const code = el("h1", "", "Game ");
-  code.append(el("span", "lobby-code", view.code));
-  card.replaceChildren(code, el("p", "", "Send this link to the people you want to play with, or tell them the code."), share, people, setup, actions);
+  if (view.link) {
+    const code = el("h1", "", "Game ");
+    code.append(el("span", "lobby-code", view.code));
+    card.replaceChildren(code, el("p", "", "Send this link to the people you want to play with, or tell them the code."), share, people, setup, actions);
+  } else {
+    const how = view.invite ? "Add each person with the button below: they scan a code on your screen, and you scan one on theirs. Everyone has to be on this wifi." : "You are in. The host adds everyone else.";
+    card.replaceChildren(el("h1", "", "A game on this wifi"), el("p", "", how), people, setup, actions);
+  }
   card.hidden = false;
   if (focused) card.querySelector<HTMLElement>(`[data-key="${focused}"]`)?.focus();
 }

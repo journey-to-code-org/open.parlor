@@ -62,7 +62,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* In the middle, unless there is more than fits: then from the top, so its heading can be scrolled to. */
+  justify-content: safe center;
   gap: 0.5rem;
   padding: 1.5rem;
   text-align: center;
@@ -376,4 +377,44 @@
   .pad-top {
     top: calc(min(75vw, 60vh) + 0.75rem);
   }
+}
+
+/* A game on the wifi: a code to show, and a code to read. */
+.qr {
+  width: min(100%, 15rem);
+  height: auto;
+  border-radius: 0.6rem;
+  background: #fff;
+}
+
+.nearby-code,
+.nearby-read {
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  width: min(100%, 26rem);
+}
+
+.qr-scan {
+  width: min(100%, 15rem);
+}
+
+.qr-scan:empty {
+  display: none;
+}
+
+.qr-scan video {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 0.6rem;
+  background: #000;
+}
+
+.nearby-status {
+  color: var(--gold);
+}
+
+.nearby-status:empty {
+  display: none;
 }
