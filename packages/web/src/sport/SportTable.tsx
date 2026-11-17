@@ -92,6 +92,14 @@ const GONE_MS = 200;
 /** The body a view lets you strike, where it lies. */
 const strikable = (v: SportView) => (v.shoot ? (v.table.world.bodies.find((b) => b.id === v.shoot!.body) ?? null) : null);
 
+/** How far there is behind a ball (the way a cue lies) before the edge of what is drawn: world units. */
+export function roomBehind(frame: { x: number; y: number; w: number; h: number }, from: { x: number; y: number }, angle: number): number {
+  const ux = -Math.cos((angle * Math.PI) / 18000);
+  const uy = -Math.sin((angle * Math.PI) / 18000);
+  const along = (p: number, u: number, lo: number, hi: number) => (u > 1e-9 ? (hi - p) / u : u < -1e-9 ? (lo - p) / u : Infinity);
+  return Math.max(0, Math.min(along(from.x, ux, frame.x, frame.x + frame.w), along(from.y, uy, frame.y, frame.y + frame.h)));
+}
+
 /** The nearest pocket to a point: what "straight at the cup" means. */
 function nearestPocket(v: SportView, from: { x: number; y: number }) {
   let best: { x: number; y: number } | null = null;
@@ -264,7 +272,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
     if (canShootRef.current && ball && v.shoot && !throwing) {
       const a = aimRef.current;
       const from = pool && v.shoot.place ? { x: a.at ?? ball.x, y: v.shoot.place.y } : ball;
-      aiming = { x: from.x, y: from.y, r: ball.r, angle: (a.angle * Math.PI) / 18000, power: a.power / 1000, pulling: !!pull.current, cancel: !!pull.current?.cancel, ...(v.game === "billiards" ? { tool: "cue" as const } : v.game === "minigolf" ? { tool: "putter" as const } : {}) };
+      aiming = { x: from.x, y: from.y, r: ball.r, angle: (a.angle * Math.PI) / 18000, power: a.power / 1000, pulling: !!pull.current, cancel: !!pull.current?.cancel, room: roomBehind(table.look.frame, from, a.angle), ...(v.game === "billiards" ? { tool: "cue" as const } : v.game === "minigolf" ? { tool: "putter" as const } : {}) };
     }
     const shownGuide = canShootRef.current && throwing ? guide.current : null;
     const scene = { table, discs, aim: aiming, trace: r?.jump && r.rested !== null ? r.trace : shownGuide, trails: r ? [...r.trails.values()] : [], effects, time: now, still: reducedMotion(), hurry: !!r || !!pull.current || slides.current.size > 0 };
@@ -296,7 +304,9 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
       if (r) {
         // Catching up on shots that arrived while this one rolled: play faster the further behind.
         const behind = waiting.current.filter((v) => v.last && v.last.n > r.record.n).length;
-        const speed = (paceRef.current === "fast" ? 1.5 : 1) * (behind >= 3 ? 4 : behind >= 1 ? 2 : 1) * slow.current;
+        // A long roll (a soft break dribbling to a stop) picks up speed after a few seconds; a replay doesn't.
+        const late = slow.current === 1 ? (r.clock > 6000 ? 3 : r.clock > 3000 ? 1.8 : 1) : 1;
+        const speed = (paceRef.current === "fast" ? 1.5 : 1) * (behind >= 3 ? 4 : behind >= 1 ? 2 : 1) * slow.current * late;
         hear(advanceRoll(r, ms, speed));
         if (r.over) settle();
       }
