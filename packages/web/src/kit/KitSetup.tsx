@@ -53,6 +53,8 @@ interface Props {
   onEditCourse?: (id: string) => void;
   /** Bowling: open the lane editor, at a lane or "new". */
   onEditLane?: (id: string) => void;
+  /** Draw & Guess on your own: the sketchbook. */
+  onSketch?: () => void;
 }
 
 export function KitSetup({
@@ -64,6 +66,7 @@ export function KitSetup({
   onOpenHouse,
   onEditCourse,
   onEditLane,
+  onSketch,
 }: Props) {
   const game = kitGame(id)!;
   // A solitaire: no name to give, nobody to find, no computer players to tune. Rules, then Deal.
@@ -265,7 +268,14 @@ export function KitSetup({
         <>
           {game.practice === false ? (
             // A game that needs people (Draw & Guess): computer players can only keep it moving.
-            <p className="fine">This one needs people: computer players can't draw. Start a family table{online ? "" : ", or play on this wifi"}.</p>
+            <>
+              <p className="fine">This one needs people: computer players can't draw. Start a family table{online ? "" : ", or play on this wifi"}.</p>
+              {onSketch && (
+                <button type="button" className="secondary" onClick={onSketch}>
+                  🎨 Draw for fun, on your own
+                </button>
+              )}
+            </>
           ) : (
             <button
               type="button"
