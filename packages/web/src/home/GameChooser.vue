@@ -284,7 +284,7 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
                 <i v-for="n in 9" :key="n" :class="{ pip: PIPS[face]?.includes(n - 1) }" />
               </span>
             </span>
-            <span v-else-if="g.board" class="mini-board" :class="g.board.shade ? `shade-${g.board.shade}` : ''" aria-hidden="true" :style="{ '--cols': g.board.cols }">
+            <span v-else-if="g.board" class="mini-board" :class="g.board.shade ? `shade-${g.board.shade}` : ''" aria-hidden="true" :style="{ '--cols': g.board.cols, '--rows': Math.ceil(g.board.cells.length / g.board.cols) }">
               <span v-for="(c, i) in g.board.cells" :key="i" class="mini-cell" :class="c ? [`tone-${c.tone}`, c.shade ? `shade-${c.shade}` : ''] : ''">{{ c?.glyph }}</span>
             </span>
             <span v-else-if="g.table" class="mini-table" :class="`surface-${g.table.surface}`" aria-hidden="true">
@@ -455,8 +455,9 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .mini-board.shade-wood .mini-cell.tone-light { text-shadow: 0 0 1px #1d1a16, 0 1px 1px rgba(0, 0, 0, 0.5); }
 /* A board of points (Backgammon): long triangles from both edges, and no lines between the cells. */
 /* A word game: letter tiles, green in place, gold elsewhere, grey not in the word. */
-.mini-board.shade-words { width: calc(var(--tile-card) * 2.5); gap: 3px; rotate: -4deg; background: none; box-shadow: none; border-radius: 0; overflow: visible; aspect-ratio: 5 / 2; grid-template-rows: none; grid-auto-rows: auto; aspect-ratio: auto; }
-.mini-board.shade-words .mini-cell { aspect-ratio: 1; border-radius: 4px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); font-size: calc(var(--tile-card) * 1.5 / var(--cols) * 0.55); font-weight: 800; color: #1d1a16; background: #fbf6ec; }
+/* Letter tiles. A tile is as big as fits: across for a row or two of letters, and down for a square of them (Word Hunt, Criss-Crosswords), so the picture is never taller than a board and stays clear of the name under it. */
+.mini-board.shade-words { --cell: min(calc((var(--tile-card) * 2.5 - 3px * (var(--cols) - 1)) / var(--cols)), calc((var(--tile-card) * 1.5 - 3px * (var(--rows) - 1)) / var(--rows))); width: calc(var(--cell) * var(--cols) + 3px * (var(--cols) - 1)); gap: 3px; rotate: -4deg; background: none; box-shadow: none; border-radius: 0; overflow: visible; aspect-ratio: 5 / 2; grid-template-rows: none; grid-auto-rows: auto; aspect-ratio: auto; }
+.mini-board.shade-words .mini-cell { aspect-ratio: 1; border-radius: 4px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); font-size: calc(var(--cell) * 0.55); font-weight: 800; color: #1d1a16; background: #fbf6ec; }
 .mini-board.shade-words .mini-cell.tone-hit { background: #3f9a52; color: #fff; }
 .mini-board.shade-words .mini-cell.tone-near { background: #d2a52a; color: #241a00; }
 .mini-board.shade-words .mini-cell.tone-miss { background: #5b5650; color: #f1ece4; }

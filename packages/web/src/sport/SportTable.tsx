@@ -856,7 +856,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
               📋
             </button>
           )}
-          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} sport />}
+          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} sport cards={false} />}
           <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>
       </header>

@@ -32,7 +32,7 @@ import { KitRulesFields, KitRulesSheet } from "./KitRules";
 import { CoursePicker, onCourse } from "../golf/CoursePicker";
 import { LanePicker, onLane } from "../golf/LanePicker";
 import { passesDevice, personName, sharesDevice } from "./sameDevice";
-import { categoryOf } from "../categories";
+import { categoryOf, usesCards } from "../categories";
 import { loadRecord, recordLine } from "../record";
 
 type Rules = { id: string; name: string } & Record<string, unknown>;
@@ -227,7 +227,7 @@ export function KitSetup({
           )}
         </>
       }
-      table={<OpponentSettings solo={solo} cards={categoryOf(id) === "cards"} />}
+      table={<OpponentSettings solo={solo} cards={usesCards(id)} />}
       about={
         <>
           <KitRulesSheet game={game} rules={rules} />
@@ -295,7 +295,7 @@ export function KitSetup({
                 onPractice(name.trim() || "You", rules, tableSeats, people > 1 ? Array.from({ length: people - 1 }, (_, i) => personName(others[i], i + 1)) : undefined);
               }}
             >
-              {solo ? "Deal" : people > 1 ? "Play together on this device" : "Practice against the computer"}
+              {solo ? (usesCards(id) ? "Deal" : "Play") : people > 1 ? "Play together on this device" : "Practice against the computer"}
             </button>
           )}
           {record.played > 0 && <p className="record-line">Your record: {recordLine(record)}</p>}

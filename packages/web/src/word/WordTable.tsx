@@ -284,7 +284,7 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
         </div>
         <span className="bar-buttons">
           {onHelp && <HowToButton onClick={onHelp} />}
-          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} />}
+          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} cards={false} />}
           <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>
       </header>
