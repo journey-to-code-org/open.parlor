@@ -7,9 +7,21 @@ import { BoardTable } from "../board/BoardTable";
 import { SportTable } from "../sport/SportTable";
 import { WordTable } from "../word/WordTable";
 import { KitTable, type KitTableProps } from "./KitTable";
+import { HowToPlay, useHowToPlay } from "../HowToPlay";
 
-export function GameTable({ view, ...rest }: Omit<KitTableProps, "view"> & { view: KitView | BoardView | SportView | WordView }) {
-  if (isSportGame(view.game)) return <SportTable view={view as SportView} {...rest} />;
-  if (isWordGame(view.game)) return <WordTable view={view as WordView} {...rest} />;
-  return isBoardGame(view.game) ? <BoardTable view={view as BoardView} {...rest} /> : <KitTable view={view as KitView} {...rest} />;
+/**
+ * `rules`: what this table is played by, where it is known (practice and same-device tables), so
+ * how to play can say them; elsewhere it gives the game's usual rules.
+ */
+export function GameTable({ view, rules, ...rest }: Omit<KitTableProps, "view" | "onHelp"> & { view: KitView | BoardView | SportView | WordView; rules?: unknown }) {
+  // The first game of each kind on this device opens how to play; the "?" opens it again.
+  const help = useHowToPlay(view.game, rest.watching);
+  const props = { ...rest, onHelp: help.show };
+  const table = isSportGame(view.game) ? <SportTable view={view as SportView} {...props} /> : isWordGame(view.game) ? <WordTable view={view as WordView} {...props} /> : isBoardGame(view.game) ? <BoardTable view={view as BoardView} {...props} /> : <KitTable view={view as KitView} {...props} />;
+  return (
+    <>
+      {table}
+      {help.open && <HowToPlay game={view.game} rules={rules} onClose={help.close} />}
+    </>
+  );
 }

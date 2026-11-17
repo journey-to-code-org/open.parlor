@@ -14,6 +14,7 @@
 //
 // A typed word can't be checked here (that needs the word list, which is the engine's): anything of
 // the right shape is sent, and a refusal comes back in words.
+import { HowToButton } from "../HowToPlay";
 import { kitGame, type Choice, type PlacedTile, type WordBoard, type WordStroke, type WordTile, type WordTone, type WordView } from "@journey-to-code/games";
 import { type TableSettings } from "@journey-to-code/rules";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -26,6 +27,8 @@ import { TableSettingsButton } from "../TableSettings";
 import { Canvas, PlaceBoard, TraceGrid } from "./WordPieces";
 
 export interface WordTableProps {
+  /** Open how to play (HowToPlay.tsx): the "?" in the top bar. */
+  onHelp?: () => void;
   view: WordView;
   names: string[];
   /** Resolves to an error message when the move is refused. */
@@ -52,7 +55,7 @@ const missesLeft = (info: string[]) => {
   return null;
 };
 
-export function WordTable({ view, names, act, onLeave, banner, chat, settings, watching, together }: WordTableProps) {
+export function WordTable({ view, names, act, onLeave, banner, chat, settings, watching, together, onHelp}: WordTableProps) {
   const game = kitGame(view.game)!;
   const me = view.me;
   const [typed, setTyped] = useState("");
@@ -275,6 +278,7 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
           ))}
         </div>
         <span className="bar-buttons">
+          {onHelp && <HowToButton onClick={onHelp} />}
           {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} />}
           <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>

@@ -23,6 +23,7 @@
 // crossings are closer together than a finger is wide, so there a stone takes two taps: the first
 // shows it (and it can be nudged with the arrows under the board), the second, or "Play", puts it
 // down. When that happens is this device's choice (⚙︎: see `Placing` in display.ts).
+import { HowToButton } from "../HowToPlay";
 import { cellName, cellsAfter, colOf, kitGame, rowOf, type BoardGrid, type BoardPiece, type BoardReserve, type BoardView, type Choice } from "@journey-to-code/games";
 import { type TableSettings } from "@journey-to-code/rules";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -45,6 +46,8 @@ import { isPointsTrack, Track } from "./Track";
 import { SoundButton } from "../SoundButton";
 
 export interface BoardTableProps {
+  /** Open how to play (HowToPlay.tsx): the "?" in the top bar. */
+  onHelp?: () => void;
   view: BoardView;
   names: string[];
   /** Resolves to an error message when the move is refused. */
@@ -101,7 +104,7 @@ interface Asking {
   options: BoardPiece[];
 }
 
-export function BoardTable({ view, names, act, onLeave, banner, watching, together, chat, settings }: BoardTableProps) {
+export function BoardTable({ view, names, act, onLeave, banner, watching, together, chat, settings, onHelp}: BoardTableProps) {
   const game = kitGame(view.game)!;
   const me = view.me;
   const [error, setError] = useState<string | null>(null);
@@ -425,6 +428,7 @@ export function BoardTable({ view, names, act, onLeave, banner, watching, togeth
           ))}
         </div>
         <span className="bar-buttons">
+          {onHelp && <HowToButton onClick={onHelp} />}
           {/* Resign, offer a draw, ask to take a move back: whatever the view says this seat may do. */}
           {view.offers && !watching && <OffersMenu can={view.offers.can} onSend={(move) => void send(move, true)} />}
           {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} stones={stones} depth={hasBoard3d(view.game) || view.grids.some(isPointsTrack)} />}
