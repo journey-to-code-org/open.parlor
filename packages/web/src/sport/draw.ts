@@ -56,6 +56,8 @@ export interface Aim {
   pulling: boolean;
   /** The pull is inside the cancel zone: letting go does nothing. */
   cancel: boolean;
+  /** What strikes it, drawn behind the ball the whole time it is aimed: a pool cue or a putter. */
+  tool?: "cue" | "putter";
 }
 
 /** Something brief that happened at a place: `t` runs from 0 to 1 over its life. */
@@ -161,7 +163,9 @@ function drawAim(b: Brush, a: Aim) {
   ctx.fillStyle = a.pulling && !a.cancel ? colour : "#ffffff";
   ctx.fill();
 
-  if (a.pulling) {
+  if (a.tool) {
+    drawTool(b, a, ux, uy, r);
+  } else if (a.pulling) {
     // The pull itself: a putter drawn back from the ball, further and redder the harder the putt.
     const back = r + (8 + 62 * a.power) * px;
     const hx = a.x - ux * back;
@@ -200,6 +204,132 @@ function drawAim(b: Brush, a: Aim) {
     ctx.restore();
   }
   ctx.restore();
+}
+
+/**
+ * The cue or the putter, lying behind the ball along the aim. At rest it waits a little way back;
+ * pulled, it draws back with the power (the power itself is on the gauge beside the table). Sizes are
+ * the real thing's in world units (a cue is 1.47 m), kept from going thinner than a few pixels.
+ */
+function drawTool(b: Brush, a: Aim, ux: number, uy: number, r: number) {
+  const { ctx, px } = b;
+  const pulled = a.pulling && !a.cancel ? a.power : 0;
+  const reach = a.tool === "cue" ? 1400 : 1000;
+  const gap = r * 0.35 + 3 * px + pulled * Math.max(reach, 70 * px);
+  const nx = -uy;
+  const ny = ux;
+  const at = (along: number, across = 0): [number, number] => [a.x - ux * (r + along) + nx * across, a.y - uy * (r + along) + ny * across];
+  const [sx, sy] = [b.light[0] * 5 * px, b.light[1] * 5 * px];
+  if (a.tool === "cue") {
+    const length = 14700;
+    const tip = Math.max(65, 2.2 * px);
+    const butt = Math.max(150, 5 * px);
+    /** The outline of the stick from `from` to `to` along it, tapering with the whole cue. */
+    const piece = (from: number, to: number) => {
+      const w = (d: number) => tip + ((butt - tip) * d) / length;
+      const pts = [at(gap + from, w(from)), at(gap + to, w(to)), at(gap + to, -w(to)), at(gap + from, -w(from))];
+      ctx.beginPath();
+      pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.closePath();
+    };
+    // Its shadow on the cloth, then the stick from the butt forward.
+    ctx.save();
+    ctx.translate(sx, sy);
+    piece(0, length);
+    ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
+    ctx.fill();
+    ctx.restore();
+    const parts: [number, number, string][] = [
+      [length * 0.97, length, "#1c1410"], // the bumper
+      [length * 0.62, length * 0.97, "#4a2614"], // the butt
+      [length * 0.46, length * 0.62, "#20201f"], // the wrap
+      [length * 0.43, length * 0.46, "#c9a227"], // a ring at the joint
+      [length * 0.015, length * 0.43, "#e8cf9c"], // the maple shaft
+      [length * 0.005, length * 0.015, "#f4f1e8"], // the ferrule
+      [0, length * 0.005, "#3d78c9"], // chalk on the tip
+    ];
+    for (const [from, to, fill] of parts) {
+      piece(from, to);
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    // A long highlight down the near side, so it reads as round.
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+    ctx.lineWidth = Math.max(18, 0.8 * px);
+    ctx.beginPath();
+    ctx.moveTo(...at(gap + length * 0.02, -tip * 0.35));
+    ctx.lineTo(...at(gap + length * 0.95, -butt * 0.35));
+    ctx.stroke();
+    piece(0, length);
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.55)";
+    ctx.lineWidth = Math.max(10, 0.7 * px);
+    ctx.stroke();
+    return;
+  }
+  // The putter: a blade across the line behind the ball, and its shaft running back and up to the
+  // grip, off to the side where the player stands.
+  const blade = Math.max(950, 26 * px);
+  const deep = Math.max(260, 7 * px);
+  const shaft = Math.max(3400, 95 * px);
+  const lean = 0.42;
+  const heel = at(gap + deep * 0.5, -blade * 0.32);
+  const grip: [number, number] = [heel[0] - (ux * Math.cos(lean) + nx * Math.sin(lean)) * shaft, heel[1] - (uy * Math.cos(lean) + ny * Math.sin(lean)) * shaft];
+  const along = (t: number): [number, number] => [heel[0] + (grip[0] - heel[0]) * t, heel[1] + (grip[1] - heel[1]) * t];
+  const head = () => {
+    ctx.save();
+    const [cx, cy] = at(gap + deep / 2);
+    ctx.translate(cx, cy);
+    ctx.rotate(a.angle);
+    ctx.beginPath();
+    ctx.roundRect(-deep / 2, -blade / 2, deep, blade, deep * 0.45);
+    ctx.restore();
+  };
+  ctx.lineCap = "round";
+  // Shadows first: the shaft's and the head's.
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.3)";
+  ctx.lineWidth = Math.max(70, 2.6 * px);
+  ctx.beginPath();
+  ctx.moveTo(...heel);
+  ctx.lineTo(...grip);
+  ctx.stroke();
+  head();
+  ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
+  ctx.fill();
+  ctx.restore();
+  // The shaft: steel, then a black rubber grip.
+  for (const [w, style, from, to] of [
+    [Math.max(80, 3 * px), "rgba(0, 0, 0, 0.6)", 0, 1],
+    [Math.max(70, 2.2 * px), "#d9dde0", 0, 0.7],
+    [Math.max(140, 4.6 * px), "rgba(0, 0, 0, 0.7)", 0.7, 1],
+    [Math.max(110, 3.6 * px), "#2b2b2e", 0.7, 1],
+  ] as const) {
+    ctx.strokeStyle = style;
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.moveTo(...along(from));
+    ctx.lineTo(...along(to));
+    ctx.stroke();
+  }
+  // The head: brushed steel with a white sight line pointing where the ball will go.
+  head();
+  const [hx, hy] = at(gap + deep / 2);
+  const metal = ctx.createLinearGradient(hx + nx * blade * 0.5, hy + ny * blade * 0.5, hx - nx * blade * 0.5, hy - ny * blade * 0.5);
+  metal.addColorStop(0, "#8e959b");
+  metal.addColorStop(0.45, "#eef1f3");
+  metal.addColorStop(1, "#9aa1a7");
+  ctx.fillStyle = metal;
+  ctx.fill();
+  ctx.lineWidth = Math.max(16, 0.9 * px);
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.7)";
+  ctx.stroke();
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = Math.max(30, 1.2 * px);
+  ctx.beginPath();
+  ctx.moveTo(...at(gap + deep * 0.15));
+  ctx.lineTo(...at(gap + deep * 0.85));
+  ctx.stroke();
 }
 
 function drawEffect(b: Brush, e: Effect) {
