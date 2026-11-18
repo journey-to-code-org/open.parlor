@@ -49,6 +49,8 @@ const cardRoom = createCardRoom({
   botDelay: botDelay ? Number(botDelay) : undefined,
   // Moderation (the admin app) is on when the server has an admin token.
   adminToken: setting("ADMIN_TOKEN"),
+  // ...or its host signs in with GitHub: an OAuth app (no scopes) and the logins that may (see github-login.ts).
+  github: { clientId: setting("GITHUB_CLIENT_ID"), clientSecret: setting("GITHUB_CLIENT_SECRET"), allow: (setting("ADMIN_GITHUB") ?? "").split(",").map((l) => l.trim()).filter(Boolean), signingKey: setting("SESSION_SECRET") },
   backups,
   // Push notifications are on when the server has VAPID keys (`npx web-push generate-vapid-keys`).
   push: {
@@ -69,7 +71,7 @@ const cardRoom = createCardRoom({
 });
 if (!setting("SECRET")) console.log("houses' AI keys are stored unsealed: set CARDROOM_SECRET to encrypt them");
 if (db && !backups) console.log("backups are off (CARDROOM_BACKUPS=off): nothing copies the database");
-if (!cardRoom.moderation.enabled) console.log("moderation is off: set CARDROOM_ADMIN_TOKEN to turn on the admin app at /admin/");
+if (!cardRoom.moderation.enabled) console.log("moderation is off: set CARDROOM_ADMIN_TOKEN (or CARDROOM_GITHUB_CLIENT_ID, CARDROOM_GITHUB_CLIENT_SECRET and CARDROOM_ADMIN_GITHUB) to turn on the admin app at /admin/");
 if (!cardRoom.bugs.enabled) console.log("players can't report problems: set CARDROOM_GITHUB_TOKEN (a token that may open issues) to turn that on");
 if (!cardRoom.push.enabled) console.log("push notifications are off: set CARDROOM_VAPID_PUBLIC_KEY and CARDROOM_VAPID_PRIVATE_KEY to turn them on");
 

@@ -14,6 +14,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { playerOf, type ChatMessage, type RoomDoc } from "@journey-to-code/rooms/server";
 import type { Catalogue } from "./catalogue.js";
 import type { Tunables } from "./tunables.js";
+import type { GithubLogin } from "./github-login.js";
 import type { Backups } from "./backup.js";
 import type { Courses } from "./courses.js";
 import type { Designs } from "./designs.js";
@@ -72,7 +73,7 @@ const finished = (summary: unknown) => {
 /** How many wrong tokens a minute before everyone waits. */
 const WRONG_TOKENS_PER_MINUTE = 20;
 
-export function createModeration(rooms: Rooms, designs: Designs, { token, houses, catalogue, tunables, backups, bots, courses, mount = "/moderation", now = () => Date.now() }: { token?: string; houses?: Houses; catalogue?: Catalogue; /** The numbers a game lets its host change (see tunables.ts). */ tunables?: Tunables; /** Mini Golf courses people make, to take out of the gallery. */ courses?: Courses; /** Copies of the database, when the parlor keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
+export function createModeration(rooms: Rooms, designs: Designs, { token, github, houses, catalogue, tunables, backups, bots, courses, mount = "/moderation", now = () => Date.now() }: { token?: string; /** Who may sign in with GitHub instead of the token (see github-login.ts). */ github?: Pick<GithubLogin, "enabled" | "valid">; houses?: Houses; catalogue?: Catalogue; /** The numbers a game lets its host change (see tunables.ts). */ tunables?: Tunables; /** Mini Golf courses people make, to take out of the gallery. */ courses?: Courses; /** Copies of the database, when the parlor keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
   const secret = token?.trim() ? digest(token.trim()) : null;
   const docs = rooms.sync.documents();
   let wrong: number[] = [];
@@ -150,12 +151,12 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
   const personShown = ({ player: _secret, ...p }: Person) => ({ ...p, name: p.names[0] ?? p.ban?.name ?? "Unnamed player", seated: p.tables.filter((t) => t.status === "open" || t.status === "playing").length });
 
   function allowed(request: Request): Response | null {
-    if (!secret) return json({ error: "Moderation is off. Set CARDROOM_ADMIN_TOKEN on the server to turn it on." }, 503);
+    if (!secret && !github?.enabled) return json({ error: "Moderation is off. Set CARDROOM_ADMIN_TOKEN on the server to turn it on." }, 503);
     const at = now();
     wrong = wrong.filter((t) => at - t < 60_000);
     if (wrong.length >= WRONG_TOKENS_PER_MINUTE) return json({ error: "Too many wrong tokens. Wait a minute." }, 429);
     const given = request.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
-    if (given && timingSafeEqual(digest(given), secret)) return null;
+    if (given && ((secret && timingSafeEqual(digest(given), secret)) || github?.valid(given))) return null;
     wrong.push(at);
     return json({ error: given ? "That isn't this parlor's admin token." : "Sign in with the admin token." }, 401);
   }
@@ -415,7 +416,7 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
 
   return {
     /** Whether the server has an admin token. */
-    enabled: secret !== null,
+    enabled: secret !== null || github?.enabled === true,
     /** Whether this request comes from a blocked player. */
     async blocked(request: Request): Promise<boolean> {
       const player = playerOf(request);
