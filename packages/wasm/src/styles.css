@@ -1,0 +1,242 @@
+:root {
+  color-scheme: dark;
+  --ink: #e9e4d8;
+  --dim: #9a968c;
+  --gold: #e6b84a;
+  --ground: #0b0d0c;
+  font: 16px/1.45 system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  overscroll-behavior: none;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: var(--gold);
+  text-underline-offset: 3px;
+}
+
+/* The game fills what the footer leaves. */
+.shooter {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* Nothing in here is text to select, and a held thumb shouldn't scroll or zoom the page. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+}
+
+.shooter-screen {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* The size the picture is fitted to. */
+  container-type: size;
+}
+
+/* 320 by 200 pixels, shown at 4:3 as the game was drawn to be, as large as fits, pixels kept square-edged. */
+.shooter-canvas {
+  width: min(100cqw, 100cqh * 4 / 3);
+  height: min(100cqh, 100cqw * 3 / 4);
+  image-rendering: pixelated;
+  background: #000;
+}
+
+/* The screens around the game: start, download, the end. */
+.shooter-card {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.5rem;
+  text-align: center;
+  background: rgb(11 13 12 / 0.92);
+}
+
+.shooter-card[hidden],
+.pad[hidden],
+.pad-ring[hidden] {
+  display: none;
+}
+
+.shooter-card h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  letter-spacing: 0.02em;
+}
+
+.shooter-card p {
+  margin: 0;
+  max-width: 34rem;
+  color: var(--dim);
+  white-space: pre-line;
+}
+
+.shooter-go {
+  margin-top: 1rem;
+  padding: 0.8rem 2.4rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: var(--gold);
+  color: #1b1503;
+  font: inherit;
+  font-weight: 700;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.shooter-go:focus-visible,
+.about a:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+/* Touch controls, over the whole game area. */
+.pad {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.pad-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+}
+
+.pad-move {
+  left: 0;
+}
+
+.pad-look {
+  right: 0;
+}
+
+.pad-ring {
+  position: absolute;
+  width: 112px;
+  height: 112px;
+  margin: -56px 0 0 -56px;
+  border: 2px solid rgb(255 255 255 / 0.35);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.pad-knob {
+  position: absolute;
+  inset: 28px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.4);
+}
+
+.pad-button {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgb(255 255 255 / 0.4);
+  border-radius: 50%;
+  background: rgb(20 20 20 / 0.35);
+  color: rgb(255 255 255 / 0.85);
+  font: inherit;
+  font-weight: 700;
+  touch-action: none;
+}
+
+.pad-held {
+  background: rgb(230 184 74 / 0.55);
+}
+
+.pad-fire {
+  right: max(1.25rem, env(safe-area-inset-right));
+  bottom: max(1.5rem, env(safe-area-inset-bottom));
+  width: 5.5rem;
+  height: 5.5rem;
+}
+
+.pad-use {
+  right: calc(max(1.25rem, env(safe-area-inset-right)) + 6.25rem);
+  bottom: max(1.5rem, env(safe-area-inset-bottom));
+  width: 4rem;
+  height: 4rem;
+  font-size: 0.9rem;
+}
+
+.pad-top {
+  position: absolute;
+  top: max(0.5rem, env(safe-area-inset-top));
+  right: max(0.75rem, env(safe-area-inset-right));
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pad-small {
+  position: static;
+  min-width: 3rem;
+  height: 2.75rem;
+  padding: 0 0.7rem;
+  border-radius: 1.4rem;
+  font-size: 0.85rem;
+}
+
+.pad-prev,
+.pad-next {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.about {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  justify-content: space-between;
+  padding: 0.5rem max(0.9rem, env(safe-area-inset-left));
+  color: var(--dim);
+  font-size: 0.8rem;
+}
+
+/* A phone held upright: the picture at the top, the buttons under it, thumbs below. */
+@media (orientation: portrait) {
+  .shooter-screen {
+    align-items: flex-start;
+  }
+
+  .pad-top {
+    top: calc(min(75vw, 60vh) + 0.75rem);
+  }
+}
+
+/* A phone on its side has no height to spare for the footer. */
+@media (max-height: 480px) {
+  .about {
+    display: none;
+  }
+}
+
+.pad-button[hidden] {
+  display: none;
+}

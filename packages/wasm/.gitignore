@@ -1,0 +1,5 @@
+# The C toolchain's library and the compiled objects (scripts/build-engine.mjs).
+.toolchain/
+.build/
+# The game's data, fetched by scripts/fetch-data.mjs.
+public/data/
