@@ -54,7 +54,7 @@ const REPO = "https://github.com/journey-to-code-org";
 const PAGES = [
   { id: "element", name: "No framework", does: "The components as plain custom elements, driven by the DOM. The baseline the others are measured against." },
   { id: "react", name: "React", does: "In the parlor: every game table, the setup screens, houses and tournaments." },
-  { id: "vue", name: "Vue", does: "In the parlor: the front page, where you choose a game, and Read the Room's answer form." },
+  { id: "vue", name: "Vue", does: "In the parlor: the front page, where you choose a game, the open tables, and Read the Room's answer form." },
   { id: "svelte", name: "Svelte", does: "In the parlor: the card designer, and the Mini Golf course and bowling lane editors, inside the React app." },
   { id: "solid", name: "Solid", does: "In the parlor: the page for watching a game, Read the Room's board, Delbie's Stockroom's screen, the screens for hosting and joining a table on the same wifi, the arcade's pause and game-over sheets, and the sheets over Delbie's Daycare & Geriatrics." },
   { id: "angular", name: "Angular", does: "In the parlor: the admin app, with Angular's router (a page per part, loaded when opened) and reactive forms over the components." },
