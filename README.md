@@ -125,7 +125,7 @@ connection to come back.
 A game with nothing hidden can also be **shared on one device**: on its setup screen, *On this
 device* seats two or more of you (computer players take any seats left), and the screen turns to
 whoever's move it is. That is Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon,
-Yacht, Pig, Ten Thousand, Ship, Captain, Crew, Shut the Box, Memory, Hangman, Mini Golf, Bowling, Billiards and Carrom. A game with a hand to hide (every
+Yacht, Pig, Ten Thousand, Ship, Captain, Crew, Shut the Box, Memory, Hangman, Mini Golf, Bowling, Billiards, Carrom, Shuffleboard, Crokinole and Flick Football. A game with a hand to hide (every
 turn-based card game, Combat, Liar's Dice, Criss-Crosswords, Secret Word, Anagrams) is **passed round** instead:
 between people the screen is covered ("Pass to Grammi") until the next person taps. Games played at
 once (Speed, Slapjack, War, Word Hunt, the Mahjongs) can't be shared on one device.
