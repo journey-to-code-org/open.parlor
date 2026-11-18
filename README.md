@@ -458,7 +458,7 @@ The game engine and the rooms live in their own repositories and come in from np
 | [`packages/courses`](packages/courses) | Mini Golf courses and bowling lanes people make: painted on a grid, checked, and turned into a hole or a lane the game plays |
 | [`packages/watch`](packages/watch) | The watch page (Solid): the tables playing now, and tables of computer players to learn from |
 | [`packages/wasm`](packages/wasm) | Games compiled to WebAssembly, at `/wasm/`. The first is Delbie's Doomsday, a shooter on the open-source Doom engine with twelve levels of its own laid over Freedoom, alone or up to four together with others watching; the server only passes the players' commands along. Where there is no server, one device hosts for the others on the same wifi. With an editor (Svelte) that swaps the game's pictures and sounds for your own and changes its levels: what is placed in them, and their walls and rooms, rebuilt by a node builder that is also compiled to WebAssembly. Its engine is GPL-2.0: see the package's README |
-| [`packages/admin`](packages/admin) | The admin app (Angular): the host moderates tables, players, shared designs and shared golf courses |
+| [`packages/admin`](packages/admin) | The admin app (Angular): the host moderates tables, players, shared designs and shared golf courses. A page per part at its own address (`/admin/tables/<id>`, `/admin/tables?show=open`), loaded when opened; reactive forms over the Zubra fields and switches |
 | [`packages/conformance`](packages/conformance) | One fixture of the components in every framework, and one set of browser tests run against them all |
 | [`packages/ui`](packages/ui) | Components in Zubra: our own (cards, seats), the ones copied from zubra-ui, and the `<card-room>` embed |
 

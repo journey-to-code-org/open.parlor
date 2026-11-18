@@ -113,8 +113,9 @@ test("a game switched off and moved, then put back", async ({ page }, info) => {
   await section(page, "Games");
   const rows = page.locator("ol.games > li");
   await expect(rows.first()).toBeVisible();
-  // Each browser a different game, near the end of the list: the games page's tests read the top.
-  const at = (await rows.count()) - 2 - ["chrome", "firefox", "webkit"].indexOf(info.project.name) * 2;
+  // Each browser its own games, near the end of the list (the games page's tests read the top):
+  // three places each, this test's two and the next one's.
+  const at = (await rows.count()) - 2 - ["chrome", "firefox", "webkit"].indexOf(info.project.name) * 3;
   const labelAt = (i: number) => rows.nth(i).locator("toggle-switch").evaluate((el) => (el as HTMLElement & { label: string }).label);
   const name = await labelAt(at);
   const game = rows.nth(at).getByRole("switch");
@@ -135,4 +136,117 @@ test("a game switched off and moved, then put back", async ({ page }, info) => {
   await rows.nth(at).getByRole("switch").click();
   await expect(rows.nth(at).getByRole("switch")).toHaveAttribute("aria-checked", "true");
   await expect(rows.nth(at)).not.toHaveClass(/\boff\b/);
+});
+
+// Each part of the admin app is a page with an address (Angular's router), and its forms are
+// Angular's reactive forms over Zubra's fields, switches and segmented control.
+test.describe("pages and forms", () => {
+  test("an address asked for before signing in is where signing in goes", async ({ page }) => {
+    await page.goto("/admin/players");
+    await expect(page).toHaveURL(/\/admin\/sign-in\?next=%2Fplayers$/);
+    await page.getByLabel("Admin token").fill(TOKEN);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL(/\/admin\/players$/);
+    await expect(page.getByRole("tab", { name: "Players", exact: true })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("table", { name: "Players" })).toBeVisible();
+    await expect(page).toHaveTitle("Players · open.parlor admin");
+    // Signed in, the door sends you in.
+    await page.goto("/admin/sign-in");
+    await expect(page).toHaveURL(/\/admin\/overview$/);
+  });
+
+  test("a tab is an address, and Back goes to the tab before", async ({ page }) => {
+    await signIn(page);
+    await expect(page).toHaveURL(/\/admin\/overview$/);
+    await section(page, "Houses");
+    await expect(page).toHaveURL(/\/admin\/houses$/);
+    await section(page, "Activity");
+    await expect(page).toHaveURL(/\/admin\/activity$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/admin\/houses$/);
+    await expect(page.getByRole("tab", { name: "Houses", exact: true })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel")).toBeVisible();
+    await page.goBack();
+    await expect(page.getByRole("tab", { name: "Overview", exact: true })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByText("Playing now")).toBeVisible();
+    // An address that isn't a page is the overview.
+    await page.goto("/admin/nowhere");
+    await expect(page).toHaveURL(/\/admin\/overview$/);
+  });
+
+  test("a table has its own address, and the list's filter is in the address too", async ({ page }) => {
+    const t = tag();
+    const { id, names } = await table(t);
+    await signIn(page);
+    await page.goto(`/admin/tables/${id}`);
+    const one = page.getByRole("dialog", { name: `Palace table ${id}` });
+    await expect(one).toContainText(names[0]!);
+    await one.getByRole("button", { name: "Done" }).click();
+    await expect(page).toHaveURL(/\/admin\/tables$/);
+    await expect(page.locator("dialog[open]")).toHaveCount(0);
+    await page.goto("/admin/tables/no-such-table");
+    await expect(page.getByText("Couldn't find that table")).toBeVisible();
+
+    await page.goto("/admin/tables");
+    const shows = page.getByRole("group", { name: "Show tables" });
+    await shows.getByRole("button", { name: "Waiting" }).click();
+    await expect(page).toHaveURL(/\/admin\/tables\?show=open$/);
+    await expect(page.getByRole("table", { name: "Tables" })).not.toContainText("Playing");
+    await page.reload();
+    await expect(shows.getByRole("button", { name: "Waiting" })).toHaveAttribute("aria-pressed", "true");
+    await page.goBack();
+    await expect(page).toHaveURL(/\/admin\/tables$/);
+    await expect(shows.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
+    // The table opened from a filtered list goes back to it.
+    await page.goto(`/admin/tables/${id}?show=playing`);
+    await page.getByRole("dialog", { name: `Palace table ${id}` }).getByRole("button", { name: "Done" }).click();
+    await expect(page).toHaveURL(/\/admin\/tables\?show=playing$/);
+  });
+
+  test("a house's new name is checked as it's typed", async ({ page }) => {
+    const t = tag();
+    await send(await phone(), "/houses", { name: `Den ${t}`, you: `Owner ${t}` });
+    await signIn(page);
+    await section(page, "Houses");
+    await page.locator("content-card", { hasText: `Den ${t}` }).getByRole("button", { name: "Rename" }).click();
+    const asking = page.getByRole("dialog", { name: `Rename Den ${t}?` });
+    const field = asking.getByLabel("House name");
+    await field.fill("   ");
+    await field.blur();
+    await expect(asking.getByText("Give it a house name.")).toBeVisible();
+    await expect(asking.getByRole("button", { name: "Rename house" })).toBeDisabled();
+    await field.fill("x".repeat(31));
+    await expect(asking.getByText("That's 31 characters: 30 at most.")).toBeVisible();
+    await expect(asking.getByRole("button", { name: "Rename house" })).toBeDisabled();
+    await field.fill(`Den ${t} 2`);
+    await expect(asking.getByRole("button", { name: "Rename house" })).toBeEnabled();
+    await asking.getByRole("button", { name: "Cancel" }).click();
+    await expect(page.locator("content-card", { hasText: `Den ${t} 2` })).toHaveCount(0);
+  });
+
+  test("the games' switches are disabled while a change is on its way", async ({ page }, info) => {
+    await signIn(page);
+    await section(page, "Games");
+    const rows = page.locator("ol.games > li");
+    await expect(rows.first()).toBeVisible();
+    const at = (await rows.count()) - 3 - ["chrome", "firefox", "webkit"].indexOf(info.project.name) * 3;
+    // Hold the change up on its way to the server.
+    let release = () => {};
+    const held = new Promise<void>((r) => (release = r));
+    await page.route("**/moderation/games", async (route) => {
+      if (route.request().method() === "POST") await held;
+      await route.continue();
+    });
+    const game = rows.nth(at).getByRole("switch");
+    await game.click();
+    await expect(game).toHaveAttribute("aria-checked", "false");
+    await expect(game).toBeDisabled();
+    await expect(rows.nth(0).getByRole("switch")).toBeDisabled();
+    await expect(page.getByRole("switch", { name: /Let people watch/ })).toBeDisabled();
+    release();
+    await expect(game).toBeEnabled();
+    await game.click();
+    await expect(game).toHaveAttribute("aria-checked", "true");
+    await expect(game).toBeEnabled();
+  });
 });

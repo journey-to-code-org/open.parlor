@@ -1,4 +1,6 @@
-:host { display: block; min-height: 100dvh; }
+/* The admin app's own styles, for every page (angular.json lists this file with styles.css). Its
+   pages are separate components now, so these are global rather than one component's. */
+app-root { display: block; min-height: 100dvh; }
 
 .quiet { color: var(--muted-foreground); font-size: 0.925rem; }
 .hint { margin-top: 0.75rem; }
@@ -17,8 +19,9 @@
 .top h1 { font-size: 1.35rem; }
 .top h1 span { color: var(--primary); font-variant-emoji: text; }
 .waiting { display: grid; place-items: center; min-height: 40vh; }
-h2 { font-size: 1.1rem; margin: 1.75rem 0 0.75rem; }
-h3 { font-size: 0.95rem; margin-bottom: 0.5rem; }
+/* The pages' own headings: not the ones inside the components (a card's heading). */
+.sub:is(h2) { font-size: 1.1rem; margin: 1.75rem 0 0.75rem; }
+.sub:is(h3) { font-size: 0.95rem; margin-bottom: 0.5rem; }
 
 .bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem 1.5rem; margin-bottom: 1rem; }
 .bar .quiet { flex: 1 1 18rem; max-width: 60ch; }
@@ -83,3 +86,8 @@ h3 { font-size: 0.95rem; margin-bottom: 0.5rem; }
 .plan .crate { background: #8a6636; }
 .plan .lane-slope { background: #c9a46c; }
 .plan .molehill { background: radial-gradient(circle, #8a6440 0 50%, #7fc46b 52%); }
+
+/* ---------- Finding your way ---------- */
+/* The tab list is the app's navigation: each tab is a page with an address of its own. */
+.shell > tab-list { display: block; }
+.back-to { font-size: 0.9rem; }

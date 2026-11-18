@@ -2,7 +2,7 @@
   "name": "@open-parlor/admin",
   "version": "0.1.0",
   "private": true,
-  "description": "The parlor's admin app: its host moderates tables, players and shared card designs. Angular, on Zubra components.",
+  "description": "The parlor's admin app: its host moderates tables, players and shared card designs. Angular (router, reactive forms), on Zubra components.",
   "scripts": {
     "zubra": "zubra build --lib ../ui/src --out zubra --name @open-parlor/admin-zubra",
     "dev": "npm run zubra && ng serve",
