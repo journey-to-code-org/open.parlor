@@ -1,7 +1,7 @@
 <!--
   The open.parlor's front door: every game as a tile, sorted onto shelves by category (or in the
-  host's order, or by name), a "who's playing?" filter, your houses, and the tables that are waiting
-  for players right now.
+  host's order, or by name), a search box and a "who's playing?" filter, your houses, and the tables
+  that are waiting for players right now.
   A Vue island inside the React app. The cards and the select are Zubra components: in a .vue file a
   .zb import is a Vue component (Zubra's Vue adapter), with props, events and v-model.
 -->
@@ -9,6 +9,8 @@
 import { computed, ref, watch } from "vue";
 import PlayingCard from "@open-parlor/ui/playing-card.zb";
 import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
+import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
+import { matchesSearch, searchWords } from "./search";
 
 export interface ChooserGame {
   id: string;
@@ -22,7 +24,7 @@ export interface ChooserGame {
   /** Three cards to fan out on the tile. */
   fan: Record<string, unknown>[];
   /** A board game shows a little board instead of cards. */
-  board?: { cols: number; cells: ({ glyph: string; tone: string; shade?: string } | null)[]; shade?: string };
+  board?: { cols: number; cells: ({ glyph: string; tone: string; shade?: string } | null)[]; shade?: string; /** A sheet of paper with a drawing on it, in place of a board (Draw & Guess). */ sketch?: boolean };
   /** An arcade game shows a little screen: a ship, what it is up against, and what is coming at it (in a 100 × 100 box). */
   screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][]; chip?: boolean; shop?: boolean; strip?: boolean; rink?: boolean; quest?: boolean };
   /** A dice game shows a few dice: the face each one shows. */
@@ -44,6 +46,8 @@ const props = defineProps<{
   open: { id: string; game: string; who: string; free: number }[];
   /** Whether this parlor takes requests for games it doesn't have. */
   canAsk?: boolean;
+  /** Whether this parlor has the page its server draws itself, with every game on it (`games`). */
+  canList?: boolean;
 }>();
 const emit = defineEmits<{ pick: [id: string]; house: [slug: string]; lobby: []; wifi: []; move: []; ask: [] }>();
 // The page about how the parlor is made: one set of Zubra components, checked in every framework
@@ -66,7 +70,14 @@ const fits = (g: ChooserGame) => {
   const n = Number(players.value);
   return n >= 5 ? g.seats[1] >= 5 : g.seats[0] <= n && n <= g.seats[1];
 };
-const shown = computed(() => props.games.filter(fits));
+
+// Search: what's typed is looked for in each game's name, blurb and category.
+const query = ref("");
+const words = computed(() => searchWords(query.value));
+const categoryName = (id: string) => props.categories.find((c) => c.id === id)?.name ?? id;
+const shown = computed(() => props.games.filter((g) => fits(g) && matchesSearch(g, categoryName(g.category), words.value)));
+/** Why nothing is showing, when nothing is. */
+const noneLine = computed(() => (words.value.length ? `No games match “${query.value.trim()}”${players.value === "any" ? "" : " for that many players"}.` : "No games for that many players yet."));
 
 // How the tiles are sorted: onto shelves by category, in the host's own order, or by name. Kept in this browser.
 type Sort = "category" | "host" | "name";
@@ -92,7 +103,6 @@ watch(sort, (value) => {
     /* private mode: it still applies for now */
   }
 });
-const categoryName = (id: string) => props.categories.find((c) => c.id === id)?.name ?? id;
 /** The tiles in groups: one shelf per category that has a game (each in the host's order), or everything in one. */
 const shelves = computed<{ id: string; name: string; emoji: string; games: ChooserGame[] }[]>(() => {
   if (sort.value === "category") {
@@ -197,6 +207,9 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
       <div class="games-head">
         <h2>Pick a game</h2>
         <div class="choosing">
+          <div class="filter search">
+            <TextField v-model="query" type="search" label="Search" placeholder="Chess, dice, words…" autocomplete="off" inputmode="search" />
+          </div>
           <div class="filter">
             <SelectField v-model="players" label="Who's playing?" :options="sizes" />
           </div>
@@ -284,6 +297,16 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
                 <i v-for="n in 9" :key="n" :class="{ pip: PIPS[face]?.includes(n - 1) }" />
               </span>
             </span>
+            <span v-else-if="g.board?.sketch" class="mini-table mini-sketch" aria-hidden="true">
+              <svg viewBox="0 0 100 100">
+                <rect class="paper" x="6" y="8" width="88" height="84" rx="7" />
+                <circle class="sun" cx="76" cy="28" r="9" />
+                <path class="rays" d="M76 13 v-5 M89 18 l4 -4 M91 28 h5 M63 18 l-4 -4" />
+                <path class="ink" d="M20 82 V52 L40 34 L60 52 V82 Z M34 82 V66 H46 V82 M14 82 H70" />
+                <path class="pencil" d="M58 74 L84 48 L92 56 L66 82 L56 84 Z" />
+                <path class="pencil-tip" d="M58 74 L66 82 L56 84 Z" />
+              </svg>
+            </span>
             <span v-else-if="g.board" class="mini-board" :class="g.board.shade ? `shade-${g.board.shade}` : ''" aria-hidden="true" :style="{ '--cols': g.board.cols, '--rows': Math.ceil(g.board.cells.length / g.board.cols) }">
               <span v-for="(c, i) in g.board.cells" :key="i" class="mini-cell" :class="c ? [`tone-${c.tone}`, c.shade ? `shade-${c.shade}` : ''] : ''">{{ c?.glyph }}</span>
             </span>
@@ -315,13 +338,17 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
         </li>
       </ul>
       </template>
-      <p v-if="!shown.length" class="none">No games for that many players yet.</p>
+      <p v-if="!shown.length" class="none" role="status">
+        {{ noneLine }}
+        <button v-if="words.length" type="button" class="house" @click="query = ''">Clear search</button>
+      </p>
     </section>
 
     <p class="fine">Pick a game to practice against the computer, start a family table, find players, or take on a challenger.</p>
     <p class="fine links">
       <a class="design" href="watch/">👀 Watch a game</a>
       <a class="design" href="designer/">🎨 Design your own deck of cards</a>
+      <a v-if="canList" class="design" href="games">📋 Every game on one page</a>
       <a class="design" :href="BUILT">🧪 How the parlor is built</a>
       <button type="button" class="design" @click="emit('move')">📱 Use the parlor on another device</button>
       <button v-if="canAsk" type="button" class="design" @click="emit('ask')">💡 Don't see your game? Ask for it</button>
@@ -396,6 +423,8 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .shelf + .grid { margin-top: 12px; }
 .filter { min-width: 220px; --background: var(--cream); --foreground: var(--ink); --border: rgba(255, 255, 255, 0.18); --muted-foreground: #cfe2d6; --ring: var(--gold); }
 .choosing { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
+.search { flex: 1 1 220px; }
+.none .house { margin-left: 8px; }
 .surprise { white-space: nowrap; }
 .surprise:disabled { opacity: 0.45; cursor: default; }
 .grid { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: clamp(12px, 1.6vw, 20px); grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); }
@@ -491,6 +520,13 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
   transition: rotate 220ms var(--ease-back, ease-out), scale 220ms var(--ease-back, ease-out);
 }
 .mini-table svg { display: block; width: 100%; height: 100%; overflow: visible; }
+/* A sheet of paper with a house drawn on it, and the pencil that drew it. */
+.mini-sketch .paper { fill: #fdfaf2; stroke: #d9cdb4; stroke-width: 2; }
+.mini-sketch .ink { fill: none; stroke: #2a2620; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+.mini-sketch .sun { fill: #f2b632; }
+.mini-sketch .rays { fill: none; stroke: #f2b632; stroke-width: 3.5; stroke-linecap: round; }
+.mini-sketch .pencil { fill: #e2574c; stroke: #7f231a; stroke-width: 1.5; stroke-linejoin: round; }
+.mini-sketch .pencil-tip { fill: #f3dcb5; stroke: #7f231a; stroke-width: 1.5; stroke-linejoin: round; }
 .mini-table .rail { fill: #e9dcc3; stroke: #5b3d22; stroke-width: 2; }
 .mini-table .cloth { fill: #3f9c58; }
 /* A green has timber rails, like the holes themselves. */

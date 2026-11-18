@@ -2990,10 +2990,43 @@ button.word-tile:active:not(:disabled) { transform: translateY(2px); }
 /* Word Hunt's square (word/WordPieces.tsx): big tiles, the path numbered as it is traced. */
 .trace-grid { display: grid; grid-template-columns: repeat(var(--cols), 1fr); gap: 8px; width: min(92vw, 380px); touch-action: none; user-select: none; -webkit-user-select: none; }
 .trace-tile { --size: 100%; position: relative; aspect-ratio: 1; width: 100%; height: auto; font-size: clamp(22px, 8vw, 34px); }
-.trace-tile.on { background: var(--gold); color: #241a00; transform: scale(0.94); }
-.trace-tile.last { box-shadow: 0 0 0 3px var(--cream); }
-.trace-tile.next:not(.on) { outline: 2px dashed rgba(251, 246, 236, 0.45); outline-offset: 2px; }
-.trace-tile small { position: absolute; top: 3px; right: 6px; font-size: 0.7rem; font-weight: 700; opacity: 0.7; }
+.trace-grid { position: relative; }
+.trace-tile { border-radius: 16%; background: linear-gradient(#fffaf0, #f1e7d3); box-shadow: 0 3px 0 #c9b997, 0 6px 10px rgba(0, 0, 0, 0.28); transition: opacity 120ms ease, background 120ms ease; }
+.trace-tile.on { background: linear-gradient(#f7d77c, #e2b446); color: #241a00; box-shadow: 0 2px 0 #b98a1f, 0 4px 8px rgba(0, 0, 0, 0.3); transform: scale(0.95); animation: trace-pop 170ms ease-out; }
+.trace-tile.last { box-shadow: 0 0 0 3px var(--cream), 0 4px 8px rgba(0, 0, 0, 0.3); }
+/* While a word is being traced, the letters it can't go to next stand back. */
+.trace-grid.tracing .trace-tile:not(.on):not(.next) { opacity: 0.45; }
+/* The word just sent: green if it counted, red and shaken if not. */
+.trace-grid.is-good .trace-tile.on { background: linear-gradient(#58b86b, var(--hit)); color: #fff; box-shadow: 0 2px 0 #2b6e3a, 0 4px 8px rgba(0, 0, 0, 0.3); animation: trace-good 420ms ease-out both; animation-delay: calc(var(--i, 0) * 45ms); }
+.trace-grid.is-bad .trace-tile.on { background: linear-gradient(#e2685f, #c0392b); color: #fff; box-shadow: 0 2px 0 #7f231a, 0 4px 8px rgba(0, 0, 0, 0.3); animation: trace-bad 320ms ease-in-out; }
+@keyframes trace-pop { from { transform: scale(1.1); } to { transform: scale(0.95); } }
+@keyframes trace-good { 0% { transform: scale(0.95); } 45% { transform: scale(1.09) translateY(-3px); } 100% { transform: scale(1); } }
+@keyframes trace-bad { 0%, 100% { transform: translateX(0) scale(0.95); } 25% { transform: translateX(-5px) scale(0.95); } 75% { transform: translateX(5px) scale(0.95); } }
+/* The trace: a line through the letters taken, in order, and on to the finger. */
+.trace-line { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; overflow: visible; }
+.trace-line-path { fill: none; stroke: #c96a12; stroke-opacity: 0.5; stroke-linecap: round; stroke-linejoin: round; mix-blend-mode: multiply; }
+.trace-line-tail { stroke: #fbf6ec; stroke-opacity: 0.55; stroke-linecap: round; }
+.trace-line-start { fill: #c96a12; fill-opacity: 0.35; mix-blend-mode: multiply; }
+.trace-grid.is-good .trace-line-path, .trace-grid.is-bad .trace-line-path { stroke: #fff; stroke-opacity: 0.28; mix-blend-mode: normal; }
+.trace-grid.is-good .trace-line-start, .trace-grid.is-bad .trace-line-start { fill: #fff; fill-opacity: 0.22; mix-blend-mode: normal; }
+/* The word being traced, over the square. */
+.trace-area { display: grid; justify-items: center; gap: 8px; width: 100%; }
+.trace-word { margin: 0; min-height: 2.5rem; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 4px 16px; border-radius: 999px; font-size: 0.9rem; color: rgba(251, 246, 236, 0.75); }
+.trace-word b { font-size: 1.5rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cream); }
+.trace-word.is-typing { background: rgba(0, 0, 0, 0.28); }
+.trace-word.is-good { background: var(--hit); color: #fff; }
+.trace-word.is-good b { color: #fff; }
+.trace-word.is-good span { font-weight: 800; font-size: 1.1rem; }
+.trace-word.is-bad { background: #c0392b; color: #fff; }
+.trace-word.is-bad b { color: #fff; text-decoration: line-through; text-decoration-thickness: 2px; }
+/* The words found so far, while the hunt is on. */
+.word-found { list-style: none; margin: 0; padding: 0 2px; display: flex; align-items: center; gap: 6px; width: min(92vw, 380px); min-height: 2.5rem; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.word-found::-webkit-scrollbar { display: none; }
+.word-found li.count { background: none; padding-left: 0; font-weight: 600; letter-spacing: 0; text-transform: none; color: rgba(251, 246, 236, 0.75); }
+.word-found li { flex: none; display: flex; align-items: baseline; gap: 5px; padding: 3px 10px; border-radius: 999px; background: rgba(0, 0, 0, 0.28); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.word-found li.mine { background: rgba(232, 196, 106, 0.2); box-shadow: inset 0 0 0 1px rgba(232, 196, 106, 0.55); }
+.word-found li strong { color: var(--gold); letter-spacing: 0; }
+@media (prefers-reduced-motion: reduce) { .trace-tile.on, .trace-grid.is-good .trace-tile.on, .trace-grid.is-bad .trace-tile.on { animation: none; } }
 .word-tiles.typed .small-tile { --size: 30px; }
 .word-tiles.typed .fine { margin: 6px 0; }
 

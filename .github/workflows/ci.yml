@@ -24,6 +24,8 @@ jobs:
       - run: npx playwright install --with-deps firefox webkit
         working-directory: packages/conformance
       - run: npm run conformance:engines -w @open-parlor/conformance
+      # The page the server draws itself (/games), in a browser with JavaScript off and on.
+      - run: npm run server-page:engines -w @open-parlor/conformance
       # Tests run through vitest, which forgives some Node ESM import mistakes; boot the real build.
       - name: Smoke test the built server
         run: |
