@@ -11,9 +11,11 @@ rest of the parlor: no shared components, no server. What the parlor has of it i
 
 The engine is [doomgeneric](https://github.com/ozkl/doomgeneric), a port of the Doom engine made
 to be carried to new platforms, with the changes a web page needs
-([`games/shooter/engine/CHANGES.md`](games/shooter/engine/CHANGES.md)). The game it plays for now
-is [Freedoom: Phase 1](https://freedoom.github.io/): free levels, pictures and sounds for the
-engine, standing in until the game has its own.
+([`games/shooter/engine/CHANGES.md`](games/shooter/engine/CHANGES.md)). The game it plays is
+Delbie's Doomsday ([`games/shooter/delbies`](games/shooter/delbies/README.md)): a title, rats,
+words and twelve levels of its own, laid over [Freedoom: Phase 1](https://freedoom.github.io/),
+free levels, pictures and sounds for the engine, which is everything of the game that isn't yet
+its own.
 
 | | |
 | --- | --- |
