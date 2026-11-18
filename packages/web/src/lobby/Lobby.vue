@@ -7,7 +7,7 @@ import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
 import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { lobby, lobbyProblem, waited, whoIsThere, type OpenTable } from "../lobbyApi";
 import { loadSavedName, saveName } from "../storage";
-import NotifyButton from "./NotifyButton.vue";
+import NotifyButton from "../vue/NotifyButton.vue";
 
 export interface LobbyGame {
   id: string;

@@ -495,7 +495,8 @@ for the day in the browser, and checks without reloading. Past days are at `/dai
 The clue count is the only dial for "hard", so a Saturday puzzle is fewer clues, not necessarily
 harder techniques.
 
-One set of Zubra components serves five frameworks: React and Vue in the parlor, Svelte in the
+One set of Zubra components serves five frameworks: React and Vue in the parlor (Vue for the front
+of house: the start page, the open tables, and a house's page and chat), Svelte in the
 designer and in the Mini Golf course and bowling lane editors (Svelte inside the React app,
 `packages/web/src/golf/`), Solid on the watch page and in the web app's islands (Read the Room's
 board, the screens for hosting and joining a table on this wifi, and the sheets over the arcade
