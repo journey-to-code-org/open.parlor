@@ -636,7 +636,8 @@ void P_RespawnSpecials (void)
     S_StartSound (mo, sfx_itmbk);
 
     // find which type to spawn
-    for (i=0 ; i< NUMMOBJTYPES ; i++)
+    // [open.wasm] Among the engine's own kinds and any the WAD's rules made.
+    for (i=0 ; i< NUMMOBJTYPES + SPARETHINGS ; i++)
     {
 	if (mthing->type == mobjinfo[i].doomednum)
 	    break;
@@ -790,14 +791,15 @@ void P_SpawnMapThing (mapthing_t* mthing)
 	return;
 	
     // find which type to spawn
-    for (i=0 ; i< NUMMOBJTYPES ; i++)
+    // [open.wasm] Among the engine's own kinds and any the WAD's rules made. A thing of no
+    // kind is left out, where it was the end of the game: a level can outlive the rules that
+    // made what is placed in it.
+    for (i=0 ; i< NUMMOBJTYPES + SPARETHINGS ; i++)
 	if (mthing->type == mobjinfo[i].doomednum)
 	    break;
 	
-    if (i==NUMMOBJTYPES)
-	I_Error ("P_SpawnMapThing: Unknown type %i at (%i, %i)",
-		 mthing->type,
-		 mthing->x, mthing->y);
+    if (i==NUMMOBJTYPES + SPARETHINGS)
+	return;
 		
     // don't spawn keycards and players in deathmatch
     if (deathmatch && mobjinfo[i].flags & MF_NOTDMATCH)
