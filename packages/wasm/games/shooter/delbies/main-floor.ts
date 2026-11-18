@@ -121,6 +121,8 @@ export const things: Thing[] = [
   at(MEDIKIT, -200, 330),
   // Under the sink: a torch and a can of brake cleaner (the engine's chainsaw).
   at(TORCH, -250, 300),
+  // And a turbo that glows (the engine's soulsphere): the bathroom is the floor's secret.
+  at(2013, -160, 380),
   // The office.
   at(MUTANT, 250, 340, 180),
   at(SHELL_BOX, 320, 390),

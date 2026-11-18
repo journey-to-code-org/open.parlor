@@ -489,6 +489,28 @@ for letter, r in (("A", 7), ("B", 8)):
 for letter, r in zip("ABC", (12, 18, 24)):
     flat(f"FBXP{letter}0", burst(54, GREENS, (r, r - 5, r - 11), spokes=9), top=r + 6)
 
+# More of Mikey's: the three keys (the bathroom's on a hubcap, the attic's a wooden spoon, the bay door's a fob), each catching the light;
+# the drum going up; one rotor, a crate of them, a can of cleaner with a battery, and a car battery with a tank; and things that help.
+for key, prefix in (("blue", "BKEY"), ("yellow", "YKEY"), ("red", "RKEY")):
+    given(prefix + "A0", picture(f"key-{key}"))
+    given(prefix + "B0", lit(picture(f"key-{key}"), 50))
+for letter, blast in zip("ABCDE", (0, 1, 2, 2, 3)):
+    pictures[:] = [one for one in pictures if one[0] != f"BEXP{letter}0"]
+    given(f"BEXP{letter}0", lit(picture(f"blast-{blast}"), 20 if letter == "D" else 0))
+given("ROCKA0", picture("rotor-one"))
+given("BROKA0", picture("rotor-crate"))
+given("CELLA0", picture("cleaner-cell"))
+given("CELPA0", picture("battery-pack"))
+# An energy drink (the engine's berserk pack), a turbo that glows (its soulsphere), a yellow suit against what burns (its radiation
+# suit), and a clipboard with the floor's plan on it (its map). And a floor jack and a trouble light, to stand about.
+given("PSTRA0", picture("energy-drink"))
+for letter, by in zip("ABCD", (0, 16, 32, 16)):
+    given(f"SOUL{letter}0", lit(picture("turbo"), by))
+    given(f"PMAP{letter}0", lit(picture("clipboard"), by // 2))
+    given(f"TLMP{letter}0", lit(picture("trouble-light"), by))
+given("SUITA0", picture("suit"))
+given("COLUA0", picture("jack"))
+
 blob = bytearray()
 manifest = []
 for name, width, height, left, top, pixels, solid in pictures:

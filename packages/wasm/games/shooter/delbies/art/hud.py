@@ -219,18 +219,11 @@ def label(rgb, text, x, y, colour=CREAM):
 
 # The bar. The engine writes: what is loaded, ending at 44; health, ending at 90 with its % after; the face from 143; armour, ending at 221;
 # the keys at 239; and the four kinds of ammunition, how much ending at 288 and the most ending at 314, 6 apart from 5 down.
-bar = panel(320, 32)
-window(bar, 2, 4, 47, 21);   label(bar, "AMMO", 15, 24)
-window(bar, 50, 4, 104, 21); label(bar, "HEALTH", 63, 24)
-window(bar, 108, 4, 141, 21); label(bar, "TOOLS", 115, 24)
-window(bar, 144, 3, 177, 31)
-window(bar, 180, 4, 234, 21); label(bar, "ARMOR", 197, 24)
-window(bar, 238, 3, 246, 30)
-window(bar, 250, 4, 317, 29)
-# Each kind of ammunition by what it is here: the price gun's tags, cartridges, brake rotors, and the jump starter's charge.
-for row, name in enumerate(("TAGS", "CART", "ROTR", "CHRG")):
-    label(bar, name, 252, 5 + row * 6, GREY)
-    label(bar, "/", 291, 5 + row * 6, GREY)
+# The bar is Mikey's (given/bar.png, off his sheet): blue and gold, its windows labelled. His has figures and a face painted in its
+# windows to show what goes there; those are emptied here, since the engine writes its own into them.
+bar = np.array(Image.open(here / "given" / "bar.png").convert("RGB"))
+for x0, y0, x1, y1 in ((12, 6, 53, 21), (59, 6, 108, 21), (111, 5, 141, 21), (146, 3, 178, 30), (188, 6, 237, 21), (239, 2, 249, 30), (275, 3, 316, 29)):
+    bar[y0:y1, x0:x1] = WINDOW
 add("STBAR", bar, np.ones((32, 320), bool), 0, 0)
 # The panel of tools carried, which the engine lays over the bar from 104 when the game isn't a fight between players.
 add("STARMS", bar[:, 104:144].copy(), np.ones((32, 40), bool), 0, 0)

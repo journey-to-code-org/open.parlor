@@ -253,6 +253,11 @@ export function generate(level: number): Floor {
     if (index === last && level >= 10) more(BATTERY_CASE);
     // And on the last two floors, a tank of refrigerant (the engine's biggest gun), which runs on the same charge.
     if (index === locked && level >= 11) [2006, BATTERY_CASE].forEach(more);
+    // Things that help: a clipboard with the floor's plan, an energy drink, a suit for bad floor, and near the end a turbo.
+    if (index === keyRoom && level % 3 === 1) more(2026);
+    if (index === locked && level % 3 === 2) more(2023);
+    if (index === keyRoom && level % 4 === 3) more(2025);
+    if (index === last && level >= 9 && level % 2 === 1) more(2013);
     if (index === locked) put(ARMOUR, ...next());
     if (roll.chance(0.4) && places.length) put(ARMOUR_BONUS, ...next());
   });

@@ -328,3 +328,41 @@ for name, left in (("DOORRED", 30), ("DOORYEL", 168), ("DOORBLU2", 306)):
     Image.fromarray(trim[52:550, left:left + 94]).resize((32, 128), Image.LANCZOS).save(out / f"wall-{name}.png", optimize=True)
 for name in ("SKY1", "SKY2"):
     Image.fromarray(trim[196:380, 436:1008]).resize((256, 128), Image.LANCZOS).save(out / f"wall-{name}.png", optimize=True)
+
+# Keys, things that help, the drum going up, and things that stand about the shop, off one sheet on black: each by the box it is in.
+props = load("props-sheet.webp")
+def boxed(image, box, ground=(0, 0, 0), by=26, keep=3):
+    x0, y0, x1, y1 = box
+    mask = np.zeros(image.shape[:2], bool)
+    mask[y0:y1, x0:x1] = off(image, ground, by)[y0:y1, x0:x1]
+    return filled(biggest(mask, keep=keep, least=60))
+for name, box, wide in (
+    ("key-blue", (75, 28, 250, 138), 22), ("key-yellow", (355, 28, 645, 110), 30), ("key-red", (730, 28, 905, 138), 22),
+    ("energy-drink", (72, 180, 128, 285), 9), ("turbo", (240, 172, 355, 288), 22), ("suit", (445, 172, 565, 290), 24), ("clipboard", (660, 170, 755, 290), 16), ("headlamp", (850, 178, 970, 262), 22),
+    ("drum-hit", (22, 400, 104, 520), 24), ("blast-0", (125, 350, 222, 520), 30), ("blast-1", (240, 350, 335, 520), 30), ("blast-2", (370, 350, 475, 520), 34), ("blast-3", (490, 350, 600, 545), 34),
+    ("tires", (650, 340, 775, 442), 30), ("jack", (885, 325, 995, 428), 30), ("trouble-light", (815, 400, 875, 540), 12),
+):
+    lying(name, props, boxed(props, box), wide)
+
+# What is picked up for each weapon, off another sheet: each on a slab of floor, which is left behind.
+ammo = load("ammo-sheet.webp")
+for name, rect, sure, wide in (
+    ("shells", (12, 395, 172, 125), [(60, 440, 130, 490)], 20), ("rotor-one", (195, 380, 155, 140), [(235, 410, 310, 490)], 24), ("rotor-crate", (360, 375, 202, 150), [(400, 400, 520, 500)], 36),
+    ("cleaner-cell", (572, 385, 110, 135), [(595, 420, 625, 500)], 14), ("battery-pack", (692, 375, 160, 145), [(715, 430, 790, 500), (800, 400, 830, 470)], 30),
+):
+    lying(name, ammo, grab(ammo, rect, sure=sure), wide)
+
+# What is around the game, off one sheet on white: the title picture, the name that goes over the menu (which on the sheet lies half
+# across the title), the picture behind the page between levels, the menu's pointer, and the status bar.
+ui = load("ui-sheet.webp")
+name_box = (400, 186, 272, 130)
+lettering = grab(ui, name_box, sure=[(430, 215, 640, 240), (425, 265, 640, 290)])
+lettering |= off(ui, (255, 255, 255), 40) & (np.arange(ui.shape[1])[None, :] > 549) & (np.arange(ui.shape[0])[:, None] > 186) & (np.arange(ui.shape[0])[:, None] < 316)
+# Under the letters, where they lie on the picture, is picture.
+lettering[300:, :549] = False
+lettering = filled(biggest(lettering))
+lying("logo", ui, lettering, 150)
+Image.fromarray(ui[11:311, 51:546]).resize((320, 200), Image.LANCZOS).save(out / "title.png", optimize=True)
+Image.fromarray(ui[332:476, 167:395]).resize((320, 200), Image.LANCZOS).save(out / "tally.png", optimize=True)
+lying("cursor", ui, boxed(ui, (532, 373, 605, 434), by=40, keep=1), 20)
+Image.fromarray(ui[493:636, 0:1024]).resize((320, 32), Image.LANCZOS).save(out / "bar.png", optimize=True)

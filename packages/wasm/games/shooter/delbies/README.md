@@ -41,7 +41,7 @@ have no pictures and are placed in no level.
   parts store: navy, steel, cream, cardboard, the yellow of a price gun, the green of old brake
   fluid), the same tinted for being hurt and for picking things up, and each colour at 32
   depths of shade. It writes `palette.bin`, which every other script reads its colours from.
-- `art/title.webp` is the title picture, Mikey's. `art/convert.py` brings it into the game's
+- `art/title.webp` is the title picture, Mikey's (the second he gave: Delbie before the store, in the rats), with the game's name laid into its corner. `art/convert.py` brings it into the game's
   256 colours as `title.raw` and, for the lettering over the menu, `logo.raw` and `logo.mask`.
   It needs Pillow and is run by hand when the picture changes.
 - `art/monsters.py` makes every picture of the rats from the figures `cutout.py` cut off the
@@ -112,6 +112,14 @@ for a game alone and for a game with others alike, and it is what the editor ope
 
 The art scripts are run in this order after a change of colours: `palette.py`, `convert.py`,
 `cutout.py` (only if the pictures changed), `monsters.py`, `tools.py`, `walls.py`, `textures.py`, `hud.py`, `menu.py`, `sounds.py`.
+
+## Also Mikey's
+
+The status bar (`given/bar.png`, its sample figures emptied out), the menu's pointer, the picture
+behind the page between levels, the three keys, the drum's explosion, the pickups for rotors and
+charge, and four things that help: an energy drink (the engine's berserk pack), a glowing turbo
+(its soulsphere), a chemical suit and a clipboard with the floor plan. A floor jack (`COLU`) and
+a trouble light (`TLMP`) have pictures and are placed nowhere yet.
 
 ## The rats
 

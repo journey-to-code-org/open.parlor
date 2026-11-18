@@ -122,19 +122,10 @@ for name, text in {
 }.items():
     line(name, text, **({"top": WHITE, "bottom": CREAM} if name in ("M_MSGON", "M_MSGOFF", "M_GDHIGH", "M_GDLOW") else {"top": (255, 120, 90), "bottom": RED} if name == "M_NMARE" else {}))
 
-# Where the skull was: a hex nut, turning.
-for name, turn in (("M_SKULL1", 0), ("M_SKULL2", 30)):
-    image = Image.new("RGBA", (80, 80), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
-    corners = lambda r: [(40 + r * np.cos(np.radians(a + turn)), 40 + r * np.sin(np.radians(a + turn))) for a in range(0, 360, 60)]
-    draw.polygon(corners(38), fill=NAVY + (255,))
-    draw.polygon(corners(32), fill=STEEL + (255,))
-    draw.polygon(corners(32)[:4], fill=(196, 204, 218, 255))
-    draw.ellipse((24, 24, 56, 56), fill=NAVY + (255,))
-    draw.ellipse((29, 29, 51, 51), fill=(0, 0, 0, 0))
-    small = np.array(image.resize((20, 20), Image.BOX))
-    _, _, left, top = was(name)
-    keep(name, small[..., :3], small[..., 3] > 120, left, top)
+# Where the skull was: Mikey's crossed wrench and spark plug (given/cursor.png), and the same a little brighter, so it blinks.
+POINTER = np.array(Image.open(here / "given" / "cursor.png").convert("RGBA"))
+for name, lift in (("M_SKULL1", 0), ("M_SKULL2", 45)):
+    keep(name, np.clip(POINTER[..., :3].astype(int) + lift, 0, 255).astype(np.uint8), POINTER[..., 3] > 127, *FROM[name])
 
 # The sliders, and the box a saved game's name is in: a dark window edged in steel, in three pieces (an end, a middle to repeat, an end), and a yellow knob.
 WINDOW = (10, 14, 30)
@@ -256,7 +247,9 @@ def show(onto, picture, x, y, most=22):
 # The between-levels page, for both of the game's episodes, and nothing marked on it: the engine would mark places on a map of its own.
 for name in ("WIMAP0", "WIMAP1"):
     # The floor's name is written across the top of it, so the strip is along the bottom only.
-    keep(name, page(top=False), np.ones((200, 320), bool))
+    # Behind it, Mikey's picture of the counter (given/tally.png: the till, a receipt, spark plugs and the keys), darkened so the figures read over it.
+    counter = (np.array(Image.open(here / "given" / "tally.png").convert("RGB")).astype(float) * 0.38).astype(np.uint8)
+    keep(name, counter, np.ones((200, 320), bool))
 # The engine has little things that move on its own maps of an episode: ten places three pictures each on the first, and these on the second.
 MOVING = [f"WIA0{place:02d}{step:02d}" for place in range(10) for step in range(3)] + [f"WIA1{place:02d}00" for place in range(7)] + ["WIA10700", "WIA10701", "WIA10702"]
 for name in MOVING + ["WISPLAT", "WIURH0", "WIURH1"]:
