@@ -5,14 +5,16 @@
 // A run is five fights. In a fight you draw a hand, spend energy playing cards on the foes or on
 // yourself, and end the turn; the foes then do what they showed they would. After a fight you may
 // add one of three cards to the deck and put one card back on the shelf (take it out), then go on.
-import { CARD_BY_ID, CARDS, FLOORS, FOES, STARTING_DECK, type CardDef, type Intent } from "./cards.ts";
+import { FLOORS, STARTING_DECK, type CardDef, type Intent } from "./cards.ts";
+import { DEFAULT_MAX_HP, DEFAULT_REST, DEFAULT_TABLES, type Tables } from "./tables.ts";
 
-export const MAX_HP = 40;
+/** The game's own hit points and healing; a run may be played on tables that change them. */
+export const MAX_HP = DEFAULT_MAX_HP;
 export const ENERGY = 3;
 export const HAND = 5;
 export const HAND_LIMIT = 10;
 /** Healed between fights. */
-export const REST = 8;
+export const REST = DEFAULT_REST;
 export const OFFERS = 3;
 
 export interface Card {
@@ -84,7 +86,6 @@ function mulberry32(seed: number) {
   };
 }
 
-const def = (card: Card): CardDef => CARD_BY_ID[card.def]!;
 const no = (why: Refusal): Result => ({ ok: false, why });
 const yes: Result = { ok: true };
 
@@ -96,12 +97,20 @@ export class Battle {
   private s: Omit<View, "news" | "floors" | "floorName" | "deck" | "seed" | "draw" | "hand" | "discard" | "foes" | "offers"> & { news: string[]; draw: Card[]; hand: Card[]; discard: Card[]; foes: Foe[]; offers: string[] };
   private cards: Card[] = [];
 
-  constructor(public readonly seed: number) {
+  constructor(
+    public readonly seed: number,
+    /** The numbers this run is played on. */
+    public readonly tables: Tables = DEFAULT_TABLES,
+  ) {
     const base = mulberry32(seed);
     this.random = () => (this.pulls++, base());
     this.cards = STARTING_DECK.map((id) => this.make(id));
-    this.s = { phase: "fight", floor: 0, turn: 0, hp: MAX_HP, maxHp: MAX_HP, block: 0, energy: 0, draw: [], hand: [], discard: [], foes: [], offers: [], removed: false, taken: false, news: [] };
+    this.s = { phase: "fight", floor: 0, turn: 0, hp: tables.maxHp, maxHp: tables.maxHp, block: 0, energy: 0, draw: [], hand: [], discard: [], foes: [], offers: [], removed: false, taken: false, news: [] };
     this.begin();
+  }
+
+  private def(card: Card): CardDef {
+    return this.tables.cardById[card.def]!;
   }
 
   private make(id: string): Card {
@@ -124,7 +133,7 @@ export class Battle {
   private begin() {
     const floor = FLOORS[this.s.floor]!;
     this.s.foes = floor.foes.map((id, n) => {
-      const foe = FOES[id]!;
+      const foe = this.tables.foes[id]!;
       return { uid: 1000 * (this.s.floor + 1) + n, def: id, name: foe.name, art: foe.art, hp: foe.hp, maxHp: foe.hp, block: 0, vulnerable: 0, intent: foe.pattern[0]!, step: 0 };
     });
     this.s.phase = "fight";
@@ -184,11 +193,11 @@ export class Battle {
       return true;
     }
     this.s.phase = "reward";
-    this.s.hp = Math.min(this.s.maxHp, this.s.hp + REST);
+    this.s.hp = Math.min(this.s.maxHp, this.s.hp + this.tables.rest);
     this.s.block = 0;
     this.s.removed = false;
     this.s.taken = false;
-    const pool = CARDS.filter((card) => card.rarity !== "starter");
+    const pool = this.tables.cards.filter((card) => card.rarity !== "starter");
     const rare = this.s.floor >= 2;
     const picks: string[] = [];
     while (picks.length < OFFERS) {
@@ -197,7 +206,7 @@ export class Battle {
       if (choice) picks.push(choice.id);
     }
     this.s.offers = picks;
-    this.say(`Floor cleared. You catch your breath (+${REST}).`);
+    this.say(`Floor cleared. You catch your breath (+${this.tables.rest}).`);
     return true;
   }
 
@@ -223,7 +232,7 @@ export class Battle {
         const at = this.find(s.hand, command.uid);
         if (at < 0) return no("no such card");
         const card = s.hand[at]!;
-        const d = def(card);
+        const d = this.def(card);
         if (d.cost > s.energy) return no("no energy");
         const effect = d.effect;
         let targets: Foe[] = [];
@@ -278,7 +287,7 @@ export class Battle {
           }
           if (foe.vulnerable > 0) foe.vulnerable--;
           foe.step++;
-          foe.intent = FOES[foe.def]!.pattern[foe.step % FOES[foe.def]!.pattern.length]!;
+          foe.intent = this.tables.foes[foe.def]!.pattern[foe.step % this.tables.foes[foe.def]!.pattern.length]!;
           if (s.hp <= 0) break;
         }
         if (s.hp <= 0) {
@@ -303,7 +312,7 @@ export class Battle {
         const card = this.make(id);
         this.cards.push(card);
         s.taken = true;
-        this.say(`${CARD_BY_ID[id]!.name} goes in the deck.`);
+        this.say(`${this.tables.cardById[id]!.name} goes in the deck.`);
         return yes;
       }
       case "remove": {
@@ -314,7 +323,7 @@ export class Battle {
         if (this.cards.length <= 5) return no("not now");
         const [gone] = this.cards.splice(at, 1);
         s.removed = true;
-        this.say(`${def(gone!).name} goes back on the shelf.`);
+        this.say(`${this.def(gone!).name} goes back on the shelf.`);
         return yes;
       }
       case "go": {
@@ -354,8 +363,8 @@ export class Battle {
 }
 
 /** Plays a seed and its commands from the start. Stops at the first command that is refused. */
-export function replay(seed: number, commands: readonly Command[]): { battle: Battle; refused: number } {
-  const battle = new Battle(seed);
+export function replay(seed: number, commands: readonly Command[], tables: Tables = DEFAULT_TABLES): { battle: Battle; refused: number } {
+  const battle = new Battle(seed, tables);
   for (let i = 0; i < commands.length; i++) if (!battle.command(commands[i]!).ok) return { battle, refused: i };
   return { battle, refused: -1 };
 }

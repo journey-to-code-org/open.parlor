@@ -6,7 +6,7 @@
 <script lang="ts">
   import { flip } from "svelte/animate";
   import { fade, fly } from "svelte/transition";
-  import { CARD_BY_ID, intentText, needsFoe } from "../cards.ts";
+  import { intentText, needsFoe } from "../cards.ts";
   import type { Card } from "../engine.ts";
   import { draggable, slotIn } from "./drag.ts";
   import CardView from "./CardView.svelte";
@@ -23,7 +23,7 @@
   let handRow: HTMLElement | undefined = $state();
 
   const cardOf = (uid: number) => view.hand.find((card) => card.uid === uid);
-  const defOf = (card: Card) => CARD_BY_ID[card.def]!;
+  const defOf = (card: Card) => run.tables.cardById[card.def]!;
   const affordable = (card: Card) => defOf(card).cost <= view.energy;
   const heldCard = $derived(held === null ? undefined : cardOf(held));
   const aiming = $derived(lifted ?? held);
@@ -144,7 +144,7 @@
           onend: () => ((lifted = null), (over = "")),
         }}
       >
-        <CardView id={card.def} selected={held === card.uid} disabled={!affordable(card)} onpick={() => tap(card)} />
+        <CardView id={card.def} tables={run.tables} selected={held === card.uid} disabled={!affordable(card)} onpick={() => tap(card)} />
       </div>
     {/each}
     {#if view.hand.length === 0}<p class="empty">No cards in hand. End the turn.</p>{/if}

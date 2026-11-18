@@ -385,5 +385,11 @@ dragging between zones.
   Zubra's `battle-card` (a light-DOM component with an `art` slot). Drag is pointer events
   (`ui/drag.ts`): drop a card on a foe or on yourself to play it, between cards to reorder the hand,
   on the deck or shelf on the rewards screen. Tapping works everywhere, so nothing needs a drag.
+- **The host can tune it** (`src/battler/tables.ts`): the page asks the parlor for `/tunables/back-room`
+  before the first card is dealt, and lays what it finds (hit points, healing between floors, each
+  card's cost and effect numbers, each foe's hit points and attacks) over the game's own numbers.
+  Nothing saved, no connection or a site that isn't the parlor all mean the game's own. A run is played
+  on one set of numbers to the end, and a replay takes the same tables (`replay(seed, commands, tables)`),
+  so it can say which version it was played on.
 - **The numbers are kept honest by bots** (`test/battler.test.ts`): the starting deck almost never
   clears the five floors but usually reaches the boss, and a deck-building bot wins a middling share.
