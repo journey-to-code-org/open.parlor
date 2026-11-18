@@ -3454,3 +3454,27 @@ button.word-tile:active:not(:disabled) { transform: translateY(2px); }
 }
 .kit-score .sport-dot { display: inline-block; vertical-align: -1px; }
 .field-stage canvas[hidden] { display: none; }
+
+/* The field games are arcade games, so they sit in the same dark cabinet as the others: a rail of
+   scores along the top, and the field as a lit screen in a bezel. The controls stay a pad of paper. */
+.table.field {
+  --arc-rail: #0b1022; --arc-line: rgba(140, 170, 255, 0.22); --arc-cyan: #4cc9ff;
+  background: radial-gradient(ellipse at 50% 35%, #111a3a, #05060f 70%);
+  box-shadow: inset 1px 0 0 var(--arc-line), inset -1px 0 0 var(--arc-line);
+}
+.table.field .kit-bar { background: var(--arc-rail); border-bottom: 1px solid var(--arc-line); font-variant-numeric: tabular-nums; }
+.table.field .kit-bar .leave { color: var(--arc-cyan); }
+.table.field .field-stage {
+  border-radius: 10px;
+  box-shadow: 0 0 0 3px #1a2244, 0 0 0 5px #05060f, 0 0 0 6px var(--arc-line), 0 0 28px rgba(76, 201, 255, 0.18);
+}
+.table.field .field-stage::after {
+  /* A faint scanline over the screen; it never takes a click. */
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.12) 0 1px, transparent 1px 3px);
+}
+.table.field .field-info, .table.field .field-stage .sport-skip { z-index: 1; }
+.table.field .field-felt { padding-top: 12px; }
+.table.field .field-seat { background: var(--arc-rail); border-color: var(--arc-line); }
+.table.field .field-seat.active { border-color: var(--gold); }
+@media (prefers-reduced-transparency: reduce) { .table.field .field-stage::after { display: none; } }
