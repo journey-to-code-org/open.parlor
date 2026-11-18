@@ -271,7 +271,7 @@ export function createCardRoom(
         req.headers.cookie = as.cookie;
         return this.handle(req, res);
       }
-      if (under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/spectate", "/bugs", "/me", ...PAGE_MOUNTS])) {
+      if (under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/tunables", "/spectate", "/bugs", "/me", ...PAGE_MOUNTS])) {
         const chunks: Buffer[] = [];
         let size = 0;
         for await (const chunk of req) {

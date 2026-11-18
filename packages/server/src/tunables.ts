@@ -18,8 +18,8 @@ export type Shape =
   | { type: "enum"; of: readonly string[] }
   /** Any number of entries, keyed by names that look like `key`. */
   | { type: "record"; key: RegExp; value: Shape; max: number }
-  /** Named fields, each optional. Anything else is refused. */
-  | { type: "object"; fields: Readonly<Record<string, Shape>> }
+  /** Named fields, each optional unless `required`. Anything else is refused. */
+  | { type: "object"; fields: Readonly<Record<string, Shape>>; required?: readonly string[] }
   | { type: "list"; item: Shape; min: number; max: number };
 
 const int = (min: number, max: number): Shape => ({ type: "int", min, max });
@@ -66,6 +66,7 @@ const BACK_ROOM: Shape = {
             item: {
               type: "object",
               fields: { kind: { type: "enum", of: ["attack", "block"] }, amount: int(0, 99), hits: int(1, 8) },
+              required: ["kind", "amount"],
             },
           },
         },
@@ -111,7 +112,9 @@ export function check(shape: Shape, value: unknown, path = ""): string[] {
     }
     case "object": {
       if (!isPlain(value)) return [`${at} must be an object.`];
-      return Object.keys(value).flatMap((k) => (k in shape.fields ? check(shape.fields[k]!, value[k], path ? `${path}.${k}` : k) : [`${path ? `${path}.` : ""}${k} isn't something this game lets you change.`]));
+      const named = (k: string) => (path ? `${path}.${k}` : k);
+      const missing = (shape.required ?? []).filter((k) => !(k in value)).map((k) => `${named(k)} is needed.`);
+      return [...missing, ...Object.keys(value).flatMap((k) => (k in shape.fields ? check(shape.fields[k]!, value[k], named(k)) : [`${named(k)} isn't something this game lets you change.`]))];
     }
   }
 }
@@ -121,7 +124,7 @@ export function plain(shape: Shape): unknown {
   switch (shape.type) {
     case "record": return { ...shape, key: shape.key.source, value: plain(shape.value) };
     case "list": return { ...shape, item: plain(shape.item) };
-    case "object": return { type: "object", fields: Object.fromEntries(Object.entries(shape.fields).map(([k, v]) => [k, plain(v)])) };
+    case "object": return { type: "object", fields: Object.fromEntries(Object.entries(shape.fields).map(([k, v]) => [k, plain(v)])), ...(shape.required ? { required: shape.required } : {}) };
     default: return shape;
   }
 }

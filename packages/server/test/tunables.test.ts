@@ -39,6 +39,8 @@ describe("the shape of a game's tunables", () => {
     expect(check(room, { foes: { rat: { pattern: [] } } })).toEqual(["foes.rat.pattern must have 1 to 12 entries."]);
     expect(check(room, { foes: { rat: { pattern: [{ kind: "flee", amount: 1 }] } } })).toEqual(["foes.rat.pattern[0].kind must be one of attack, block."]);
     expect(check(room, { cards: { Wrench: {} } })).toEqual(["cards.Wrench isn't a valid name."]);
+    expect(check(room, { foes: { rat: { pattern: [{ kind: "attack" }] } } })).toEqual(["foes.rat.pattern[0].amount is needed."]);
+    expect(check(room, { foes: { rat: { pattern: [{}] } } })).toEqual(["foes.rat.pattern[0].kind is needed.", "foes.rat.pattern[0].amount is needed."]);
     expect(check(room, { cards: { wrench: { luck: 3 } } })).toEqual(["cards.wrench.luck isn't something this game lets you change."]);
     expect(check(room, { rest: 1.5 })).toEqual(["rest must be a whole number."]);
     expect(check(room, { rest: "8" })).toEqual(["rest must be a whole number."]);
