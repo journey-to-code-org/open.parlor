@@ -784,7 +784,7 @@ checks no card reaches a watcher that any seat can't see.
 ## Moderating the parlor
 
 Whoever runs the server can look after it from the admin app at `/admin/`. It's off until the
-server has an admin token (see **Settings**); sign in with that token.
+server has an admin token (see **Settings**); sign in with that token, or with GitHub if the server has an OAuth app (the *Sign in with GitHub* button on the door; the token still works beside it).
 
 | | |
 | --- | --- |
@@ -908,6 +908,9 @@ docker run -p 8787:8787 -v spades:/data cardroom
 | `CARDROOM_GITHUB_REPO` | Where reports are filed, as `owner/name`. Default `journey-to-code-org/open.parlor`. |
 | `CARDROOM_BLOCKED_NAMES` | Optional: more words that names and chat at open tables may not contain, comma-separated |
 | `CARDROOM_ADMIN_TOKEN` | Turns on the admin app at `/admin/`: the token its host signs in with. Make it long and keep it secret (`openssl rand -hex 24`) |
+| `CARDROOM_GITHUB_CLIENT_ID`, `CARDROOM_GITHUB_CLIENT_SECRET` | Optional: sign in to the admin app with GitHub. An OAuth app (GitHub, Settings, Developer settings, OAuth Apps) with the callback `https://<your parlor>/moderation/github/callback`. No scopes: the parlor only asks who you are. Needs the next setting too |
+| `CARDROOM_ADMIN_GITHUB` | The GitHub logins that may sign in, comma-separated (`mnichols08`). Anyone else with a real GitHub account is turned away |
+| `CARDROOM_SESSION_SECRET` | Optional: signs the admin's GitHub sessions (twelve hours each). Without it the OAuth app's secret does, so changing that secret ends them all. Sessions are kept nowhere on the server, so a restart signs nobody out |
 | `CARDROOM_BOT_DELAY` | Fixed thinking time for computer players, in milliseconds (handy for testing) |
 | `CARDROOM_BOT_WORKERS` | Worker threads for the computer players' heavy thinking (see **How computer players think**). Default: one per processor but one, from 1 to 4. `0` for none: everything on the main thread. |
 | `CARDROOM_BOT_BUDGET` | How long, in milliseconds, a game that thinks by the clock is told it may take over a move. Default 2000. |

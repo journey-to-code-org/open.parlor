@@ -11,6 +11,9 @@ app-root { display: block; min-height: 100dvh; }
 .door-card h1 { font-size: 1.6rem; }
 .suits { font-size: 1.1rem; letter-spacing: 0.35em; color: var(--primary); font-variant-emoji: text; }
 .door-card action-button { justify-self: start; }
+.github { display: block; padding: 0.7rem 1rem; border-radius: var(--radius); background: var(--foreground); color: var(--background); text-align: center; text-decoration: none; font-weight: 600; }
+.github:hover, .github:focus-visible { opacity: 0.88; }
+.or { margin: 0; text-align: center; font-size: 0.85rem; }
 .back { font-size: 0.9rem; color: var(--muted-foreground); }
 
 /* ---------- The app ---------- */
