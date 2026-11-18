@@ -18,6 +18,12 @@ newer one:
     (in wasm-toolkit)  make engine
     (here)             npm run shootout -w @open-parlor/wasm -- ../wasm-toolkit
 
+Its races with other people go through a meet, `/wasm/meet/shootout` on the parlor's server
+(`net/meet.ts`): a room that says who is here and passes on what each says to the rest, and
+knows nothing of the game. Each device runs its own car and tells the other where it is and what
+it ran. A parlor served as plain files (the GitHub Pages build) has no meet, and the game says
+nobody can be reached.
+
 `/wasm/shootout/workshop.html` is the workshop, where a pack's cars, rooms, parts, rivals and maps
 are edited in the browser. A season is saved in the browser; nothing of it is kept on the server.
 
