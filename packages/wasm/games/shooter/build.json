@@ -1,0 +1,6 @@
+{
+  "sources": ["engine", "platform"],
+  "output": "shooter.wasm",
+  "defines": ["DOOMGENERIC_RESX=320", "DOOMGENERIC_RESY=200", "FEATURE_SOUND"],
+  "cflags": ["-w"]
+}

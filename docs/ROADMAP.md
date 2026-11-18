@@ -165,8 +165,9 @@ still a separate decision.
 
 - **Watching.** Spectators and all-bot exhibition games should work for board games from the
   first one, and a finished game should be replayable move by move.
-- **The embed.** `<card-room>` plays Spades and Palace in the page. Tic-Tac-Toe, Drop Four and
-  Reversi are small enough to join them.
+- **The embed.** `<card-room>` plays every game that can be played against the computer, and the
+  arcade and idle games, in the page: the list is written by `packages/web/scripts/embed-games.mjs`,
+  so a new game joins it when the script is run. Draw & Guess is the one left out.
 - **Tournaments.** Brackets work for any two-sided game already. Chess and backgammon will want
   matches of several games; Yacht and bowling want a score-based format with no bracket.
 - **The side apps.** The admin's "which games appear and in what order" needs the new sections.

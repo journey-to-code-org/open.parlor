@@ -187,24 +187,6 @@ export const loadArcadeHouse = (): { slug: string; name: string } | null => {
 };
 export const saveArcadeHouse = (slug: string | null) => write("cardroom:arcade:house", slug);
 
-// ---- Pink Slips ----------------------------------------------------------------------------------
-
-/** The garage, as the game saved it: it checks it over itself when it is opened. */
-export const loadDrive = (): unknown => read<unknown>("cardroom:pinkslips:garage", null);
-export const saveDrive = (garage: unknown) => write("cardroom:pinkslips:garage", garage);
-/** The strip the player last raced on. */
-export const loadDriveStrip = (): string => read<string>("cardroom:pinkslips:strip", "strip");
-export const saveDriveStrip = (id: string) => write("cardroom:pinkslips:strip", id);
-/** Where the player watches a race from: behind the car, or the driver's seat. */
-export const loadDriveSeat = (): "chase" | "cockpit" => (read<string>("cardroom:pinkslips:seat", "chase") === "cockpit" ? "cockpit" : "chase");
-export const saveDriveSeat = (seat: "chase" | "cockpit") => write("cardroom:pinkslips:seat", seat);
-/** The house this browser's garage is kept in, and the save the two last agreed on; null when it stays here. */
-export const loadDriveHouse = (): { slug: string; name: string; rev: number } | null => {
-  const kept = read<{ slug?: unknown; name?: unknown; rev?: unknown } | null>("cardroom:pinkslips:house", null);
-  return kept && typeof kept.slug === "string" && typeof kept.name === "string" ? { slug: kept.slug, name: kept.name, rev: typeof kept.rev === "number" ? kept.rev : 0 } : null;
-};
-export const saveDriveHouse = (house: { slug: string; name: string; rev: number } | null) => write("cardroom:pinkslips:house", house);
-
 // ---- Several people at this device (kit/sameDevice.ts) ------------------------------------------
 /** How many people play this game at this device: 1 is you against the computer. */
 export const loadPeopleHere = (game: KitGameId): number => {
