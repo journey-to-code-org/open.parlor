@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "zubra types ../ui/src --dir .zubra/types --framework solid && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@zubra/runtime": "^5.22.0",
