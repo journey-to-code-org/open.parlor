@@ -12,7 +12,8 @@ rest of the parlor: no shared components, no server. What the parlor has of it i
 At `/wasm/shootout/`, and behind the parlor's own tile for it. It is not built here: it is a Rust
 engine compiled to WebAssembly and the pack of content it plays, from
 [journey-to-code-org/wasm-toolkit](https://github.com/journey-to-code-org/wasm-toolkit), copied
-into `public/shootout/` and committed. `VERSION` there says which commit it is. To bring over a
+into `public/shootout/` (the game) and `packages/admin/public/workshop/` (the workshop) and
+committed. `VERSION` in each says which commit it is. To bring over a
 newer one:
 
     (in wasm-toolkit)  make engine
@@ -24,8 +25,12 @@ knows nothing of the game. Each device runs its own car and tells the other wher
 it ran. A parlor served as plain files (the GitHub Pages build) has no meet, and the game says
 nobody can be reached.
 
-`/wasm/shootout/workshop.html` is the workshop, where a pack's cars, rooms, parts, rivals and maps
-are edited in the browser. A season is saved in the browser; nothing of it is kept on the server.
+The workshop, where a pack's cars, rooms, parts, rivals and maps are edited in the browser, is
+in the admin app: its Road to the Shootout section opens it, at `/admin/workshop/`. From there
+the parlor's host publishes a pack, and that is what everyone plays from then on, in place of
+the one the game came with. The published pack is kept beside the parlor's database
+(`shootout.pack`; see `packages/server/src/packs.ts`). A season is saved in each player's
+browser; nothing of it is kept on the server.
 
 ## The shooter
 

@@ -8,7 +8,7 @@ import { CUSTOM_ELEMENTS_SCHEMA, ChangeDetectionStrategy, Component, computed, e
 import { FormsModule } from "@angular/forms";
 import { deckStyle, type CardDesign } from "@journey-to-code/decks";
 import { ZubraModel } from "@zubra/runtime/angular";
-import { Api, ApiError, type Catalogue, type CatalogueGame, type ChatLine, type House, type HouseMember, type LogEntry, type Overview, type Player, type SharedCourse, type SharedDesign, type Table, type TableStatus } from "./api";
+import { Api, ApiError, type Catalogue, type CatalogueGame, type ChatLine, type House, type HouseMember, type LogEntry, type Overview, type Player, type SharedCourse, type SharedDesign, type ShootoutPack, type Table, type TableStatus } from "./api";
 import "./zubra";
 
 type Section = "overview" | "tables" | "players" | "houses" | "games" | "designs" | "courses" | "activity";
@@ -57,6 +57,7 @@ export class App implements OnDestroy {
     { value: "games", label: "Games" },
     { value: "designs", label: "Card designs" },
     { value: "courses", label: "Courses & lanes" },
+    { value: "shootout", label: "Road to the Shootout" },
     { value: "activity", label: "Activity" },
   ];
 
@@ -65,6 +66,9 @@ export class App implements OnDestroy {
   protected readonly players = signal<Player[]>([]);
   protected readonly designs = signal<SharedDesign[]>([]);
   protected readonly courses = signal<SharedCourse[]>([]);
+  /** Road to the Shootout's pack; null until the server has said, or if it keeps none. */
+  protected readonly shootout = signal<ShootoutPack | null>(null);
+  protected readonly publishing = signal(false);
   protected readonly log = signal<LogEntry[]>([]);
   protected readonly houses = signal<House[]>([]);
   protected readonly catalogue = signal<Catalogue | null>(null);
@@ -239,8 +243,9 @@ export class App implements OnDestroy {
 
   protected async refresh(quiet = false): Promise<void> {
     try {
-      const [overview, tables, players, designs, log, houses, catalogue, courses] = await Promise.all([this.api.overview(), this.api.tables(), this.api.players(), this.api.designs(), this.api.log(), this.api.houses(), this.api.games(), this.api.courses()]);
+      const [overview, tables, players, designs, log, houses, catalogue, courses, shootout] = await Promise.all([this.api.overview(), this.api.tables(), this.api.players(), this.api.designs(), this.api.log(), this.api.houses(), this.api.games(), this.api.courses(), this.api.shootout().catch(() => null)]);
       this.courses.set(courses);
+      this.shootout.set(shootout);
       this.houses.set(houses);
       if (!this.savingGames()) this.catalogue.set(catalogue);
       this.overview.set(overview);
@@ -535,6 +540,41 @@ export class App implements OnDestroy {
     try {
       await this.api.restoreCourse(course.id);
       this.toast(`“${course.course.name}” is back in ${course.kind === "bowling" ? "Bowling" : "Mini Golf"}.`, "success");
+    } catch (error) {
+      this.toast(this.message(error), "danger");
+    }
+    await this.refresh(true);
+  }
+
+  // ---------- Road to the Shootout ----------
+
+  /** The workshop is a page of its own, beside this one. Opened from here, it has this tab's sign-in. */
+  protected openWorkshop(): void {
+    window.open("workshop/?host", "_blank");
+  }
+
+  /** Publish a pack saved as a file from the workshop. */
+  protected async publishPackFile(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file || this.publishing()) return;
+    this.publishing.set(true);
+    try {
+      const now = await this.api.publishShootout(file);
+      this.shootout.set(now);
+      this.toast(`“${now.published?.name ?? "The pack"}” is what everyone plays now.`, "success");
+    } catch (error) {
+      this.toast(this.message(error), "danger");
+    }
+    this.publishing.set(false);
+    await this.refresh(true);
+  }
+
+  protected async resetShootout(): Promise<void> {
+    try {
+      this.shootout.set(await this.api.resetShootout());
+      this.toast("Road to the Shootout is back to the game it came with.", "success");
     } catch (error) {
       this.toast(this.message(error), "danger");
     }

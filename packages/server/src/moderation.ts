@@ -10,6 +10,7 @@
 //
 //   moderation/bans   server only: one field per blocked player's reference
 //   moderation/log    server only: what the admin did, one field per action
+import { MOST_BYTES, type Packs } from "./packs.js";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { playerOf, type ChatMessage, type RoomDoc } from "@journey-to-code/rooms/server";
 import type { Catalogue } from "./catalogue.js";
@@ -71,7 +72,7 @@ const finished = (summary: unknown) => {
 /** How many wrong tokens a minute before everyone waits. */
 const WRONG_TOKENS_PER_MINUTE = 20;
 
-export function createModeration(rooms: Rooms, designs: Designs, { token, houses, catalogue, backups, bots, courses, mount = "/moderation", now = () => Date.now() }: { token?: string; houses?: Houses; catalogue?: Catalogue; /** Mini Golf courses people make, to take out of the gallery. */ courses?: Courses; /** Copies of the database, when the parlor keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
+export function createModeration(rooms: Rooms, designs: Designs, { token, houses, catalogue, backups, bots, courses, packs, mount = "/moderation", now = () => Date.now() }: { token?: string; /** The pack Road to the Shootout plays, when the host has published one (see packs.ts). */ packs?: Packs; houses?: Houses; catalogue?: Catalogue; /** Mini Golf courses people make, to take out of the gallery. */ courses?: Courses; /** Copies of the database, when the parlor keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
   const secret = token?.trim() ? digest(token.trim()) : null;
   const docs = rooms.sync.documents();
   let wrong: number[] = [];
@@ -165,6 +166,35 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
     const parts = path.split("/").filter(Boolean);
     const [area = "", id = "", action = ""] = parts;
     const method = request.method;
+
+    // Road to the Shootout's pack: the host makes one in the workshop and publishes it here.
+    // This comes before the rest because what is posted is the pack itself, not JSON.
+    if (area === "shootout") {
+      if (!packs) return json({ error: "This parlor has nowhere to keep a pack." }, 404);
+      const shown = () => {
+        const now = packs.get();
+        return { published: now ? { name: now.name, size: now.bytes.length, at: now.at } : null };
+      };
+      // GET /moderation/shootout → whether a pack of the host's own is being played
+      if (!id && method === "GET") return json(shown());
+      // POST /moderation/shootout/pack → publish the pack in the body
+      if (id === "pack" && method === "POST") {
+        if (Number(request.headers.get("content-length") ?? 0) > MOST_BYTES) return json({ error: `The most this parlor takes is ${MOST_BYTES / 1024 / 1024} MB.` }, 413);
+        const problem = packs.set(new Uint8Array(await request.arrayBuffer()));
+        if (problem) return json({ error: problem }, 400);
+        await record("Published a Road to the Shootout pack", packs.get()!.name);
+        return json(shown());
+      }
+      // POST /moderation/shootout/reset → back to the pack the game came with
+      if (id === "reset" && method === "POST") {
+        const was = packs.get();
+        packs.clear();
+        if (was) await record("Went back to the built-in Road to the Shootout", was.name);
+        return json(shown());
+      }
+      return json({ error: "Not found" }, 404);
+    }
+
     const input = method === "POST" ? (((await request.json().catch(() => ({}))) ?? {}) as Record<string, unknown>) : {};
     const view = await docs;
 
