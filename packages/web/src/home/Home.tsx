@@ -1,5 +1,5 @@
 // The open.parlor's start page: the Vue game chooser, mounted inside the React app.
-import { ARCADE_GAMES, IDLE_GAMES, isArcadeGame, isBoardGame, isIdleGame, isSportGame, isWordGame, KIT_GAMES } from "@journey-to-code/games";
+import { ARCADE_GAMES, IDLE_GAMES, isArcadeGame, isBoardGame, isIdleGame, isFieldGame, isSportGame, isWordGame, KIT_GAMES } from "@journey-to-code/games";
 import { createApp, h, reactive } from "vue";
 import { useEffect, useRef, useState } from "react";
 import { bugs } from "../bugReport";
@@ -164,7 +164,7 @@ const DICE: Record<string, number[]> = {
 };
 
 /** An arcade game's tile shows a little screen: a ship at the bottom, what it is up against, and what is coming at it. */
-type MiniScreen = { ship: [x: number, y: number]; foes: [x: number, y: number][]; bullets: [x: number, y: number][]; /** A game that builds: a road (an SVG path), and where towers stand beside it. */ road?: string; towers?: [x: number, y: number][]; /** A clicker: one big chip, and a few it has earned. */ chip?: boolean; /** A store: a shopfront with its sign. */ shop?: boolean; /** A drag strip: two lanes, the tree, and two cars leaving. */ strip?: boolean; /** An air hockey table from above: a mallet at each end and the puck between. */ rink?: boolean; /** An adventure: its hero, in his own pixels, on the grass. */ quest?: boolean };
+type MiniScreen = { ship: [x: number, y: number]; foes: [x: number, y: number][]; bullets: [x: number, y: number][]; /** A game that builds: a road (an SVG path), and where towers stand beside it. */ road?: string; towers?: [x: number, y: number][]; /** A clicker: one big chip, and a few it has earned. */ chip?: boolean; /** A store: a shopfront with its sign. */ shop?: boolean; /** A drag strip: two lanes, the tree, and two cars leaving. */ strip?: boolean; /** An air hockey table from above: a mallet at each end and the puck between. */ rink?: boolean; /** An adventure: its hero, in his own pixels, on the grass. */ quest?: boolean; /** Two tanks on hills, and a shell on its way over. */ hill?: boolean };
 const SCREENS: Record<string, MiniScreen> = {
   // A row of drones, a fan of bullets on its way down, and a gap to fly through.
   skyfire: { ship: [50, 82], foes: [[22, 18], [50, 12], [78, 18]], bullets: [[30, 44], [44, 52], [62, 40], [72, 58], [18, 64]] },
@@ -178,6 +178,8 @@ SCREENS.airhockey = { ship: [0, 0], foes: [], bullets: [], rink: true };
 SCREENS.zubraquest = { ship: [0, 0], foes: [], bullets: [], quest: true };
 // The counter is in Delbie's shop, so it has the shop's picture.
 SCREENS.counter = { ship: [0, 0], foes: [], bullets: [], shop: true };
+// A field game is on the kit, and has a screen all the same: the hills, the tanks and the shot.
+SCREENS.overthehill = { ship: [0, 0], foes: [], bullets: [], hill: true };
 const EMPTY_SCREEN: MiniScreen = { ship: [50, 82], foes: [], bullets: [] };
 
 const SEATS: Record<string, { seats: [number, number]; teams: boolean }> = {
@@ -197,7 +199,7 @@ export function Home({ last, onPick, onOpenHouse, onLobby, onWifi, onMove }: { l
 
   useEffect(() => {
     // The games the parlor's host offers, in their order (every game, where there's no server).
-    const games = () => arranged(EVERY_GAME).map((g) => ({ ...g, category: categoryOf(g.id), group: cardGroupOf(g.id), screen: isArcadeGame(g.id) || isIdleGame(g.id) ? (SCREENS[g.id] ?? EMPTY_SCREEN) : undefined, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: (isBoardGame(g.id) && !DICE[g.id]) || isWordGame(g.id) ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
+    const games = () => arranged(EVERY_GAME).map((g) => ({ ...g, category: categoryOf(g.id), group: cardGroupOf(g.id), screen: isArcadeGame(g.id) || isIdleGame(g.id) || isFieldGame(g.id) ? (SCREENS[g.id] ?? EMPTY_SCREEN) : undefined, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: (isBoardGame(g.id) && !DICE[g.id]) || isWordGame(g.id) ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
     const props = reactive({
       games: games(),
       categories: GAME_CATEGORIES,

@@ -3333,3 +3333,53 @@ button.word-tile:active:not(:disabled) { transform: translateY(2px); }
 .table.lazy-wait { min-height: 100dvh; }
 .table.lazy-missing { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 16px; }
 .table.lazy-missing .sheet { position: static; transform: none; width: auto; display: flex; flex-direction: column; gap: 12px; max-width: 460px; }
+
+/* ---- A field game (Over the Hill): the field side on, and a pad of controls under it ---------- */
+.field-felt { display: flex; flex-direction: column; gap: 8px; padding: 6px 6px 10px; flex: 1 0 auto; min-height: 0; }
+.field-view { display: flex; justify-content: center; min-width: 0; }
+.field-stage { position: relative; width: 100%; max-height: 62dvh; border-radius: 12px; overflow: hidden; outline-offset: 2px; box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.35), 0 2px 10px rgba(0, 0, 0, 0.35); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; background: #1d2f57; }
+.field-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.field-stage.can { cursor: crosshair; }
+.field-stage:focus-visible { outline: 3px solid var(--gold); }
+.field-info { position: absolute; left: 6px; top: 6px; margin: 0; display: flex; flex-wrap: wrap; gap: 4px; font-size: 0.75rem; pointer-events: none; }
+.field-info span { padding: 2px 9px; border-radius: 999px; background: rgba(0, 0, 0, 0.45); color: var(--cream); }
+.field-side { display: flex; flex-direction: column; gap: 8px; min-width: 0; width: 100%; max-width: 560px; margin: 0 auto; }
+.field-seats { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.field-seat { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: rgba(0, 0, 0, 0.25); border: 2px solid transparent; font-size: var(--ui-s); color: #e3efe7; }
+.field-seat strong { color: var(--cream); max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.field-seat.active { border-color: var(--gold); }
+.field-seat.done { opacity: 0.6; }
+.field-narration { min-height: 2.6em; }
+.field-status { text-align: center; min-height: 1.4em; color: #ffe7a6; font-weight: 600; font-size: var(--ui-m); }
+/* The controls are a pad of paper: cream, with ink on it, so every component is dark on light whatever the felt is. */
+.field-panel {
+  --card: #fffdf7; --border: #d6cfba; --input: #fffdf7; --background: #fffdf7; --foreground: var(--ink); --muted-foreground: #646b60;
+  --primary: var(--felt); --primary-foreground: #fffdf7; --accent: #efe8d4; --accent-foreground: var(--ink); --ring: var(--gold);
+  --muted: #ebe4cf; --secondary: #ebe4cf; --secondary-foreground: var(--ink); --card-foreground: var(--ink);
+  display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 14px; background: var(--cream); color: var(--ink); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+.field-controls.idle { visibility: hidden; }
+.field-panel segmented-control { display: block; }
+.field-panel segmented-control button { padding: 0.45rem 0.7rem; font-size: 0.85rem; min-height: 40px; }
+.field-blurb { margin: 0; min-height: 1.3em; font-size: 0.85rem; color: #646b60; }
+.field-dial { display: flex; align-items: center; gap: 8px; }
+.field-dial range-slider { flex: 1; min-width: 0; }
+.field-dial .range-scale { display: none; }
+.field-dial .range-head { margin-bottom: 0.15rem; }
+.field-dial > button { flex: none; width: 44px; height: 44px; border: 2px solid var(--border); border-radius: 12px; background: #fffdf7; color: var(--ink); font: inherit; font-size: 1.3rem; line-height: 1; cursor: pointer; }
+.field-dial > button:hover, .field-dial > button:focus-visible { border-color: var(--felt); }
+.field-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.field-actions > action-button:last-child { margin-left: auto; }
+.field-actions > action-button:last-child .action-button { height: 2.9rem; padding: 0 1.4rem; font-size: 1.05rem; }
+.field-drive { display: inline-flex; align-items: center; gap: 6px; }
+.field-drive small { color: #646b60; white-space: nowrap; }
+.field-draft choice-cards [role="radiogroup"] { grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 0.5rem; }
+.field-draft choice-cards button { padding: 0.55rem 0.7rem; }
+.field-draft > action-button { align-self: flex-end; }
+.field-error { text-align: center; margin: 0; }
+@media (min-width: 1024px) {
+  .field-felt { display: grid; grid-template-columns: 1fr minmax(320px, 400px); align-items: start; gap: 14px; padding: 12px; }
+  .field-stage { max-height: 78dvh; }
+  .field-side { max-width: none; }
+}
+.kit-score .sport-dot { display: inline-block; vertical-align: -1px; }
