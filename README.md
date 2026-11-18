@@ -805,6 +805,8 @@ over its own numbers; `GET /moderation/tunables` lists what can be tuned, `POST
 /moderation/tunables/<game> { values }` saves (a problem comes back as 422 and nothing changes) and
 `POST /moderation/tunables/<game>/reset` goes back to the game's own numbers. Every change is in the
 activity log. The version goes up on each, so a replay made on other numbers can say which it needs.
+
+**Promoting numbers into the code.** A live override is a trial. *Open a pull request* (on the Tuning page, when `CARDROOM_PROMOTE_TOKEN` is set) writes the saved numbers into the game's promoted file (`packages/wasm/src/battler/promoted.json`, `packages/server/src/promoted/sudoku.json`) on a new `tuning/...` branch and opens a **draft** pull request; CI checks the file against the game's ranges, and merging is a person's choice on GitHub. The game's own numbers are the card file with the promoted file laid over it, and a live override goes over those, so once it is merged and deployed, put the game's numbers back on the Tuning page. One pull request per saved version. The token is the server's: the browser never sees it, and the file written is always the game's own from a server-side table, never one the request names.
 The sudoku's clues apply from the day after they were saved (in New York time), so the puzzle somebody has open is never changed under them; only the latest change is kept, so changing it again also changes the days since the first change.
 
 Players are browsers, not accounts: a player is a cookie, and a name is whatever they typed when
@@ -911,6 +913,8 @@ docker run -p 8787:8787 -v spades:/data cardroom
 | `CARDROOM_GITHUB_CLIENT_ID`, `CARDROOM_GITHUB_CLIENT_SECRET` | Optional: sign in to the admin app with GitHub. An OAuth app (GitHub, Settings, Developer settings, OAuth Apps) with the callback `https://<your parlor>/moderation/github/callback`. No scopes: the parlor only asks who you are. Needs the next setting too |
 | `CARDROOM_ADMIN_GITHUB` | The GitHub logins that may sign in, comma-separated (`mnichols08`). Anyone else with a real GitHub account is turned away |
 | `CARDROOM_SESSION_SECRET` | Optional: signs the admin's GitHub sessions (twelve hours each). Without it the OAuth app's secret does, so changing that secret ends them all. Sessions are kept nowhere on the server, so a restart signs nobody out |
+| `CARDROOM_PROMOTE_TOKEN` | Optional: lets the Tuning page open a draft pull request with a game's saved numbers (*Open a pull request*). A fine-grained personal access token for the one repository, with Contents and Pull requests set to read and write, and nothing else. It stays on the server; the pull request is opened from a new branch and never pushes to the main branch. It is not the *Report a problem* token above: that one only needs to open issues, and this one is the more powerful, so they are kept apart |
+| `CARDROOM_PROMOTE_BASE` | The branch those pull requests are for. Default `main`. They go to the repository in `CARDROOM_GITHUB_REPO` above |
 | `CARDROOM_BOT_DELAY` | Fixed thinking time for computer players, in milliseconds (handy for testing) |
 | `CARDROOM_BOT_WORKERS` | Worker threads for the computer players' heavy thinking (see **How computer players think**). Default: one per processor but one, from 1 to 4. `0` for none: everything on the main thread. |
 | `CARDROOM_BOT_BUDGET` | How long, in milliseconds, a game that thinks by the clock is told it may take over a move. Default 2000. |

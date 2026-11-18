@@ -1,9 +1,9 @@
 // The numbers the host may change: laid over the game's own, ignored where they don't fit, and a run
 // played on them is a run on them, start to end.
 import { describe, expect, it } from "vitest";
-import { CARD_BY_ID, FOES } from "../src/battler/cards.ts";
+import { CARDS, CARD_BY_ID, FOES } from "../src/battler/cards.ts";
 import { Battle, REST, MAX_HP, replay } from "../src/battler/engine.ts";
-import { DEFAULT_TABLES, load, tune } from "../src/battler/tables.ts";
+import { DEFAULT_MAX_HP, DEFAULT_REST, DEFAULT_TABLES, PROMOTED, load, own, tune } from "../src/battler/tables.ts";
 import { playRun } from "./battler-bots.ts";
 
 describe("laying an override over the game's numbers", () => {
@@ -123,5 +123,31 @@ describe("the file of the game's own numbers", () => {
     expect(Object.keys(d.foes)).toEqual(Object.keys(DEFAULT_TABLES.foes));
     // What the page offers is what the server lets through: card and foe names fit its pattern.
     for (const id of [...Object.keys(d.cards), ...Object.keys(d.foes)]) expect(id).toMatch(/^[a-z][a-z0-9-]{0,23}$/);
+  });
+});
+
+describe("numbers promoted into the code", () => {
+  it("the file in the repo is something the game accepts: whole numbers, known cards and foes", () => {
+    const given = PROMOTED;
+    for (const id of Object.keys(given.cards ?? {})) expect(CARDS.some((c) => c.id === id)).toBe(true);
+    for (const id of Object.keys(given.foes ?? {})) expect(FOES[id]).toBeDefined();
+  });
+
+  it("are laid over the card file to make the game's own numbers, and are version 0", () => {
+    const own1 = own({ maxHp: 55, cards: { [CARDS[0]!.id]: { cost: 3 } }, foes: { [Object.keys(FOES)[0]!]: { hp: 77 } } });
+    expect(own1.version).toBe(0);
+    expect(own1.maxHp).toBe(55);
+    expect(own1.cardById[CARDS[0]!.id]!.cost).toBe(3);
+    expect(own1.foes[Object.keys(FOES)[0]!]!.hp).toBe(77);
+    expect(own1.rest).toBe(DEFAULT_REST);
+    // What is not mentioned is the card file's.
+    expect(own1.cardById[CARDS[1]!.id]).toEqual(CARDS[1]);
+  });
+
+  it("with nothing promoted, are the card file's own", () => {
+    const none = own({});
+    expect(none.cards).toEqual(CARDS);
+    expect(none.foes).toEqual(FOES);
+    expect(none.maxHp).toBe(DEFAULT_MAX_HP);
   });
 });

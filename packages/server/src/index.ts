@@ -50,6 +50,7 @@ const cardRoom = createCardRoom({
   // Moderation (the admin app) is on when the server has an admin token.
   adminToken: setting("ADMIN_TOKEN"),
   // ...or its host signs in with GitHub: an OAuth app (no scopes) and the logins that may (see github-login.ts).
+  promote: { token: setting("PROMOTE_TOKEN"), repo: setting("GITHUB_REPO"), base: setting("PROMOTE_BASE"), api: setting("PROMOTE_API") },
   github: { clientId: setting("GITHUB_CLIENT_ID"), clientSecret: setting("GITHUB_CLIENT_SECRET"), allow: (setting("ADMIN_GITHUB") ?? "").split(",").map((l) => l.trim()).filter(Boolean), signingKey: setting("SESSION_SECRET") },
   backups,
   // Push notifications are on when the server has VAPID keys (`npx web-push generate-vapid-keys`).

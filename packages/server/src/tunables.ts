@@ -82,9 +82,9 @@ const SUDOKU: Shape = {
 };
 
 /** Every game that can be tuned, and the shape of its tunables. */
-export const TUNABLE_GAMES: Readonly<Record<string, { name: string; shape: Shape }>> = {
-  "back-room": { name: "Delbie's Back Room", shape: BACK_ROOM },
-  sudoku: { name: "The daily sudoku", shape: SUDOKU },
+export const TUNABLE_GAMES: Readonly<Record<string, { name: string; shape: Shape; /** The file in the repository that holds the numbers promoted into the code (see promote.ts). */ promoted: string }>> = {
+  "back-room": { name: "Delbie's Back Room", shape: BACK_ROOM, promoted: "packages/wasm/src/battler/promoted.json" },
+  sudoku: { name: "The daily sudoku", shape: SUDOKU, promoted: "packages/server/src/promoted/sudoku.json" },
 };
 
 /** What one game's overrides may weigh as JSON. A whole table of cards and foes is about 2,000. */

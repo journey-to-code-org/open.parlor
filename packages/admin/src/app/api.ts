@@ -144,6 +144,8 @@ export interface TunableGame {
   name: string;
   shape: import("./tuning/shape").Shape;
   saved: { version: number; values: Record<string, unknown>; at: number };
+  /** The pull request last opened for these numbers, if one has been. */
+  promoted?: { version: number; url: string; number: number; branch: string; at: number } | null;
 }
 
 export class ApiError extends Error {
@@ -208,8 +210,9 @@ export class Api {
   games = () => this.send<Catalogue>("/games");
   setGames = (change: { order?: string[]; off?: string[]; watching?: boolean }) => this.send<Catalogue>("/games", change);
 
-  tunables = () => this.send<{ games: TunableGame[] }>("/tunables").then((r) => r.games);
+  tunables = () => this.send<{ games: TunableGame[]; canPromote?: boolean }>("/tunables");
   setTunables = (game: string, values: unknown) => this.send<TunableGame["saved"]>(`/tunables/${game}`, { values });
+  promoteTunables = (game: string) => this.send<NonNullable<TunableGame["promoted"]>>(`/tunables/${game}/promote`, {});
   resetTunables = (game: string) => this.send<TunableGame["saved"]>(`/tunables/${game}/reset`, {});
 
   closeTable = (id: string, reason: string) => this.send(`/tables/${id}/close`, { reason });

@@ -154,3 +154,15 @@ describe("the host's side", () => {
     ]);
   });
 });
+
+describe("the numbers promoted into the code", () => {
+  // The files a pull request from the admin app commits. A merge that breaks one fails here, in CI.
+  for (const [game, spec] of Object.entries(TUNABLE_GAMES)) {
+    it(`${game}: the file in the repository is something its shape accepts`, async () => {
+      const { readFileSync } = await import("node:fs");
+      const { fileURLToPath } = await import("node:url");
+      const file = fileURLToPath(new URL(`../../../${spec.promoted}`, import.meta.url));
+      expect(check(spec.shape, JSON.parse(readFileSync(file, "utf8")))).toEqual([]);
+    });
+  }
+});

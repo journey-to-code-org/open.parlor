@@ -5,6 +5,9 @@
 // A run is played on one set of tables. The set carries the version of the override it came from
 // (0 for the game's own), so a replay or a shared run can say which numbers it needs.
 import { CARDS, FOES, type CardDef, type Effect, type FoeDef, type Intent } from "./cards.ts";
+// Numbers the host has promoted into the code (a pull request opened from the admin app commits this file).
+// They are laid over cards.ts to make the game's own numbers; a live override goes over those.
+import promoted from "./promoted.json" with { type: "json" };
 
 /** What the host may change, as the server keeps it. Every part is optional. */
 export interface Tunables {
@@ -33,9 +36,9 @@ export const DEFAULT_REST = 8;
 
 const whole = (value: unknown): value is number => typeof value === "number" && Number.isInteger(value);
 
-/** The game's numbers with an override laid over them. What the game does not have is ignored; what is not a whole number is too. */
-export function tune(values: Tunables = {}, version = 0): Tables {
-  const cards = CARDS.map((card): CardDef => {
+/** The numbers promoted into the code, laid over cards.ts. */
+function lay(values: Tunables, baseCards: readonly CardDef[], baseFoes: Record<string, FoeDef>, maxHp: number, rest: number, version: number): Tables {
+  const cards = baseCards.map((card): CardDef => {
     const change = values.cards?.[card.id];
     if (!change) return card;
     const effect: Effect = { ...card.effect };
@@ -49,7 +52,7 @@ export function tune(values: Tunables = {}, version = 0): Tables {
     return { ...card, cost: whole(change.cost) ? change.cost : card.cost, effect };
   });
   const foes = Object.fromEntries(
-    Object.entries(FOES).map(([id, foe]) => {
+    Object.entries(baseFoes).map(([id, foe]) => {
       const change = values.foes?.[id];
       if (!change) return [id, foe];
       const pattern = Array.isArray(change.pattern) && change.pattern.length ? change.pattern : foe.pattern;
@@ -58,16 +61,31 @@ export function tune(values: Tunables = {}, version = 0): Tables {
   );
   return {
     version,
-    maxHp: whole(values.maxHp) && values.maxHp > 0 ? values.maxHp : DEFAULT_MAX_HP,
-    rest: whole(values.rest) && values.rest >= 0 ? values.rest : DEFAULT_REST,
+    maxHp: whole(values.maxHp) && values.maxHp > 0 ? values.maxHp : maxHp,
+    rest: whole(values.rest) && values.rest >= 0 ? values.rest : rest,
     cards,
     cardById: Object.fromEntries(cards.map((c) => [c.id, c])),
     foes,
   };
 }
 
+/** The game's own numbers for a given promoted file (the file's own, in the game; others, in tests). */
+export function own(values: Tunables): Tables {
+  return lay(values, CARDS, FOES, DEFAULT_MAX_HP, DEFAULT_REST, 0);
+}
+
+const BASE = own(promoted as Tunables);
+
+/** The game's numbers (as promoted into the code) with an override laid over them. What the game does not have is ignored; what is not a whole number is too. */
+export function tune(values: Tunables = {}, version = 0): Tables {
+  return lay(values, BASE.cards, BASE.foes, BASE.maxHp, BASE.rest, version);
+}
+
 /** The game's own numbers. */
-export const DEFAULT_TABLES: Tables = tune();
+export const DEFAULT_TABLES: Tables = BASE;
+
+/** The numbers promoted into the code, as they are in the file (for tests and for the admin's hints). */
+export const PROMOTED: Tunables = promoted as Tunables;
 
 /** What the page asks the server for. Nothing from it is believed beyond `tune`'s own checks. */
 export async function load(get: (url: string) => Promise<{ version?: unknown; values?: unknown } | null>, url = "/tunables/back-room"): Promise<Tables> {
