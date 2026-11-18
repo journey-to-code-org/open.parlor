@@ -7,6 +7,8 @@
 // store on every device they are in that house on, and the house sees how each member's store
 // stands. The page still plays it; the house is sent a copy every so often, and when the house's
 // copy has been played somewhere else since, that one is taken up here.
+import { mountIdleSheets, type Sheet } from "../solid/idle/Sheets";
+import { LiveSolidIsland } from "../wifi/island";
 import { DELBIES_FLOOR_RULES, DELBIES_PIECES, dollars, idleGame, type DelbiesCommand, type DelbiesPieceId, type DelbiesState, type DelbiesView, type IdleClock, type IdleGameId, type IdleReport } from "@journey-to-code/games";
 import { useEffect, useRef, useState } from "react";
 import { blip, notes, wakeArcadeSound } from "../arcade/sounds";
@@ -429,6 +431,77 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
   }
   const owed = view.tabCeiling ? Math.min(100, (view.tabs * 100) / view.tabCeiling) : 0;
 
+  const sheets: Sheet[] = [];
+  if (report)
+    sheets.push({
+      label: "While you were out",
+      heading: "The incident report",
+      lines: report.lines,
+      fine: report.skipped > 0 ? "The store only keeps going for twelve hours without you. The rest of the time, nothing happened." : undefined,
+      buttons: [{ text: "Back to work", yes: true, ready: true, act: () => setReport(null) }],
+    });
+  if (clash)
+    sheets.push({
+      label: "Which store?",
+      heading: `${clash.name} already has a store of yours`,
+      says: [`The one there has taken in ${dollars(game.score(clash.state) * 100)}. The one here has taken in ${dollars(view.earned)}. Only one can be kept.`],
+      buttons: [
+        {
+          text: `Use the one in ${clash.name}`,
+          yes: true,
+          ready: true,
+          act: () => {
+            adopt(clash.state, clash.rev, clash);
+            setClash(null);
+          },
+        },
+        {
+          text: "Replace it with this one",
+          act: () => {
+            keep({ slug: clash.slug, name: clash.name, rev: clash.rev });
+            setClash(null);
+            void sync();
+          },
+        },
+        { text: "Never mind", act: () => setClash(null) },
+      ],
+    });
+  if (moving)
+    sheets.push({
+      label: "Move the store?",
+      heading: `Store Move #${view.move.moves + 1}`,
+      says: [`Pack everyone up and move down the road. The till, the crew, the tabs and the store's name all start again. You keep what is in the Lost & Found, everything brings in 50% more for good, Pluto gets an Old Timer badge, and the new building has a ${view.move.nextDepartment}.`],
+      buttons: [
+        {
+          text: "Load the truck",
+          yes: true,
+          act: () => {
+            act({ cmd: "move" });
+            setMoving(false);
+          },
+        },
+        { text: "Not yet", ready: true, act: () => setMoving(false) },
+      ],
+    });
+  if (asking)
+    sheets.push({
+      label: "Start again?",
+      heading: "Close the store?",
+      says: ["Everything goes: the till, the crew, the tabs. This cannot be undone."],
+      buttons: [
+        {
+          text: "Close it and start again",
+          act: () => {
+            state_.current = game.newGame(Math.floor(Math.random() * 2 ** 31), clockNow()) as DelbiesState;
+            saveIdle(id, state_.current);
+            setAsking(false);
+            refresh();
+          },
+        },
+        { text: "Keep the store", yes: true, ready: true, act: () => setAsking(false) },
+      ],
+    });
+
   return (
     <main className="delbies">
       <header className="delbies-top">
@@ -844,111 +917,8 @@ export function IdleTable({ game: id, onHome }: { game: IdleGameId; onHome: () =
         </div>
       )}
 
-      {report && (
-        <div className="delbies-sheet" role="dialog" aria-label="While you were out">
-          <div>
-            <h2>The incident report</h2>
-            <ul>
-              {report.lines.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-            {report.skipped > 0 && <p className="fine">The store only keeps going for twelve hours without you. The rest of the time, nothing happened.</p>}
-            <button type="button" className="yes" autoFocus onClick={() => setReport(null)}>
-              Back to work
-            </button>
-          </div>
-        </div>
-      )}
-
-      {clash && (
-        <div className="delbies-sheet" role="dialog" aria-label="Which store?">
-          <div>
-            <h2>{clash.name} already has a store of yours</h2>
-            <p>
-              The one there has taken in {dollars(game.score(clash.state) * 100)}. The one here has taken in {dollars(view.earned)}. Only one can be kept.
-            </p>
-            <div className="row">
-              <button
-                type="button"
-                className="yes"
-                autoFocus
-                onClick={() => {
-                  adopt(clash.state, clash.rev, clash);
-                  setClash(null);
-                }}
-              >
-                Use the one in {clash.name}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  keep({ slug: clash.slug, name: clash.name, rev: clash.rev });
-                  setClash(null);
-                  void sync();
-                }}
-              >
-                Replace it with this one
-              </button>
-              <button type="button" onClick={() => setClash(null)}>
-                Never mind
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {moving && (
-        <div className="delbies-sheet" role="dialog" aria-label="Move the store?">
-          <div>
-            <h2>Store Move #{view.move.moves + 1}</h2>
-            <p>
-              Pack everyone up and move down the road. The till, the crew, the tabs and the store's name all start again. You keep what is in the Lost &amp; Found, everything brings in 50% more for good, Pluto gets an Old Timer badge, and the new building has a{" "}
-              {view.move.nextDepartment}.
-            </p>
-            <div className="row">
-              <button
-                type="button"
-                className="yes"
-                onClick={() => {
-                  act({ cmd: "move" });
-                  setMoving(false);
-                }}
-              >
-                Load the truck
-              </button>
-              <button type="button" autoFocus onClick={() => setMoving(false)}>
-                Not yet
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {asking && (
-        <div className="delbies-sheet" role="dialog" aria-label="Start again?">
-          <div>
-            <h2>Close the store?</h2>
-            <p>Everything goes: the till, the crew, the tabs. This cannot be undone.</p>
-            <div className="row">
-              <button
-                type="button"
-                onClick={() => {
-                  state_.current = game.newGame(Math.floor(Math.random() * 2 ** 31), clockNow()) as DelbiesState;
-                  saveIdle(id, state_.current);
-                  setAsking(false);
-                  refresh();
-                }}
-              >
-                Close it and start again
-              </button>
-              <button type="button" className="yes" autoFocus onClick={() => setAsking(false)}>
-                Keep the store
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* The sheets over the store are a Solid island (solid/idle/Sheets.tsx). */}
+      <LiveSolidIsland mount={mountIdleSheets} props={sheets} />
     </main>
   );
 }
