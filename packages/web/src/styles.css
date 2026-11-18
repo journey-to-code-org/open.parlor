@@ -652,6 +652,8 @@ h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; }
 /* Inside another site's page: no big header, a little tighter. */
 .setup.embedded { padding-top: 16px; gap: 12px; }
 .setup.embedded a { color: var(--gold); }
+/* An arcade or idle game keeps its own screens in the embed, without the way back to the front page. */
+.in-embed .all-games, .in-embed .delbies-back, .in-embed .pinks-back { display: none; }
 
 /* Table settings: the ⚙︎ beside the sound toggle, and its sheet. */
 .settings-toggle {
