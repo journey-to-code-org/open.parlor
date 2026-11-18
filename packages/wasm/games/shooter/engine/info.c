@@ -1410,9 +1410,10 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] = {
     },
 
     {		// MT_SERGEANT
+	// [open.wasm] The game's grease rat, with a rat's numbers: 45 health for 150, speed 13 for 10, 24 across for 30, 36 tall for 56.
 	3002,		// doomednum
 	S_SARG_STND,		// spawnstate
-	150,		// spawnhealth
+	45,		// spawnhealth
 	S_SARG_RUN1,		// seestate
 	sfx_sgtsit,		// seesound
 	8,		// reactiontime
@@ -1425,9 +1426,9 @@ mobjinfo_t mobjinfo[NUMMOBJTYPES] = {
 	S_SARG_DIE1,		// deathstate
 	S_NULL,		// xdeathstate
 	sfx_sgtdth,		// deathsound
-	10,		// speed
-	30*FRACUNIT,		// radius
-	56*FRACUNIT,		// height
+	13,		// speed
+	24*FRACUNIT,		// radius
+	36*FRACUNIT,		// height
 	400,		// mass
 	0,		// damage
 	sfx_dmact,		// activesound

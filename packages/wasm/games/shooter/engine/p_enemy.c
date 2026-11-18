@@ -33,6 +33,7 @@
 
 // State.
 #include "doomstat.h"
+#include "words.h"
 #include "r_state.h"
 
 // Data.
@@ -613,6 +614,10 @@ void A_Look (mobj_t* actor)
 		
     // go into chase state
   seeyou:
+    // [open.wasm] A word about being noticed, for the player at this device.
+    if (actor->target && actor->target->player == &players[consoleplayer])
+	Words_Tell("see", 10*TICRATE);
+
     if (actor->info->seesound)
     {
 	int		sound;
@@ -927,7 +932,8 @@ void A_SargAttack (mobj_t* actor)
     A_FaceTarget (actor);
     if (P_CheckMeleeRange (actor))
     {
-	damage = ((P_Random()%10)+1)*4;
+	// [open.wasm] A grease rat's bite, 2 to 8: was 4 to 40, a demon's. The dice are rolled as they were.
+	damage = ((P_Random()%10)/3+1)*2;
 	P_DamageMobj (actor->target, actor, actor, damage);
     }
 }

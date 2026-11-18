@@ -14,20 +14,23 @@
   import nodesWasm from "../../games/shooter/nodes/nodes.wasm?url";
   import wasm from "../../games/shooter/shooter.wasm?url";
   import { asset as fetched } from "../../host/assets.ts";
-  import { type Asset, catalogue, isLevelKind, key, type Kind, KINDS } from "../../wad/catalogue.ts";
+  import { type Asset, catalogue, isDrawn, key, type Kind, KINDS } from "../../wad/catalogue.ts";
+  import { WORDS } from "../../wad/words.ts";
   import { wallNames } from "../../wad/level.ts";
   import { composeWall, wallPictures as readWallPictures } from "../../wad/texture.ts";
   import { applyMod, type Change, modFromWad, modToWad } from "../../wad/mod.ts";
   import { type Palette, paletteOf } from "../../wad/picture.ts";
   import { loadMod, removeChange, saveChange } from "../../wad/saved.ts";
   import { readWad, type Wad } from "../../wad/wad.ts";
+  import { withDelbies } from "../shooter/delbies.ts";
   import { mountShooter, type Shooter } from "../shooter/player.ts";
   import { download, type Fit, isSound, pictureLump, pictureOf, play, png, soundLump } from "./convert.ts";
   import Levels from "./Levels.svelte";
   import Thumb from "./Thumb.svelte";
+  import Words from "./Words.svelte";
 
   type News<T> = CustomEvent<T>;
-  type Tab = Kind | "level" | "changed" | "play";
+  type Tab = Kind | "level" | "said" | "changed" | "play";
 
   const LABELS: Record<string, string> = { sprite: "Sprites", wall: "Walls", floor: "Floors", screen: "Screens", sound: "Sounds" };
   const HINTS: Record<string, string> = {
@@ -66,7 +69,7 @@
   let level = $state("");
   let tryLevel = $state("");
 
-  const tabs = $derived([...KINDS.map((kind) => ({ value: kind, label: LABELS[kind]! })), { value: "level", label: "Levels" }, { value: "changed", label: `Changed (${changes.size})` }, { value: "play", label: "Try it" }]);
+  const tabs = $derived([...KINDS.map((kind) => ({ value: kind, label: LABELS[kind]! })), { value: "level", label: "Levels" }, { value: "said", label: "Words" }, { value: "changed", label: `Changed (${changes.size})` }, { value: "play", label: "Try it" }]);
   const wallPictures = $derived(wallNames(wad));
   const recipes = $derived(readWallPictures(wad));
   /** The pieces wall pictures are put together from, by name. */
@@ -101,7 +104,8 @@
         progress: (received, total) => (progress = total ? `Fetching the game: ${(received / 1048576).toFixed(0)} of ${(total / 1048576).toFixed(0)} MB` : "Fetching the game"),
         valid: (data) => /^[IP]WAD$/.test(String.fromCharCode(...data.subarray(0, 4))),
       });
-      wad = readWad(bytes);
+      // The game as it is played: its own title and levels over the data it is built on. "As it came" here means that.
+      wad = readWad(await withDelbies(bytes));
       palette = paletteOf(wad.lumps.find((lump) => lump.name === "PLAYPAL")?.data ?? new Uint8Array(0));
       assets = catalogue(wad).sort((a, b) => a.name.localeCompare(b.name));
       const known = new Set(assets.map((asset) => key(asset.kind, asset.name)));
@@ -153,7 +157,7 @@
       const lost: string[] = [];
       for (const file of files) {
         const name = file.name.replace(/\.[^.]*$/, "").toUpperCase();
-        const named = assets.filter((asset) => asset.name === name && !isLevelKind(asset.kind));
+        const named = assets.filter((asset) => asset.name === name && isDrawn(asset.kind));
         // A name two kinds share (a floor and a wall piece) goes to the kind whose tab is open.
         const target = named.find((asset) => asset.kind === tab) ?? named[0];
         if (target && (await replace(target, file))) took++;
@@ -217,7 +221,8 @@
 
   /** Opens something from the list: a picture or a sound in the dialog, a level in the Levels tab. */
   function open(asset: Asset) {
-    if (!isLevelKind(asset.kind)) return void (picked = asset);
+    if (asset.kind === "words") return choose("said");
+    if (isDrawn(asset.kind)) return void (picked = asset);
     level = asset.name;
     choose("level");
   }
@@ -237,6 +242,7 @@
     const mounted: Shooter = mountShooter(stageElement, {
       wasm,
       wad: { url: address, name: "freedoom1.wad", megabytes: game.megabytes },
+      base: withDelbies,
       title: where ? `Try ${tryLevel}` : "Try it",
       blurb: changes.size ? "The game, with what you have changed." : "The game as it came: nothing is changed yet.",
       args: where ? ["-warp", ...where] : [],
@@ -288,7 +294,7 @@
                   <li>
                     <button type="button" class="tile" class:changed={isChanged(asset)} onclick={() => open(asset)}>
                       <span class="thumb">
-                        {#if isLevelKind(asset.kind)}
+                        {#if !isDrawn(asset.kind)}
                           <span class="sound" aria-hidden="true">▦</span>
                         {:else if isSound(asset.kind)}
                           <span class="sound" aria-hidden="true">♪</span>
@@ -314,6 +320,11 @@
           {/if}
         </section>
       {/each}
+      <section data-tab="said">
+        {#if tab === "said"}
+          <Words original={wad.lumps.find((lump) => lump.name === WORDS)?.data} saved={changes.get(key("words", WORDS))?.data} {keep} restore={() => restore("words", WORDS)} />
+        {/if}
+      </section>
       <section data-tab="level">
         {#if tab === "level"}
           <Levels {wad} {assets} {palette} bind:level wallPictures={wallPictures} {wallPicture} {builder} saved={(kind, name) => changes.get(key(kind, name))?.data} {keep} {restore} {toast} ontry={tryIn} />

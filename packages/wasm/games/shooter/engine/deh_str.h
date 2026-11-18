@@ -35,7 +35,9 @@ void DEH_AddStringReplacement(char *from_text, char *to_text);
 
 #else
 
-#define DEH_String(x) (x)
+// [open.wasm] The engine's words can be replaced from the WAD's WORDS lump (words.c).
+#include "words.h"
+#define DEH_String(x) Words_For(x)
 #define DEH_printf printf
 #define DEH_fprintf fprintf
 #define DEH_snprintf snprintf

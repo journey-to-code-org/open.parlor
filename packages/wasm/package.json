@@ -13,7 +13,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "build:net": "tsc -p tsconfig.net.json",
-    "nodes": "node scripts/build-engine.mjs shooter/nodes"
+    "nodes": "node scripts/build-engine.mjs shooter/nodes",
+    "delbies": "node scripts/build-delbies.mjs"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.0",

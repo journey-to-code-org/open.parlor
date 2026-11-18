@@ -1,0 +1,386 @@
+[
+ {
+  "name": "STFST00",
+  "width": 24,
+  "height": 29,
+  "left": -5,
+  "top": -2,
+  "at": 0
+ },
+ {
+  "name": "STFST01",
+  "width": 24,
+  "height": 29,
+  "left": -5,
+  "top": -2,
+  "at": 1392
+ },
+ {
+  "name": "STFST02",
+  "width": 24,
+  "height": 29,
+  "left": -5,
+  "top": -2,
+  "at": 2784
+ },
+ {
+  "name": "STFTL00",
+  "width": 26,
+  "height": 30,
+  "left": -5,
+  "top": -1,
+  "at": 4176
+ },
+ {
+  "name": "STFTR00",
+  "width": 26,
+  "height": 30,
+  "left": -3,
+  "top": -2,
+  "at": 5736
+ },
+ {
+  "name": "STFOUCH0",
+  "width": 24,
+  "height": 31,
+  "left": -5,
+  "top": -1,
+  "at": 7296
+ },
+ {
+  "name": "STFEVL0",
+  "width": 24,
+  "height": 30,
+  "left": -5,
+  "top": -2,
+  "at": 8784
+ },
+ {
+  "name": "STFKILL0",
+  "width": 24,
+  "height": 30,
+  "left": -5,
+  "top": -2,
+  "at": 10224
+ },
+ {
+  "name": "STFST10",
+  "width": 24,
+  "height": 29,
+  "left": -5,
+  "top": -2,
+  "at": 11664
+ },
+ {
+  "name": "STFST11",
+  "width": 24,
+  "height": 29,
+  "left": -5,
+  "top": -2,
+  "at": 13056
+ },
+ {
+  "name": "STFST12",
+  "width": 24,
+  "height": 29,
+  "left": -5,
+  "top": -2,
+  "at": 14448
+ },
+ {
+  "name": "STFTL10",
+  "width": 26,
+  "height": 30,
+  "left": -5,
+  "top": -2,
+  "at": 15840
+ },
+ {
+  "name": "STFTR10",
+  "width": 26,
+  "height": 30,
+  "left": -3,
+  "top": -2,
+  "at": 17400
+ },
+ {
+  "name": "STFOUCH1",
+  "width": 24,
+  "height": 31,
+  "left": -5,
+  "top": -1,
+  "at": 18960
+ },
+ {
+  "name": "STFEVL1",
+  "width": 24,
+  "height": 30,
+  "left": -5,
+  "top": -2,
+  "at": 20448
+ },
+ {
+  "name": "STFKILL1",
+  "width": 24,
+  "height": 30,
+  "left": -5,
+  "top": -2,
+  "at": 21888
+ },
+ {
+  "name": "STFST20",
+  "width": 24,
+  "height": 30,
+  "left": -5,
+  "top": -2,
+  "at": 23328
+ },
+ {
+  "name": "STFST21",
+  "width": 24,
+  "height": 30,
+  "left": -5,
+  "top": -2,
+  "at": 24768
+ },
+ {
+  "name": "STFST22",
+  "width": 24,
+  "height": 30,
+  "left": -5,
+  "top": -2,
+  "at": 26208
+ },
+ {
+  "name": "STFTL20",
+  "width": 27,
+  "height": 30,
+  "left": -4,
+  "top": -1,
+  "at": 27648
+ },
+ {
+  "name": "STFTR20",
+  "width": 27,
+  "height": 30,
+  "left": -4,
+  "top": -1,
+  "at": 29268
+ },
+ {
+  "name": "STFOUCH2",
+  "width": 24,
+  "height": 31,
+  "left": -5,
+  "top": -1,
+  "at": 30888
+ },
+ {
+  "name": "STFEVL2",
+  "width": 24,
+  "height": 30,
+  "left": -5,
+  "top": -2,
+  "at": 32376
+ },
+ {
+  "name": "STFKILL2",
+  "width": 24,
+  "height": 30,
+  "left": -5,
+  "top": -2,
+  "at": 33816
+ },
+ {
+  "name": "STFST30",
+  "width": 24,
+  "height": 31,
+  "left": -5,
+  "top": -1,
+  "at": 35256
+ },
+ {
+  "name": "STFST31",
+  "width": 24,
+  "height": 31,
+  "left": -5,
+  "top": -1,
+  "at": 36744
+ },
+ {
+  "name": "STFST32",
+  "width": 24,
+  "height": 31,
+  "left": -5,
+  "top": -1,
+  "at": 38232
+ },
+ {
+  "name": "STFTL30",
+  "width": 29,
+  "height": 31,
+  "left": -2,
+  "top": -1,
+  "at": 39720
+ },
+ {
+  "name": "STFTR30",
+  "width": 28,
+  "height": 30,
+  "left": -3,
+  "top": -2,
+  "at": 41518
+ },
+ {
+  "name": "STFOUCH3",
+  "width": 24,
+  "height": 31,
+  "left": -5,
+  "top": -1,
+  "at": 43198
+ },
+ {
+  "name": "STFEVL3",
+  "width": 24,
+  "height": 30,
+  "left": -5,
+  "top": -2,
+  "at": 44686
+ },
+ {
+  "name": "STFKILL3",
+  "width": 24,
+  "height": 30,
+  "left": -5,
+  "top": -2,
+  "at": 46126
+ },
+ {
+  "name": "STFST40",
+  "width": 24,
+  "height": 31,
+  "left": -5,
+  "top": -1,
+  "at": 47566
+ },
+ {
+  "name": "STFST41",
+  "width": 24,
+  "height": 31,
+  "left": -5,
+  "top": -1,
+  "at": 49054
+ },
+ {
+  "name": "STFST42",
+  "width": 24,
+  "height": 31,
+  "left": -5,
+  "top": -1,
+  "at": 50542
+ },
+ {
+  "name": "STFTL40",
+  "width": 30,
+  "height": 31,
+  "left": -1,
+  "top": -1,
+  "at": 52030
+ },
+ {
+  "name": "STFTR40",
+  "width": 28,
+  "height": 30,
+  "left": -3,
+  "top": -2,
+  "at": 53890
+ },
+ {
+  "name": "STFOUCH4",
+  "width": 24,
+  "height": 31,
+  "left": -5,
+  "top": -1,
+  "at": 55570
+ },
+ {
+  "name": "STFEVL4",
+  "width": 24,
+  "height": 30,
+  "left": -5,
+  "top": -2,
+  "at": 57058
+ },
+ {
+  "name": "STFKILL4",
+  "width": 24,
+  "height": 30,
+  "left": -5,
+  "top": -2,
+  "at": 58498
+ },
+ {
+  "name": "STFGOD0",
+  "width": 24,
+  "height": 29,
+  "left": -5,
+  "top": -2,
+  "at": 59938
+ },
+ {
+  "name": "STFDEAD0",
+  "width": 24,
+  "height": 31,
+  "left": -5,
+  "top": -1,
+  "at": 61330
+ },
+ {
+  "name": "STBAR",
+  "width": 320,
+  "height": 32,
+  "left": 0,
+  "top": 0,
+  "at": 62818
+ },
+ {
+  "name": "STARMS",
+  "width": 38,
+  "height": 32,
+  "left": 0,
+  "top": 0,
+  "at": 83298
+ },
+ {
+  "name": "STFB0",
+  "width": 35,
+  "height": 31,
+  "left": 0,
+  "top": 0,
+  "at": 85730
+ },
+ {
+  "name": "STFB1",
+  "width": 35,
+  "height": 31,
+  "left": 0,
+  "top": 0,
+  "at": 87900
+ },
+ {
+  "name": "STFB2",
+  "width": 35,
+  "height": 31,
+  "left": 0,
+  "top": 0,
+  "at": 90070
+ },
+ {
+  "name": "STFB3",
+  "width": 35,
+  "height": 31,
+  "left": 0,
+  "top": 0,
+  "at": 92240
+ }
+]

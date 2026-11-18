@@ -33,6 +33,11 @@ export interface ShooterOptions {
   /** How many episodes the game has, and maps in each, for the host to choose where to start. */
   levels: { episodes: number; maps: number };
   /**
+   * What the game is made of, given the data it was fetched as: a game of our own laid over the
+   * data it is built on. Every device does the same, so this is what is played alone and together.
+   */
+  base?(wad: Uint8Array): Promise<Uint8Array>;
+  /**
    * The player's own version of the game's data, when playing alone. A game with other devices is
    * played on the data as it came, so every device has the same.
    */
@@ -42,6 +47,8 @@ export interface ShooterOptions {
     /** A line for the start screen that says what is different about it, or "" if nothing is. */
     note(): Promise<string>;
   };
+  /** A picture for the game: behind the screens around it, and at the top of the first one. */
+  art?: string;
   /** Where the editor for the game's pictures and sounds is, for a link from the start screen. */
   editor?: string;
 }
@@ -84,6 +91,7 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
   bar.hidden = true;
   screen.append(canvas);
   root.classList.add("shooter");
+  if (options.art) root.style.setProperty("--shooter-art", `url("${options.art}")`);
   root.append(screen, pad, bar, card);
 
   const context = canvas.getContext("2d", { alpha: false })!;
@@ -132,6 +140,8 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
     const row = el("div", "lobby-actions");
     row.append(...buttons);
     card.replaceChildren(el("h1", "", heading), ...lines.map((line) => el("p", "", line)), ...more, row);
+    // Only the first screen wears the game's picture: home() says so after this.
+    delete card.dataset.home;
     card.hidden = false;
     if (more.length === 0) buttons[0]?.focus();
   }
@@ -308,7 +318,7 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
         // A WAD begins with the letters IWAD or PWAD.
         valid: (bytes) => /^[IP]WAD$/.test(String.fromCharCode(...bytes.subarray(0, 4))),
       }),
-    ]).then(([compiled, wad]) => ({ compiled, wad }));
+    ]).then(async ([compiled, wad]) => ({ compiled, wad: options.base ? await options.base(wad) : wad }));
     // A failure isn't kept: the next try fetches again.
     assets.catch(() => (assets = null));
     return assets;
@@ -485,6 +495,7 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
     );
     const start = (actions: Action[]) => {
       show(options.title, lines, actions);
+      card.dataset.home = "";
       card.append(...extras());
     };
     // With no server to be the room, one of the devices can be, for those on the same wifi.

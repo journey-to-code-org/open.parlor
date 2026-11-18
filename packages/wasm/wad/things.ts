@@ -129,7 +129,7 @@ export const THING_TYPES: ThingType[] = [
   { number: 2048, sprite: "AMMO", frame: "A", radius: 20, sort: "pickup", solid: false },
   { number: 2049, sprite: "SBOX", frame: "A", radius: 20, sort: "pickup", solid: false },
   { number: 3001, sprite: "TROO", frame: "A", radius: 20, sort: "monster", solid: true },
-  { number: 3002, sprite: "SARG", frame: "A", radius: 30, sort: "monster", solid: true },
+  { number: 3002, sprite: "SARG", frame: "A", radius: 24, sort: "monster", solid: true },
   { number: 3003, sprite: "BOSS", frame: "A", radius: 24, sort: "monster", solid: true },
   { number: 3004, sprite: "POSS", frame: "A", radius: 20, sort: "monster", solid: true },
   { number: 3005, sprite: "HEAD", frame: "A", radius: 31, sort: "monster", solid: true },

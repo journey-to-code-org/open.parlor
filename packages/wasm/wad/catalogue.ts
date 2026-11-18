@@ -10,15 +10,17 @@ import type { Wad } from "./wad.ts";
 /**
  * A sprite, a piece of wall, a floor or ceiling, any other picture (screens, menus, the status
  * bar), a sound effect; and two that are a level, named by the level: "things", everything
- * placed in it, and "walls", what it is built of.
+ * placed in it, and "walls", what it is built of. And "words": what the game says (words.ts).
  */
-export type Kind = "sprite" | "wall" | "floor" | "screen" | "sound" | "things" | "walls";
+export type Kind = "sprite" | "wall" | "floor" | "screen" | "sound" | "things" | "walls" | "words";
 /** The kinds that are part of a level, not a picture or a sound. */
 export const isLevelKind = (kind: Kind) => kind === "things" || kind === "walls";
 
 /** The kinds that are a picture or a sound: one lump, swapped for a file. */
 export const KINDS: Kind[] = ["sprite", "wall", "floor", "screen", "sound"];
-export const EVERY_KIND: Kind[] = [...KINDS, "things", "walls"];
+export const EVERY_KIND: Kind[] = [...KINDS, "things", "walls", "words"];
+/** The kinds that are a picture or a sound: what can be shown small, and dropped a file on. */
+export const isDrawn = (kind: Kind) => !isLevelKind(kind) && kind !== "words";
 
 export interface Asset {
   kind: Kind;
@@ -48,6 +50,7 @@ export function catalogue(wad: Wad): Asset[] {
   let section: Kind | null = null;
   wad.lumps.forEach(({ name, data }, index) => {
     // A level: its marker, then its lumps, the first of them what is placed in it.
+    if (name === "WORDS") found.set(key("words", name), { kind: "words", name, index, note: "What the game says" });
     if (isLevelName(name) && wad.lumps[index + 1]?.name === "THINGS") {
       found.set(key("things", name), { kind: "things", name, index: index + 1, note: "What is placed in this level" });
       found.set(key("walls", name), { kind: "walls", name, index, note: "The walls and rooms of this level" });

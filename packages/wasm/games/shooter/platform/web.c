@@ -125,7 +125,9 @@ EXPORT(web_state) int web_state(void)
          | (automapactive ? 4 : 0)
          | (paused ? 8 : 0)
          | (messageToPrint && messageNeedsInput ? 16 : 0)
-         | (wipe_running || starting ? 32 : 0);
+         | (wipe_running || starting ? 32 : 0)
+         // The game is over: its ending is on the screen.
+         | (gamestate == GS_FINALE ? 64 : 0);
 }
 
 // One frame: any game tics that have come due, then the picture.
