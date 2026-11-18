@@ -199,8 +199,14 @@ export function Home({ last, onPick, onOpenHouse, onLobby, onWifi, onMove }: { l
       // "Ask for a game" in the footer, where the parlor takes requests.
       canAsk: false,
       onAsk: openGameRequest,
+      // "Every game on one page": the page the parlor's server draws itself (the server's pages.ts).
+      // A parlor published as plain files has no server to draw it.
+      canList: false,
     });
     void bugs.enabled().then((yes) => (props.canAsk = yes));
+    void fetch("games", { method: "HEAD" })
+      .then((reply) => (props.canList = reply.ok && (reply.headers.get("x-parlor-page") ?? "") === "games"))
+      .catch(() => {});
     // Rendered from the reactive props, so the chooser follows them when the open tables change.
     const app = createApp({ render: () => h(GameChooser, { ...props }) });
     app.mount(el.current!);
