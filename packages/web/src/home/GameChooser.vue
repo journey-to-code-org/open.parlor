@@ -22,7 +22,7 @@ export interface ChooserGame {
   /** Three cards to fan out on the tile. */
   fan: Record<string, unknown>[];
   /** A board game shows a little board instead of cards. */
-  board?: { cols: number; cells: ({ glyph: string; tone: string; shade?: string } | null)[]; shade?: string };
+  board?: { cols: number; cells: ({ glyph: string; tone: string; shade?: string } | null)[]; shade?: string; /** A sheet of paper with a drawing on it, in place of a board (Draw & Guess). */ sketch?: boolean };
   /** An arcade game shows a little screen: a ship, what it is up against, and what is coming at it (in a 100 × 100 box). */
   screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][]; chip?: boolean; shop?: boolean; strip?: boolean; rink?: boolean; quest?: boolean };
   /** A dice game shows a few dice: the face each one shows. */
@@ -284,6 +284,16 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
                 <i v-for="n in 9" :key="n" :class="{ pip: PIPS[face]?.includes(n - 1) }" />
               </span>
             </span>
+            <span v-else-if="g.board?.sketch" class="mini-table mini-sketch" aria-hidden="true">
+              <svg viewBox="0 0 100 100">
+                <rect class="paper" x="6" y="8" width="88" height="84" rx="7" />
+                <circle class="sun" cx="76" cy="28" r="9" />
+                <path class="rays" d="M76 13 v-5 M89 18 l4 -4 M91 28 h5 M63 18 l-4 -4" />
+                <path class="ink" d="M20 82 V52 L40 34 L60 52 V82 Z M34 82 V66 H46 V82 M14 82 H70" />
+                <path class="pencil" d="M58 74 L84 48 L92 56 L66 82 L56 84 Z" />
+                <path class="pencil-tip" d="M58 74 L66 82 L56 84 Z" />
+              </svg>
+            </span>
             <span v-else-if="g.board" class="mini-board" :class="g.board.shade ? `shade-${g.board.shade}` : ''" aria-hidden="true" :style="{ '--cols': g.board.cols, '--rows': Math.ceil(g.board.cells.length / g.board.cols) }">
               <span v-for="(c, i) in g.board.cells" :key="i" class="mini-cell" :class="c ? [`tone-${c.tone}`, c.shade ? `shade-${c.shade}` : ''] : ''">{{ c?.glyph }}</span>
             </span>
@@ -491,6 +501,13 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
   transition: rotate 220ms var(--ease-back, ease-out), scale 220ms var(--ease-back, ease-out);
 }
 .mini-table svg { display: block; width: 100%; height: 100%; overflow: visible; }
+/* A sheet of paper with a house drawn on it, and the pencil that drew it. */
+.mini-sketch .paper { fill: #fdfaf2; stroke: #d9cdb4; stroke-width: 2; }
+.mini-sketch .ink { fill: none; stroke: #2a2620; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+.mini-sketch .sun { fill: #f2b632; }
+.mini-sketch .rays { fill: none; stroke: #f2b632; stroke-width: 3.5; stroke-linecap: round; }
+.mini-sketch .pencil { fill: #e2574c; stroke: #7f231a; stroke-width: 1.5; stroke-linejoin: round; }
+.mini-sketch .pencil-tip { fill: #f3dcb5; stroke: #7f231a; stroke-width: 1.5; stroke-linejoin: round; }
 .mini-table .rail { fill: #e9dcc3; stroke: #5b3d22; stroke-width: 2; }
 .mini-table .cloth { fill: #3f9c58; }
 /* A green has timber rails, like the holes themselves. */

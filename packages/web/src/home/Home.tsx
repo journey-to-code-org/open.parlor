@@ -65,7 +65,7 @@ const FANS: Record<string, object[]> = {
 };
 
 /** A board game's tile shows a little board instead: a position that says what the game is about. */
-type MiniBoard = { cols: number; cells: ({ glyph: string; tone: string; shade?: "dark" | "point-down" | "point-up" } | null)[]; shade?: "green" | "wood" | "points" | "words" };
+type MiniBoard = { cols: number; cells: ({ glyph: string; tone: string; shade?: "dark" | "point-down" | "point-up" } | null)[]; shade?: "green" | "wood" | "points" | "words"; sketch?: boolean };
 const X = { glyph: "✕", tone: "red" };
 const O = { glyph: "◯", tone: "blue" };
 const DARK = { glyph: "●", tone: "dark" };
@@ -101,7 +101,8 @@ const BOARDS: Record<string, MiniBoard> = {
   // Two words crossing.
   crisscross: { cols: 5, shade: "words", cells: [...tiles("__w__", "ppp"), ...tiles("crane", "pppnp"), ...tiles("__d__", "ppp"), ...tiles("__e__", "ppp")] },
   // The word, hidden, and one guessed.
-  drawguess: { cols: 5, shade: "words", cells: [...tiles("_____", "ppppp"), ...tiles("house", "hhhhh")] },
+  // Draw & Guess is a drawing game: a sheet of paper with a house on it, not letter tiles.
+  drawguess: { cols: 1, cells: [], sketch: true },
   hangman: { cols: 5, shade: "words", cells: [...tiles("_a__a", "phpph"), ...tiles("zqk__", "mmm")] },
   tictactoe: { cols: 3, cells: [X, O, null, null, X, O, O, null, X] },
   // The bottom of a rack: red about to make four on the slant.
