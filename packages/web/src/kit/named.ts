@@ -68,6 +68,8 @@ const YOU_VERBS: Record<string, string> = {
   sails: "sail",
   stays: "stay",
   shuts: "shut",
+  brings: "bring",
+  sends: "send",
   sows: "sow",
   ends: "end",
   captures: "capture",
