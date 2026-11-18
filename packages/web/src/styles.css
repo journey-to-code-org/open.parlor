@@ -540,6 +540,9 @@ h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; }
   .palace-felt { grid-template-rows: auto 1fr auto auto; grid-template-areas: "top top top" "left center right" "info info info" "mine mine mine"; }
   .palace-felt .center { display: contents; }
   .palace-felt .pile-area { grid-area: center; }
+  /* Kings in the Corner's cross too: left to place itself, it took the first free cell, which at a
+     table of two is the left-hand column, not the middle. */
+  .palace-felt .cross:not(.row) { grid-area: center; }
   .palace-felt .center-info { grid-area: info; min-width: 0; padding: 0 8px; text-wrap: balance; }
 }
 /* Palace buttons live in the felt, not floating over your face-up cards. */
@@ -1067,6 +1070,35 @@ button.sol-slot.again { cursor: pointer; color: var(--gold); border-color: rgba(
 .cross-pile { position: relative; display: block; padding: var(--peek) 0 0; margin: 0; border: 0; background: none; line-height: 0; border-radius: 8px; }
 .cross-under { position: absolute; top: 0; left: 0; line-height: 0; filter: brightness(0.92); }
 .cross-top { position: relative; display: block; line-height: 0; }
+/* The fan (Kings in the Corner): a pile is one card wide and tall where it starts, and each newer card
+   lies one step further from the stock, up, down, left or right by the pile's side. The steps shrink
+   as a pile gets long, so it never grows past the room kept for it. Cards are placed with top and left
+   (not a transform) so a card gliding in (z-index 5, motion.ts) still passes over the other piles. */
+.cross:not(.row) {
+  --peek-x: calc(var(--trick-w) * 0.3);
+  --room-y: calc(var(--trick-h) * 0.7);
+  --room-x: calc(var(--trick-w) * 0.8);
+  padding: var(--room-y) var(--room-x);
+}
+.cross:not(.row) .cross-pile { padding: 0; }
+.cross:not(.row) .cross-stock { padding-top: 0; }
+.cross-fan {
+  --step: min(var(--peek), calc(var(--room-y) / max(1, var(--n) - 1)));
+  --stepx: min(var(--peek-x), calc(var(--room-x) / max(1, var(--n) - 1)));
+  position: relative; display: block; width: var(--trick-w); height: var(--trick-h); line-height: 0;
+}
+.cross-card { position: absolute; top: 0; left: 0; display: block; line-height: 0; }
+.cross-fan[data-dir="up"] .cross-card { top: calc(var(--k) * var(--step) * -1); }
+.cross-fan[data-dir="down"] .cross-card { top: calc(var(--k) * var(--step)); }
+.cross-fan[data-dir="left"] .cross-card { left: calc(var(--k) * var(--stepx) * -1); }
+.cross-fan[data-dir="right"] .cross-card { left: calc(var(--k) * var(--stepx)); }
+/* A pile you can move glows all round, however far it fans. */
+.cross:not(.row) button.cross-pile.can::after { content: none; }
+button.cross-pile.can .cross-fan::after { content: ""; position: absolute; inset: -3px; border-radius: 10px; box-shadow: 0 0 0 3px var(--gold); pointer-events: none; }
+button.cross-pile.can .cross-fan[data-dir="up"]::after { top: calc((var(--n) - 1) * var(--step) * -1 - 3px); }
+button.cross-pile.can .cross-fan[data-dir="down"]::after { bottom: calc((var(--n) - 1) * var(--step) * -1 - 3px); }
+button.cross-pile.can .cross-fan[data-dir="left"]::after { left: calc((var(--n) - 1) * var(--stepx) * -1 - 3px); }
+button.cross-pile.can .cross-fan[data-dir="right"]::after { right: calc((var(--n) - 1) * var(--stepx) * -1 - 3px); }
 .cross-count {
   position: absolute; right: -6px; bottom: -6px; z-index: 2; line-height: 1; font-size: 11px; font-weight: 700;
   background: rgba(0, 0, 0, 0.6); color: #fff; border-radius: 9px; padding: 3px 6px;
