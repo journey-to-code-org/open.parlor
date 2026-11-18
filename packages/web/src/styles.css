@@ -2338,6 +2338,7 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .svelte-island { display: contents; }
 /* The Solid islands' host (wifi/island.tsx), the same. */
 .solid-island { display: contents; }
+.vue-island { display: contents; }
 .setup.golf-editor { max-width: 980px; }
 .golf-editor .setup-head h1 { font-size: clamp(2rem, 6vw, 2.6rem); }
 .golf-holes { display: flex; flex-wrap: wrap; gap: 6px; }
