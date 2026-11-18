@@ -7,7 +7,7 @@
     "zubra": "zubra build --lib ../ui/src --out zubra --name @open-parlor/admin-zubra",
     "dev": "npm run zubra && ng serve",
     "build": "npm run zubra && ng build",
-    "typecheck": "ngc -p tsconfig.app.json --noEmit"
+    "typecheck": "npm run zubra && ngc -p tsconfig.app.json --noEmit"
   },
   "dependencies": {
     "@angular/common": "^22.2.0",
