@@ -39,7 +39,8 @@ YELLOW, YELLOW_DARK = (246, 200, 40), (190, 140, 20)
 STEEL, STEEL_DARK, STEEL_LIGHT = (92, 98, 110), (48, 52, 62), (176, 184, 196)
 WOOD, WOOD_DARK = (150, 92, 48), (100, 58, 28)
 BLACK, WHITE, RED, EDGE = (20, 20, 22), (244, 244, 240), (200, 40, 32), (16, 14, 14)
-SLEEVE, SLEEVE_DARK = (38, 60, 110), (24, 38, 74)
+# A work shirt, in a blue the game's palette has.
+SLEEVE, SLEEVE_DARK = (52, 72, 152), (28, 40, 100)
 
 pictures = []
 def keep(name, image, left=None, top=None, held=False):
@@ -110,26 +111,49 @@ for name, (hx, hy, out) in {"PUNGA0": (150, 126, 0), "PUNGB0": (140, 108, 18), "
     tape(draw, hx, hy - 6, 40, out)
     keep(name, image, held=True)
 
-def rifle(draw, dx=0, dy=0, lever=0):
-    """Delbie's lever-action from behind: barrel away up the screen, wood, a hand on the lever."""
-    cx, top = 160 + dx, 108 + dy
-    # Barrel and the tube under it, narrowing away.
-    draw.polygon([(cx - 5, top), (cx + 5, top), (cx + 10, top + 46), (cx - 10, top + 46)], fill=STEEL)
-    draw.line((cx - 2, top + 2, cx - 5, top + 44), fill=STEEL_LIGHT, width=2)
-    draw.rectangle((cx - 2, top - 5, cx + 2, top), fill=STEEL_DARK)
-    # The wood under the barrel, and the receiver.
-    draw.polygon([(cx - 12, top + 30), (cx + 12, top + 30), (cx + 16, top + 58), (cx - 16, top + 58)], fill=WOOD)
-    draw.line((cx + 12, top + 30, cx + 16, top + 58), fill=WOOD_DARK, width=3)
-    draw.polygon([(cx - 15, top + 56), (cx + 15, top + 56), (cx + 19, 205), (cx - 19, 205)], fill=STEEL_DARK)
-    draw.rectangle((cx - 4, top + 58, cx + 4, top + 66), fill=STEEL_LIGHT)
-    # The lever, a loop of steel, swung down and out when worked; the hand in it.
-    lx, ly = cx + 18 + lever * 14, top + 62 + lever * 16
-    draw.ellipse((lx - 2, ly, lx + 30, ly + 26), outline=STEEL_LIGHT, width=4)
-    draw.rounded_rectangle((lx + 2, ly + 5, lx + 34, ly + 30), 7, fill=SKIN)
-    draw.rectangle((lx + 2, ly + 24, lx + 34, ly + 30), fill=SKIN_DARK)
-    draw.polygon([(lx + 6, ly + 30), (lx + 34, ly + 30), (lx + 56, 205), (lx + 14, 205)], fill=SLEEVE)
+BRASS, BRASS_DARK = (196, 160, 72), (140, 108, 40)
 
-for name, how in {"SHTGA0": dict(), "SHTGB0": dict(dx=4, dy=10), "SHTGC0": dict(dx=6, dy=14, lever=1), "SHTGD0": dict(dx=3, dy=8, lever=0.5)}.items():
+def rifle(draw, dx=0, dy=0, lever=0):
+    """Delbie's lever-action from behind and a little above: the barrel away up the screen with its
+    magazine tube under it, a wooden forend in the left hand, a brass receiver with its hammer, and
+    the right hand in the lever, which swings down and forward when it is worked."""
+    cx, top = 166 + dx, 78 + dy
+    # The magazine tube, seen past the barrel's right side, and the barrel over it.
+    draw.polygon([(cx + 2, top + 8), (cx + 7, top + 8), (cx + 15, top + 62), (cx + 4, top + 62)], fill=STEEL_DARK)
+    draw.polygon([(cx - 4, top), (cx + 4, top), (cx + 9, top + 62), (cx - 9, top + 62)], fill=STEEL)
+    draw.line((cx - 2, top + 3, cx - 5, top + 60), fill=STEEL_LIGHT, width=2)
+    draw.line((cx + 3, top + 3, cx + 8, top + 60), fill=STEEL_DARK, width=2)
+    # The front sight, and the mouth of the barrel.
+    draw.rectangle((cx - 1, top - 6, cx + 1, top), fill=BRASS)
+    draw.ellipse((cx - 3, top - 1, cx + 3, top + 4), fill=BLACK)
+    # The band that holds barrel and tube together, and the forend: wood, with its grain.
+    draw.rectangle((cx - 9, top + 40, cx + 15, top + 45), fill=STEEL_LIGHT)
+    draw.polygon([(cx - 13, top + 46), (cx + 16, top + 46), (cx + 21, top + 84), (cx - 18, top + 84)], fill=WOOD)
+    for i, grain in enumerate((-9, -3, 4, 10)):
+        draw.line((cx + grain, top + 49 + (i % 2) * 3, cx + grain * 1.3, top + 82), fill=WOOD_DARK)
+    draw.line((cx + 15, top + 47, cx + 20, top + 84), fill=WOOD_DARK, width=3)
+    # The left hand under the forend: fingers come up round its side.
+    draw.rounded_rectangle((cx - 30, top + 56, cx - 10, top + 82), 6, fill=SKIN)
+    for i in range(4):
+        draw.rounded_rectangle((cx - 20, top + 55 + i * 7, cx - 6, top + 60 + i * 7), 2, fill=SKIN)
+        draw.line((cx - 20, top + 61 + i * 7, cx - 8, top + 61 + i * 7), fill=SKIN_DARK)
+    draw.polygon([(cx - 30, top + 80), (cx - 12, top + 82), (cx - 30, 205), (cx - 62, 205)], fill=SLEEVE)
+    # The receiver: brass, a loading gate in its side, the hammer on top.
+    draw.polygon([(cx - 18, top + 84), (cx + 21, top + 84), (cx + 25, 205), (cx - 22, 205)], fill=BRASS)
+    draw.line((cx + 21, top + 84, cx + 25, 205), fill=BRASS_DARK, width=4)
+    draw.rounded_rectangle((cx - 12, top + 96, cx - 2, top + 104), 3, fill=BRASS_DARK)
+    draw.rectangle((cx - 3, top + 80, cx + 5, top + 90), fill=STEEL_DARK)
+    draw.rectangle((cx - 2, top + 76, cx + 4, top + 82), fill=STEEL_LIGHT)
+    # The lever, a loop of steel, and the right hand through it.
+    lx, ly = cx + 22 + lever * 12, top + 92 + lever * 14
+    draw.ellipse((lx - 4, ly - 2, lx + 34, ly + 30), outline=STEEL_LIGHT, width=4)
+    draw.rounded_rectangle((lx + 2, ly + 4, lx + 38, ly + 30), 8, fill=SKIN)
+    for i in range(1, 4):
+        draw.line((lx + 2 + i * 9, ly + 6, lx + 2 + i * 9, ly + 18), fill=SKIN_DARK)
+    draw.rectangle((lx + 2, ly + 24, lx + 38, ly + 30), fill=SKIN_DARK)
+    draw.polygon([(lx + 6, ly + 30), (lx + 38, ly + 30), (lx + 64, 205), (lx + 16, 205)], fill=SLEEVE)
+
+for name, how in {"SHTGA0": dict(), "SHTGB0": dict(dx=3, dy=9), "SHTGC0": dict(dx=5, dy=12, lever=1), "SHTGD0": dict(dx=2, dy=6, lever=0.5)}.items():
     image, draw = screen()
     rifle(draw, **how)
     keep(name, image, held=True)
@@ -137,7 +161,7 @@ for name, how in {"SHTGA0": dict(), "SHTGB0": dict(dx=4, dy=10), "SHTGC0": dict(
 # The flash at its muzzle, small and then large.
 for name, size in (("SHTFA0", 9), ("SHTFB0", 15)):
     image, draw = screen()
-    cx, cy = 160, 100
+    cx, cy = 166, 70
     draw.polygon([(cx, cy - size * 2), (cx + size // 2, cy - size // 2), (cx + size * 2, cy), (cx + size // 2, cy + size // 2), (cx, cy + size), (cx - size // 2, cy + size // 2), (cx - size * 2, cy), (cx - size // 2, cy - size // 2)], fill=(255, 190, 40))
     draw.ellipse((cx - size // 2, cy - size // 2, cx + size // 2, cy + size // 2), fill=(255, 250, 210))
     keep(name, image, held=True)

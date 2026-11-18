@@ -1,6 +1,6 @@
 """The status bar: Delbie's face in place of the engine's, and the bar itself in the shop's steel blue.
 
-The face is drawn here, a pixel at a time: blond hair, blue eyes, a smile that goes as his health
+The face is drawn here, a pixel at a time: dirty blond hair, a beard, a full face, blue eyes, a smile that goes as his health
 does. There are 42 of them: five states of health, each looking ahead, left and right, turned to
 either side, shocked, grinning and furious; and one each for unhurtable and dead. Each is made
 the size of the face it takes the place of, so the engine puts it where it put that one.
@@ -45,7 +45,9 @@ def patch(data):
     return width, height, left, top, pixels, solid
 
 SKIN, SHADE, DEEP = (236, 184, 150), (204, 148, 116), (160, 108, 84)
-HAIR, HAIR_DARK = (244, 212, 96), (196, 156, 52)
+# Dirty blond, and a beard a shade darker.
+HAIR, HAIR_DARK = (186, 152, 96), (136, 106, 62)
+BEARD, BEARD_DARK = (158, 124, 76), (112, 86, 50)
 WHITE, BLUE, PUPIL = (250, 250, 250), (60, 130, 235), (16, 28, 60)
 LIP, TOOTH, DARK = (170, 70, 60), (252, 248, 232), (60, 24, 20)
 BLOOD, BRUISE = (190, 16, 16), (150, 96, 120)
@@ -62,12 +64,24 @@ def face(hurt=0, look=0, turn=0, mood="smile", gold=False, dead=False):
             there[y, x] = True
     cx = 12 + turn * 2
     # The head: an egg, lit from the left.
+    # A full face: wide at the cheeks, and not much narrower at the jaw.
+    def half_at(y):
+        wide = 10.4 * (1 - ((y - 15) / 16.5) ** 2) ** 0.5
+        return wide if y < 22 else wide - (y - 22) * 0.3
     for y in range(3, 28):
-        half = 9.2 * (1 - ((y - 14) / 15.5) ** 2) ** 0.5 if y < 20 else 9.2 * (1 - ((y - 14) / 15.5) ** 2) ** 0.5 - (y - 20) * 0.45
+        half = half_at(y)
         for x in range(w):
             d = (x + 0.5 - cx)
             if abs(d) <= half:
                 put(x, y, SHADE if d > half - 2.2 else DEEP if abs(d) > half - 0.9 else SKIN)
+    # A beard: along the jaw, over the lip, and all of the chin.
+    for y in range(16, 28):
+        for x in range(w):
+            if not there[y, x]:
+                continue
+            d = abs(x + 0.5 - cx)
+            if y >= 23 or d > half_at(y) - (1.2 + (y - 16) * 0.45) or (y in (19, 20) and d <= 5.5):
+                put(x, y, BEARD_DARK if (x * 3 + y * 5) % 7 < 2 else BEARD)
     # Hair: short on top, swept to one side, a little down the temples.
     for y in range(1, 9):
         half = 9.6 * (1 - ((y - 9) / 9.0) ** 2) ** 0.5
