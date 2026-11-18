@@ -308,6 +308,38 @@
           }
         </section>
 
+        <!-- Road to the Shootout: the pack it plays, and the workshop that makes one -->
+        <section data-tab="shootout">
+          <content-card heading="What the game plays">
+            @if (shootout(); as s) {
+              @if (s.published; as p) {
+                <p data-shootout-pack>
+                  <status-badge variant="success" [dot]="true">Your own</status-badge>
+                  “{{ p.name }}”, published {{ when(p.at) }} ({{ size(p.size) }}). Everyone who opens Road to the Shootout plays this.
+                </p>
+              } @else {
+                <p class="quiet" data-shootout-pack>The game it came with. Nothing of your own has been published.</p>
+              }
+            } @else {
+              <p class="quiet" data-shootout-pack>This parlor has nowhere to keep a pack.</p>
+            }
+            <p class="quiet">
+              A pack is the game's whole content: its cars, rooms, parts, rivals and maps. The workshop edits one, with the game drawn beside it as you go, and publishes it here.
+              A season someone has under way carries on if the new pack still has their cars and parts; otherwise they start again.
+            </p>
+            <div slot="footer">
+              <cluster-layout gap="0.5rem">
+                <action-button (click)="openWorkshop()" data-open-workshop>Open the workshop</action-button>
+                <action-button variant="outline" [disabled]="publishing() || !shootout()" (click)="packFile.click()">{{ publishing() ? "Publishing…" : "Publish a pack file" }}</action-button>
+                @if (shootout()?.published) {
+                  <action-button variant="destructive" (click)="resetShootout()">Go back to the game it came with</action-button>
+                }
+              </cluster-layout>
+              <input #packFile type="file" accept=".pack" hidden (change)="publishPackFile($event)" />
+            </div>
+          </content-card>
+        </section>
+
         <!-- Activity -->
         <section data-tab="activity">
           @if (log().length) {

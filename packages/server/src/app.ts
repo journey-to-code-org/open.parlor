@@ -12,6 +12,7 @@ import type { Backups } from "./backup.js";
 import { createCourses } from "./courses.js";
 import { createDesigns } from "./designs.js";
 import { BLOCKED_MESSAGE, createModeration } from "./moderation.js";
+import type { Packs } from "./packs.js";
 import { createHouses } from "./houses.js";
 import { createAi, type AiOptions } from "./ai.js";
 import { personaFor } from "@journey-to-code/rules";
@@ -25,7 +26,7 @@ import { createFlights, isFlight, type Flights, type FlightState, type Flyer } f
 import { secondAllowed, secondCookie, secondPath, secondSearch } from "./second.js";
 
 export function createCardRoom(
-  options: { log?: Log; botDelay?: number; talk?: boolean; push?: PushOptions; ai?: AiOptions; lobby?: LobbyOptions; /** Turns moderation on (see moderation.ts). */ adminToken?: string; bugs?: BugOptions; /** Copies of the database (see backup.ts), for the admin app to report and hand out. */ backups?: Backups; /** Worker threads for the computer players' thinking (see bots.ts). Without it they think on the main thread. */ bots?: BotOptions; /** The games flown live (see flight.ts): one a caller made, for tests that play them by hand. Without it they play by the clock. */ flights?: Flights; /** The clock, for tests. */ spectate?: { now?: () => number } } = {},
+  options: { log?: Log; botDelay?: number; talk?: boolean; push?: PushOptions; ai?: AiOptions; lobby?: LobbyOptions; /** Turns moderation on (see moderation.ts). */ adminToken?: string; bugs?: BugOptions; /** Copies of the database (see backup.ts), for the admin app to report and hand out. */ backups?: Backups; /** Road to the Shootout's published pack (see packs.ts), for the admin app to set. */ packs?: Packs; /** Worker threads for the computer players' thinking (see bots.ts). Without it they think on the main thread. */ bots?: BotOptions; /** The games flown live (see flight.ts): one a caller made, for tests that play them by hand. Without it they play by the clock. */ flights?: Flights; /** The clock, for tests. */ spectate?: { now?: () => number } } = {},
 ) {
   const talking = options.talk ?? true;
   const flights = options.flights ?? createFlights({ every: 16 });
@@ -162,7 +163,7 @@ export function createCardRoom(
   const devices = createDevices({ housesOf: async (player) => (await houses.all()).filter((h) => h.members.some((m) => m.player === player)).map((h) => ({ slug: h.slug, name: h.name })) });
   const lobby = createLobby(rooms, { push, gameOn: catalogue.isOn, ...options.lobby });
   const spectate = createSpectate(rooms, catalogue, options.spectate);
-  const moderation = createModeration(rooms, designs, { token: options.adminToken, houses, catalogue, backups: options.backups, bots: bots ? () => bots.stats() : undefined, courses });
+  const moderation = createModeration(rooms, designs, { token: options.adminToken, houses, catalogue, backups: options.backups, packs: options.packs, bots: bots ? () => bots.stats() : undefined, courses });
   // "Report a problem": a player's report becomes an issue on GitHub.
   // With the parlor's own AI key, a report or request can be tidied before it's sent.
   const bugs = createBugs(rooms, { ...(ai.shared ? { tidy: (input) => ai.tidy(input) } : {}), ...options.bugs });
