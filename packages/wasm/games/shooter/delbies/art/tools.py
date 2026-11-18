@@ -143,33 +143,13 @@ draw.line((167, 99, 175, 99), fill=BLACK)
 draw.line((167, 103, 173, 103), fill=BLACK)
 keep("PISFA0", image, held=True)
 
-def impact_wrench(draw, turned=False):
-    """An impact wrench, in the chaingun's place: yellow and black, its socket away up the screen."""
-    cx, top = 160, 106
-    draw.rectangle((cx - 8, top - 6, cx + 8, top + 4), fill=STEEL_DARK)
-    draw.rectangle((cx - 5, top + 2, cx + 5, top + 12), fill=STEEL_LIGHT)
-    # The socket's flats, which is all that shows it turning.
-    for x in ((-6, 0, 5) if turned else (-3, 3)):
-        draw.line((cx + x, top - 5, cx + x, top + 3), fill=STEEL_LIGHT)
-    draw.rounded_rectangle((cx - 20, top + 10, cx + 20, top + 56), 8, fill=YELLOW)
-    draw.rectangle((cx - 20, top + 24, cx + 20, top + 31), fill=BLACK)
-    draw.rectangle((cx + 13, top + 14, cx + 20, top + 52), fill=YELLOW_DARK)
-    draw.rounded_rectangle((cx - 14, top + 48, cx + 14, top + 62), 4, fill=BLACK)
-    hand(draw, cx - 24, top + 56, 48, 30)
-
-for name, turned in (("CHGGA0", False), ("CHGGB0", True)):
-    image, draw = screen()
-    impact_wrench(draw, turned)
-    keep(name, image, held=True)
-
-# Sparks off the socket, two ways.
-for name, spin in (("CHGFA0", 0), ("CHGFB0", 1)):
-    image, draw = screen()
-    for i in range(8):
-        dx, dy = [(0, -18), (13, -13), (18, 0), (13, 11), (0, 14), (-13, 11), (-18, 0), (-13, -13)][(i + spin) % 8] if i % 2 == spin else [(0, -9), (7, -7), (9, 0), (7, 6), (0, 8), (-7, 6), (-9, 0), (-7, -7)][i]
-        draw.line((160, 100, 160 + dx, 100 + dy), fill=(255, 200, 60), width=2)
-    draw.ellipse((154, 94, 166, 106), fill=(255, 250, 210))
-    keep(name, image, held=True)
+# A jug of washer fluid with a pump on it, in the chaingun's place: Mikey's pictures (given/sprayer-*.png). It shakes as it
+# runs, and the spray is its flash.
+SPRAYER, SPRAY = (np.array(Image.open(here / "given" / f"sprayer-{part}.png").convert("RGBA")) for part in ("hands", "spray"))
+given("CHGGA0", SPRAYER, held=True)
+given("CHGGB0", SPRAYER, held=True, dx=1, dy=2)
+given("CHGFA0", SPRAY, held=True)
+given("CHGFB0", SPRAY[:, ::-1], held=True, dx=1, dy=2)
 
 def small(width, height):
     image = Image.new("RGBA", (width + 2, height + 2), (0, 0, 0, 0))
@@ -178,19 +158,8 @@ def small(width, height):
 # On the floor. The lever-action, side on: Mikey's picture too (given/rifle-floor.png).
 given("SHOTA0", np.array(Image.open(here / "given" / "rifle-floor.png").convert("RGBA")))
 
-# The impact wrench, side on: its anvil and socket to the right, its grip and battery below.
-image, draw = small(46, 30)
-draw.rectangle((36, 7, 45, 12), fill=STEEL_LIGHT)
-draw.rectangle((42, 6, 45, 13), fill=STEEL)
-draw.rounded_rectangle((3, 2, 34, 17), 5, fill=YELLOW)
-draw.rounded_rectangle((29, 3, 37, 16), 3, fill=BLACK)
-draw.rectangle((3, 6, 6, 13), fill=BLACK)
-draw.rectangle((10, 5, 24, 7), fill=YELLOW_DARK)
-draw.polygon([(12, 16), (23, 16), (21, 25), (10, 25)], fill=BLACK)
-draw.rectangle((23, 17, 25, 21), fill=STEEL_DARK)
-draw.rounded_rectangle((5, 24, 27, 30), 2, fill=YELLOW)
-draw.rectangle((5, 27, 27, 30), fill=BLACK)
-keep("MGUNA0", image)
+# The sprayer on the floor.
+given("MGUNA0", np.array(Image.open(here / "given" / "sprayer-floor.png").convert("RGBA")))
 
 # Cartridges for the lever-action: a handful stood up, and a box of them.
 BRASS, BRASS_DARK, COPPER = (214, 170, 62), (150, 112, 34), (196, 112, 62)

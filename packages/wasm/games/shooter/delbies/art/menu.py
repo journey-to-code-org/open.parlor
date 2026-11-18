@@ -301,7 +301,7 @@ title(help, "HOW TO PLAY", 12)
 write(help, "The store is overrun. Clear each floor of rats, then find", 10, 30)
 write(help, "the switch at the far end. A locked door wants its key.", 10, 40)
 write(help, "TOOLS", 10, 54, YELLOW)
-for x, picture, words in ((34, tools["SHOTA0"], "Lever-action"), (98, tools["MGUNA0"], "Impact wrench"), (162, tools["CSAWA0"], "Torch"), (226, tools["LAUNA0"], "Rotors"), (290, tools["PLASA0"], "Jump starter")):
+for x, picture, words in ((34, tools["SHOTA0"], "Lever-action"), (98, tools["MGUNA0"], "Sprayer"), (162, tools["CSAWA0"], "Torch"), (226, tools["LAUNA0"], "Rotors"), (290, tools["PLASA0"], "Jump starter")):
     show(help, picture, x, 80, 24)
     write(help, words, max(2, x - round(len(words) * 2.5)), 81)
 write(help, 'You start with a price gun, and the "hammer".', 10, 93)

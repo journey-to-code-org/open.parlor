@@ -200,3 +200,18 @@ gun = load("pricegun-held.webp")
 view("pricegun-held", gun, filled(biggest(off(gun, (0, 0, 0), 16))))
 rolls = load("tags-floor.webp")
 lying("tags-floor", rolls, grab(rolls, (285, 250, 450, 320), sure=[(380, 330, 650, 500)]), 30)
+
+# A jug of washer fluid with a pump on it (the chaingun), on black: the jug in the hands, and the spray apart; and the jug on a floor.
+jug = load("sprayer-held.webp")
+there = off(jug, (0, 0, 0), 24)
+# Below here the picture is under the status bar, and has a word on the battery that isn't ours.
+there[700:] = False
+r, g, b = (jug[..., i].astype(int) for i in range(3))
+spray = there & (b > r + 50) & (b > 140)
+spray[350:] = False
+spray = cv2.dilate(spray.astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool) & there
+spray[352:] = False
+view("sprayer-hands", jug, filled(biggest(there & ~spray)))
+view("sprayer-spray", jug, spray)
+sat = load("sprayer-floor.webp")
+lying("sprayer-floor", sat, grab(sat, (310, 225, 375, 320), sure=[(440, 290, 640, 480)]), 36)
