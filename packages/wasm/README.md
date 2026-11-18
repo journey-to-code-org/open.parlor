@@ -18,6 +18,12 @@ newer one:
     (in wasm-toolkit)  make engine
     (here)             npm run shootout -w @open-parlor/wasm -- ../wasm-toolkit
 
+Its races with other people go through a meet, `/wasm/meet/shootout` on the parlor's server
+(`net/meet.ts`): a room that says who is here and passes on what each says to the rest, and
+knows nothing of the game. Each device runs its own car and tells the other where it is and what
+it ran. A parlor served as plain files (the GitHub Pages build) has no meet, and the game says
+nobody can be reached.
+
 `/wasm/shootout/workshop.html` is the workshop, where a pack's cars, rooms, parts, rivals and maps
 are edited in the browser. A season is saved in the browser; nothing of it is kept on the server.
 
@@ -38,12 +44,12 @@ its own.
 | Controller | Left stick to move, right stick to turn, right trigger or X to fire, A to use, the bumpers for weapons, Start for the menu |
 | Together | Up to four, each on a device of their own, against the monsters or each other. One starts a game and sends the others its link or its four-letter code |
 | Watching | Anyone with the link can watch, through any player's eyes, and is run through the game so far if they come late. A game its host lists also shows on the parlor's watch page |
-| Changing it | An editor at `/wasm/editor/` swaps any of the game's pictures and sounds for a file of your own, and changes its levels, what is placed in them and what they are built of; the game is played with the changes, alone |
-| Sound | Effects, through Web Audio. No music yet |
+| Changing it | An editor at `/wasm/editor/` swaps any of the game's pictures and sounds for a file of your own, adds walls, floors, sprites and sounds it never had, changes its words and its rules (what each thing is, and the numbers it plays by), its levels, what is placed in them and what they are built of, and puts a file in place of any other lump of its data; the game is played with the changes, alone |
+| Sound | Effects, through Web Audio. A song is played if someone has put an MP3, an Ogg or a WAV in its place; the game's own songs (MUS data) are not, yet |
 | Saved games and settings | Kept in the browser (IndexedDB), under the engine's own menus |
 | Offline | After the first visit the page, the engine and the game's data are kept on the device |
 
-Not there yet: music (the songs are MUS data, which wants an OPL or MIDI synthesiser), joining a
+Not there yet: the game's own music (the songs are MUS data, which wants an OPL or MIDI synthesiser), joining a
 game that has started as a player, and replays of games that are over.
 
 ## The editor
@@ -62,13 +68,56 @@ letters) and the sound effects. Any of them can be swapped for a file:
 - **Try it** runs the game on the page with the changes as they stand.
 - **Save my changes as a file** writes them as a small WAD of the kind other Doom engines load on
   top of a game; **Load changes from a file** reads one back.
+- **Add a new wall** and **Add a new floor** take a picture under a name the game never had. A
+  floor is made 64 by 64. A wall keeps its shape, no taller than 128 and 8 to 256 wide (the
+  widths the engine repeats properly), and a wall picture of its name is made for it, on the end
+  of `PNAMES` and `TEXTURE1`. Both are then there to choose in the Levels tab. A file dropped on
+  the Walls or Floors tab that is named for nothing the game has is added the same way.
+- **Everything else** is every lump that is none of the above: the colours (`PLAYPAL`,
+  `COLORMAP`), the lists of wall pictures, the songs, the recordings played behind the title.
+  Each can be saved as a file and have a file put in its place, byte for byte: it has to be in
+  the engine's own form already, and nothing checks that it is. **Add a new lump** puts any file
+  in under a name of your own, for a WAD meant for use elsewhere: this engine reads only the
+  names it knows.
+
+- **Add a new sprite** and **Add a new sound** take a picture or a sound under a name the game
+  never had (`RATXA0`: four letters for the thing, a letter for the moment, a figure for the
+  side; `DSRAT1`). The engine draws and plays its own by name, so a new one is seen or heard
+  once the Rules tab gives it to a thing.
+- **Songs** are among Everything else (`D_E1M1` and the rest). An MP3, an Ogg or a WAV put in a
+  song's place is played, round and round, at the menu's music volume. The game's own songs are
+  MUS data, which wants an OPL or MIDI synthesiser: they are still silence.
+
+The **Rules** tab changes what was fixed in the engine's code. For each of the engine's 137
+kinds of thing: its health, speed, size, weight, damage, how easily it flinches, how long before
+it acts, the sprite it is drawn with and its five sounds. How much of each ammunition is carried
+and picked up. And numbers by name: the health and bullets you start with, the most health and
+armour, the damage of the fist, the saw and a bullet, a shotgun's pellets and how wide they go.
+It also changes what a thing does. A thing is always in one moment or another: a picture of its
+sprite, for so long, running one of the engine's 74 actions (look for a player, go after its
+target, bite, throw, scream, fall), then on to the next. The tab lists a thing's moments for
+each thing that can happen to it (standing about, once it has noticed you, flinching, attacking
+up close and from afar, dying, blown apart, brought back) and changes any of them. And **Make a
+new thing like this one** makes a kind of thing of your own: a copy, with moments of its own so
+that changing them leaves the original alone, and a number of its own, under which the Levels
+tab offers it to place. There is room for 32 kinds of thing and 512 moments of your own.
+
+They are kept as one change, a lump called `RULES`, which the engine reads when it starts
+(`games/shooter/engine/rules.c`); only what differs from the engine's own is written. A game
+with other devices is played without them, as it is without every other change.
+
+So everything in the game's data can be changed, and a WAD made elsewhere is taken whole but for
+levels beyond the 36 the game has places for. Pictures under names the engine doesn't know are
+carried along as lumps. What still can't be changed here is what the engine's actions
+themselves do (a bite is always the engine's bite), and the weapons' own moments.
 
 ### Levels
 
 The **Words** tab changes what the game says: the lines for when a level starts, a rat notices
-you, one bites, you get one and you die (a line each; the game picks one), and the engine's own
-words for level names, things picked up and locked doors. They are kept as one change, a lump
-called `WORDS`, which the engine reads (`games/shooter/engine/words.c`).
+you, one bites, you get one and you die (a line each; the game picks one), the engine's own
+words for level names, things picked up and locked doors, any other words of the engine's given
+exactly, how many levels the game has, and what it says when they are done. They are kept as one
+change, a lump called `WORDS`, which the engine reads (`games/shooter/engine/words.c`).
 
 The **Levels** tab draws a level from above and changes it: what is placed in it (where the
 players start, the monsters, what can be picked up, the scenery) and what it is built of (its
@@ -192,6 +241,9 @@ wad/                  the Doom engine's data, read and written. No browser, no S
   shape.ts            changes to a shape: move or remove a corner, split a wall, add or remove a room, add a door; an empty level
   texture.ts          the pictures on walls, put together from their patches
   words.ts            what the game says: the WORDS lump, read and written
+  rules.ts            what each thing is and the numbers the game plays by: the RULES lump, read and written
+  rule-things.ts      every kind of thing the engine has, as it was written; from the engine's table by scripts/gen-rules.mjs
+  rule-states.ts      every moment a thing can be in, and what a moment can run; written the same way
   plan.ts             a level from a floor plan: rooms as rectangles, for levels built by a script
   nodes.ts            the node builder, run on a shape to make a level the engine can play
   does.ts             what a wall or a room can be made to do
@@ -221,7 +273,7 @@ src/
   editor/             the editor: App.svelte, Levels.svelte (the map), Thumb.svelte and Shown.svelte (pictures), and convert.ts (a dropped file to a lump)
 editor/index.html     the editor's page
 public/sw.js          keeps the page for playing offline
-scripts/              build-engine.mjs, toolchain.mjs, fetch-data.mjs, sources.mjs, gen-things.mjs
+scripts/              build-engine.mjs, toolchain.mjs, fetch-data.mjs, sources.mjs, gen-things.mjs, gen-rules.mjs
 lib/                  net/ compiled for a server to import (npm run build:net); git ignores it
 ```
 

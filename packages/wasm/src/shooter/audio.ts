@@ -1,5 +1,10 @@
 // Sound effects through Web Audio. The engine hands over each effect as it sits in the WAD (a DMX
 // lump: a short header, then unsigned 8-bit samples); it is decoded once and kept.
+//
+// And the song. The engine hands over the song's lump, whole. If it is sound the browser can
+// decode (an MP3, an Ogg, a WAV someone put in a song's place) it is played, round and round if
+// the engine says so. The game's own songs are MUS data, which nothing here can play yet: they
+// are silence.
 import { decodeDmx } from "../../wad/sound.ts";
 import type { SoundHost } from "./engine.ts";
 
@@ -24,6 +29,19 @@ export function createAudio(): Audio {
   const buffers = new Map<number, AudioBuffer | null>();
   const voices = new Map<number, Voice>();
   let muted = false;
+  // The song: one at a time. `asked` tells a song that finishes decoding late that it was replaced.
+  const songGain = context?.createGain();
+  songGain?.connect(context!.destination);
+  let song: AudioBufferSourceNode | null = null;
+  let asked = 0;
+  const stopSong = () => {
+    asked++;
+    try {
+      song?.stop();
+    } catch {}
+    song?.disconnect();
+    song = null;
+  };
 
   const level = (volume: number) => Math.max(0, Math.min(1, volume / 127));
   const side = (separation: number) => Math.max(-1, Math.min(1, (separation - 127) / 127));
@@ -70,12 +88,35 @@ export function createAudio(): Audio {
     },
     stop,
     playing: (channel) => voices.has(channel),
+    music: {
+      play(data, looping) {
+        stopSong();
+        if (!context) return;
+        const mine = asked;
+        // What isn't sound the browser knows (the game's own MUS songs) is silence.
+        void context.decodeAudioData(data.buffer as ArrayBuffer).then(
+          (buffer) => {
+            if (mine !== asked) return;
+            song = context.createBufferSource();
+            song.buffer = buffer;
+            song.loop = looping;
+            song.connect(songGain!);
+            song.start();
+          },
+          () => {},
+        );
+      },
+      stop: stopSong,
+      volume: (volume) => void (songGain && (songGain.gain.value = level(volume))),
+      pause: (paused) => void (song && (song.playbackRate.value = paused ? 0 : 1)),
+    },
     mute: (on) => void (muted = on),
     unlock() {
       if (context?.state === "suspended") void context.resume();
     },
     close() {
       for (const channel of [...voices.keys()]) stop(channel);
+      stopSong();
       void context?.close();
     },
   };

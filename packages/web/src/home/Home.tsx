@@ -105,6 +105,10 @@ const BOARDS: Record<string, MiniBoard> = {
   drawguess: { cols: 1, cells: [], sketch: true },
   hangman: { cols: 5, shade: "words", cells: [...tiles("_a__a", "phpph"), ...tiles("zqk__", "mmm")] },
   tictactoe: { cols: 3, cells: [X, O, null, null, X, O, O, null, X] },
+  // A token in each corner's colour, and the cross between them.
+  ludo: { cols: 3, cells: [on("●", "red", false), null, on("●", "green", false), null, null, null, on("●", "blue", false), null, on("●", "gold", false)] },
+  // Pegs at four of the star's points, hopping in.
+  chinesecheckers: { cols: 3, shade: "wood", cells: [null, on("●", "blue", false), null, on("●", "green", false), null, on("●", "gold", false), null, on("●", "red", false), null] },
   // Two rows of pits and the seeds in them: one empty, its neighbour full.
   mancala: { cols: 3, shade: "pits", cells: [on("4", "light", false), on("1", "light", false), on("6", "light", false), null, on("5", "gold", false), on("4", "gold", false)] },
   // The bottom of a rack: red about to make four on the slant.

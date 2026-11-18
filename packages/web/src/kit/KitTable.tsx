@@ -31,8 +31,10 @@ import { HandSortBar, useHandOrder } from "../HandSort";
 import { cardKey } from "../handOrder";
 import { SoundButton } from "../SoundButton";
 import { named } from "./named";
+import { ResultTable, sideName } from "./result";
 
-export { named };
+// These live in files of their own, so a table that wants one doesn't bring the whole card table with it.
+export { named, ResultTable, sideName };
 
 const NO_CARDS: KCard[] = [];
 
@@ -59,9 +61,6 @@ export interface KitTableProps {
 }
 
 
-/** "Ann & Cy" for a side of the table. */
-export const sideName = (seats: number[], names: string[]) =>
-  seats.map((s) => names[s] ?? `Seat ${s + 1}`).join(" & ");
 
 export function KitTable({
   view,
@@ -1327,57 +1326,3 @@ function TeamMelds({
   );
 }
 
-export function ResultTable({
-  result,
-  names,
-  me,
-  untitled,
-}: {
-  result: NonNullable<KitView["result"]>;
-  names: string[];
-  me: number;
-  untitled?: boolean;
-}) {
-  return (
-    <>
-      {!untitled && <h2>{named(result.title, names)}</h2>}
-      <table className="summary">
-        <thead>
-          <tr>
-            <th scope="col" />
-            {result.sides.map((seats, i) => (
-              <th
-                key={i}
-                scope="col"
-                className={seats.includes(me) ? "us" : ""}
-              >
-                {sideName(seats, names)}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {result.rows.map((row) => (
-            <tr key={row.label} className={row.tone === "total" ? "total" : ""}>
-              <th scope="row">{row.label}</th>
-              {row.values.map((v, i) => (
-                <td
-                  key={i}
-                  className={
-                    row.tone === "score"
-                      ? v.startsWith("-") || v.startsWith("−")
-                        ? "neg"
-                        : "pos"
-                      : ""
-                  }
-                >
-                  {v}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </>
-  );
-}

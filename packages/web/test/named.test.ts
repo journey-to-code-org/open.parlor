@@ -10,6 +10,13 @@ describe("narration with you in it", () => {
     expect(named("{0} sinks 15 on the break and shoots again.", ["You", "Ann"])).toBe("You sink 15 on the break and shoot again.");
     expect(named("{0} sinks the 2 and takes the solids and shoots again.", ["You"])).toBe("You sink the 2 and take the solids and shoot again.");
   });
+  it("knows Ludo's and Chinese Checkers' verbs", () => {
+    expect(named("{0} brings a token out and sends {1}'s token back to the yard, and rolls again", ["You", "Ann"])).toBe("You bring a token out and send Ann's token back to the yard, and roll again");
+    expect(named("{1} moves 3 and sends {0}'s token back to the yard", ["You", "Ann"])).toBe("Ann moves 3 and sends your token back to the yard");
+    expect(named("{0} gets a token home. {0} wins!", ["You", "Ann"])).toBe("You get a token home. You win!");
+    expect(named("{0} jumps 2 times. {0} is home, and wins!", ["You", "Ann"])).toBe("You jump 2 times. You are home, and win!");
+  });
+
   it("knows Mancala's and Dominoes' verbs", () => {
     expect(named("{0} sows 1 from pit 1 and captures 8", ["You", "Ann"])).toBe("You sow 1 from pit 1 and capture 8");
     expect(named("{0} sows 4 from pit 3 and ends in the store. {0} goes again", ["You", "Ann"])).toBe("You sow 4 from pit 3 and end in the store. You go again");

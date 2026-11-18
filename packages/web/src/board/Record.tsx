@@ -4,7 +4,7 @@
 // from it. The whole record can be copied as text (a PGN).
 import type { BoardRecord } from "@journey-to-code/games";
 import { useEffect, useRef, useState } from "react";
-import { named } from "../kit/KitTable";
+import { named } from "../kit/named";
 
 /** Put text on the clipboard, by the old way where the new one isn't allowed (a page inside a frame). */
 async function copyText(text: string): Promise<boolean> {
