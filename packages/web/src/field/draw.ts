@@ -45,16 +45,54 @@ export interface Scene {
   firing?: string;
   /** Where shells have gone off: the earth is left burnt there. */
   scorches: { x: number; y: number; r: number }[];
+  /** Where the screen is looking, when it isn't simply at the whole field. */
+  camera?: Camera;
 }
+
+/**
+ * Where the screen is looking: `x` is what is in the middle across, `lift` is how far the bottom
+ * edge is above the bottom of the field, and `zoom` is how much closer than the whole field. All
+ * of the field's width is never left: a zoom of 1 shows it from edge to edge.
+ */
+export interface Camera {
+  x: number;
+  lift: number;
+  zoom: number;
+}
+
+/** Which part of the picture to paint: all of it, or (for a screen that lights it and adds the fire itself) the things in it and then the words over it. */
+export type Layer = "all" | "world" | "labels";
 
 /** A tank is drawn at least this wide on the screen, however small the field has to be drawn. */
 const TANK_MIN = 30;
 const TANK_WIDE = 60;
 
-/** How a field fits a canvas: all of its width, with the ground at the bottom. */
-export function fitField(scene: Pick<Scene, "width">, w: number, h: number) {
-  const scale = w / scene.width;
-  return { scale, x: (wx: number) => wx * scale, y: (wy: number) => h - wy * scale, back: (sx: number, sy: number): [number, number] => [sx / scale, (h - sy) / scale] };
+/** How a field fits a canvas: all of its width with the ground at the bottom, or wherever the camera is looking. */
+export function fitField(scene: Pick<Scene, "width">, w: number, h: number, camera?: Camera) {
+  const zoom = camera?.zoom ?? 1;
+  const scale = (w / scene.width) * zoom;
+  const cx = camera?.x ?? scene.width / 2;
+  const lift = camera?.lift ?? 0;
+  return {
+    scale,
+    zoom,
+    w,
+    h,
+    x: (wx: number) => (wx - cx) * scale + w / 2,
+    y: (wy: number) => h - (wy - lift) * scale,
+    back: (sx: number, sy: number): [number, number] => [(sx - w / 2) / scale + cx, (h - sy) / scale + lift],
+  };
+}
+
+/**
+ * A camera looking at a point: as near the middle of the screen as it can be without showing
+ * anything off the sides of the field or under it.
+ */
+export function lookAt(scene: Pick<Scene, "width">, w: number, h: number, x: number, y: number, zoom: number): Camera {
+  const z = Math.max(1, zoom);
+  const half = scene.width / (2 * z);
+  const tall = (h / w) * (scene.width / z);
+  return { x: Math.max(half, Math.min(scene.width - half, x)), lift: Math.max(0, y - tall / 2), zoom: z };
 }
 type Fit = ReturnType<typeof fitField>;
 
@@ -470,15 +508,19 @@ export class Painter {
       ctx.globalCompositeOperation = "source-over";
     }
     ctx.restore();
+  }
 
-    // Whose it is, on a plate over it; what armour it has left; and a mark over the one whose turn it is.
+  /** Whose a tank is, on a plate over it; what armour it has left; and a mark over the one whose turn it is. */
+  private plate(ctx: CanvasRenderingContext2D, scene: Scene, fit: Fit, piece: Actor, up: boolean) {
+    const u = fit.scale * Math.max(1, TANK_MIN / (TANK_WIDE * fit.scale));
+    const [sx, sy] = [fit.x(piece.x), fit.y(piece.y)];
     const name = scene.names[piece.owner] ?? `Player ${piece.owner + 1}`;
     const size = 12;
     ctx.font = `700 ${size}px system-ui, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     const wide = Math.min(110, ctx.measureText(name).width) + 14;
-    const tx = Math.max(wide / 2 + 3, Math.min(fit.x(scene.width) - wide / 2 - 3, sx));
+    const tx = Math.max(wide / 2 + 3, Math.min(fit.w - wide / 2 - 3, sx));
     const ty = sy - 56 * u - 8;
     ctx.fillStyle = piece.out ? "rgba(0, 0, 0, 0.35)" : "rgba(8, 12, 20, 0.62)";
     ctx.beginPath();
@@ -544,13 +586,20 @@ export class Painter {
       ctx.arc(fit.x(x), fit.y(y), Math.max(1.4, 3.2 * (1 - t * 0.6)), 0, Math.PI * 2);
       ctx.fill();
     });
-    // The two numbers, under the tank.
+  }
+
+  /** The two numbers being aimed with, under the tank. */
+  private aimLabel(ctx: CanvasRenderingContext2D, scene: Scene, fit: Fit) {
+    const aim = scene.aim!;
+    const piece = scene.pieces.find((p) => p.id === aim.piece);
+    if (!piece) return;
+    const px = fit.x(piece.x);
     const label = `${aim.angle}° · ${aim.power}`;
     ctx.font = "700 11px system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     const wide = ctx.measureText(label).width + 12;
-    const lx = Math.max(wide / 2 + 3, Math.min(fit.x(scene.width) - wide / 2 - 3, px));
+    const lx = Math.max(wide / 2 + 3, Math.min(fit.w - wide / 2 - 3, px));
     const ly = fit.y(piece.y) + 16;
     ctx.fillStyle = "rgba(8, 12, 20, 0.7)";
     ctx.beginPath();
@@ -769,38 +818,54 @@ export class Painter {
     }
   }
 
-  /** Paint a scene onto a canvas `w` by `h` CSS pixels. */
-  draw(ctx: CanvasRenderingContext2D, w: number, h: number, dpr: number, scene: Scene) {
+  /**
+   * Paint a scene onto a canvas `w` by `h` CSS pixels: all of it, or one layer of it. The world is
+   * the sky, the land and the things on it and over it; the labels are the words. A screen that
+   * lights the world itself (field3d) takes the world without the fire and the shake, and adds them.
+   */
+  draw(ctx: CanvasRenderingContext2D, w: number, h: number, dpr: number, scene: Scene, layer: Layer = "all") {
     const look = lookOf(scene.scene);
-    const fit = fitField(scene, w, h);
+    const fit = fitField(scene, w, h, scene.camera);
+    const plain = fitField(scene, w, h);
     const skyKey = `${scene.scene}/${w}/${h}/${dpr}`;
-    if (this.sky?.key !== skyKey) this.sky = { key: skyKey, canvas: this.paintSky(look, skyKey, w, h, dpr) };
-    if (this.ground?.land !== scene.land || this.ground.key !== skyKey || this.ground.burnt !== scene.scorches.length) this.ground = { land: scene.land, key: skyKey, burnt: scene.scorches.length, canvas: this.paintLand(look, scene, fit, w, h, dpr) };
-
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
-    const [jx, jy] = scene.fx.jolt;
-    // The sky shakes a third as much as the ground does: it is further off.
-    ctx.drawImage(this.sky.canvas, jx * 0.3 - 3, jy * 0.3 - 3, w + 6, h + 6);
-    this.weather(ctx, look, scene, w, h);
-    ctx.save();
-    ctx.translate(jx, jy);
-    ctx.drawImage(this.ground.canvas, 0, 0, w, h);
-    // If the shake has lifted the land off the bottom edge, earth shows there and not sky.
-    ctx.fillStyle = look.soil[1];
-    ctx.fillRect(-30, h - 1, w + 60, 40);
+    if (layer === "labels") ctx.clearRect(0, 0, w, h);
+    else {
+      if (this.sky?.key !== skyKey) this.sky = { key: skyKey, canvas: this.paintSky(look, skyKey, w, h, dpr) };
+      // The land is kept at the size of the whole field, a little finer than the screen so it stands being looked at closely.
+      const fine = Math.min(dpr * 1.5, 3);
+      if (this.ground?.land !== scene.land || this.ground.key !== skyKey || this.ground.burnt !== scene.scorches.length) this.ground = { land: scene.land, key: skyKey, burnt: scene.scorches.length, canvas: this.paintLand(look, scene, plain, w, h, fine) };
+      const [jx, jy] = layer === "all" ? scene.fx.jolt : [0, 0];
+      // The sky is far off: it moves a quarter as much as the land when the camera does, and shakes a third as much.
+      const far = 1 + (fit.zoom - 1) * 0.25;
+      const cam = scene.camera;
+      ctx.fillStyle = look.sky[0]![1];
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(this.sky.canvas, (w - w * far) / 2 - (cam ? (cam.x - scene.width / 2) * plain.scale * 0.25 * far : 0) + jx * 0.3 - 3, h - h * far + (cam ? cam.lift * plain.scale * 0.25 : 0) + jy * 0.3 - 3, w * far + 6, h * far + 6);
+      this.weather(ctx, look, scene, w, h);
+      ctx.save();
+      ctx.translate(jx, jy);
+      ctx.drawImage(this.ground.canvas, fit.x(0), fit.y(0) - h * fit.zoom, w * fit.zoom, h * fit.zoom);
+      // If the shake has lifted the land off the bottom edge, earth shows there and not sky.
+      ctx.fillStyle = look.soil[1];
+      ctx.fillRect(-30, fit.y(0) - 1, w + 60, 60);
 
-    for (const piece of scene.pieces) if (piece.out && !piece.hidden) this.tank(ctx, scene, fit, piece, piece.angle, false);
-    if (scene.aim) this.aim(ctx, scene, fit);
-    for (const piece of scene.pieces) if (!piece.out && !piece.hidden) this.tank(ctx, scene, fit, piece, scene.aim?.piece === piece.id ? scene.aim.angle : piece.angle, scene.turn === piece.owner);
-    if (scene.frame) this.shells(ctx, scene, fit);
-    for (const p of scene.fx.bits) this.bit(ctx, fit, p);
-    ctx.globalAlpha = 1;
-    ctx.globalCompositeOperation = "source-over";
-    ctx.restore();
-    if (look.snowfall) this.snowfall(ctx, scene, w, h);
+      for (const piece of scene.pieces) if (piece.out && !piece.hidden) this.tank(ctx, scene, fit, piece, piece.angle, false);
+      if (scene.aim) this.aim(ctx, scene, fit);
+      for (const piece of scene.pieces) if (!piece.out && !piece.hidden) this.tank(ctx, scene, fit, piece, scene.aim?.piece === piece.id ? scene.aim.angle : piece.angle, scene.turn === piece.owner);
+      if (scene.frame) this.shells(ctx, scene, fit);
+      if (layer === "all") for (const p of scene.fx.bits) this.bit(ctx, fit, p);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
+      ctx.restore();
+      if (look.snowfall) this.snowfall(ctx, scene, w, h);
+      if (layer === "world") return;
+    }
 
+    for (const piece of scene.pieces) if (!piece.hidden) this.plate(ctx, scene, fit, piece, !piece.out && scene.turn === piece.owner);
+    if (scene.aim) this.aimLabel(ctx, scene, fit);
     // What a hit took, floating up from whoever it hit; and anything worth shouting about.
     for (const number of scene.frame?.numbers ?? []) {
       const piece = scene.pieces.find((p) => p.id === number.piece);
@@ -835,6 +900,7 @@ export class Painter {
       ctx.strokeText(shout.text, x, y);
       ctx.fillText(shout.text, x, y);
     }
+    if (layer !== "all") return;
     // The corners a little darker, as through a lens.
     const lens = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.45, w / 2, h / 2, Math.max(w, h) * 0.75);
     lens.addColorStop(0, "rgba(0, 0, 0, 0)");

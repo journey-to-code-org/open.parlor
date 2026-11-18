@@ -37,6 +37,30 @@ export interface Shout {
   tone: "good" | "bad" | "plain";
 }
 
+/** Something that lights up what is round it for a moment: a blast, a gun going off, a fire. */
+export interface Light {
+  x: number;
+  y: number;
+  /** How far it reaches, in the field's units. */
+  r: number;
+  /** Red, green and blue, each 0 to 1 or a little over. */
+  colour: [number, number, number];
+  age: number;
+  life: number;
+}
+
+/** A ring of bent air going out from a blast. */
+export interface Wave {
+  x: number;
+  y: number;
+  /** How far out it gets. */
+  r: number;
+  /** How hard it bends what is seen through it. */
+  power: number;
+  age: number;
+  life: number;
+}
+
 /** Something that keeps giving off smoke or flame for a while: a fire on the ground, a wreck. */
 interface Burner {
   x: number;
@@ -56,10 +80,19 @@ export interface Earth {
 
 const MOST = 700;
 const FALL = 0.25;
+const HOT: [number, number, number] = [1, 0.7, 0.34];
 
 export class Fx {
   bits: Particle[] = [];
   shouts: Shout[] = [];
+  /** What is lit and what is bent, for a screen that can show it (field3d). */
+  lights: Light[] = [];
+  waves: Wave[] = [];
+  /**
+   * How much of everything there is: 1 for a screen that stamps each bit on a 2D canvas, more for
+   * one that hands them all to the graphics card at once.
+   */
+  rich = 1;
   private burners: Burner[] = [];
   /** How hard the screen is shaking, in pixels; it dies away by itself. */
   shake = 0;
@@ -75,13 +108,28 @@ export class Fx {
     return a + (b - a) * this.dice();
   }
   private add(p: Partial<Particle> & Pick<Particle, "kind" | "x" | "y" | "life" | "size">) {
-    if (this.bits.length >= MOST) this.bits.splice(0, 40);
+    if (this.bits.length >= MOST * (this.rich > 1 ? 7 : 1)) this.bits.splice(0, 40);
     this.bits.push({ vx: 0, vy: 0, age: 0, weight: 0, drag: 1, colour: "#fff", spin: 0, ...p });
+  }
+
+  /** How many of something, on this screen. */
+  private many(n: number) {
+    return Math.round(n * this.rich);
+  }
+  private light(x: number, y: number, r: number, life: number, colour = HOT) {
+    this.lights.push({ x, y, r, colour, age: 0, life });
+    if (this.lights.length > 24) this.lights.shift();
+  }
+  /** A light for this frame only: something glowing as it flies. */
+  glow(x: number, y: number, r: number, colour: [number, number, number] = HOT) {
+    this.lights.push({ x, y, r, colour, age: 0, life: 0 });
   }
 
   clear() {
     this.bits = [];
     this.shouts = [];
+    this.lights = [];
+    this.waves = [];
     this.burners = this.burners.filter((b) => b.left === Infinity);
     this.shake = 0;
   }
@@ -97,6 +145,7 @@ export class Fx {
     for (let i = 0; i < 7; i++) this.add({ kind: "fire", x, y, vx: c * this.between(2, 7) + this.between(-1, 1), vy: s * this.between(2, 7) + this.between(-1, 1), life: this.between(8, 14), size: this.between(8, 16), drag: 0.86 });
     for (let i = 0; i < 6; i++) this.add({ kind: "smoke", x, y, vx: c * this.between(1, 4) + this.between(-0.6, 0.6), vy: s * this.between(1, 4) + this.between(0, 0.8), life: this.between(30, 55), size: this.between(10, 20), drag: 0.93, colour: "#cfcfcf" });
     this.shake = Math.max(this.shake, 3);
+    this.light(x, y, 300, 9, [1, 0.85, 0.55]);
   }
 
   /** A puff behind something in the air. */
@@ -112,33 +161,36 @@ export class Fx {
     const big = Math.min(2.4, r / 70);
     this.add({ kind: "flash", x, y, life: 7, size: r * 2.4, colour: "#ffffff" });
     this.add({ kind: "ring", x, y, life: 18, size: r * 2.3, colour: "#fff1c9" });
-    const balls = Math.round(10 + 8 * big);
+    const balls = this.many(10 + 8 * big);
+    this.light(x, y + r * 0.3, r * 7.5, 26 + 6 * big);
+    this.waves.push({ x, y, r: r * 3.4, power: Math.min(1, 0.45 + 0.25 * big), age: 0, life: 28 });
     for (let i = 0; i < balls; i++) {
       const a = this.between(0, Math.PI * 2);
       const far = this.between(0, r * 0.7);
       this.add({ kind: "fire", x: x + Math.cos(a) * far, y: y + Math.sin(a) * far, vx: Math.cos(a) * this.between(0.6, 3.4) * big, vy: Math.sin(a) * this.between(0.6, 3.4) * big + 1.2, life: this.between(18, 36), size: r * this.between(0.5, 0.95), drag: 0.9 });
     }
     // A column of fire going up out of the middle of it.
-    for (let i = 0; i < 4 + Math.round(3 * big); i++) this.add({ kind: "fire", x: x + this.between(-r, r) * 0.2, y, vx: this.between(-0.5, 0.5), vy: this.between(3, 8) * (0.7 + 0.3 * big), life: this.between(22, 40), size: r * this.between(0.4, 0.7), drag: 0.92 });
-    const sparks = Math.round(10 + 10 * big);
+    for (let i = 0; i < this.many(4 + 3 * big); i++) this.add({ kind: "fire", x: x + this.between(-r, r) * 0.2, y, vx: this.between(-0.5, 0.5), vy: this.between(3, 8) * (0.7 + 0.3 * big), life: this.between(22, 40), size: r * this.between(0.4, 0.7), drag: 0.92 });
+    const sparks = this.many(10 + 10 * big) * (this.rich > 1 ? 2 : 1);
     for (let i = 0; i < sparks; i++) {
       const a = this.between(0.1, Math.PI - 0.1);
       const fast = this.between(5, 15) * (0.7 + 0.3 * big);
       this.add({ kind: "spark", x, y, vx: Math.cos(a) * fast, vy: Math.sin(a) * fast, life: this.between(16, 38), size: this.between(8, 20), weight: 0.9, drag: 0.97, colour: this.dice() < 0.5 ? "#ffd27a" : "#fff6dc" });
     }
-    const chunks = Math.round(8 + 9 * big);
+    const chunks = this.many(8 + 9 * big) * (this.rich > 1 ? 2 : 1);
     for (let i = 0; i < chunks; i++) {
       const a = this.between(0.25, Math.PI - 0.25);
       const fast = this.between(4, 12) * (0.7 + 0.3 * big);
       this.add({ kind: "chunk", x: x + this.between(-r, r) * 0.4, y, vx: Math.cos(a) * fast, vy: Math.sin(a) * fast, life: this.between(50, 95), size: this.between(4, 10) * (0.8 + 0.2 * big), weight: 1, drag: 0.99, colour: earth.soil[Math.floor(this.dice() * earth.soil.length)]!, spin: this.between(-0.4, 0.4) });
     }
-    const puffs = Math.round(5 + 4 * big);
+    const puffs = this.many(5 + 4 * big);
     for (let i = 0; i < puffs; i++) this.add({ kind: "smoke", x: x + this.between(-r, r) * 0.5, y: y + this.between(0, r * 0.4), vx: this.between(-0.7, 0.7), vy: this.between(0.5, 1.6), life: this.between(60, 120), size: r * this.between(0.35, 0.7), drag: 0.97, colour: this.dice() < 0.5 ? "#4a4540" : "#6b645c" });
     this.shake = Math.max(this.shake, Math.min(22, r / 9));
   }
 
   /** Earth thrown about without a bang: a heap landing, a skip, a bore. */
-  private scatter(x: number, y: number, r: number, earth: Earth, much: number) {
+  private scatter(x: number, y: number, r: number, earth: Earth, few: number) {
+    const much = this.many(few);
     for (let i = 0; i < much; i++) {
       const a = this.between(0.3, Math.PI - 0.3);
       const fast = this.between(2, 8);
@@ -155,7 +207,8 @@ export class Fx {
       else this.blast(e.x, e.y, e.r, earth);
     } else if (e.kind === "fire") {
       this.add({ kind: "flash", x: e.x, y: e.y, life: 5, size: e.r * 1.3, colour: "#ffd9a0" });
-      for (let i = 0; i < 14; i++) this.add({ kind: "fire", x: e.x + this.between(-e.r, e.r) * 0.6, y: e.y + this.between(0, 12), vx: this.between(-1.2, 1.2), vy: this.between(1, 4), life: this.between(18, 34), size: e.r * this.between(0.25, 0.5), drag: 0.93 });
+      this.light(e.x, e.y + 20, e.r * 6, 30, [1, 0.55, 0.2]);
+      for (let i = 0; i < this.many(14); i++) this.add({ kind: "fire", x: e.x + this.between(-e.r, e.r) * 0.6, y: e.y + this.between(0, 12), vx: this.between(-1.2, 1.2), vy: this.between(1, 4), life: this.between(18, 34), size: e.r * this.between(0.25, 0.5), drag: 0.93 });
       this.burners.push({ x: e.x, y: e.y, left: 150, kind: "flame", size: e.r * 0.5 });
       this.shake = Math.max(this.shake, 4);
     } else if (e.kind === "heap") {
@@ -168,7 +221,8 @@ export class Fx {
       this.scatter(e.x, e.y, 12, earth, 2);
     } else if (e.kind === "split") {
       this.add({ kind: "flash", x: e.x, y: e.y, life: 6, size: 60, colour: "#ffffff" });
-      for (let i = 0; i < 12; i++) {
+      this.light(e.x, e.y, 420, 10, [1, 0.95, 0.8]);
+      for (let i = 0; i < this.many(12); i++) {
         const a = this.between(0, Math.PI * 2);
         this.add({ kind: "spark", x: e.x, y: e.y, vx: Math.cos(a) * this.between(3, 8), vy: Math.sin(a) * this.between(3, 8), life: 16, size: 10, weight: 0.4, colour: "#fff2c0" });
       }
@@ -181,8 +235,10 @@ export class Fx {
   /** A ring of light where a tank leaves or arrives. */
   warp(x: number, y: number) {
     this.add({ kind: "ring", x, y, life: 20, size: 90, colour: "#9ad8ff" });
+    this.light(x, y, 380, 18, [0.45, 0.75, 1]);
+    this.waves.push({ x, y, r: 170, power: 0.5, age: 0, life: 22 });
     this.add({ kind: "flash", x, y, life: 8, size: 70, colour: "#cfeaff" });
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0; i < this.many(22); i++) {
       const a = this.between(0, Math.PI * 2);
       this.add({ kind: "glint", x: x + Math.cos(a) * 30, y: y + Math.sin(a) * 30, vx: Math.cos(a) * this.between(0.5, 3), vy: Math.sin(a) * this.between(0.5, 3) + 1, life: this.between(20, 40), size: 6, colour: "#9ad8ff" });
     }
@@ -206,10 +262,15 @@ export class Fx {
     this.clock += ticks;
     this.shake *= Math.pow(0.86, ticks);
     if (this.shake < 0.3) this.shake = 0;
+    // Lights and waves grow old; a light made for one frame has had it.
+    this.lights = this.lights.filter((l) => (l.age += ticks) < l.life);
+    this.waves = this.waves.filter((w) => (w.age += ticks) < w.life);
     for (const b of this.burners) {
       b.left -= ticks;
+      // A fire on the ground flickers on everything near it.
+      if (b.kind === "flame" && this.rich > 1) this.glow(b.x, ground(b.x) + 20, b.size * (5 + this.dice() * 2), [0.9, 0.42, 0.14]);
       // About one bit of flame every two ticks, one of smoke every six.
-      if (this.dice() < ticks / (b.kind === "flame" ? 2 : 6)) {
+      if (this.dice() < (ticks * this.rich) / (b.kind === "flame" ? 2 : 6)) {
         if (b.kind === "flame") this.add({ kind: "flame", x: b.x + this.between(-b.size, b.size), y: ground(b.x) + 4, vx: this.between(-0.3, 0.3), vy: this.between(0.8, 2.2), life: this.between(14, 26), size: this.between(8, 16), drag: 0.96 });
         else this.add({ kind: "smoke", x: b.x + this.between(-8, 8), y: b.y + 26, vx: this.between(-0.2, 0.2), vy: this.between(0.7, 1.4), life: this.between(70, 120), size: this.between(10, 18), drag: 0.985, colour: "#3d3a37" });
       }

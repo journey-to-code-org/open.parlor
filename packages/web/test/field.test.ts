@@ -3,7 +3,7 @@
 // about where a finger is.
 import { QUICK_STYLE, kitGame, type FieldView } from "@journey-to-code/games";
 import { describe, expect, it } from "vitest";
-import { fitField } from "../src/field/draw";
+import { fitField, lookAt } from "../src/field/draw";
 import { Fx } from "../src/field/fx";
 import { lookOf } from "../src/field/looks";
 import { BURST_FOR, HOLD, beginPlayback, eventsBetween, frameAt, playbackOver, shellLook } from "../src/field/play";
@@ -205,6 +205,65 @@ describe("the field on the screen", () => {
       expect(bx).toBeCloseTo(x, 6);
       expect(by).toBeCloseTo(y, 6);
     }
+  });
+});
+
+describe("the camera", () => {
+  const field = { width: 2000 };
+  it("looks at a point as nearly as it can without showing anything off the field", () => {
+    // In the middle, the point is the middle of the screen.
+    const mid = lookAt(field, 400, 250, 1000, 600, 2);
+    const fit = fitField(field, 400, 250, mid);
+    expect(fit.x(1000)).toBeCloseTo(200, 6);
+    expect(fit.y(600)).toBeCloseTo(125, 6);
+    expect(fit.scale).toBeCloseTo(0.4, 6);
+    // At the left edge and the bottom, it stops: the field's own edge and floor are the screen's.
+    const corner = fitField(field, 400, 250, lookAt(field, 400, 250, 50, 20, 2));
+    expect(corner.x(0)).toBeCloseTo(0, 6);
+    expect(corner.y(0)).toBeCloseTo(250, 6);
+    const right = fitField(field, 400, 250, lookAt(field, 400, 250, 1990, 20, 1.5));
+    expect(right.x(2000)).toBeCloseTo(400, 6);
+    // It may rise as high as it likes, after a shell.
+    expect(lookAt(field, 400, 250, 1000, 5000, 1).lift).toBeGreaterThan(4000);
+    // Never further off than the whole field.
+    expect(lookAt(field, 400, 250, 1000, 600, 0.4).zoom).toBe(1);
+  });
+
+  it("maps a finger back through wherever it is looking", () => {
+    const fit = fitField(field, 400, 250, lookAt(field, 400, 250, 700, 900, 1.6));
+    for (const [x, y] of [[300, 700], [700, 900], [1100, 1100]] as const) {
+      const [bx, by] = fit.back(fit.x(x), fit.y(y));
+      expect(bx).toBeCloseTo(x, 6);
+      expect(by).toBeCloseTo(y, 6);
+    }
+  });
+});
+
+describe("light and bent air, for a screen that can show them", () => {
+  const earth = lookOf("meadow").earth;
+  it("come from a blast and die away; a glow lasts one frame", () => {
+    const fx = new Fx();
+    fx.event({ tick: 1, kind: "burst", x: 500, y: 400, r: 100, hits: [] }, earth);
+    expect(fx.lights).toHaveLength(1);
+    expect(fx.waves).toHaveLength(1);
+    expect(fx.lights[0]!.r).toBeGreaterThan(400);
+    fx.glow(900, 500, 150);
+    expect(fx.lights).toHaveLength(2);
+    fx.step(1, 0, 100, () => 400);
+    expect(fx.lights).toHaveLength(1);
+    for (let i = 0; i < 60; i++) fx.step(1, 0, 100, () => 400);
+    expect(fx.lights).toEqual([]);
+    expect(fx.waves).toEqual([]);
+  });
+
+  it("has a great deal more of everything when it is told the screen can take it", () => {
+    const [plain, rich] = [new Fx(), new Fx()];
+    rich.rich = 3;
+    for (const fx of [plain, rich]) fx.event({ tick: 1, kind: "burst", x: 500, y: 400, r: 120, hits: [] }, earth);
+    expect(rich.bits.length).toBeGreaterThan(plain.bits.length * 2.5);
+    for (let i = 0; i < 80; i++) rich.event({ tick: 1, kind: "burst", x: 500, y: 400, r: 240, hits: [] }, earth);
+    expect(rich.bits.length).toBeGreaterThan(2000);
+    expect(rich.bits.length).toBeLessThanOrEqual(4900);
   });
 });
 

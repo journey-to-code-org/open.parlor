@@ -6,7 +6,11 @@
 //   flies it again (field/play.ts) and ends on the field the view shows.
 // - Everything that is only for show (field/fx.ts): the gun's flash and kick, fire, sparks and
 //   flying earth where a shell lands, smoke that hangs about, the shake of the screen, a tank
-//   dropping into the hole under it or rolling along when it drives.
+//   dropping into the hole under it or rolling along when it drives. Where WebGL works, the
+//   graphics card takes the painted field and lights it (field/field3d.ts): a blast lights the
+//   land and the smoke, the air bends in a ring round it, fire glows, and there is far more of
+//   everything. Where it doesn't, the same show is stamped on the 2D canvas.
+// - A camera that follows the shell up out of the top of the screen and leans in where it lands.
 // - Aiming, three ways that all set the same two numbers: drag on the field away from your tank
 //   (the barrel follows, and further is harder), the two sliders with a nudge either side, or the
 //   arrow keys with the field in focus. A few dots show how the shot would set off.
@@ -31,7 +35,8 @@ import { reducedMotion } from "../motion";
 import { SoundButton } from "../SoundButton";
 import { toneColour } from "../sport/draw";
 import { TableSettingsButton } from "../TableSettings";
-import { Painter, fitField, type Actor, type Scene } from "./draw";
+import { Painter, fitField, lookAt, type Actor, type Scene } from "./draw";
+import { loadField3d, type Field3d } from "./field3d";
 import { Fx } from "./fx";
 import { lookOf } from "./looks";
 import { beginPlayback, eventsBetween, frameAt, playbackOver, type Playback } from "./play";
@@ -65,7 +70,15 @@ const DOT_SHELL: FieldShell = { id: "dots", name: "", blurb: "", blast: 1, damag
 const ROLL = 4;
 const LEAP = 200;
 
+/** How much nearer than the whole field the camera comes: following a shell, and where one has just landed. */
+const FOLLOW_ZOOM = 1.3;
+const IMPACT_ZOOM = 1.55;
+/** How long the camera stays on a burst, in ticks. */
+const LINGER = 26;
+
 const clamp = (n: number, low: number, high: number) => Math.max(low, Math.min(high, n));
+/** `?slow=4` in the address plays the whole show at a quarter of its speed, for looking at it closely. */
+const SLOW = typeof location === "undefined" ? 1 : clamp(Number(/[?&]slow=(\d+)/.exec(location.search)?.[1] ?? 1), 1, 20);
 
 /** Where a piece is on the screen this instant, which lags where the game has it: it drives there, or drops. */
 interface Body {
@@ -95,6 +108,15 @@ export function FieldTable({ view, names, act, onLeave, banner, chat, settings, 
   const bubbles = useBubbles(chat?.messages ?? []);
   const stage = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
+  /** The graphics card's canvas, under the other; the lit field once it has loaded; and the canvas the painter paints the world on for it. */
+  const glCanvas = useRef<HTMLCanvasElement>(null);
+  const lit = useRef<Field3d | null>(null);
+  const worldCanvas = useRef<HTMLCanvasElement | null>(null);
+  const [glowing, setGlowing] = useState(false);
+  /** Where the camera is looking (a point of the field) and how near, eased toward where it should be. */
+  const eye = useRef<{ x: number; y: number; zoom: number } | null>(null);
+  /** The last burst of the flight now playing, for the camera to lean in on. */
+  const burst = useRef<{ x: number; y: number; tick: number } | null>(null);
   const playback = useRef<Playback | null>(null);
   /** The newest view from the table, which may be ahead of the one on the screen. */
   const latest = useRef(view);
@@ -124,6 +146,7 @@ export function FieldTable({ view, names, act, onLeave, banner, chat, settings, 
     const fresh = n > played.current;
     played.current = n;
     wrecked.current.clear();
+    burst.current = null;
     const flight = fresh && !still ? beginPlayback(next) : null;
     if (!flight) {
       playback.current = null;
@@ -224,6 +247,7 @@ export function FieldTable({ view, names, act, onLeave, banner, chat, settings, 
       scorches.current.push({ x: e.x, y: e.y, r: e.kind === "fire" ? e.r * 0.7 : e.r });
       if (scorches.current.length > 120) scorches.current.shift();
     }
+    if ((e.kind === "burst" && e.r >= 12) || e.kind === "fire" || e.kind === "heap") burst.current = { x: e.x, y: e.y, tick: e.tick };
     if (e.kind === "burst") play(e.r >= 150 ? "bigBoom" : e.r >= 12 ? "boom" : "piece");
     else if (e.kind === "fire") play("sizzle");
     else if (e.kind === "heap") play("thud");
@@ -264,7 +288,7 @@ export function FieldTable({ view, names, act, onLeave, banner, chat, settings, 
       if (!p && !show.busy && now - before < 30) return;
       before = now;
       if (document.hidden) return;
-      const ticks = (gap / 1000) * FIELD_TICKS;
+      const ticks = ((gap / 1000) * FIELD_TICKS) / SLOW;
       const { shown: at, size: box } = live.current;
 
       if (p) {
@@ -336,10 +360,35 @@ export function FieldTable({ view, names, act, onLeave, banner, chat, settings, 
       });
 
       show.step(ticks, base.field.wind, base.field.gravity, (x) => landAt(ground, x));
+      // What glows as it flies lights the ground it passes over.
+      if (lit.current && flight) for (const s of flight.shells) show.glow(s.x, s.y, s.small ? 110 : s.look === "shell" ? 150 : 260, s.look === "orb" ? [0.4, 0.7, 1] : s.look === "beam" ? [1, 0.35, 0.3] : s.look === "dirt" ? [0, 0, 0] : [1, 0.62, 0.28]);
 
       const el = canvas.current;
       const ctx = el?.getContext("2d");
       if (!el || !ctx || !box.w) return;
+
+      // The camera: on the whole field, unless a shell is in the air (it follows it, up out of the
+      // top of the screen if need be) or one has just landed (it leans in on the burst).
+      const tall = (box.h / box.w) * base.field.width;
+      let want = { x: base.field.width / 2, y: tall / 2, zoom: 1 };
+      if (now_ && flight && !still) {
+        const lead = flight.shells.filter((s) => !s.small);
+        const flying = lead.length ? lead : flight.shells;
+        const hit = burst.current && now_.tick - burst.current.tick < LINGER ? burst.current : null;
+        if (hit) want = { x: hit.x, y: hit.y + 60, zoom: IMPACT_ZOOM };
+        else if (flying.length) {
+          const xs = flying.map((s) => s.x);
+          const spread = Math.max(...xs) - Math.min(...xs);
+          want = { x: xs.reduce((a, b) => a + b, 0) / xs.length, y: flying.reduce((a, s) => a + s.y, 0) / flying.length, zoom: clamp(base.field.width / (spread * 2 + base.field.width / FOLLOW_ZOOM), 1, FOLLOW_ZOOM) };
+        }
+      }
+      eye.current ??= want;
+      const ease = 1 - Math.pow(0.9, ticks);
+      eye.current.x += (want.x - eye.current.x) * ease;
+      eye.current.y += (want.y - eye.current.y) * ease;
+      eye.current.zoom += (want.zoom - eye.current.zoom) * ease;
+      const near = eye.current.zoom > 1.003 || Math.abs(eye.current.y - tall / 2) > 2;
+      const camera = near ? lookAt(base.field, box.w, box.h, eye.current.x, eye.current.y, eye.current.zoom) : undefined;
       const aiming = !now_ && live.current.aimPiece;
       const scene: Scene = {
         scene: base.field.scene,
@@ -357,8 +406,25 @@ export function FieldTable({ view, names, act, onLeave, banner, chat, settings, 
         time: still ? 0 : (now - started) / 1000,
         firing: now_ ? toneColour(now_.target.players[now_.target.last!.seat]?.tone) : undefined,
         scorches: scorches.current,
+        camera,
       };
-      painter.current!.draw(ctx, box.w, box.h, el.width / box.w, scene);
+      const dpr = el.width / box.w;
+      const gl = lit.current;
+      const world = worldCanvas.current;
+      if (gl && world) {
+        // The painter paints the world, the graphics card lights it and adds the fire, and the words go on top.
+        if (world.width !== el.width || world.height !== el.height) Object.assign(world, { width: el.width, height: el.height });
+        painter.current!.draw(world.getContext("2d")!, box.w, box.h, dpr, scene, "world");
+        const fit = fitField(scene, box.w, box.h, camera);
+        if (gl.render({ world, width: box.w, height: box.h, dpr, fx: show, x: fit.x, y: fit.y, scale: fit.scale })) painter.current!.draw(ctx, box.w, box.h, dpr, scene, "labels");
+        else {
+          // The graphics card has given up (its context was lost): the 2D canvas takes over, from this frame.
+          lit.current = null;
+          show.rich = 1;
+          setGlowing(false);
+          painter.current!.draw(ctx, box.w, box.h, dpr, scene);
+        }
+      } else painter.current!.draw(ctx, box.w, box.h, dpr, scene);
       // With motion turned down, the field is painted when it changes and not between.
       if (still) cancelAnimationFrame(frame);
     };
@@ -383,6 +449,24 @@ export function FieldTable({ view, names, act, onLeave, banner, chat, settings, 
     const watch = new ResizeObserver(fitCanvas);
     watch.observe(el);
     return () => watch.disconnect();
+  }, []);
+  // The graphics card, where there is one to be had. Until it has loaded (and wherever it can't), the 2D canvas does it all.
+  useEffect(() => {
+    if (still || !glCanvas.current) return;
+    let gone = false;
+    void loadField3d(glCanvas.current).then((made) => {
+      if (!made) return;
+      if (gone) return made.dispose();
+      worldCanvas.current = document.createElement("canvas");
+      lit.current = made;
+      fx.current!.rich = 3;
+      setGlowing(true);
+    });
+    return () => {
+      gone = true;
+      lit.current?.dispose();
+      lit.current = null;
+    };
   }, []);
   // A new field (the next game): nothing of the last one is left hanging in the air.
   useEffect(() => {
@@ -498,6 +582,7 @@ export function FieldTable({ view, names, act, onLeave, banner, chat, settings, 
             onPointerCancel={() => setDragging(false)}
             onKeyDown={onKeyDown}
           >
+            <canvas ref={glCanvas} className="field-gl" hidden={!glowing} aria-hidden />
             <canvas ref={canvas} aria-hidden />
             {shown.info.length > 0 && (
               <p className="field-info">
