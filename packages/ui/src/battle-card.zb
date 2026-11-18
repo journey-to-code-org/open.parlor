@@ -1,0 +1,41 @@
+<!--
+  A card from Delbie's Back Room (packages/wasm/src/battler): a part with a cost, a name, a picture
+  and what it does. Light DOM, so the page lays out the hand and styles what is slotted. Tap it, or
+  Enter or Space, to pick it; the page decides what picking means (play it, or drag it to a foe).
+  @prop {"attack" | "skill"} kind - What the card is: attacks are played on a foe.
+  @prop {"starter" | "common" | "rare"} rarity - Sets the frame.
+  @slot art - The picture: an emoji or an image.
+  @slot - What the card does, in words.
+  @fires pick - It was tapped, or Enter or Space was pressed on it. Not sent while `disabled`.
+-->
+<script>
+  import { emit } from '@zubra/runtime'
+
+  function pick() {
+    if (!disabled) emit('pick')
+  }
+</script>
+<style>
+  :host { display: inline-block; flex: none; position: relative; width: var(--battle-card-w, 7.5rem); touch-action: none; user-select: none; -webkit-user-select: none; }
+  .card { box-sizing: border-box; display: grid; position: relative; grid-template-rows: auto auto 1fr; gap: 0.15rem; overflow: hidden; width: 100%; aspect-ratio: 5 / 7; padding: 0.4rem 0.45rem 0.5rem; border-radius: 0.6rem; border: 2px solid var(--battle-frame, #6b4f2a); background: var(--battle-paper, #fbf3e0); color: var(--battle-ink, #2a2013); box-shadow: 0 2px 6px #0004; cursor: grab; outline: none; text-align: center; transition: transform 120ms ease-out, box-shadow 120ms ease-out, filter 120ms; }
+  .card:hover:not([aria-disabled=true]), .card:focus-visible { transform: translateY(-0.4rem); box-shadow: 0 8px 14px #0005; }
+  .card:focus-visible { outline: 3px solid var(--ring, #2a4bd7); outline-offset: 2px; }
+  .card.attack { --battle-frame: #9a2f22; }
+  .card.skill { --battle-frame: #2f6a8f; }
+  .card.rare { box-shadow: 0 0 0 2px #e0b340, 0 2px 6px #0004; }
+  .card.selected { transform: translateY(-0.8rem); box-shadow: 0 0 0 3px var(--ring, #2a4bd7), 0 10px 16px #0005; }
+  .card[aria-disabled=true] { filter: grayscale(0.7) brightness(0.9); cursor: default; }
+  .cost { position: absolute; top: 0.3rem; left: 0.3rem; display: grid; place-items: center; flex: none; width: 1.3rem; height: 1.3rem; border-radius: 50%; background: var(--battle-frame); color: #fff; font-weight: 800; font-size: 0.8rem; }
+  .name { font-weight: 700; font-size: 0.62rem; line-height: 1.1; min-width: 0; overflow-wrap: anywhere; }
+  .art { display: grid; place-items: center; font-size: 1.8rem; line-height: 1; padding-top: 0.2rem; }
+  .text { font-size: 0.62rem; line-height: 1.2; }
+  @media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+</style>
+<battle-card name="" cost={1} kind="skill" rarity="common" selected={false} disabled={false}>
+  <div class={`card ${kind} ${rarity}`} class:selected role="button" tabindex={disabled ? -1 : 0} aria-disabled={disabled ? "true" : "false"} aria-pressed={selected ? "true" : "false"} aria-label={`${name}, costs ${cost}`} onclick={pick} onkeydown.space.enter.prevent={pick}>
+    <span class="cost" aria-hidden="true">{cost}</span>
+    <div class="art" aria-hidden="true"><zb-slot name="art"></zb-slot></div>
+    <div class="name">{name}</div>
+    <div class="text"><zb-slot></zb-slot></div>
+  </div>
+</battle-card>
