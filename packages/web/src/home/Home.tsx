@@ -65,7 +65,7 @@ const FANS: Record<string, object[]> = {
 };
 
 /** A board game's tile shows a little board instead: a position that says what the game is about. */
-type MiniBoard = { cols: number; cells: ({ glyph: string; tone: string; shade?: "dark" | "point-down" | "point-up" } | null)[]; shade?: "green" | "wood" | "points" | "words"; sketch?: boolean };
+type MiniBoard = { cols: number; cells: ({ glyph: string; tone: string; shade?: "dark" | "point-down" | "point-up" } | null)[]; shade?: "green" | "wood" | "points" | "words" | "pits"; sketch?: boolean };
 const X = { glyph: "✕", tone: "red" };
 const O = { glyph: "◯", tone: "blue" };
 const DARK = { glyph: "●", tone: "dark" };
@@ -105,6 +105,8 @@ const BOARDS: Record<string, MiniBoard> = {
   drawguess: { cols: 1, cells: [], sketch: true },
   hangman: { cols: 5, shade: "words", cells: [...tiles("_a__a", "phpph"), ...tiles("zqk__", "mmm")] },
   tictactoe: { cols: 3, cells: [X, O, null, null, X, O, O, null, X] },
+  // Two rows of pits and the seeds in them: one empty, its neighbour full.
+  mancala: { cols: 3, shade: "pits", cells: [on("4", "light", false), on("1", "light", false), on("6", "light", false), null, on("5", "gold", false), on("4", "gold", false)] },
   // The bottom of a rack: red about to make four on the slant.
   dropfour: { cols: 4, cells: [null, null, null, null, null, null, RED, YEL, null, RED, YEL, RED, RED, YEL, YEL, RED] },
   combat: { cols: 4, cells: [SHIP, SHIP, SHIP, null, null, null, MISS, null, MISS, null, HIT, null, null, null, HIT, null] },
@@ -127,6 +129,12 @@ const TABLES: Record<string, MiniTable> = {
   bowling: { surface: "lane", balls: [...PINS, { x: 50, y: 80, tone: "red" }] },
   minigolf: { surface: "green", cup: [66, 32], balls: [{ x: 36, y: 72, tone: "white" }, { x: 70, y: 62, tone: "red" }] },
   // A cue ball lined up on a little rack.
+  // A long board seen from the near end: pucks lying in the far zones, and one on its way.
+  shuffleboard: { surface: "lane", balls: [{ x: 40, y: 20, tone: "red" }, { x: 60, y: 28, tone: "blue" }, { x: 46, y: 40, tone: "blue" }, { x: 54, y: 74, tone: "red" }] },
+  // The hole in the middle of the board, and discs of both colours round it.
+  crokinole: { surface: "wood", cup: [50, 48], balls: [{ x: 38, y: 36, tone: "black" }, { x: 64, y: 44, tone: "gold" }, { x: 46, y: 66, tone: "gold" }, { x: 60, y: 74, tone: "black" }] },
+  // The football on its way up the table.
+  flickfootball: { surface: "wood", balls: [{ x: 50, y: 26, tone: "orange" }] },
   // The queen in the middle of a ring of pieces, and the striker on its line.
   carrom: { surface: "wood", balls: [{ x: 50, y: 46, tone: "red" }, ...[0, 1, 2, 3, 4, 5].map((i) => ({ x: Math.round(50 + 13 * Math.cos((i * Math.PI) / 3)), y: Math.round(46 + 13 * Math.sin((i * Math.PI) / 3)), tone: i % 2 ? "black" : "cream" })), { x: 38, y: 80, tone: "gold" }] },
   billiards: { surface: "felt", balls: [{ x: 28, y: 74, tone: "white" }, { x: 62, y: 30, tone: "red" }, { x: 72, y: 36, tone: "red" }, { x: 52, y: 38, tone: "red" }] },
@@ -147,6 +155,8 @@ const DICE: Record<string, number[]> = {
   shutthebox: [5, 4],
   // Three sixes, if you believe it.
   liarsdice: [6, 6, 6],
+  // The two halves of a tile: the six and four. (Pips are pips; a tile is two dice faces end to end.)
+  dominoes: [6, 4],
 };
 
 /** An arcade game's tile shows a little screen: a ship at the bottom, what it is up against, and what is coming at it. */

@@ -10,6 +10,14 @@ describe("narration with you in it", () => {
     expect(named("{0} sinks 15 on the break and shoots again.", ["You", "Ann"])).toBe("You sink 15 on the break and shoot again.");
     expect(named("{0} sinks the 2 and takes the solids and shoots again.", ["You"])).toBe("You sink the 2 and take the solids and shoot again.");
   });
+  it("knows Mancala's and Dominoes' verbs", () => {
+    expect(named("{0} sows 1 from pit 1 and captures 8", ["You", "Ann"])).toBe("You sow 1 from pit 1 and capture 8");
+    expect(named("{0} sows 4 from pit 3 and ends in the store. {0} goes again", ["You", "Ann"])).toBe("You sow 4 from pit 3 and end in the store. You go again");
+    expect(named("{0} plays the five and three. {0} is out and scores 9", ["You", "Ann"])).toBe("You play the five and three. You are out and score 9");
+    expect(named("The line is blocked. {0} has the lightest hand and scores 10", ["You", "Ann"])).toBe("The line is blocked. You have the lightest hand and score 10");
+    expect(named("{0} draws a tile", ["You"])).toBe("You draw a tile");
+  });
+
   it("knows the dice games' verbs", () => {
     expect(named("{0} banks 600 and reaches 10000: everyone else has one more turn", ["You", "Ann"])).toBe("You bank 600 and reach 10000: everyone else has one more turn");
     expect(named("{0} busts and loses 450", ["You"])).toBe("You bust and lose 450");

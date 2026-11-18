@@ -89,6 +89,8 @@ too), and one that draws any table sport on a canvas (Mini Golf is the first).
 | Shut the Box | 1 to 6 | A dice game: roll and shut the tiles that add up to it, until a roll can't be made; what's left open is your score. Nine tiles or twelve, one round or several, or alone for a score |
 | Liar's Dice | 2 to 6 | A dice game: everyone's dice are hidden. Bid how many of a number are under all the cups, or call the last bidder a liar; lose a call, lose a die. Ones wild or not, three to five dice each |
 | Backgammon | 2 | A board game: race your checkers home and hit theirs on the way. A friendly game, a money game with the doubling cube, a match to 3, 5 or 7 points, or Nackgammon |
+| Mancala | 2 | A board game (Kalah): sow a pit of seeds round the board, one a pit. End in your store to go again; end in your own empty pit to capture what is across. Three to six seeds a pit, one game or a match |
+| Dominoes | 2 to 4 | The double-six set: lay tiles end to end, matching numbers, and play out your hand. Draw, Block or All Fives (ends that add up to a multiple of five score), to 50, 100, 150 or 200 |
 | Mini Golf | 1 to 6 | A table sport: nine holes round a garden (a drainpipe, a pond, toadstools that kick, a mole's tunnels), in turn with balls that knock into each other, or everyone at once |
 
 Poker and Blackjack are for chips only: everyone starts with the same stack, and the chips are
@@ -124,9 +126,9 @@ connection to come back.
 
 A game with nothing hidden can also be **shared on one device**: on its setup screen, *On this
 device* seats two or more of you (computer players take any seats left), and the screen turns to
-whoever's move it is. That is Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon,
-Yacht, Pig, Ten Thousand, Ship, Captain, Crew, Shut the Box, Memory, Hangman, Mini Golf, Bowling, Billiards and Carrom. A game with a hand to hide (every
-turn-based card game, Combat, Liar's Dice, Criss-Crosswords, Secret Word, Anagrams) is **passed round** instead:
+whoever's move it is. That is Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon, Mancala,
+Yacht, Pig, Ten Thousand, Ship, Captain, Crew, Shut the Box, Memory, Hangman, Mini Golf, Bowling, Billiards, Carrom, Shuffleboard, Crokinole and Flick Football. A game with a hand to hide (every
+turn-based card game, Dominoes, Combat, Liar's Dice, Criss-Crosswords, Secret Word, Anagrams) is **passed round** instead:
 between people the screen is covered ("Pass to Grammi") until the next person taps. Games played at
 once (Speed, Slapjack, War, Word Hunt, the Mahjongs) can't be shared on one device.
 
