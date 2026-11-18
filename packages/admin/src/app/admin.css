@@ -93,4 +93,3 @@ app-root { display: block; min-height: 100dvh; }
 /* ---------- Finding your way ---------- */
 /* The tab list is the app's navigation: each tab is a page with an address of its own. */
 .shell > tab-list { display: block; }
-.back-to { font-size: 0.9rem; }

@@ -249,4 +249,17 @@ test.describe("pages and forms", () => {
     await expect(game).toHaveAttribute("aria-checked", "true");
     await expect(game).toBeEnabled();
   });
+
+  test("Road to the Shootout is a page, and its workshop opens beside the app with its sign-in", async ({ page, context }) => {
+    await signIn(page);
+    await section(page, "Road to the Shootout");
+    await expect(page).toHaveURL(/\/admin\/shootout$/);
+    await expect(page.locator("[data-shootout-pack]")).toBeVisible();
+    const opened = context.waitForEvent("page");
+    await page.locator("[data-open-workshop]").click();
+    const workshop = await opened;
+    await expect(workshop).toHaveURL(/\/admin\/workshop\/\?host$/);
+    expect(await workshop.evaluate(() => sessionStorage.getItem("cardroom.admin.token"))).toBe(TOKEN);
+    await workshop.close();
+  });
 });

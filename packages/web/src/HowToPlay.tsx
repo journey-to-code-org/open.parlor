@@ -3,7 +3,7 @@
 // to tap, drag or type, which depends on the kind of table) and then the rules in words, from the
 // game's own `describe` of the rules this table is played by (or its usual rules, where the table
 // doesn't know them, as when joining someone else's).
-import { isBoardGame, isSportGame, isWordGame, kitGame, type KitGameId } from "@journey-to-code/games";
+import { isBoardGame, isFieldGame, isSportGame, isWordGame, kitGame, type KitGameId } from "@journey-to-code/games";
 import { useEffect, useRef, useState } from "react";
 
 const SEEN = (game: string) => `parlor.howto.${game}`;
@@ -39,6 +39,10 @@ export function controls(game: string): string[] {
       return ["After a roll, every die that scores is kept for you. Tap one to put it back and roll it again.", "Then bank the turn's points, or roll the dice that are left."];
     case "shutthebox":
       return ["Roll, then tap tiles that add up to the roll. Only tiles that can be part of it can be tapped.", "Tap a tile you have just shut to open it again. The roll is made when the tiles add up."];
+    case "ludo":
+      return ["Press Roll, then tap one of your tokens to move it that many squares. The ones that can move wear a gold ring.", "A token in your yard needs a six to come out."];
+    case "chinesecheckers":
+      return ["Tap one of your pegs, then the hole it should go to. The dots show where it can reach, jumps and all.", "Your pegs start nearest you and are heading for the point straight across."];
     case "mancala":
       return ["Tap one of your pits (the row nearest you) to pick up its seeds and sow them round the board.", "Your store is at your right: its count is under your name."];
     case "dominoes":
@@ -48,6 +52,7 @@ export function controls(game: string): string[] {
     case "drawguess":
       return ["When it's your turn to draw, pick one of three words and draw it with your finger. Pick a pen colour and size under the canvas.", "Otherwise, type what you think the drawing is. The sooner you get it, the more it scores."];
   }
+  if (isFieldGame(game as KitGameId)) return ["Choose a shell, then drag on the field away from your tank: the barrel follows your finger, and the further you drag, the harder the shot.", "The sliders under the field set the angle and the power exactly, a degree or a point at a time with the − and + beside them.", "The dots show how the shot will set off. Press Fire when you're happy."];
   if (isSportGame(game as KitGameId)) return ["Press on the table, pull back and let go."];
   if (isWordGame(game as KitGameId)) return ["Type on the keyboard on the screen, or on your own keyboard, and press Enter to send.", "A word that isn't one comes back refused, and costs nothing."];
   if (isBoardGame(game as KitGameId)) return ["Tap a piece to pick it up, then tap where it goes (or drag it there). Tap it again to put it down.", "When there's a choice to make, such as rolling or passing, its button appears under the board."];

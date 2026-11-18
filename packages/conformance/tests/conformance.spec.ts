@@ -214,6 +214,20 @@ for (const framework of FRAMEWORKS) {
       await expect(t(page, "tab-count")).toHaveText("1");
     });
 
+    check("a panel added later, or moved to another tab, follows the chosen tab", async (page) => {
+      const tabs = t(page, "tabs");
+      await t(page, "tab-late-add").click();
+      const late = t(page, "tab-late");
+      await expect(late).toHaveAttribute("role", "tabpanel");
+      await expect(late).toBeHidden();
+      await t(page, "tab-late-move").click();
+      await expect(late).toBeVisible();
+      await expect(late).toHaveAttribute("aria-labelledby", /-tab-one$/);
+      await tabs.getByRole("tab", { name: "Two" }).click();
+      await expect(late).toBeHidden();
+      await expect(tabs.locator('section[data-tab="two"]').first()).toBeVisible();
+    });
+
     check("the parlor's own components take objects and fire their events", async (page) => {
       const card = t(page, "card").getByRole("button");
       const first = await card.getAttribute("aria-label");

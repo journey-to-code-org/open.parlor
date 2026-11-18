@@ -1,8 +1,8 @@
 // Around every page once signed in: the header, the tabs (each a page at its own address), and the
 // question dialog. Zubra's <tab-list> is the navigation: choosing a tab goes to its page, and going
-// to a page (a link, Back) chooses its tab. Every tab has its panel from the start, and the chosen
-// one holds whichever page the router shows: <tab-list> sets its panels up when a tab is chosen,
-// so a panel that appeared or changed its tab later would stay unset (zubra-ui#23).
+// to a page (a link, Back) chooses its tab. Its one panel holds whichever page the router shows, and
+// takes the tab of the page: Angular sets the tab and changes the panel's `data-tab` in the same
+// pass, and <tab-list> notices the panel change after (zubra-ui#23, fixed by zubra-ui#24).
 import { CUSTOM_ELEMENTS_SCHEMA, ChangeDetectionStrategy, Component, computed, inject } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { NavigationEnd, Router, RouterOutlet } from "@angular/router";
@@ -38,13 +38,9 @@ import "./zubra";
         <div class="waiting"><loading-spinner label="Loading the parlor" [inline]="true"></loading-spinner></div>
       } @else {
         <tab-list [tabs]="sections" [value]="section()" (valuechange)="go($event)" label="Sections">
-          @for (s of sections; track s.value) {
-            <section [attr.data-tab]="s.value">
-              @if (s.value === section()) {
-                <router-outlet />
-              }
-            </section>
-          }
+          <section [attr.data-tab]="section()">
+            <router-outlet />
+          </section>
         </tab-list>
       }
     </div>

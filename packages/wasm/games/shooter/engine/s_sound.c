@@ -28,6 +28,7 @@
 #include "doomtype.h"
 
 #include "sounds.h"
+#include "rules.h"
 #include "s_sound.h"
 
 #include "m_misc.h"
@@ -135,7 +136,8 @@ void S_Init(int sfxVolume, int musicVolume)
     mus_paused = 0;
 
     // Note that sounds have not been cached (yet).
-    for (i=1 ; i<NUMSFX ; i++)
+    // [open.wasm] The engine's own and any the WAD's rules named: numsfx, not NUMSFX.
+    for (i=1 ; i<numsfx ; i++)
     {
         S_sfx[i].lumpnum = S_sfx[i].usefulness = -1;
     }
@@ -401,7 +403,7 @@ void S_StartSound(void *origin_p, int sfx_id)
     volume = snd_SfxVolume;
 
     // check for bogus sound #
-    if (sfx_id < 1 || sfx_id > NUMSFX)
+    if (sfx_id < 1 || sfx_id >= numsfx)
     {
         I_Error("Bad sfx #: %d", sfx_id);
     }

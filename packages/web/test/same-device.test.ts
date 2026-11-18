@@ -11,7 +11,7 @@ const start = (id: string, seats: number, rules?: unknown) => {
 
 describe("sharing a device", () => {
   it("is for games with nothing hidden: boards, dice, table sports and Memory", () => {
-    for (const id of ["chess", "checkers", "go", "reversi", "tictactoe", "dropfour", "backgammon", "yacht", "pig", "tenthousand", "shipcaptaincrew", "shutthebox", "memory", "minigolf", "bowling", "billiards", "carrom", "hangman"]) expect(sharesDevice(id), id).toBe(true);
+    for (const id of ["chess", "checkers", "go", "reversi", "tictactoe", "dropfour", "backgammon", "yacht", "pig", "tenthousand", "shipcaptaincrew", "shutthebox", "memory", "minigolf", "bowling", "billiards", "carrom", "hangman", "overthehill"]) expect(sharesDevice(id), id).toBe(true);
     // A hand of cards, or a fleet, is a secret one screen can't keep.
     for (const id of ["hearts", "gin", "holdem", "combat", "liarsdice", "dominoes", "gofish", "spades", "palace", "skyfire", "secretword", "anagrams"]) expect(sharesDevice(id), id).toBe(false);
     // A game for one has nobody to share with.
@@ -66,7 +66,7 @@ describe("sharing a device", () => {
   });
 
   it("shares Mancala on one device, and passes Dominoes round to each player in turn", () => {
-    expect(sharesDevice("mancala")).toBe(true);
+    for (const id of ["mancala", "ludo", "chinesecheckers"]) expect(sharesDevice(id), id).toBe(true);
     const { game, state } = start("dominoes", 3);
     let now = state;
     let at = 0;
