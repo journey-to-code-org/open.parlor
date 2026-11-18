@@ -1,6 +1,7 @@
 // The page's run: the engine, the commands given so far, and the view Svelte draws. Every command goes
 // through `act`, which says why a refused one was refused and does nothing else.
 import { Battle, type Command, type Refusal, type View } from "../engine.ts";
+import type { Tables } from "../tables.ts";
 
 const WORDS: Record<Refusal, string> = {
   "not now": "Not now.",
@@ -36,8 +37,8 @@ export const best = {
   },
 };
 
-export function createRun(firstSeed: number) {
-  let battle = new Battle(firstSeed);
+export function createRun(firstSeed: number, tables: Tables) {
+  let battle = new Battle(firstSeed, tables);
   let view = $state.raw<View>(battle.view());
   let seed = $state(firstSeed);
   /** The lines of the story so far, newest last. */
@@ -65,6 +66,8 @@ export function createRun(firstSeed: number) {
     get seed() {
       return seed;
     },
+    /** The numbers this run is played on. */
+    tables,
     get story() {
       return story;
     },
@@ -73,7 +76,7 @@ export function createRun(firstSeed: number) {
     },
     act,
     restart(next: number) {
-      battle = new Battle(next);
+      battle = new Battle(next, tables);
       seed = next;
       commands = [];
       view = battle.view();
