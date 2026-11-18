@@ -14,16 +14,16 @@ export const title = "The attic";
 export const plan: Plan = {
   rooms: {
     landing: room({ wall: "BROWN1", light: 176 }),
-    good: room({ wall: "WOOD1" }),
+    good: room({ wall: "WOOD5" }),
     // Boxes, nearly to the rafters.
     boxes: room({ floor: 72, floorFlat: "CRATOP1", wall: "CRATE1" }),
-    sideDoor: room({ wall: "WOOD1", door: "DOOR3" }),
+    sideDoor: room({ wall: "WOOD5", door: "DOOR3" }),
     bad: room({ wall: "WOOD5", light: 88 }),
     // Where the floor has gone: a step down onto what is under it, which is not good for you.
     hole: room({ floor: -24, floorFlat: "FLOOR7_1", wall: "WOOD5", light: 64, special: 7 }),
     badBoxes: room({ floor: 72, floorFlat: "CRATOP2", wall: "CRATE2", light: 88 }),
     // It wants the attic key (the yellow one).
-    keyDoor: room({ wall: "WOOD1", door: "DOOR1", opens: 27 }),
+    keyDoor: room({ wall: "WOOD5", door: "DOOR1", opens: 27 }),
     ...Object.fromEntries(Array.from({ length: STEPS }, (_, i) => [`down${i + 1}`, room({ floor: -16 * (i + 1), floorFlat: "STEP1", light: 160, wall: "BROWN1", trim: "STEP4" })])),
     bottom: room({ floor: -16 * STEPS, light: 176, wall: "BROWN1" }),
   },

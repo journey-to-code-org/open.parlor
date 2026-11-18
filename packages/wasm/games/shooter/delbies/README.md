@@ -36,6 +36,9 @@ which the game ends. Everything else (the other monsters, the weapons' pictures,
 - `art/sounds.py` makes the rats' voices: squeaks, chitters, hisses and a growl, built from sliding
   tones and noise, in place of the sounds of the monsters the rats replaced. It writes
   `sounds.bin.gz` and `sounds.json`: 15 sounds.
+- `art/walls.py` draws the store's walls, as pieces in place of the pieces Freedoom's walls are
+  built from: the shop wall (cream over a navy wainscot), shelves of parts in orange and blue
+  boxes, and the counter's front. It writes `walls.bin.gz` and `walls.json`: 10 pieces.
 - `words.txt` is what the game says: Delbie's lines for when a level starts, a rat notices you,
   one bites, you get one, and you die; and our words in place of the engine's for the first
   level's name, things picked up and the locked door. The engine reads them from the WAD

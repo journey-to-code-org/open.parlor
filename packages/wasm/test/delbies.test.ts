@@ -104,7 +104,8 @@ describe("the game's own levels", () => {
     expect(names.indexOf("SS_START")).toBe(3 + 48 + 15);
     expect(names.slice(-11)).toEqual(["E1M3", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
     // 175 pictures of rats and 33 of tools.
-    expect(names).toHaveLength(16 + 175 + 33 + 48 + 15 + 22);
+    // And ten pieces of the store's walls, between markers of their own.
+    expect(names).toHaveLength(16 + 175 + 33 + 48 + 15 + 22 + 10 + 2);
   });
 });
 
@@ -165,7 +166,14 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
       expect(heard.samples.length).toBeGreaterThan(900);
       expect(Math.max(...heard.samples)).toBeGreaterThan(0.5);
     }
-    expect(others.filter((name) => !/^(screen\/ST|sound\/)/.test(name))).toEqual(["screen/M_DOOM", "screen/TITLEPIC", "things/E1M1", "things/E1M2", "things/E1M3", "walls/E1M1", "walls/E1M2", "walls/E1M3"]);
+    // The store's walls: ten pieces, each the size of the piece it replaces, so every wall built from them still fits.
+    const pieces = changes.filter((change) => change.kind === "wall");
+    expect(pieces.map((change) => change.name).sort()).toEqual(["BCRATEL1", "BCRATEM1", "BCRATER1", "GCRATEL1", "GCRATEM1", "GCRATER1", "W33_7", "W33_9", "WALL40_1", "WALL40_2"]);
+    for (const piece of pieces) {
+      const [ours, theirs] = [decodePatch(piece.data)!, decodePatch(wad.lumps.filter((lump) => lump.name === piece.name).at(-1)!.data)!];
+      expect([piece.name, ours.width, ours.height]).toEqual([piece.name, theirs.width, theirs.height]);
+    }
+    expect(others.filter((name) => !/^(screen\/ST|sound\/|wall\/)/.test(name))).toEqual(["screen/M_DOOM", "screen/TITLEPIC", "things/E1M1", "things/E1M2", "things/E1M3", "walls/E1M1", "walls/E1M2", "walls/E1M3"]);
     // The status bar: every face the game has is Delbie's now, each the size of the one it replaces.
     const faces = wad.lumps.map((lump) => lump.name).filter((name) => /^STF(ST|TL|TR|OUCH|EVL|KILL|GOD|DEAD)/.test(name));
     expect(faces).toHaveLength(42);

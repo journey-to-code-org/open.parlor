@@ -58,6 +58,8 @@ export interface Art {
   title: Uint8Array;
   /** The lettering for over the menu, its size, and where it is see-through. */
   logo: { pixels: Uint8Array; solid: Uint8Array; width: number; height: number };
+  /** The store's walls: pieces of wall, each under the name of the piece it takes the place of. */
+  walls: (Picture & { name: string })[];
   /** The rats' voices: each a byte a sample at the engine's rate, under the name of the sound it takes the place of. */
   sounds: { name: string; samples: Uint8Array }[];
   /** What the game says: words.txt. */
@@ -77,7 +79,7 @@ export async function buildGame(nodes: WebAssembly.Module, art: Art): Promise<Ui
   lumps.push({ name: "WORDS", data: art.words }, ...art.screens.map((screen) => ({ name: screen.name, data: encodePatch(screen) })));
   lumps.push(...art.sounds.map((sound) => ({ name: sound.name, data: encodeDmx({ rate: RATE, samples: Float32Array.from(sound.samples, (byte) => (byte - 128) / 127) }) })));
   // Sprites go between their markers, as the engine and other tools expect.
-  lumps.push(...readWad(modToWad(art.sprites.map((sprite) => ({ kind: "sprite" as const, name: sprite.name, data: encodePatch(sprite) })))).lumps);
+  lumps.push(...readWad(modToWad([...art.sprites.map((sprite) => ({ kind: "sprite" as const, name: sprite.name, data: encodePatch(sprite) })), ...art.walls.map((wall) => ({ kind: "wall" as const, name: wall.name, data: encodePatch(wall) }))])).lumps);
   for (const level of levels()) {
     const wrong = faults(level);
     if (wrong.length) throw new Error(`${level.name} (${level.title}) can't be built: ${wrong.join(" ")}`);
