@@ -33,6 +33,9 @@ which the game ends. Everything else (the other monsters, the weapons' pictures,
   (the shotgun) and an impact wrench (the chaingun), each in the hand with its flash, the last two
   on the floor as well; pasta and a pizza box for health, a shop apron for armour, a box of
   ammunition and the three keys. It writes `tools.bin.gz` and `tools.json`: 33 pictures.
+- `art/sounds.py` makes the rats' voices: squeaks, chitters, hisses and a growl, built from sliding
+  tones and noise, in place of the sounds of the monsters the rats replaced. It writes
+  `sounds.bin.gz` and `sounds.json`: 15 sounds.
 - `words.txt` is what the game says: Delbie's lines for when a level starts, a rat notices you,
   one bites, you get one, and you die; and our words in place of the engine's for the first
   level's name, things picked up and the locked door. The engine reads them from the WAD
@@ -57,5 +60,5 @@ engine needs telling nothing:
 
 The grease rat is also given a rat's numbers in the engine (`engine/CHANGES.md`): less health,
 faster, smaller, and a bite of 2 to 8, since they come in numbers. The other two behave as the
-monsters they replace. The sounds are still those monsters'. Freedoom's other monsters are
+monsters they replace, with voices of their own. Freedoom's other monsters are
 unchanged, and are left out of our levels.

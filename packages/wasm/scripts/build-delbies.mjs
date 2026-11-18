@@ -23,7 +23,10 @@ export function art() {
   const [sprites, screens] = [[...pictures("sprites"), ...pictures("tools")], pictures("hud")];
   // What the game says, as the editor would write it: no comments, one ending for a line.
   const words = writeWords(readWords(new Uint8Array(readFileSync(join(root, "delbies", "words.txt")))));
-  return { words, screens, title: from("title.raw"), logo: { pixels: logo, solid: from("logo.mask"), width: 150, height: logo.length / 150 }, sprites };
+  // The rats' voices: a byte a sample, at the engine's own rate.
+  const heard = new Uint8Array(gunzipSync(from("sounds.bin.gz")));
+  const sounds = JSON.parse(readFileSync(join(root, "delbies", "art", "sounds.json"), "utf8")).map(({ name, at, length }) => ({ name, samples: heard.subarray(at, at + length) }));
+  return { words, screens, sounds, title: from("title.raw"), logo: { pixels: logo, solid: from("logo.mask"), width: 150, height: logo.length / 150 }, sprites };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

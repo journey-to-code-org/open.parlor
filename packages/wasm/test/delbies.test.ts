@@ -15,6 +15,7 @@ import { catalogue } from "../wad/catalogue.ts";
 import { decodeThings, encodeThings, levelLumps, readLevel, wallNames, WALL_LOWER_UNPEGGED } from "../wad/level.ts";
 import { layer, modFromWad } from "../wad/mod.ts";
 import { decodePatch } from "../wad/picture.ts";
+import { decodeDmx } from "../wad/sound.ts";
 import { fromPlan, type Look, wallNear } from "../wad/plan.ts";
 import { roomAt, trouble, wallsOf } from "../wad/shape.ts";
 import { linesFor, MOMENTS, plain, readWords, setLines, TEXTS, writeWords } from "../wad/words.ts";
@@ -99,10 +100,11 @@ describe("the game's own levels", () => {
     const names = readWad(built).lumps.map((lump) => lump.name);
     expect(names.slice(0, 4)).toEqual(["TITLEPIC", "M_DOOM", "WORDS", "STFST00"]);
     // Delbie's face, 42 times, and the bar, its weapon panel and the four squares behind the face.
-    expect(names.indexOf("SS_START")).toBe(3 + 48);
+    // Then the rats' fifteen voices.
+    expect(names.indexOf("SS_START")).toBe(3 + 48 + 15);
     expect(names.slice(-11)).toEqual(["E1M3", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
     // 175 pictures of rats and 33 of tools.
-    expect(names).toHaveLength(16 + 175 + 33 + 48 + 22);
+    expect(names).toHaveLength(16 + 175 + 33 + 48 + 15 + 22);
   });
 });
 
@@ -154,7 +156,16 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
     // But for its words, which Freedoom has no lump for: layer() makes them a place.
     expect(skipped).toEqual(["WORDS"]);
     const others = changes.filter((change) => change.kind !== "sprite").map((change) => `${change.kind}/${change.name}`).sort();
-    expect(others.filter((name) => !/^screen\/ST/.test(name))).toEqual(["screen/M_DOOM", "screen/TITLEPIC", "things/E1M1", "things/E1M2", "things/E1M3", "walls/E1M1", "walls/E1M2", "walls/E1M3"]);
+    // The rats' voices: each in the place of a sound the game has, and none of them silence.
+    const voices = changes.filter((change) => change.kind === "sound");
+    expect(voices.map((change) => change.name).sort()).toEqual(["DSBGACT", "DSBGDTH1", "DSBGDTH2", "DSBGSIT1", "DSBGSIT2", "DSBRSDTH", "DSBRSSIT", "DSDMACT", "DSDMPAIN", "DSFIRSHT", "DSFIRXPL", "DSPOPAIN", "DSSGTATK", "DSSGTDTH", "DSSGTSIT"]);
+    for (const voice of voices) {
+      const heard = decodeDmx(voice.data)!;
+      expect(heard.rate).toBe(11025);
+      expect(heard.samples.length).toBeGreaterThan(900);
+      expect(Math.max(...heard.samples)).toBeGreaterThan(0.5);
+    }
+    expect(others.filter((name) => !/^(screen\/ST|sound\/)/.test(name))).toEqual(["screen/M_DOOM", "screen/TITLEPIC", "things/E1M1", "things/E1M2", "things/E1M3", "walls/E1M1", "walls/E1M2", "walls/E1M3"]);
     // The status bar: every face the game has is Delbie's now, each the size of the one it replaces.
     const faces = wad.lumps.map((lump) => lump.name).filter((name) => /^STF(ST|TL|TR|OUCH|EVL|KILL|GOD|DEAD)/.test(name));
     expect(faces).toHaveLength(42);

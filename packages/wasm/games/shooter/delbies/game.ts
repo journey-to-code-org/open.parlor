@@ -7,6 +7,7 @@ import { encodeThings, type Shape, type Thing } from "../../../wad/level.ts";
 import { buildLevel } from "../../../wad/nodes.ts";
 import { modToWad } from "../../../wad/mod.ts";
 import { encodePatch, type Picture } from "../../../wad/picture.ts";
+import { encodeDmx, RATE } from "../../../wad/sound.ts";
 import { fromPlan, wallNear } from "../../../wad/plan.ts";
 import { roomAt, trouble } from "../../../wad/shape.ts";
 import { type Lump, readWad, writeWad } from "../../../wad/wad.ts";
@@ -57,6 +58,8 @@ export interface Art {
   title: Uint8Array;
   /** The lettering for over the menu, its size, and where it is see-through. */
   logo: { pixels: Uint8Array; solid: Uint8Array; width: number; height: number };
+  /** The rats' voices: each a byte a sample at the engine's rate, under the name of the sound it takes the place of. */
+  sounds: { name: string; samples: Uint8Array }[];
   /** What the game says: words.txt. */
   words: Uint8Array;
   /** The rats and what they spit: each a picture, under the name of the sprite it takes the place of. */
@@ -72,6 +75,7 @@ export async function buildGame(nodes: WebAssembly.Module, art: Art): Promise<Ui
     { name: "M_DOOM", data: encodePatch({ width: art.logo.width, height: art.logo.height, left: 0, top: 0, pixels: art.logo.pixels, solid: art.logo.solid }) },
   ];
   lumps.push({ name: "WORDS", data: art.words }, ...art.screens.map((screen) => ({ name: screen.name, data: encodePatch(screen) })));
+  lumps.push(...art.sounds.map((sound) => ({ name: sound.name, data: encodeDmx({ rate: RATE, samples: Float32Array.from(sound.samples, (byte) => (byte - 128) / 127) }) })));
   // Sprites go between their markers, as the engine and other tools expect.
   lumps.push(...readWad(modToWad(art.sprites.map((sprite) => ({ kind: "sprite" as const, name: sprite.name, data: encodePatch(sprite) })))).lumps);
   for (const level of levels()) {
