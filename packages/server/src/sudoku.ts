@@ -146,15 +146,30 @@ export function clampDate(asked: unknown, now = new Date()): string {
 
 const made = new Map<string, Puzzle>();
 
-/** The puzzle for a date. The same date is always the same puzzle. */
-export function puzzleFor(date: string): Puzzle {
-  const known = made.get(date);
+/**
+ * The clues the host has set for each weekday (Sunday first), if they apply to `date`. A change the host
+ * saved takes effect from the next day, so the puzzle somebody has open today is never swapped under
+ * them. Only the latest change is kept: changing it again changes what days after the first change
+ * were, so a day somebody comes back to can be a different puzzle than it was.
+ */
+export function tunedClues(date: string, saved: { values: Record<string, unknown>; at: number } | undefined): readonly number[] | undefined {
+  const clues = saved?.values.clues;
+  if (!saved || !Array.isArray(clues) || clues.length !== 7 || !clues.every((n) => Number.isInteger(n) && n >= 22 && n <= 60)) return undefined;
+  return date > today(new Date(saved.at)) ? (clues as number[]) : undefined;
+}
+
+/** The puzzle for a date. The same date (and the same clues) is always the same puzzle. */
+export function puzzleFor(date: string, clueCounts?: readonly number[]): Puzzle {
+  const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+  const key = `${date}/${clueCounts?.[weekday] ?? ""}`;
+  const known = made.get(key);
   if (known) return known;
   const random = mulberry32(seedOf(`open.parlor daily sudoku ${date}`));
   // A finished grid: the solver, set loose on an empty one with shuffled digits.
   const full = new Uint8Array(81);
   countSolutions(full, 1, random);
-  const { level, clues } = LEVELS[new Date(`${date}T12:00:00Z`).getUTCDay()]!;
+  const { level, clues: own } = LEVELS[weekday]!;
+  const clues = clueCounts?.[weekday] ?? own;
   const grid = full.slice();
   let left = 81;
   for (const i of shuffle(Array.from({ length: 81 }, (_, n) => n), random)) {
@@ -166,7 +181,7 @@ export function puzzleFor(date: string): Puzzle {
   }
   const puzzle = { date, level, givens: text(grid), solution: text(full) };
   if (made.size > 400) made.clear();
-  made.set(date, puzzle);
+  made.set(key, puzzle);
   return puzzle;
 }
 

@@ -1,6 +1,6 @@
 // The way in: the admin token, as a reactive form. After it, back to the page that was asked for
 // (`?next=`), or the overview.
-import { CUSTOM_ELEMENTS_SCHEMA, ChangeDetectionStrategy, Component, inject, input, signal } from "@angular/core";
+import { CUSTOM_ELEMENTS_SCHEMA, ChangeDetectionStrategy, Component, inject, input, signal, type OnInit } from "@angular/core";
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
 import { Router } from "@angular/router";
 import { ZubraModel } from "@zubra/runtime/angular";
@@ -20,6 +20,11 @@ import { Admin } from "./admin";
         @if (problem() || admin.signInError(); as why) {
           <alert-banner variant="danger" heading="Couldn't sign in">{{ why }}</alert-banner>
         }
+        @if (github()) {
+          <!-- A link, not a button: it goes to GitHub and comes back with a session. -->
+          <a class="github" href="../moderation/github/login" data-testid="github-sign-in">Sign in with GitHub</a>
+          <p class="or quiet">or with the admin token</p>
+        }
         <text-field
           zubraModel
           formControlName="token"
@@ -35,7 +40,7 @@ import { Admin } from "./admin";
     </main>
   `,
 })
-export class SignIn {
+export class SignIn implements OnInit {
   protected readonly admin = inject(Admin);
   private readonly router = inject(Router);
   /** Where to go once signed in: the page that sent here (a query parameter). */
@@ -44,6 +49,32 @@ export class SignIn {
   protected readonly form = new FormGroup({ token: new FormControl("", { nonNullable: true, validators: [Validators.required] }) });
   protected readonly checking = signal(false);
   protected readonly problem = signal("");
+  /** Whether the server lets the admin sign in with GitHub. */
+  protected readonly github = signal(false);
+
+  async ngOnInit(): Promise<void> {
+    // Back from GitHub: the session (or what went wrong) is in the address's fragment, which the server never sees.
+    const fragment = new URLSearchParams(location.hash.slice(1));
+    const session = fragment.get("session");
+    const error = fragment.get("error");
+    if (session || error) history.replaceState(null, "", location.pathname + location.search);
+    if (error) this.problem.set(error);
+    try {
+      const answer = await fetch(new URL("../moderation/github/status", document.baseURI), { cache: "no-store" });
+      this.github.set(answer.ok && ((await answer.json()) as { enabled?: boolean }).enabled === true);
+    } catch {
+      /* the token still works */
+    }
+    if (session) await this.enter(session);
+  }
+
+  private async enter(token: string): Promise<void> {
+    this.checking.set(true);
+    const problem = await this.admin.signIn(token);
+    this.checking.set(false);
+    this.problem.set(problem);
+    if (!problem) await this.router.navigateByUrl("/");
+  }
 
   protected async signIn(): Promise<void> {
     if (this.checking()) return;

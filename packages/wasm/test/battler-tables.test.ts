@@ -107,3 +107,21 @@ describe("asking the parlor for the numbers", () => {
     expect(await load(async () => { throw new Error("offline"); })).toBe(DEFAULT_TABLES);
   });
 });
+
+describe("the file of the game's own numbers", () => {
+  it("is what the game has now (run `npm run battler:defaults` if not)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { defaults } = await import("../src/battler/defaults.ts");
+    const file = JSON.parse(readFileSync(new URL("../public/battler-defaults.json", import.meta.url), "utf8"));
+    expect(file).toEqual(JSON.parse(JSON.stringify(defaults())));
+  });
+
+  it("names every card and foe the Tuning page can change", async () => {
+    const { defaults } = await import("../src/battler/defaults.ts");
+    const d = defaults();
+    expect(Object.keys(d.cards)).toEqual(DEFAULT_TABLES.cards.map((c) => c.id));
+    expect(Object.keys(d.foes)).toEqual(Object.keys(DEFAULT_TABLES.foes));
+    // What the page offers is what the server lets through: card and foe names fit its pattern.
+    for (const id of [...Object.keys(d.cards), ...Object.keys(d.foes)]) expect(id).toMatch(/^[a-z][a-z0-9-]{0,23}$/);
+  });
+});

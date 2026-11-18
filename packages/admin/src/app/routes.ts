@@ -51,6 +51,7 @@ export const routes: Routes = [
       { path: "players", title: title("players"), loadComponent: () => import("./pages/players").then((m) => m.PlayersPage) },
       { path: "houses", title: title("houses"), loadComponent: () => import("./pages/houses").then((m) => m.HousesPage) },
       { path: "games", title: title("games"), loadComponent: () => import("./pages/games").then((m) => m.GamesPage) },
+      { path: "tuning", title: title("tuning"), loadComponent: () => import("./pages/tuning").then((m) => m.TuningPage) },
       { path: "designs", title: title("designs"), loadComponent: () => import("./pages/designs").then((m) => m.DesignsPage) },
       { path: "courses", title: title("courses"), loadComponent: () => import("./pages/courses").then((m) => m.CoursesPage) },
       { path: "shootout", title: title("shootout"), loadComponent: () => import("./pages/shootout").then((m) => m.ShootoutPage) },

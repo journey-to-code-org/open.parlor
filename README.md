@@ -790,7 +790,7 @@ checks no card reaches a watcher that any seat can't see.
 ## Moderating the parlor
 
 Whoever runs the server can look after it from the admin app at `/admin/`. It's off until the
-server has an admin token (see **Settings**); sign in with that token.
+server has an admin token (see **Settings**); sign in with that token, or with GitHub if the server has an OAuth app (the *Sign in with GitHub* button on the door; the token still works beside it).
 
 | | |
 | --- | --- |
@@ -798,11 +798,12 @@ server has an admin token (see **Settings**); sign in with that token.
 | **Players** | Everyone who's sat down, joined a house or saved a design. Blocking someone stops them sitting, playing, chatting, opening houses and sharing designs; tables they're at carry on without them. Unblocking undoes it. |
 | **Houses** | Every house and its members. Rename a house (its invite link stays the same), remove a member, hand it to a new owner, or delete it. |
 | **Games** | Which games the parlor offers and in what order: the front page follows. Switching a game off stops new tables of it everywhere (tables already going carry on). Also the switch for whether tables with players can be watched (the table, never a hand). |
+| **Tuning** | The numbers a game lets its host change without a release: Delbie's Back Room's hit points, healing, each card's cost and effects and each foe's hit points and attacks, and the daily sudoku's clues for each weekday. The form is built from the game's own ranges (a mistake shows where it was made and Save waits), a number left empty is the game's own, and *Back to the game's own numbers* undoes it all. Each save is a new version in the activity log. |
 | **Card designs** | Every shared deck. Hiding one takes it out of the gallery; its maker keeps it and sees your reason. |
 | **Courses & lanes** | Every shared Mini Golf course (with a plan of its first hole) and bowling lane (with its plan). Hiding one takes it out of the game's list and stops new tables on it (tables already playing it finish); its maker keeps it and sees your reason. |
 | **Activity** | Everything done from the admin app, newest first. |
 
-**Tuning a game's numbers.** A game can let its host change some of its numbers without a release
+**Tuning a game's numbers** (the **Tuning** page above). A game can let its host change some of its numbers without a release
 (Delbie's Back Room's cards and foes, the daily sudoku's clues for each weekday). What is kept is a
 sparse override with a version, replaced as a whole and checked against that game's ranges
 (`packages/server/src/tunables.ts`): a game reads `GET /tunables/<game>` when it starts and merges it
@@ -810,6 +811,7 @@ over its own numbers; `GET /moderation/tunables` lists what can be tuned, `POST
 /moderation/tunables/<game> { values }` saves (a problem comes back as 422 and nothing changes) and
 `POST /moderation/tunables/<game>/reset` goes back to the game's own numbers. Every change is in the
 activity log. The version goes up on each, so a replay made on other numbers can say which it needs.
+The sudoku's clues apply from the day after they were saved (in New York time), so the puzzle somebody has open is never changed under them; only the latest change is kept, so changing it again also changes the days since the first change.
 
 Players are browsers, not accounts: a player is a cookie, and a name is whatever they typed when
 they sat down. The admin app never sees the cookies, only a reference that's enough to block
@@ -912,6 +914,9 @@ docker run -p 8787:8787 -v spades:/data cardroom
 | `CARDROOM_GITHUB_REPO` | Where reports are filed, as `owner/name`. Default `journey-to-code-org/open.parlor`. |
 | `CARDROOM_BLOCKED_NAMES` | Optional: more words that names and chat at open tables may not contain, comma-separated |
 | `CARDROOM_ADMIN_TOKEN` | Turns on the admin app at `/admin/`: the token its host signs in with. Make it long and keep it secret (`openssl rand -hex 24`) |
+| `CARDROOM_GITHUB_CLIENT_ID`, `CARDROOM_GITHUB_CLIENT_SECRET` | Optional: sign in to the admin app with GitHub. An OAuth app (GitHub, Settings, Developer settings, OAuth Apps) with the callback `https://<your parlor>/moderation/github/callback`. No scopes: the parlor only asks who you are. Needs the next setting too |
+| `CARDROOM_ADMIN_GITHUB` | The GitHub logins that may sign in, comma-separated (`mnichols08`). Anyone else with a real GitHub account is turned away |
+| `CARDROOM_SESSION_SECRET` | Optional: signs the admin's GitHub sessions (twelve hours each). Without it the OAuth app's secret does, so changing that secret ends them all. Sessions are kept nowhere on the server, so a restart signs nobody out |
 | `CARDROOM_BOT_DELAY` | Fixed thinking time for computer players, in milliseconds (handy for testing) |
 | `CARDROOM_BOT_WORKERS` | Worker threads for the computer players' heavy thinking (see **How computer players think**). Default: one per processor but one, from 1 to 4. `0` for none: everything on the main thread. |
 | `CARDROOM_BOT_BUDGET` | How long, in milliseconds, a game that thinks by the clock is told it may take over a move. Default 2000. |

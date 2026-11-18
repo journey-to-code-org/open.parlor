@@ -1,7 +1,7 @@
 // The daily sudoku (src/sudoku.ts): a puzzle is its date, has one answer, and the answer is only
 // ever checked against, never given.
 import { describe, expect, it } from "vitest";
-import { FIRST_DAY, PEERS, clampDate, countSolutions, entriesOf, grade, isDate, puzzleFor, shift, today } from "../src/sudoku.js";
+import { FIRST_DAY, PEERS, clampDate, countSolutions, entriesOf, grade, isDate, puzzleFor, shift, today, tunedClues } from "../src/sudoku.js";
 
 const digits = (text: string) => Uint8Array.from(text, Number);
 const DAYS = Array.from({ length: 14 }, (_, n) => shift("2026-11-18", n));
@@ -106,5 +106,42 @@ describe("dates", () => {
     expect(clampDate("nonsense", now)).toBe("2026-11-25");
     expect(clampDate(null, now)).toBe("2026-11-25");
     expect(clampDate("2020-01-01", now)).toBe(FIRST_DAY);
+  });
+});
+
+describe("clues the host has set", () => {
+  const CLUES = [30, 30, 30, 30, 30, 30, 30];
+  const saved = (values: Record<string, unknown>, at: string) => ({ values, at: new Date(at).getTime() });
+  const count = (date: string, clues?: readonly number[]) => [...puzzleFor(date, clues).givens].filter((d) => d !== "0").length;
+
+  it("take effect from the next day, in New York, and not before", () => {
+    const s = saved({ clues: CLUES }, "2026-11-20T15:00:00Z");
+    expect(tunedClues("2026-11-20", s)).toBeUndefined();
+    expect(tunedClues("2026-11-19", s)).toBeUndefined();
+    expect(tunedClues("2026-11-21", s)).toEqual(CLUES);
+    // Saved at 11 at night in New York (04:00 UTC the next day) is still that New York day: the day after is the first tuned one.
+    const late = saved({ clues: CLUES }, "2026-11-21T04:00:00Z");
+    expect(tunedClues("2026-11-20", late)).toBeUndefined();
+    expect(tunedClues("2026-11-21", late)).toEqual(CLUES);
+  });
+
+  it("are ignored when they are nothing, not seven, or out of range", () => {
+    const at = "2026-11-20T15:00:00Z";
+    expect(tunedClues("2026-12-01", undefined)).toBeUndefined();
+    expect(tunedClues("2026-12-01", saved({}, at))).toBeUndefined();
+    expect(tunedClues("2026-12-01", saved({ clues: [30, 30] }, at))).toBeUndefined();
+    expect(tunedClues("2026-12-01", saved({ clues: [30, 30, 30, 30, 30, 30, 10] }, at))).toBeUndefined();
+    expect(tunedClues("2026-12-01", saved({ clues: [30, 30, 30, 30, 30, 30, 30.5] }, at))).toBeUndefined();
+  });
+
+  it("change how many are left on that weekday, and the puzzle is still one with a single answer", () => {
+    // 2026-12-05 is a Saturday: 27 by default.
+    expect(count("2026-12-05")).toBe(27);
+    const easier = [40, 40, 40, 40, 40, 40, 36];
+    expect(count("2026-12-05", easier)).toBe(36);
+    expect(countSolutions(digits(puzzleFor("2026-12-05", easier).givens), 2)).toBe(1);
+    expect(puzzleFor("2026-12-05", easier).level).toBe("Hard");
+    // The default puzzle for the day is still what it was.
+    expect(count("2026-12-05")).toBe(27);
   });
 });

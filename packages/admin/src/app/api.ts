@@ -143,6 +143,14 @@ export interface LogEntry {
   note: string;
 }
 
+/** A game whose numbers the host may change: what shape they take, and what has been saved. */
+export interface TunableGame {
+  id: string;
+  name: string;
+  shape: import("./tuning/shape").Shape;
+  saved: { version: number; values: Record<string, unknown>; at: number };
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -218,6 +226,10 @@ export class Api {
   deleteHouse = (slug: string) => this.send(`/houses/${slug}/delete`, {});
   games = () => this.send<Catalogue>("/games");
   setGames = (change: { order?: string[]; off?: string[]; watching?: boolean }) => this.send<Catalogue>("/games", change);
+
+  tunables = () => this.send<{ games: TunableGame[] }>("/tunables").then((r) => r.games);
+  setTunables = (game: string, values: unknown) => this.send<TunableGame["saved"]>(`/tunables/${game}`, { values });
+  resetTunables = (game: string) => this.send<TunableGame["saved"]>(`/tunables/${game}/reset`, {});
 
   closeTable = (id: string, reason: string) => this.send(`/tables/${id}/close`, { reason });
   unseat = (id: string, seat: number) => this.send(`/tables/${id}/unseat`, { seat });

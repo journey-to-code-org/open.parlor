@@ -5,6 +5,7 @@ import type { Log } from "@zubra/sync/server";
 import { createRooms, type RoomDoc } from "@journey-to-code/rooms/server";
 import { createCatalogue } from "./catalogue.js";
 import { createTunables } from "./tunables.js";
+import { createGithubLogin, type GithubLoginOptions } from "./github-login.js";
 import { PAGE_MOUNTS, createPages, publicOrigin } from "./pages.js";
 import { createChallenges } from "./challenges.js";
 import { createDevices } from "./devices.js";
@@ -27,7 +28,7 @@ import { createFlights, isFlight, type Flights, type FlightState, type Flyer } f
 import { secondAllowed, secondCookie, secondPath, secondSearch } from "./second.js";
 
 export function createCardRoom(
-  options: { log?: Log; botDelay?: number; talk?: boolean; push?: PushOptions; ai?: AiOptions; lobby?: LobbyOptions; /** Turns moderation on (see moderation.ts). */ adminToken?: string; bugs?: BugOptions; /** Copies of the database (see backup.ts), for the admin app to report and hand out. */ backups?: Backups; /** Road to the Shootout's published pack (see packs.ts), for the admin app to set. */ packs?: Packs; /** Worker threads for the computer players' thinking (see bots.ts). Without it they think on the main thread. */ bots?: BotOptions; /** The games flown live (see flight.ts): one a caller made, for tests that play them by hand. Without it they play by the clock. */ flights?: Flights; /** The clock, for tests. */ spectate?: { now?: () => number } } = {},
+  options: { log?: Log; botDelay?: number; talk?: boolean; push?: PushOptions; ai?: AiOptions; lobby?: LobbyOptions; /** Turns moderation on (see moderation.ts). */ adminToken?: string; /** Signing in to the admin app with GitHub (see github-login.ts). */ github?: GithubLoginOptions; bugs?: BugOptions; /** Copies of the database (see backup.ts), for the admin app to report and hand out. */ backups?: Backups; /** Road to the Shootout's published pack (see packs.ts), for the admin app to set. */ packs?: Packs; /** Worker threads for the computer players' thinking (see bots.ts). Without it they think on the main thread. */ bots?: BotOptions; /** The games flown live (see flight.ts): one a caller made, for tests that play them by hand. Without it they play by the clock. */ flights?: Flights; /** The clock, for tests. */ spectate?: { now?: () => number } } = {},
 ) {
   const talking = options.talk ?? true;
   const flights = options.flights ?? createFlights({ every: 16 });
@@ -156,8 +157,9 @@ export function createCardRoom(
   const ai = createAi(options.ai);
   const catalogue = createCatalogue(rooms.sync);
   const tunables = createTunables(rooms.sync);
+  const github = createGithubLogin({ origin: (request) => publicOrigin(Object.fromEntries(request.headers)) || new URL(request.url).origin, ...options.github });
   // "Ask for a game" on the server's own page goes the way the app's does: past the block list, to the relay.
-  const pages = createPages(catalogue, { asking: () => bugs.enabled, ask: async (request) => (await refusal(request)) ?? (await bugs.fetch(request)) });
+  const pages = createPages(catalogue, { tunables, asking: () => bugs.enabled, ask: async (request) => (await refusal(request)) ?? (await bugs.fetch(request)) });
   const designs = createDesigns(rooms.sync, { tables: rooms });
   const houses = createHouses(rooms, { push, ai, gameOn: catalogue.isOn, deckFor: designs.deckFor });
   const challenges = createChallenges(rooms, push, { gameOn: catalogue.isOn });
@@ -165,7 +167,7 @@ export function createCardRoom(
   const devices = createDevices({ housesOf: async (player) => (await houses.all()).filter((h) => h.members.some((m) => m.player === player)).map((h) => ({ slug: h.slug, name: h.name })) });
   const lobby = createLobby(rooms, { push, gameOn: catalogue.isOn, ...options.lobby });
   const spectate = createSpectate(rooms, catalogue, options.spectate);
-  const moderation = createModeration(rooms, designs, { token: options.adminToken, houses, catalogue, tunables, backups: options.backups, packs: options.packs, bots: bots ? () => bots.stats() : undefined, courses });
+  const moderation = createModeration(rooms, designs, { token: options.adminToken, github, houses, catalogue, tunables, backups: options.backups, packs: options.packs, bots: bots ? () => bots.stats() : undefined, courses });
   // "Report a problem": a player's report becomes an issue on GitHub.
   // With the parlor's own AI key, a report or request can be tidied before it's sent.
   const bugs = createBugs(rooms, { ...(ai.shared ? { tidy: (input) => ai.tidy(input) } : {}), ...options.bugs });
@@ -203,7 +205,7 @@ export function createCardRoom(
   }
   /** The routes that aren't the rooms kit's own. */
   const ours = async (request: Request) =>
-    (await refusal(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await designs.fetch(request)) ?? (await courses.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await tunables.fetch(request)) ?? (await pages.fetch(request)) ?? (await spectate.fetch(request)) ?? (await challenges.fetch(request)) ?? (await devices.fetch(request)) ?? (await lobby.fetch(request)) ?? (await houses.fetch(request));
+    (await refusal(request)) ?? (await github.fetch(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await designs.fetch(request)) ?? (await courses.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await tunables.fetch(request)) ?? (await pages.fetch(request)) ?? (await spectate.fetch(request)) ?? (await challenges.fetch(request)) ?? (await devices.fetch(request)) ?? (await lobby.fetch(request)) ?? (await houses.fetch(request));
 
   return {
     rooms,
@@ -272,7 +274,7 @@ export function createCardRoom(
         req.headers.cookie = as.cookie;
         return this.handle(req, res);
       }
-      if (under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/spectate", "/bugs", "/me", ...PAGE_MOUNTS])) {
+      if (under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/tunables", "/spectate", "/bugs", "/me", ...PAGE_MOUNTS])) {
         const chunks: Buffer[] = [];
         let size = 0;
         for await (const chunk of req) {
