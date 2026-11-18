@@ -14,7 +14,9 @@ import type { PalaceMove, PalaceView } from "@journey-to-code/palace";
 import { PalaceTable } from "./palace/PalaceTable";
 import { isBoardGame, isKitGame, isSportGame, isWordGame, kitGame, type BoardView, type KitView, type SportView } from "@journey-to-code/games";
 import { ARCADE_LIST, GAME_LIST } from "./GamePicker";
-import { isLiveArcade, LiveArcade, type FlownView, type LiveView } from "./arcade/ArcadeTable";
+import type { FlownView, LiveView } from "./arcade/ArcadeTable";
+import { isLiveArcade } from "./arcade/live";
+import { lazyScreen } from "./offline/lazy";
 import { GameTable } from "./kit/GameTable";
 import { OnlineTable, TablePlayers, TableSettingsFields, TurnTimerField, type TablePlayersValue } from "./TableSettings";
 import { TableTime } from "./board/SeatClock";
@@ -22,6 +24,9 @@ import { TurnClock } from "./TurnClock";
 import { seatAtTable, sharesDevice, type SeatSight } from "./kit/sameDevice";
 import { SECONDS, secondBase, secondRoom } from "./second";
 import { usesCards } from "./categories";
+
+// An arcade game at a table: fetched when one is opened, like every other kind of table.
+const LiveArcade = lazyScreen(() => import("./arcade/ArcadeTable").then((m) => m.LiveArcade));
 
 type Summary = { game?: string; rules: string; scores?: { points: number }[]; hand?: number; finished?: number[] };
 type AnyRoom = Room<unknown, unknown, Summary>;

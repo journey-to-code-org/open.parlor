@@ -139,7 +139,7 @@ void F_StartFinale (void)
         if (logical_gamemission == screen->mission
          && (logical_gamemission != doom || gameepisode == screen->episode)
          // [open.wasm] The episode's last level is the one the WAD names, where it names one: its ending is the eighth's.
-         && (gamemap == screen->level || (screen->level == 8 && logical_gamemission == doom && gamemap == Words_Number("levels", 8))))
+         && (gamemap == screen->level || (screen->level == 8 && logical_gamemission == doom && (gameepisode - 1) * 9 + gamemap == Words_Number("levels", 0))))
         {
             finaletext = screen->text;
             finaleflat = screen->background;

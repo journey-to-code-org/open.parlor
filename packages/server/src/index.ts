@@ -6,14 +6,15 @@
 //
 // Settings are CARDROOM_*; the older SPADES_* names still work (CARDROOM_* wins if both are set).
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
-import { Rooms } from "@open-parlor/wasm/net";
+import { Meets, Rooms } from "@open-parlor/wasm/net";
 import { WebSocketServer } from "ws";
 import { playerOf } from "@journey-to-code/rooms/server";
 import { createServer } from "node:http";
-import { extname, join, normalize, resolve, sep } from "node:path";
+import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createCardRoom } from "./app.js";
 import { createBackups } from "./backup.js";
+import { createPacks } from "./packs.js";
 import { workersFrom } from "./bots.js";
 import { warmSports } from "./kit.js";
 import { lanNotice } from "./lan.js";
@@ -44,8 +45,12 @@ const backupDir = setting("BACKUPS");
 const backups = db && db !== ":memory:" && backupDir !== "off" ? createBackups({ db, dir: backupDir || undefined, keep: Number(setting("BACKUP_KEEP")) || undefined, hours: Number(setting("BACKUP_HOURS")) || undefined }) : undefined;
 // Bots take humanlike time unless CARDROOM_BOT_DELAY fixes it (handy for testing).
 const botDelay = setting("BOT_DELAY");
+// The pack Road to the Shootout plays, once the host has published one from the admin app: kept
+// beside the database, or in memory when there is none.
+const packs = createPacks({ file: db && db !== ":memory:" ? join(dirname(resolve(db)), "shootout.pack") : undefined });
 const cardRoom = createCardRoom({
   log,
+  packs,
   botDelay: botDelay ? Number(botDelay) : undefined,
   // Moderation (the admin app) is on when the server has an admin token.
   adminToken: setting("ADMIN_TOKEN"),
@@ -88,6 +93,9 @@ function originOf(headers: Record<string, string | string[] | undefined>): strin
 // sends them on to everyone. It knows nothing of the game. See packages/wasm/net.
 const games = new Rooms({ now: () => performance.now() });
 setInterval(() => games.check(), 250).unref();
+// And the meets (/wasm/meet/<name>), for games where each device runs its own player and only
+// tells the others about it: Road to the Shootout's races. A meet passes on what its members say.
+const meets = new Meets({ now: () => performance.now() });
 
 const TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -119,6 +127,11 @@ const server = createServer(async (req, res) => {
       const body = req.method === "POST" ? (room ? { code: room.code } : { error: "There are as many games going as this parlor can hold." }) : { games: (await cardRoom.catalogue.watching()) ? games.listed() : [] };
       return void res.writeHead(req.method === "POST" && !room ? 503 : 200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(body));
     }
+    // Road to the Shootout asks for its pack by this name: the host's own, if they have published one.
+    if (path === "/wasm/shootout/default.pack") {
+      const own = packs.get();
+      if (own) return void res.writeHead(200, { "content-type": "application/octet-stream", "content-length": String(own.bytes.length), "cache-control": "no-cache" }).end(Buffer.from(own.bytes));
+    }
     // /designer and /admin are their apps' front doors: with the slash, so their files resolve.
     const bare = apps.find((a) => `${path}/` === a.at);
     if (bare) return void res.writeHead(308, { location: bare.at }).end();
@@ -139,7 +152,8 @@ const server = createServer(async (req, res) => {
     if (!existsSync(file) || statSync(file).isDirectory()) file = join(root, "index.html"); // the app routes itself
     if (!existsSync(file)) return void res.writeHead(404).end(`Build the app first: ${app?.build ?? "npm run build -w @open-parlor/web"}`);
     // The page and the service worker must never be stale; the hashed assets can be cached for good.
-    const fresh = file.endsWith("index.html") || file.endsWith("sw.js") || file.endsWith(".webmanifest");
+    // Nor the pack Road to the Shootout plays, which the host can change from one moment to the next.
+    const fresh = file.endsWith("index.html") || file.endsWith("sw.js") || file.endsWith(".webmanifest") || path === "/wasm/shootout/default.pack";
     const hashed = /[.-][A-Za-z0-9_-]{8,}\.(js|css|woff2|wasm)$/.test(file);
     res.writeHead(200, {
       "content-type": TYPES[extname(file)] ?? "application/octet-stream",
@@ -171,6 +185,18 @@ server.on("upgrade", (req, socket, head) => {
       if (!room) return ws.close(4404, "There is no game with that code.");
       const seat = room.join({ send: (data) => ws.readyState === ws.OPEN && ws.send(data), close: () => ws.close(1000) });
       ws.on("message", (data, binary) => seat.receive(binary ? new Uint8Array(data as Buffer) : String(data)));
+      ws.on("close", () => seat.leave());
+      ws.on("error", () => seat.leave());
+    });
+  }
+  // A device at one of the meets holds a socket open at /wasm/meet/<name>.
+  const meeting = /^\/wasm\/meet\/([a-z0-9-]{1,24})$/.exec(path);
+  if (meeting) {
+    return sockets.handleUpgrade(req, socket, head, (ws) => {
+      const meet = meets.at(meeting[1]!);
+      if (!meet) return ws.close(4503, "There are as many meets going as this parlor can hold.");
+      const seat = meet.join({ send: (data) => ws.readyState === ws.OPEN && ws.send(data), close: () => ws.close(1000) });
+      ws.on("message", (data, binary) => !binary && seat.receive(String(data)));
       ws.on("close", () => seat.leave());
       ws.on("error", () => seat.leave());
     });

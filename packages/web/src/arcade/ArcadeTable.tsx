@@ -843,9 +843,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
   );
 }
 
-/** The arcade games that can be played live at a table on the server: by giving orders through the room, or (Shitstorm) flown over a socket. */
-export const LIVE_ARCADE: ArcadeGameId[] = ["skyfire", "bulwark", "chipstack"];
-export const isLiveArcade = (id: unknown): id is ArcadeGameId => LIVE_ARCADE.includes(id as ArcadeGameId);
+export { LIVE_ARCADE, isLiveArcade } from "./live";
 
 /** An arcade game at a table on the server: the room's views in, this seat's orders out. */
 export function LiveArcade({ view, table, seat, flying, names, serverNow, act, onLeave }: { view: LiveView | FlownView; table: string; seat: number; /** False for someone only watching. */ flying: boolean; names: string[]; serverNow: () => number; act: (move: unknown) => Promise<unknown>; onLeave: () => void }) {

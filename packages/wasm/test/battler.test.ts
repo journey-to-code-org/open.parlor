@@ -263,8 +263,8 @@ describe("the words on the cards", () => {
       expect(words(card).length).toBeGreaterThan(0);
       if (card.effect.all) expect(needsFoe(card)).toBe(false);
     }
-    expect(needsFoe(CARD_BY_ID.wrench)).toBe(true);
-    expect(needsFoe(CARD_BY_ID.rag)).toBe(false);
+    expect(needsFoe(CARD_BY_ID.wrench!)).toBe(true);
+    expect(needsFoe(CARD_BY_ID.rag!)).toBe(false);
   });
 
   it("every foe's every intent reads as a number", () => {

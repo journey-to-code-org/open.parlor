@@ -1,5 +1,5 @@
 import { PALACE_PRESETS, type PalaceRules } from "@journey-to-code/palace";
-import { isBoardGame, isKitGame, isSportGame, isWordGame, kitGame } from "@journey-to-code/games";
+import { isBoardGame, isFieldGame, isKitGame, isSportGame, isWordGame, kitGame } from "@journey-to-code/games";
 import type { RulePreset } from "@journey-to-code/rules";
 import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { useState } from "react";
@@ -41,7 +41,7 @@ export function EmbedHome({ game, onPractice }: { game: GameId; onPractice: (nam
           onPractice(you, rules, game === "palace" ? seats : 4);
         }}
       >
-        {isBoardGame(game) || isSportGame(game) || isWordGame(game) ? "Play" : solo ? "Deal" : "Deal me in"}
+        {isBoardGame(game) || isSportGame(game) || isWordGame(game) || isFieldGame(game) ? "Play" : solo ? "Deal" : "Deal me in"}
       </button>
       {!solo && (
         <p className="fine">

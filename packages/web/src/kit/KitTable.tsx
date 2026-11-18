@@ -31,8 +31,10 @@ import { HandSortBar, useHandOrder } from "../HandSort";
 import { cardKey } from "../handOrder";
 import { SoundButton } from "../SoundButton";
 import { named } from "./named";
+import { ResultTable, sideName } from "./result";
 
-export { named };
+// These live in files of their own, so a table that wants one doesn't bring the whole card table with it.
+export { named, ResultTable, sideName };
 
 const NO_CARDS: KCard[] = [];
 
@@ -59,9 +61,6 @@ export interface KitTableProps {
 }
 
 
-/** "Ann & Cy" for a side of the table. */
-export const sideName = (seats: number[], names: string[]) =>
-  seats.map((s) => names[s] ?? `Seat ${s + 1}`).join(" & ");
 
 export function KitTable({
   view,
@@ -1080,7 +1079,18 @@ function SolitaireArea({
   );
 }
 
-/** Piles in a cross round the stock, corners on the diagonals (Kings in the Corner). */
+/**
+ * Piles in a cross round the stock, corners on the diagonals (Kings in the Corner).
+ *
+ * Each pile grows away from the stock, every card showing: the first card sits next to the middle and
+ * each newer one lies a little further out (the top and corner piles upward, the bottom and bottom
+ * corners downward, the sides outward). Going up or to the left, the earlier card is laid over the
+ * newer one, so each card shows its own top-left corner. With `layout: "row"` (Spite and Malice) a
+ * pile is still its top card with the bottom card peeking out above.
+ */
+const AREAS = ["n", "e", "s", "w", "nw", "ne", "se", "sw"];
+const CROSS_FAN = ["up", "right", "down", "left", "up", "up", "down", "down"] as const;
+
 function CrossArea({
   center,
   send,
@@ -1088,9 +1098,9 @@ function CrossArea({
   center: Extract<Center, { kind: "cross" }>;
   send: (move: Record<string, unknown>) => void;
 }) {
-  const AREAS = ["n", "e", "s", "w", "nw", "ne", "se", "sw"];
+  const row = center.layout === "row";
   return (
-    <div className={`cross${center.layout === "row" ? " row" : ""}`}>
+    <div className={`cross${row ? " row" : ""}`}>
       <div role="group" className="cross-stock" aria-label={`${center.stock} to draw`}>
         {center.stock > 0 ? <PlayingCard back size="table" /> : <div className="sol-slot" />}
         <small>{center.stock ? `${center.stock} to draw` : "None to draw"}</small>
@@ -1098,7 +1108,23 @@ function CrossArea({
       {center.piles.map((p, i) => {
         const top = p.cards[p.cards.length - 1];
         const bottom = p.cards.length > 1 ? p.cards[0] : null;
-        const body = top ? (
+        const dir = CROSS_FAN[i] ?? "down";
+        // Laid in order, a later card is painted over an earlier one. Going up or left the earlier
+        // card must be the one on top, so those piles are written out the other way round.
+        const laid = p.cards.map((c, k) => ({ c, k }));
+        if (dir === "up" || dir === "left") laid.reverse();
+        const body = top && !row ? (
+          <>
+            <span className="cross-fan" data-dir={dir} style={{ "--n": p.cards.length } as React.CSSProperties}>
+              {laid.map(({ c, k }) => (
+                <span key={c.id} className="cross-card" style={{ "--k": k } as React.CSSProperties}>
+                  <PlayingCard card={c} size="table" data-flip={c.id} />
+                </span>
+              ))}
+            </span>
+            {p.note && <small className="cross-count">{p.note}</small>}
+          </>
+        ) : top ? (
           <>
             {bottom && (
               <span className="cross-under">
@@ -1327,57 +1353,3 @@ function TeamMelds({
   );
 }
 
-export function ResultTable({
-  result,
-  names,
-  me,
-  untitled,
-}: {
-  result: NonNullable<KitView["result"]>;
-  names: string[];
-  me: number;
-  untitled?: boolean;
-}) {
-  return (
-    <>
-      {!untitled && <h2>{named(result.title, names)}</h2>}
-      <table className="summary">
-        <thead>
-          <tr>
-            <th scope="col" />
-            {result.sides.map((seats, i) => (
-              <th
-                key={i}
-                scope="col"
-                className={seats.includes(me) ? "us" : ""}
-              >
-                {sideName(seats, names)}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {result.rows.map((row) => (
-            <tr key={row.label} className={row.tone === "total" ? "total" : ""}>
-              <th scope="row">{row.label}</th>
-              {row.values.map((v, i) => (
-                <td
-                  key={i}
-                  className={
-                    row.tone === "score"
-                      ? v.startsWith("-") || v.startsWith("−")
-                        ? "neg"
-                        : "pos"
-                      : ""
-                  }
-                >
-                  {v}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </>
-  );
-}

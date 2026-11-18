@@ -15,7 +15,8 @@ play offline" once, when it is done.
 | | Offline |
 | --- | --- |
 | Practice against the computer, every kit game, Spades and Palace | Yes. The computer players already think in the browser (and in a Web Worker for the heavy ones); the worker's file is in the copy. |
-| The solitaires, the arcade games alone, Delbie's, Road to the Shootout | Yes. Scores and garages that are kept at a house wait for the connection. |
+| The solitaires, the arcade games alone, Delbie's | Yes. Scores that are kept at a house wait for the connection. |
+| Road to the Shootout | Once it has been opened with a connection. Its season is kept in the browser. |
 | Air Hockey, against the house or two at one screen | Yes. It is played on the device: two people share the screen, an end and a finger each. |
 | A game shared on this device (below) | Yes. |
 | Mini Golf courses and bowling lanes | The built-in ones. A course someone else shared has to have been loaded while online. |
@@ -50,9 +51,9 @@ person holding it:
 
 | Shared on one device, the screen facing whoever's move it is | Passed round, with a curtain between people | Not at all |
 | --- | --- | --- |
-| Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon | Every turn-based card game: Hearts, Gin, Crazy Eights, Euchre, Hold'em, … | Speed, Slapjack, War (played at once, or against each other's speed) |
+| Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon, Mancala, Ludo, Chinese Checkers | Every turn-based card game: Hearts, Gin, Crazy Eights, Euchre, Hold'em, …; Dominoes (the hands) | Speed, Slapjack, War (played at once, or against each other's speed) |
 | Yacht, Pig, Ten Thousand, Ship Captain Crew, Shut the Box, Memory, Hangman | Combat (the fleets), Liar's Dice (the dice), Criss-Crosswords (the hands), Secret Word and Anagrams | Word Hunt (a race against the clock), Draw & Guess (needs guessers) |
-| Mini Golf, Bowling, Billiards, Carrom | | Both Mahjongs (a call can come from anyone); Spades and Palace; the arcade and idle games |
+| Mini Golf, Bowling, Billiards, Carrom, Shuffleboard, Crokinole, Flick Football | | Both Mahjongs (a call can come from anyone); Spades and Palace; the arcade and idle games |
 
 **Passed round** (`passesDevice`, `kit/PassCurtain.tsx`): a game with something to hide can still be
 played round one device. When the move passes from one person to the next, the whole screen is
@@ -67,7 +68,7 @@ table setting for that would be small.
 
 Two people on one phone can play a third who is on a phone of their own. It is offered for the
 games in the first column above, where the people at one screen see the same table anyway: Mini
-Golf, Bowling, Billiards, Carrom, the board games, the dice games, Memory and Hangman.
+Golf, Bowling, Billiards, Carrom, Shuffleboard, Crokinole, Flick Football, the board games, the dice games, Memory and Hangman.
 
 **At a family table, an open table or a house's table** (`packages/web/src/second.ts`,
 `RoomTable.tsx`). Once you have sat down, the seating screen has **Someone else at this device**:

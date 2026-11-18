@@ -29,7 +29,8 @@
 
 #include "p_mobj.h"
 
-char *sprnames[] = {
+// [open.wasm] With room at the end for sprites a WAD's rules name: see rules.c.
+char *sprnames[NUMSPRITES + SPARESPRITES + 1] = {
     "TROO","SHTG","PUNG","PISG","PISF","SHTF","SHT2","CHGG","CHGF","MISG",
     "MISF","SAWG","PLSG","PLSF","BFGG","BFGF","BLUD","PUFF","BAL1","BAL2",
     "PLSS","PLSE","MISL","BFS1","BFE1","BFE2","TFOG","IFOG","PLAY","POSS",
@@ -124,7 +125,8 @@ void A_SpawnFly();
 void A_BrainExplode();
 
 
-state_t	states[NUMSTATES] = {
+// [open.wasm] With room at the end for moments a WAD's rules make: see rules.c.
+state_t	states[NUMSTATES + SPARESTATES] = {
     {SPR_TROO,0,-1,{NULL},S_NULL,0,0},	// S_NULL
     {SPR_SHTG,4,0,{A_Light0},S_NULL,0,0},	// S_LIGHTDONE
     {SPR_PUNG,0,1,{A_WeaponReady},S_PUNCH,0,0},	// S_PUNCH
@@ -1095,7 +1097,8 @@ state_t	states[NUMSTATES] = {
 };
 
 
-mobjinfo_t mobjinfo[NUMMOBJTYPES] = {
+// [open.wasm] With room at the end for kinds of thing a WAD's rules make: see rules.c.
+mobjinfo_t mobjinfo[NUMMOBJTYPES + SPARETHINGS] = {
 
     {		// MT_PLAYER
 	-1,		// doomednum
