@@ -33,6 +33,11 @@ interface Rooms {
   closeTable(id: string, reason: string): Promise<boolean>;
   removePlayer(id: string, seat: number, bot?: string): Promise<string | null>;
   redact(id: string, key: string): Promise<boolean>;
+  /** Hold a game, let it go on, play a seat's turn at a held one, and tell the table (see @journey-to-code/rooms). */
+  pause(id: string, reason?: string): Promise<string | null>;
+  resume(id: string): Promise<string | null>;
+  botMoveFor(id: string, seat: number): Promise<string | null>;
+  announce(id: string, text: string, from?: string): Promise<unknown>;
 }
 
 /** The parts of the houses module moderation uses. */
@@ -114,6 +119,7 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, github
         started: !!room.started,
         finished: finished(room.summary),
         closed: room.closed ?? "",
+        paused: room.paused ? { at: room.paused.at, reason: room.paused.reason } : null,
         messages: Object.keys(chat).filter((k) => /^m\d+$/.test(k)).length,
         seats: (room.seats ?? []).map((seat, i) => {
           const holder = game?.holders?.[i] ?? null;
@@ -228,6 +234,33 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, github
         return json({ table: tableShown(table), chat });
       }
       if (method !== "POST") return json({ error: "Not found" }, 404);
+      // POST /moderation/tables/:id/pause { reason } → nobody can move, no computer player plays and no clock runs; the table is told
+      if (action === "pause") {
+        const reason = clean(input.reason, 200);
+        const problem = await rooms.pause(id, reason);
+        if (problem) return json({ error: problem }, 409);
+        await rooms.announce(id, reason ? `The host paused the game: ${reason}` : "The host paused the game.");
+        await record("Paused a table", name, reason);
+        return json({ ok: true });
+      }
+      // POST /moderation/tables/:id/resume → play goes on, the clocks with the time they had
+      if (action === "resume") {
+        const problem = await rooms.resume(id);
+        if (problem) return json({ error: problem }, 409);
+        await rooms.announce(id, "The host resumed the game.");
+        await record("Resumed a table", name);
+        return json({ ok: true });
+      }
+      // POST /moderation/tables/:id/play-for { seat } → at a paused table, the computer's move for that seat, as the host's
+      if (action === "play-for") {
+        const seat = Number(input.seat);
+        const who = table.seats[seat]?.name ?? `Seat ${seat + 1}`;
+        const problem = await rooms.botMoveFor(id, seat);
+        if (problem) return json({ error: problem }, 409);
+        await rooms.announce(id, `The host played a turn for ${who}.`);
+        await record("Played a turn for a seat", `${who} at ${name}`);
+        return json({ ok: true });
+      }
       // POST /moderation/tables/:id/close { reason } → nobody can sit, move or talk there again
       if (action === "close") {
         if (table.closed) return json({ error: "That table is already closed." }, 409);

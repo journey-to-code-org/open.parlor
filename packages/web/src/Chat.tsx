@@ -31,6 +31,7 @@ export function useBubbles(messages: ChatMessage[]): Map<number, ChatMessage> {
   const latest = new Map<number, ChatMessage>();
   let next = Infinity;
   for (const m of messages) {
+    if (m.notice) continue; // the host's notices are lines in the chat, not anyone's speech
     const key = keyOf(m);
     let seen = firstSeen.current.get(key);
     if (seen === undefined) firstSeen.current.set(key, (seen = now));
@@ -240,15 +241,21 @@ export function TableChat({ messages, mySeat, send }: ChatProps) {
           </div>
           <ol className="chat-list" ref={list}>
             {messages.length === 0 && <li className="empty">Say hi to the table.</li>}
-            {messages.map((m, i) => (
-              <li key={`${m.at}-${i}`} className={`${m.seat === mySeat ? "mine" : ""} ${m.seat % 2 === (mySeat ?? 0) % 2 ? "us" : "them"}`}>
-                <span className="who">
-                  {m.name}
-                  {m.bot ? " 🤖" : ""}
-                </span>
-                <span className="text">{m.text}</span>
-              </li>
-            ))}
+            {messages.map((m, i) =>
+              m.notice ? (
+                <li key={`${m.at}-${i}`} className="notice">
+                  <span className="text">{m.text}</span>
+                </li>
+              ) : (
+                <li key={`${m.at}-${i}`} className={`${m.seat === mySeat ? "mine" : ""} ${m.seat % 2 === (mySeat ?? 0) % 2 ? "us" : "them"}`}>
+                  <span className="who">
+                    {m.name}
+                    {m.bot ? " 🤖" : ""}
+                  </span>
+                  <span className="text">{m.text}</span>
+                </li>
+              ),
+            )}
           </ol>
           {mySeat !== null ? (
             <>

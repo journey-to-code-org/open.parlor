@@ -27,9 +27,16 @@ import { askClose } from "./tables";
             @if (d.table.house) {
               <status-badge variant="outline">{{ d.table.house.name }}</status-badge>
             }
+            @if (d.table.paused) {
+              <status-badge variant="warning" [dot]="true">Paused</status-badge>
+            }
           </cluster-layout>
           @if (d.table.closed) {
             <alert-banner variant="warning" heading="Closed">{{ d.table.closed }}</alert-banner>
+          }
+
+          @if (d.table.paused) {
+            <alert-banner variant="warning" heading="Paused">{{ d.table.paused.reason || "Nobody can play until you resume." }} Players can still chat.</alert-banner>
           }
 
           <div>
@@ -47,6 +54,9 @@ import { askClose } from "./tables";
                       <status-badge variant="danger">Blocked</status-badge>
                     }
                   </span>
+                  @if (d.table.paused && seat.name !== null && d.table.status === "playing") {
+                    <action-button variant="outline" size="sm" [label]="'Play ' + (seat.name ?? 'this seat') + '’s turn for them'" (click)="playFor(d.table, seat.seat)">Play turn</action-button>
+                  }
                   @if (seat.player && d.table.status !== "closed" && d.table.status !== "finished") {
                     <action-button variant="outline" size="sm" (click)="unseat(d.table, seat.seat)">Remove</action-button>
                   }
@@ -67,7 +77,7 @@ import { askClose } from "./tables";
                     <span class="line"
                       ><strong>{{ line.name }}</strong> {{ line.text }}</span
                     >
-                    @if (!line.removed && !line.bot) {
+                    @if (!line.removed && !line.bot && !line.notice) {
                       <action-button variant="ghost" size="sm" [label]="'Remove ' + line.name + '’s message'" (click)="redact(d.table, line)">Remove</action-button>
                     }
                   </li>
@@ -81,6 +91,8 @@ import { askClose } from "./tables";
       } @else {
         <loading-spinner label="Finding the table" [inline]="true"></loading-spinner>
       }
+      <action-button slot="actions" variant="outline" [hidden]="!table() || table()!.status !== 'playing' || !!table()!.paused" (click)="pause()">Pause game</action-button>
+      <action-button slot="actions" variant="primary" [hidden]="!table() || !table()!.paused || table()!.status === 'closed'" (click)="resume()">Resume game</action-button>
       <action-button slot="actions" variant="destructive" [hidden]="!table() || table()!.status === 'closed'" (click)="close()">Close this table</action-button>
       <action-button slot="actions" variant="outline" data-close>Done</action-button>
     </modal-dialog>
@@ -125,6 +137,51 @@ export class TablePage {
   protected close(): void {
     const table = this.table();
     if (table) askClose(this.ask, [table], () => this.leave());
+  }
+
+  protected pause(): void {
+    const table = this.table();
+    if (!table) return;
+    this.ask.ask({
+      title: `Pause ${table.gameName} table ${table.id}?`,
+      body: "Nobody can play until you resume. The clock stops too, so nobody runs out of time. Players can still chat, and the table is told why.",
+      field: "Reason",
+      help: "Everyone at the table sees this.",
+      action: "Pause game",
+      run: async (reason) => {
+        await this.admin.api.pauseTable(table.id, reason);
+        return `Paused table ${table.id}.`;
+      },
+    });
+  }
+
+  protected resume(): void {
+    const table = this.table();
+    if (!table) return;
+    void this.run(() => this.admin.api.resumeTable(table.id), `Resumed table ${table.id}.`);
+  }
+
+  protected playFor(table: Table, seat: number): void {
+    const name = table.seats[seat]?.name ?? `Seat ${seat + 1}`;
+    this.ask.ask({
+      title: `Play ${name}'s turn for them?`,
+      body: "The game's computer player picks the move, and the table is told the host played it. The game stays paused.",
+      action: "Play their turn",
+      run: async () => {
+        await this.admin.api.playFor(table.id, seat);
+        return `Played a turn for ${name}.`;
+      },
+    });
+  }
+
+  private async run(go: () => Promise<unknown>, done: string): Promise<void> {
+    try {
+      await go();
+      this.admin.toast(done, "success");
+    } catch (error) {
+      this.admin.toast(message(error), "danger");
+    }
+    await this.admin.refresh();
   }
 
   protected unseat(table: Table, seat: number): void {
