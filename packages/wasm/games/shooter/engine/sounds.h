@@ -23,6 +23,8 @@
 #include "i_sound.h"
 
 // the complete set of sound effects
+// [open.wasm] Places past the engine's own for sounds a WAD's rules name: see rules.c.
+#define SPARESFX 64
 extern sfxinfo_t	S_sfx[];
 
 // the complete set of music

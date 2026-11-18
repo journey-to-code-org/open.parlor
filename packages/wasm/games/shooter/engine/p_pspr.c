@@ -33,6 +33,7 @@
 // Data.
 #include "sounds.h"
 
+#include "rules.h"
 #include "p_pspr.h"
 
 #define LOWERSPEED		FRACUNIT*6
@@ -464,7 +465,8 @@ A_Punch
     int		damage;
     int		slope;
 	
-    damage = (P_Random ()%10+1)<<1;
+    // [open.wasm] The numbers of the fist, the saw and the guns are the WAD's to give: rules.c.
+    damage = (P_Random ()%10+1) * Rules_Number("fist.damage", 2);
 
     if (player->powers[pw_strength])	
 	damage *= 10;
@@ -498,7 +500,7 @@ A_Saw
     int		damage;
     int		slope;
 
-    damage = 2*(P_Random ()%10+1);
+    damage = Rules_Number("saw.damage", 2)*(P_Random ()%10+1);
     angle = player->mo->angle;
     angle += (P_Random()-P_Random())<<18;
     
@@ -642,7 +644,7 @@ P_GunShot
     angle_t	angle;
     int		damage;
 	
-    damage = 5*(P_Random ()%3+1);
+    damage = Rules_Number("gun.damage", 5)*(P_Random ()%3+1);
     angle = mo->angle;
 
     if (!accurate)
@@ -696,8 +698,9 @@ A_FireShotgun
     P_BulletSlope (player->mo);
 	
     // [open.wasm] The shotgun is a lever-action in the hands of someone who can't aim: its shot goes four times as wide.
-    scatter = 20;
-    for (i=0 ; i<7 ; i++)
+    // How wide, and how many pellets, are the WAD's to give: rules.c.
+    scatter = Rules_Number("shotgun.scatter", 20);
+    for (i=0 ; i<Rules_Number("shotgun.pellets", 7) ; i++)
 	P_GunShot (player->mo, false);
     scatter = 18;
 }
@@ -730,7 +733,7 @@ A_FireShotgun2
 	
     for (i=0 ; i<20 ; i++)
     {
-	damage = 5*(P_Random ()%3+1);
+	damage = Rules_Number("gun.damage", 5)*(P_Random ()%3+1);
 	angle = player->mo->angle;
 	angle += (P_Random()-P_Random())<<19;
 	P_LineAttack (player->mo,

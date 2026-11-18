@@ -23,7 +23,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { Bubble, TableChat, useBubbles, type ChatProps } from "../Chat";
 import { Confetti } from "../Confetti";
 import { loadFeedbackSettings, play, saveFeedbackSettings } from "../feedback/sounds";
-import { named, ResultTable } from "../kit/KitTable";
+import { named } from "../kit/named";
+import { ResultTable } from "../kit/result";
 import { viewSetting, wants3d } from "../display";
 import { reducedMotion } from "../motion";
 import { TableSettingsButton } from "../TableSettings";

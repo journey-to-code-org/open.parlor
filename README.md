@@ -91,6 +91,8 @@ too), and one that draws any table sport on a canvas (Mini Golf is the first).
 | Backgammon | 2 | A board game: race your checkers home and hit theirs on the way. A friendly game, a money game with the doubling cube, a match to 3, 5 or 7 points, or Nackgammon |
 | Mancala | 2 | A board game (Kalah): sow a pit of seeds round the board, one a pit. End in your store to go again; end in your own empty pit to capture what is across. Three to six seeds a pit, one game or a match |
 | Dominoes | 2 to 4 | The double-six set: lay tiles end to end, matching numbers, and play out your hand. Draw, Block or All Fives (ends that add up to a multiple of five score), to 50, 100, 150 or 200 |
+| Ludo | 2 to 4 | A race round a cross-shaped board: roll a six to come out, move your tokens round the track and up your home column, and send anyone you land on back to their yard. Four tokens or two, with or without safe stars |
+| Chinese Checkers | 2 to 6 | A star of 121 holes: move a peg one hole, or jump over a peg and keep jumping, to get all ten into the point across. Played to 50, 100 or 200 turns each |
 | Mini Golf | 1 to 6 | A table sport: nine holes round a garden (a drainpipe, a pond, toadstools that kick, a mole's tunnels), in turn with balls that knock into each other, or everyone at once |
 
 Poker and Blackjack are for chips only: everyone starts with the same stack, and the chips are
@@ -126,7 +128,7 @@ connection to come back.
 
 A game with nothing hidden can also be **shared on one device**: on its setup screen, *On this
 device* seats two or more of you (computer players take any seats left), and the screen turns to
-whoever's move it is. That is Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon, Mancala,
+whoever's move it is. That is Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon, Mancala, Ludo, Chinese Checkers,
 Yacht, Pig, Ten Thousand, Ship, Captain, Crew, Shut the Box, Memory, Hangman, Mini Golf, Bowling, Billiards, Carrom, Shuffleboard, Crokinole and Flick Football. A game with a hand to hide (every
 turn-based card game, Dominoes, Combat, Liar's Dice, Criss-Crosswords, Secret Word, Anagrams) is **passed round** instead:
 between people the screen is covered ("Pass to Grammi") until the next person taps. Games played at
@@ -577,6 +579,8 @@ one of the parlor's own decks, one of theirs, or any deck in the gallery. Everyo
 and everyone watching then sees those cards. The table keeps its own copy of the design, so its
 maker changing or deleting it, or the host hiding it, never changes the cards in the middle of a
 game. A table can only wear a deck its chooser could show everyone: theirs, or a shared one.
+
+**A house's chat.** A house's page has one conversation for everyone in the house, whichever table they are at or none (`/houses/:slug/chat`, `packages/server/src/housechat.ts`). Members only; the last 200 messages are kept, 280 characters each. Anyone can take down their own message, and the owner and admins anyone's. Words aren't covered, as they aren't at a family table. A member who doesn't have the chat open gets a buzz, at most one every five minutes. The page asks for what is new every four seconds while it is being looked at. The chat also shows who is here: the members whose pages asked in the last twenty seconds. On the page it is a Vue island of Zubra components (`packages/web/src/house/HouseChat.vue`) over a plain store (`house/chat.ts`).
 
 **A house's cards.** A house's owner or an admin picks, on the house's page, the deck its tables start with (`POST /houses/:slug/deck`), from the same choices. The house keeps its own copy, as a table does, every member sees which it is, and the players at a table can still pick another before the deal. Tournament matches start with it too.
 

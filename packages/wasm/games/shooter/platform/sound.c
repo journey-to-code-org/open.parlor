@@ -2,8 +2,10 @@
 // loud; the page is handed each effect's lump from the WAD the first time it is needed and keeps
 // it decoded after that.
 //
-// Music is not played yet: the songs are MUS data that wants an OPL or MIDI synthesiser. The
-// module below accepts the engine's calls and does nothing with them.
+// Music is the page's too. The engine says which song (its lump, whole), whether it goes round,
+// how loud, and when to stop; the page plays it if it is sound the browser can decode (an MP3,
+// an Ogg, a WAV put in the song's place). The songs the game came with are MUS data, which wants
+// an OPL or MIDI synthesiser: the page is handed those too, and has nothing to play them with yet.
 
 #include <stdint.h>
 #include <stdio.h>
@@ -22,6 +24,11 @@ HOST(sound_start) void host_sound_start(int channel, int lump, const void *data,
 HOST(sound_update) void host_sound_update(int channel, int volume, int separation);
 HOST(sound_stop) void host_sound_stop(int channel);
 HOST(sound_playing) int host_sound_playing(int channel);
+// volume is 0 to 127.
+HOST(music_play) void host_music_play(const void *data, int length, int looping);
+HOST(music_stop) void host_music_stop(void);
+HOST(music_volume) void host_music_volume(int volume);
+HOST(music_pause) void host_music_pause(int paused);
 
 static boolean use_prefix;
 
@@ -56,7 +63,8 @@ static int Sound_GetSfxLumpNum(sfxinfo_t *sfx)
         M_StringCopy(name, DEH_String(sfx->name), sizeof(name));
     }
 
-    return W_GetNumForName(name);
+    // A sound the WAD's rules name and the WAD hasn't got is silence, not the end of the game.
+    return W_CheckNumForName(name);
 }
 
 static void Sound_Update(void) {}
@@ -69,7 +77,7 @@ static void Sound_UpdateParams(int channel, int volume, int separation)
 static int Sound_Start(sfxinfo_t *sfx, int channel, int volume, int separation)
 {
     int lump = sfx->lumpnum;
-    int length = W_LumpLength(lump);
+    int length = lump < 0 ? 0 : W_LumpLength(lump);
 
     if (length <= 8)
     {
@@ -111,16 +119,49 @@ sound_module_t DG_sound_module = {
     Sound_Cache,
 };
 
+// A song the engine has asked to have ready: where it is and how long.
+typedef struct
+{
+    void *data;
+    int length;
+} song_t;
+
+static song_t song;
+static boolean music_playing;
+
 static boolean Music_Init(void) { return true; }
-static void Music_Shutdown(void) {}
-static void Music_SetVolume(int volume) { (void) volume; }
-static void Music_Pause(void) {}
-static void Music_Resume(void) {}
-static void *Music_Register(void *data, int length) { (void) length; return data; }
+static void Music_Shutdown(void) { host_music_stop(); }
+static void Music_SetVolume(int volume) { host_music_volume(volume); }
+static void Music_Pause(void) { host_music_pause(1); }
+static void Music_Resume(void) { host_music_pause(0); }
+
+// One song at a time is all the engine asks for.
+static void *Music_Register(void *data, int length)
+{
+    song.data = data;
+    song.length = length;
+    return &song;
+}
+
 static void Music_Unregister(void *handle) { (void) handle; }
-static void Music_Play(void *handle, boolean looping) { (void) handle; (void) looping; }
-static void Music_Stop(void) {}
-static boolean Music_IsPlaying(void) { return false; }
+
+static void Music_Play(void *handle, boolean looping)
+{
+    song_t *asked = handle;
+
+    if (asked == NULL || asked->length <= 0)
+        return;
+    host_music_play(asked->data, asked->length, looping ? 1 : 0);
+    music_playing = true;
+}
+
+static void Music_Stop(void)
+{
+    host_music_stop();
+    music_playing = false;
+}
+
+static boolean Music_IsPlaying(void) { return music_playing; }
 static void Music_Poll(void) {}
 
 music_module_t DG_music_module = {

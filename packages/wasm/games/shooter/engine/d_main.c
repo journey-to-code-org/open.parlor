@@ -38,6 +38,7 @@
 
 #include "z_zone.h"
 #include "w_main.h"
+#include "rules.h"
 #include "w_wad.h"
 #include "s_sound.h"
 #include "v_video.h"
@@ -1536,6 +1537,9 @@ void D_DoomMain (void)
 
     // Generate the WAD hash table.  Speed things up a bit.
     W_GenerateHashTable();
+
+    // [open.wasm] The WAD's own rules, before anything is looked up by them.
+    Rules_Apply();
 
     // Load DEHACKED lumps from WAD files - but only if we give the right
     // command line parameter.

@@ -8,5 +8,6 @@ export const SECTIONS = [
   { value: "tuning", label: "Tuning" },
   { value: "designs", label: "Card designs" },
   { value: "courses", label: "Courses & lanes" },
+  { value: "shootout", label: "Road to the Shootout" },
   { value: "activity", label: "Activity" },
 ] as const;
