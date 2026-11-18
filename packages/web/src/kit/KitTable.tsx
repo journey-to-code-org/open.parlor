@@ -25,6 +25,7 @@ import {
 import { EASE_OUT, glideFrom, lift, motionScale, reducedMotion, useCardFlip, useFlash } from "../motion";
 import { seatAround } from "../palace/PalaceTable";
 import { TableSettingsButton } from "../TableSettings";
+import { usesCards } from "../categories";
 import { useWants3d } from "../display";
 import { HandSortBar, useHandOrder } from "../HandSort";
 import { cardKey } from "../handOrder";
@@ -237,6 +238,7 @@ export function KitTable({
               onChange={settings.change}
               solo={view.seats === 1}
               depth
+              cards={usesCards(view.game)}
             />
           )}
           <SoundButton on={soundOn} toggle={toggleSound} inline />

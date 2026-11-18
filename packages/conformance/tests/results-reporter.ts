@@ -9,7 +9,10 @@ import { fileURLToPath } from "node:url";
 /** How one check went in one framework. "known" is a difference already reported upstream. */
 type Status = "passed" | "failed" | "known" | "skipped";
 interface Cell {
+  /** The worst of the engines: one failing browser fails the cell. */
   status: Status;
+  /** How it went in each browser engine that ran. */
+  engines: Record<string, Status>;
   /** What the feature is called in this framework (the feature checks only). */
   as?: string;
   /** For "known": the issue it was reported in. */
@@ -20,22 +23,30 @@ interface Row {
   cells: Record<string, Cell>;
 }
 
+const WORST: Status[] = ["failed", "known", "skipped", "passed"];
 const annotation = (test: TestCase, type: string) => test.annotations.find((a) => a.type === type)?.description;
 
 export default class ResultsReporter implements Reporter {
   private readonly rows = { components: new Map<string, Row>(), features: new Map<string, Row>() };
+  private readonly engines = new Set<string>();
 
   onTestEnd(test: TestCase, result: TestResult): void {
     // The last try is the one that counts (CI retries once).
     if (result.retry < test.results.length - 1) return;
-    const [, , file = "", framework = ""] = test.titlePath();
+    const [, engine = "", file = "", framework = ""] = test.titlePath();
     const suite = file.includes("features") ? "features" : "components";
     const title = annotation(test, "check") ?? test.title;
     const known = test.expectedStatus === "failed";
     const status: Status = result.status === "skipped" ? "skipped" : test.outcome() === "unexpected" ? "failed" : known ? "known" : "passed";
     const row = this.rows[suite].get(title) ?? { title, cells: {} };
-    row.cells[framework] = { status, as: annotation(test, "as"), note: known ? annotation(test, "fail") : undefined };
+    const cell = row.cells[framework] ?? { status, engines: {} };
+    cell.engines[engine] = status;
+    cell.status = WORST.find((worst) => Object.values(cell.engines).includes(worst)) ?? status;
+    cell.as = annotation(test, "as");
+    if (known) cell.note = annotation(test, "fail");
+    row.cells[framework] = cell;
     this.rows[suite].set(title, row);
+    this.engines.add(engine);
   }
 
   onEnd(result: FullResult): void {
@@ -49,6 +60,7 @@ export default class ResultsReporter implements Reporter {
     const results = {
       ranAt: result.startTime.toISOString(),
       zubra: (JSON.parse(readFileSync(runtime, "utf8")) as { version: string }).version,
+      engines: [...this.engines],
       commit: process.env.GITHUB_SHA ?? null,
       repository: process.env.GITHUB_REPOSITORY ?? "journey-to-code-org/open.parlor",
       totals: { checks: cells.length, passed: count("passed"), failed: count("failed"), known: count("known") },
@@ -58,8 +70,8 @@ export default class ResultsReporter implements Reporter {
     const dist = fileURLToPath(new URL("../dist/", import.meta.url));
     mkdirSync(dist, { recursive: true });
     writeFileSync(`${dist}results.json`, JSON.stringify(results, null, 1));
-    const { passed, failed, checks } = results.totals;
-    const badge = { schemaVersion: 1, label: "Zubra conformance", message: failed ? `${failed} of ${checks} failing` : `${passed} of ${checks} checks pass`, color: failed ? "red" : "brightgreen" };
+    const { passed, failed, known, checks } = results.totals;
+    const badge = { schemaVersion: 1, label: "Zubra conformance", message: failed ? `${failed} of ${checks} failing` : `${passed} of ${checks} checks pass${known ? `, ${known} known` : ""}`, color: failed ? "red" : "brightgreen" };
     writeFileSync(`${dist}badge.json`, JSON.stringify(badge));
   }
 }
