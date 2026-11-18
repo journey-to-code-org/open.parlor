@@ -1,6 +1,6 @@
 import { ALL_GAMES } from "@journey-to-code/games";
 import { describe, expect, it } from "vitest";
-import { categoryOf, GAME_CATEGORIES } from "../src/categories";
+import { CARD_GROUPS, cardGroupOf, categoryOf, GAME_CATEGORIES } from "../src/categories";
 
 describe("categoryOf", () => {
   it("puts the parlor's own card games with the cards", () => {
@@ -33,5 +33,28 @@ describe("which games are played with cards", () => {
     const { usesCards } = await import("../src/categories");
     for (const id of ["spades", "palace", "hearts", "cribbage", "klondike", "memory"]) expect(usesCards(id), id).toBe(true);
     for (const id of ["drawguess", "wordhunt", "minigolf", "bowling", "chess", "yacht", "liarsdice", "airhockey", "mahjongshanghai", "mahjongriichi"]) expect(usesCards(id), id).toBe(false);
+  });
+});
+
+// The cards shelf is sorted into kinds of card game, so forty-odd of them aren't one long wall.
+describe("the kinds of card game", () => {
+  const cardGames = ["spades", "palace", ...ALL_GAMES.filter((g) => g.category === "cards").map((g) => g.id)];
+
+  it("puts every card game on a sub-shelf", () => {
+    for (const id of cardGames) expect(cardGroupOf(id), id).toBeDefined();
+  });
+
+  it("lists each game once", () => {
+    const listed = CARD_GROUPS.flatMap((g) => g.games);
+    expect(new Set(listed).size).toBe(listed.length);
+  });
+
+  it("names only games the parlor has", () => {
+    for (const id of CARD_GROUPS.flatMap((g) => g.games)) expect(cardGames, id).toContain(id);
+  });
+
+  it("leaves other shelves alone", () => {
+    expect(cardGroupOf("chess")).toBeUndefined();
+    expect(cardGroupOf("yacht")).toBeUndefined();
   });
 });

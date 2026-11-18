@@ -6,7 +6,7 @@
   .zb import is a Vue component (Zubra's Vue adapter), with props, events and v-model.
 -->
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import PlayingCard from "@open-parlor/ui/playing-card.zb";
 import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
 import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
@@ -19,6 +19,8 @@ export interface ChooserGame {
   blurb: string;
   /** The shelf it sits on: "cards", "board", "dice", "sports", "arcade". */
   category: string;
+  /** For a card game, the kind of card game it is (a sub-shelf of the cards shelf), if it is on one. */
+  group?: string;
   seats: [number, number];
   teams: boolean;
   /** Three cards to fan out on the tile. */
@@ -38,6 +40,8 @@ const props = defineProps<{
   games: ChooserGame[];
   /** Every category, in the order the shelves are listed. */
   categories: { id: string; name: string; emoji: string }[];
+  /** The kinds of card game, in the order the cards shelf lists them. */
+  cardGroups?: { id: string; name: string; emoji: string }[];
   houses: { slug: string; name: string }[];
   /** The game played last on this device, if any. */
   last: string | null;
@@ -103,16 +107,66 @@ watch(sort, (value) => {
     /* private mode: it still applies for now */
   }
 });
+interface Section {
+  id: string;
+  name: string;
+  emoji: string;
+  games: ChooserGame[];
+}
+interface Shelf extends Section {
+  /** What the shelf is made of: one nameless section, or (the card games) one per kind of game. */
+  sections: Section[];
+}
+/** The cards shelf in sections by kind of game; a card game on none of them is under "More card games". */
+const sectionsOfCards = (games: ChooserGame[]): Section[] => {
+  const kinds = props.cardGroups ?? [];
+  const known = new Set(kinds.map((k) => k.id));
+  const sections = [...kinds.map((k) => ({ ...k, games: games.filter((g) => g.group === k.id) })), { id: "more", name: "More card games", emoji: "🃏", games: games.filter((g) => !g.group || !known.has(g.group)) }];
+  return sections.filter((s) => s.games.length);
+};
 /** The tiles in groups: one shelf per category that has a game (each in the host's order), or everything in one. */
-const shelves = computed<{ id: string; name: string; emoji: string; games: ChooserGame[] }[]>(() => {
+const shelves = computed<Shelf[]>(() => {
   if (sort.value === "category") {
     const known = new Set(props.categories.map((c) => c.id));
     const stray = shown.value.filter((g) => !known.has(g.category));
-    return [...props.categories.map((c) => ({ ...c, games: shown.value.filter((g) => g.category === c.id) })), { id: "other", name: "Other games", emoji: "🎮", games: stray }].filter((s) => s.games.length);
+    const all = [...props.categories.map((c) => ({ ...c, games: shown.value.filter((g) => g.category === c.id) })), { id: "other", name: "Other games", emoji: "🎮", games: stray }];
+    return all.filter((s) => s.games.length).map((s) => ({ ...s, sections: s.id === "cards" && props.cardGroups?.length ? sectionsOfCards(s.games) : [{ id: "", name: "", emoji: "", games: s.games }] }));
   }
   const games = sort.value === "name" ? [...shown.value].sort((a, b) => a.name.localeCompare(b.name)) : shown.value;
-  return games.length ? [{ id: "all", name: "", emoji: "", games }] : [];
+  return games.length ? [{ id: "all", name: "", emoji: "", games, sections: [{ id: "", name: "", emoji: "", games }] }] : [];
 });
+
+// Shelves (and the card games' sections) fold away: a heading is a button, and what is folded is kept in this browser.
+// A search shows every match, folded or not, so nothing it finds is hidden.
+const FOLD_KEY = "parlor.folded";
+const savedFolds = (): Set<string> => {
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(FOLD_KEY) ?? "[]");
+    return new Set(Array.isArray(saved) ? saved.filter((id): id is string => typeof id === "string") : []);
+  } catch {
+    return new Set();
+  }
+};
+const folded = ref<Set<string>>(savedFolds());
+watch(folded, (ids) => {
+  try {
+    localStorage.setItem(FOLD_KEY, JSON.stringify([...ids]));
+  } catch {
+    /* private mode: they stay folded for now */
+  }
+});
+const sectionKey = (shelf: Shelf, section: Section) => `${shelf.id}:${section.id}`;
+const isOpen = (key: string) => words.value.length > 0 || !folded.value.has(key);
+function setFolded(key: string, fold: boolean) {
+  const next = new Set(folded.value);
+  if (fold) next.add(key);
+  else next.delete(key);
+  folded.value = next;
+}
+/** Every heading that can fold: each shelf, and each section of the card games. */
+const foldable = computed(() => shelves.value.filter((s) => s.name).flatMap((s) => [s.id, ...s.sections.filter((x) => x.name).map((x) => sectionKey(s, x))]));
+const anyOpen = computed(() => foldable.value.some((key) => !folded.value.has(key)));
+const toggleAll = () => (folded.value = anyOpen.value ? new Set(foldable.value) : new Set());
 /** "Surprise me": any game that fits who's playing, other than the one played last when there's a choice. */
 function surprise() {
   const fresh = shown.value.filter((g) => g.id !== props.last);
@@ -146,8 +200,14 @@ function pick(id: string) {
 /** A few to start with, one from each kind of game, in the order a newcomer might like them. */
 const STARTERS = ["spades", "chess", "secretword", "minigolf", "billiards", "hearts", "drawguess", "yacht"];
 const starters = computed(() => STARTERS.map(gameOf).filter((g): g is ChooserGame => !!g).slice(0, 6));
-/** Jump to a shelf. */
-const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+/** Jump to a shelf, opening it first if it was folded. */
+async function toShelf(id: string) {
+  if (folded.value.has(id)) {
+    setFolded(id, false);
+    await nextTick();
+  }
+  document.getElementById(`shelf-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 </script>
 
 <template>
@@ -224,11 +284,25 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
           <span aria-hidden="true">{{ shelf.emoji }}</span> {{ shelf.name }} <small>{{ shelf.games.length }}</small>
         </button>
       </nav>
+      <div v-if="shelves.length > 1 && shelves[0]?.name && !words.length" class="shelf-tools">
+        <button type="button" class="tool-link" @click="toggleAll">{{ anyOpen ? "Fold all" : "Open all" }}</button>
+      </div>
       <template v-for="shelf in shelves" :key="shelf.id">
-      <h3 v-if="shelf.name" :id="`shelf-${shelf.id}`" class="shelf"><span aria-hidden="true">{{ shelf.emoji }}</span> {{ shelf.name }} <small>{{ shelf.games.length }}</small></h3>
-      <ul class="grid" :aria-label="shelf.name || 'Games'">
-        <li v-for="g in shelf.games" :key="g.id">
-          <button type="button" class="tile" :class="{ last: g.id === last }" :aria-label="`${g.name}: ${g.blurb}, ${seatsLabel(g)}`" @click="pick(g.id)">
+      <h3 v-if="shelf.name" :id="`shelf-${shelf.id}`" class="shelf">
+        <button type="button" class="shelf-toggle" :aria-expanded="isOpen(shelf.id)" :aria-controls="`games-${shelf.id}`" @click="setFolded(shelf.id, isOpen(shelf.id))">
+          <span class="chev" aria-hidden="true">▾</span><span aria-hidden="true">{{ shelf.emoji }}</span> {{ shelf.name }} <small>{{ shelf.games.length }}</small>
+        </button>
+      </h3>
+      <div v-if="isOpen(shelf.id)" :id="`games-${shelf.id}`" class="shelf-body">
+      <template v-for="section in shelf.sections" :key="section.id">
+      <h4 v-if="section.name" class="subshelf">
+        <button type="button" class="shelf-toggle" :aria-expanded="isOpen(sectionKey(shelf, section))" :aria-controls="`games-${shelf.id}-${section.id}`" @click="setFolded(sectionKey(shelf, section), isOpen(sectionKey(shelf, section)))">
+          <span class="chev" aria-hidden="true">▾</span><span aria-hidden="true">{{ section.emoji }}</span> {{ section.name }} <small>{{ section.games.length }}</small>
+        </button>
+      </h4>
+      <ul v-if="!section.name || isOpen(sectionKey(shelf, section))" :id="`games-${shelf.id}-${section.id}`" class="grid" :aria-label="section.name || shelf.name || 'Games'">
+        <li v-for="g in section.games" :key="g.id">
+          <button type="button" class="tile" :class="{ last: g.id === last, words: g.board?.shade === 'words' }" :aria-label="`${g.name}: ${g.blurb}, ${seatsLabel(g)}`" @click="pick(g.id)">
             <span v-if="g.screen" class="mini-screen" aria-hidden="true">
               <svg v-if="g.screen.road" viewBox="0 0 100 100">
                 <rect class="lawn" x="3" y="3" width="94" height="94" rx="14" />
@@ -338,6 +412,8 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
         </li>
       </ul>
       </template>
+      </div>
+      </template>
       <p v-if="!shown.length" class="none" role="status">
         {{ noneLine }}
         <button v-if="words.length" type="button" class="house" @click="query = ''">Clear search</button>
@@ -419,9 +495,22 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 
 .games-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .open-ways { display: flex; gap: 8px; flex-wrap: wrap; }
-.shelf { margin: clamp(20px, 2.6vw, 30px) 0 0; display: flex; align-items: baseline; gap: 10px; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.15rem, 1.7vw, 1.4rem); color: var(--cream); border-bottom: 1px solid rgba(232, 196, 106, 0.35); padding-bottom: 6px; }
-.shelf small { font-family: inherit; font-size: 0.8rem; font-weight: 400; color: #b9d0c2; }
-.shelf + .grid { margin-top: 12px; }
+.shelf { margin: clamp(20px, 2.6vw, 30px) 0 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.15rem, 1.7vw, 1.4rem); color: var(--cream); border-bottom: 1px solid rgba(232, 196, 106, 0.35); }
+.shelf small, .subshelf small { font-family: inherit; font-size: 0.8rem; font-weight: 400; color: #b9d0c2; }
+/* A heading is the button that folds its shelf away; the arrow turns sideways when it is folded. */
+.shelf-toggle { width: 100%; display: flex; align-items: baseline; gap: 10px; padding: 0 0 6px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.shelf-toggle:hover .chev { color: #ffe7a6; }
+.shelf-toggle:focus-visible { outline: 3px solid #ffd76a; outline-offset: 3px; border-radius: 6px; }
+.chev { display: inline-block; width: 1em; flex: none; color: var(--gold, #e8c46a); font-size: 0.9em; transition: rotate 160ms var(--ease-out, ease-out); }
+.shelf-toggle[aria-expanded="false"] .chev { rotate: -90deg; }
+.shelf-body > .grid:first-child, .subshelf + .grid { margin-top: 12px; }
+/* The kinds of card game, under the card games' shelf. */
+.subshelf { margin: 20px 0 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1rem, 1.4vw, 1.15rem); font-weight: 600; color: #e3efe7; }
+.subshelf .shelf-toggle { width: auto; padding-bottom: 0; }
+.shelf-tools { display: flex; justify-content: flex-end; margin-top: 10px; }
+.tool-link { border: 0; background: none; padding: 2px 0; color: var(--gold, #e8c46a); font: inherit; font-size: 0.9rem; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.tool-link:focus-visible { outline: 3px solid #ffd76a; outline-offset: 3px; border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) { .chev { transition: none; } }
 .filter { min-width: 220px; --background: var(--cream); --foreground: var(--ink); --border: rgba(255, 255, 255, 0.18); --muted-foreground: #cfe2d6; --ring: var(--gold); }
 .choosing { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
 .search { flex: 1 1 220px; }
@@ -442,6 +531,8 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
   transition: transform 160ms var(--ease-out, ease-out), box-shadow 160ms, border-color 160ms;
 }
 .tile.last { border-color: rgba(232, 196, 106, 0.55); }
+/* A row of letter tiles is wider than a fan or a board (two card-widths, not one and a half), so its tile keeps that much clear of the words. */
+.tile.words { padding-right: calc(var(--tile-card) * 2.5); }
 .tile:hover, .tile:focus-visible { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35); border-color: var(--gold); outline: none; }
 .emoji { font-size: clamp(1.6rem, 2.6vw, 2.2rem); line-height: 1; }
 .tile strong { font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.25rem, 1.9vw, 1.6rem); margin-top: 6px; }
@@ -490,7 +581,7 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 /* A board of points (Backgammon): long triangles from both edges, and no lines between the cells. */
 /* A word game: letter tiles, green in place, gold elsewhere, grey not in the word. */
 /* Letter tiles. A tile is as big as fits: across for a row or two of letters, and down for a square of them (Word Hunt, Criss-Crosswords), so the picture is never taller than a board and stays clear of the name under it. */
-.mini-board.shade-words { --cell: min(calc((var(--tile-card) * 2.5 - 3px * (var(--cols) - 1)) / var(--cols)), calc((var(--tile-card) * 1.5 - 3px * (var(--rows) - 1)) / var(--rows))); width: calc(var(--cell) * var(--cols) + 3px * (var(--cols) - 1)); gap: 3px; rotate: -4deg; background: none; box-shadow: none; border-radius: 0; overflow: visible; aspect-ratio: 5 / 2; grid-template-rows: none; grid-auto-rows: auto; aspect-ratio: auto; }
+.mini-board.shade-words { --cell: min(calc((var(--tile-card) * 2 - 3px * (var(--cols) - 1)) / var(--cols)), calc((var(--tile-card) * 1.5 - 3px * (var(--rows) - 1)) / var(--rows))); width: calc(var(--cell) * var(--cols) + 3px * (var(--cols) - 1)); gap: 3px; rotate: -4deg; background: none; box-shadow: none; border-radius: 0; overflow: visible; aspect-ratio: 5 / 2; grid-template-rows: none; grid-auto-rows: auto; aspect-ratio: auto; }
 .mini-board.shade-words .mini-cell { aspect-ratio: 1; border-radius: 4px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); font-size: calc(var(--cell) * 0.55); font-weight: 800; color: #1d1a16; background: #fbf6ec; }
 .mini-board.shade-words .mini-cell.tone-hit { background: #3f9a52; color: #fff; }
 .mini-board.shade-words .mini-cell.tone-near { background: #d2a52a; color: #241a00; }
@@ -606,8 +697,10 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .tile:hover .mini-screen, .tile:focus-visible .mini-screen { rotate: 0deg; scale: 1.06; }
 @media (max-width: 560px) {
   .tile { padding-right: clamp(14px, 1.8vw, 22px); padding-top: calc(var(--tile-card) * 1.2); }
+  .tile.words { padding-right: clamp(14px, 1.8vw, 22px); padding-top: calc(var(--tile-card) * 1.9); }
   .fan { top: 14px; right: 14px; translate: none; --tile-card: 34px; }
   .mini-board { top: 12px; right: 14px; translate: none; --tile-card: 32px; }
+  .mini-board.shade-words { --tile-card: 44px; }
   .mini-table { top: 12px; right: 14px; translate: none; --tile-card: 32px; }
   .mini-dice { top: 12px; right: 14px; translate: none; --tile-card: 32px; }
   .mini-screen { top: 12px; right: 14px; translate: none; --tile-card: 32px; }
