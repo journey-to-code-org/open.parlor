@@ -68,6 +68,9 @@ const YOU_VERBS: Record<string, string> = {
   sails: "sail",
   stays: "stay",
   shuts: "shut",
+  sows: "sow",
+  ends: "end",
+  captures: "capture",
 };
 
 /** Engines name seats as {0}, {1}…: put the players' names in. */

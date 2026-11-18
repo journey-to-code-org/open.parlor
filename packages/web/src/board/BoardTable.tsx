@@ -42,6 +42,7 @@ import { PieceSet, usePieceArt } from "./pieces";
 import { useBoard3d } from "./useBoard3d";
 import { RecordStrip } from "./Record";
 import { SeatClock } from "./SeatClock";
+import { DominoFace } from "./Domino";
 import { Dice } from "./Dice";
 import { Sheet } from "./Sheet";
 import { isPointsTrack, Track } from "./Track";
@@ -94,7 +95,7 @@ function Piece({ piece, small }: { piece: BoardPiece; small?: boolean }) {
   const art = usePieceArt(piece);
   return (
     <span className={`piece tone-${toneOf(piece)} kind-${piece.kind}${art ? " art" : ""}${piece.faded ? " faded" : ""}${small ? " small" : ""}${!small && piece.id ? " slides" : ""}`} data-flip={small ? undefined : piece.id} aria-hidden>
-      {art ?? piece.glyph}
+      {art ?? (piece.kind === "domino" ? <DominoFace glyph={piece.glyph} /> : piece.glyph)}
     </span>
   );
 }

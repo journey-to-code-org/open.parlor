@@ -323,6 +323,16 @@
       "emoji": "🤥",
       "blurb": "Everyone's dice are hidden. Bid how many of a number are under all the cups, raise the bid, or call the last bidder a liar. Lose a call, lose a die."
     },
+    "mancala": {
+      "name": "Mancala",
+      "emoji": "🫘",
+      "blurb": "Pick up a pit of seeds and sow them round the board, one a pit. End in your store to go again; end in your own empty pit to capture. Most seeds wins."
+    },
+    "dominoes": {
+      "name": "Dominoes",
+      "emoji": "⚅",
+      "blurb": "Lay your tiles end to end, matching the numbers. Play your last tile to win the round and score the pips left in everyone else's hand."
+    },
     "secretword": {
       "name": "Secret Word",
       "emoji": "🟩",
