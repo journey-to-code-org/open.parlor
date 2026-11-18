@@ -174,7 +174,8 @@ test.describe("the lane editor", () => {
 
   test("a lane with no way through can't be bowled", async ({ page }) => {
     await page.goto("/?lane=new");
-    // The editor is fetched when it is opened: it is there once its heading is.
+    // The editor is fetched when it is opened: it is there once its heading is. Count once the grid
+    // is drawn: before, it has no squares and the sums below divide by nothing.
     await expect(page.getByRole("heading", { name: "Make a bowling lane" })).toBeVisible();
     await expect(squares(page).first()).toBeVisible();
     const count = await squares(page).count();
