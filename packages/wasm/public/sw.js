@@ -41,6 +41,6 @@ self.addEventListener("fetch", (event) => {
   const path = request.url.slice(scope.length).split(/[?#]/)[0];
   if (request.mode === "navigate") {
     // The game, the editor for its pictures and sounds, and the stockroom.
-    if (/^((editor|market)\/)?(index\.html)?$/.test(path)) event.respondWith(page(request));
+    if (/^((editor|market|battler)\/)?(index\.html)?$/.test(path)) event.respondWith(page(request));
   } else if (path.startsWith("assets/")) event.respondWith(file(request));
 });

@@ -45,6 +45,8 @@ jobs:
           # The stockroom sim (Solid, on a freestanding wasm module) is a page of its own too.
           curl -fs localhost:8790/wasm/market/ | grep -q "Delbie's Stockroom"
           curl -fsI "localhost:8790/wasm/assets/$(basename packages/wasm/dist/assets/market-*.wasm)" | grep -qi "content-type: application/wasm"
+          # The deck-building battler (Svelte, no wasm) is another page under the game's.
+          curl -fs localhost:8790/wasm/battler/ | grep -q "Delbie's Back Room"
           # The rooms that let devices play the WebAssembly games together: listed, and opened.
           curl -fs localhost:8790/wasm/play | grep -q '"games"'
           curl -fs -X POST localhost:8790/wasm/play | grep -q '"code"'

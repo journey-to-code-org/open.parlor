@@ -188,7 +188,7 @@ const EMPTY_SCREEN: MiniScreen = { ship: [50, 82], foes: [], bullets: [] };
  * leave out, having no table in the parlor. One with `needs` is a page the parlor's server draws,
  * and is on the shelf only where there is a server that draws it.
  */
-const ELSEWHERE: { id: string; name: string; emoji: string; blurb: string; category: "arcade" | "board"; group: undefined; seats: [number, number]; teams: boolean; fan: object[]; screen: MiniScreen | undefined; dice: undefined; board: MiniBoard | undefined; table: undefined; href: string; needs?: "daily" }[] = [
+const ELSEWHERE: { id: string; name: string; emoji: string; blurb: string; category: "arcade" | "board" | "cards"; group: undefined; seats: [number, number]; teams: boolean; fan: object[]; screen: MiniScreen | undefined; dice: undefined; board: MiniBoard | undefined; table: undefined; href: string; needs?: "daily" }[] = [
   {
     id: "delbies-doomsday",
     name: "Delbie's Doomsday",
@@ -220,6 +220,22 @@ const ELSEWHERE: { id: string; name: string; emoji: string; blurb: string; categ
     board: undefined,
     table: undefined,
     href: "wasm/market/",
+  },
+  {
+    id: "delbies-back-room",
+    name: "Delbie's Back Room",
+    emoji: "🃏",
+    blurb: "A deck-building battler: five trouble spots in a parts store's back room, fought with a deck of tools and parts.",
+    category: "cards",
+    group: undefined,
+    seats: [1, 1],
+    teams: false,
+    fan: FANS.spades!,
+    screen: undefined,
+    dice: undefined,
+    board: undefined,
+    table: undefined,
+    href: "wasm/battler/",
   },
   {
     id: "daily-sudoku",

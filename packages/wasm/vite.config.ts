@@ -20,8 +20,8 @@ export default defineConfig({
     // The engine's .wasm is fetched and compiled as it streams in, not inlined into the script.
     assetsInlineLimit: 0,
     target: "es2022",
-    // Three pages: the game, the editor for its pictures and sounds, and the stockroom sim.
-    rollupOptions: { input: { game: local("index.html"), editor: local("editor/index.html"), market: local("market/index.html") } },
+    // Four pages: the game, the editor for its pictures and sounds, the stockroom sim and the card battler.
+    rollupOptions: { input: { game: local("index.html"), editor: local("editor/index.html"), market: local("market/index.html"), battler: local("battler/index.html") } },
   },
   resolve: {
     alias: {
