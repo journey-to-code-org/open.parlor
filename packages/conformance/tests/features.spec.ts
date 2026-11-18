@@ -292,6 +292,10 @@ const FEATURES: Feature[] = [
       await expect(chime).toHaveAttribute("aria-checked", "true");
       await expect(out).toHaveText("valid Hank true");
       await input.fill("");
+      // Leaving the empty field shows its message, which moves what's below it: let that happen
+      // before pressing the button below (in Firefox the press otherwise lands where it was).
+      await input.blur();
+      await expect(t(page, "f-td-name").locator(".field-error")).not.toBeEmpty();
       await expect(out).toHaveText("invalid  true");
       await t(page, "f-td-disable").click();
       await expect(input).toBeDisabled();
