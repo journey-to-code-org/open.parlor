@@ -1,9 +1,9 @@
 // Angular's own features around Zubra components: @for with track, dependency injection, class and
-// style bindings, @defer, animate.leave, reactive forms and content projection. The checks are in
+// style bindings, @defer, animate.leave, reactive and template-driven forms and content projection. The checks are in
 // tests/features.spec.ts.
 import { CUSTOM_ELEMENTS_SCHEMA, ChangeDetectionStrategy, Component, Injectable, inject, input, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
+import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from "@angular/forms";
 import { ZubraModel } from "@zubra/runtime/angular";
 import { FACES, SEGMENTS, WORDS } from "../../src/shared/fixture";
 import { Lazy } from "./lazy";
@@ -43,7 +43,7 @@ export class Panel {
 
 @Component({
   selector: "app-features",
-  imports: [ReactiveFormsModule, ZubraModel, WordText, Panel, Lazy],
+  imports: [ReactiveFormsModule, FormsModule, ZubraModel, WordText, Panel, Lazy],
   providers: [Word],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -116,6 +116,17 @@ export class Panel {
       </section>
 
       <section>
+        <h2>A template-driven form</h2>
+        <form #td="ngForm" data-t="f-td">
+          <text-field data-t="f-td-name" label="Nickname" name="nick" [(ngModel)]="nick" [disabled]="tdOff" required zubraModel></text-field>
+          <toggle-switch data-t="f-td-chime" label="Chime" name="chime" [(ngModel)]="chime" [disabled]="tdOff" zubraModel="checked"></toggle-switch>
+        </form>
+        <output data-t="f-td-out">{{ td.valid ? "valid" : "invalid" }} {{ nick }} {{ chime }}</output>
+        <button data-t="f-td-set" type="button" (click)="nick = 'Hank'; chime = true">Set Hank</button>
+        <button data-t="f-td-disable" type="button" (click)="tdOff = !tdOff">Disable / enable</button>
+      </section>
+
+      <section>
         <h2>Content projection</h2>
         <app-panel data-t="f-proj" heading="Projected">
           <span>Inner text</span>
@@ -127,6 +138,10 @@ export class Panel {
   `,
 })
 export class Features {
+  // The template-driven form's model: plain fields, bound with [(ngModel)].
+  protected nick = "";
+  protected chime = false;
+  protected tdOff = false;
   protected readonly WORDS = WORDS;
   protected readonly SEGMENTS = SEGMENTS;
   protected readonly words = inject(Word);
