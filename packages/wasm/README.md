@@ -87,14 +87,23 @@ kinds of thing: its health, speed, size, weight, damage, how easily it flinches,
 it acts, the sprite it is drawn with and its five sounds. How much of each ammunition is carried
 and picked up. And numbers by name: the health and bullets you start with, the most health and
 armour, the damage of the fist, the saw and a bullet, a shotgun's pellets and how wide they go.
+It also changes what a thing does. A thing is always in one moment or another: a picture of its
+sprite, for so long, running one of the engine's 74 actions (look for a player, go after its
+target, bite, throw, scream, fall), then on to the next. The tab lists a thing's moments for
+each thing that can happen to it (standing about, once it has noticed you, flinching, attacking
+up close and from afar, dying, blown apart, brought back) and changes any of them. And **Make a
+new thing like this one** makes a kind of thing of your own: a copy, with moments of its own so
+that changing them leaves the original alone, and a number of its own, under which the Levels
+tab offers it to place. There is room for 32 kinds of thing and 512 moments of your own.
+
 They are kept as one change, a lump called `RULES`, which the engine reads when it starts
 (`games/shooter/engine/rules.c`); only what differs from the engine's own is written. A game
 with other devices is played without them, as it is without every other change.
 
 So everything in the game's data can be changed, and a WAD made elsewhere is taken whole but for
 levels beyond the 36 the game has places for. Pictures under names the engine doesn't know are
-carried along as lumps. What still can't be changed here is what a thing does: which of the
-engine's actions each moment of it runs, the order of its moments, and how long each lasts.
+carried along as lumps. What still can't be changed here is what the engine's actions
+themselves do (a bite is always the engine's bite), and the weapons' own moments.
 
 ### Levels
 
@@ -228,6 +237,7 @@ wad/                  the Doom engine's data, read and written. No browser, no S
   words.ts            what the game says: the WORDS lump, read and written
   rules.ts            what each thing is and the numbers the game plays by: the RULES lump, read and written
   rule-things.ts      every kind of thing the engine has, as it was written; from the engine's table by scripts/gen-rules.mjs
+  rule-states.ts      every moment a thing can be in, and what a moment can run; written the same way
   plan.ts             a level from a floor plan: rooms as rectangles, for levels built by a script
   nodes.ts            the node builder, run on a shape to make a level the engine can play
   does.ts             what a wall or a room can be made to do

@@ -17,7 +17,7 @@
 <script lang="ts">
   import type { Asset, Kind } from "../../wad/catalogue.ts";
   import { choices, ROOM_DOES, WALL_DOES } from "../../wad/does.ts";
-  import { encodeShape, encodeThings, FLAG_AMBUSH, FLAG_EASY, FLAG_HARD, FLAG_MEDIUM, FLAG_MULTIPLAYER, levelLumps, levelNames, readLevel, type Room, SHAPE_LUMPS, type Shape, type Side, type Thing, THING_KINDS, thingKind, WALL_BLOCKS, WALL_BLOCKS_MONSTERS, WALL_BLOCKS_SOUND, WALL_SECRET } from "../../wad/level.ts";
+  import { encodeShape, encodeThings, FLAG_AMBUSH, FLAG_EASY, FLAG_HARD, FLAG_MEDIUM, FLAG_MULTIPLAYER, levelLumps, levelNames, readLevel, type Room, SHAPE_LUMPS, type Shape, type Side, type Thing, type ThingKind, THING_KINDS, thingKind, WALL_BLOCKS, WALL_BLOCKS_MONSTERS, WALL_BLOCKS_SOUND, WALL_SECRET } from "../../wad/level.ts";
   import { type Change, wallLumps } from "../../wad/mod.ts";
   import { buildLevel } from "../../wad/nodes.ts";
   import { addDoor, addRoomBeyond, addRoomInside, emptyLevel, lookOf, moveCorner, removeCorner, removeRoom, roomAt, roomTrouble, snap, splitWall, wallsAt } from "../../wad/shape.ts";
@@ -35,6 +35,7 @@
     level = $bindable(""),
     wallPictures,
     wallPicture,
+    extraKinds = [],
     builder,
     saved,
     keep,
@@ -49,6 +50,8 @@
     level: string;
     /** The names of the pictures a wall can have. */
     wallPictures: string[];
+    /** Kinds of thing the rules made, to place like any other. */
+    extraKinds?: ThingKind[];
     /** What a wall picture looks like, by name; null for none. */
     wallPicture: (name: string) => Picture | null;
     /** The node builder, compiled: fetched the first time it is wanted. */
@@ -70,7 +73,9 @@
     { label: "To pick up", group: "pickup" },
     { label: "Scenery", group: "scenery" },
   ] as const;
-  const kinds = GROUPS.map(({ label, group }) => ({ label, options: THING_KINDS.filter((kind) => kind.group === group).map((kind) => ({ value: String(kind.number), label: kind.name })) }));
+  /** What a thing of a number is: one of the engine's kinds, or one the rules made. */
+  const kindOf = (number: number): ThingKind => extraKinds.find((kind) => kind.number === number) ?? thingKind(number);
+  const kinds = $derived(GROUPS.map(({ label, group }) => ({ label, options: [...THING_KINDS, ...extraKinds].filter((kind) => kind.group === group).map((kind) => ({ value: String(kind.number), label: kind.name })) })));
   const COLOURS = { start: "#5b8def", monster: "#e5484d", pickup: "#46a758", scenery: "#8b8d98" };
   /** The eight ways a thing can face, as the engine keeps them. */
   const FACINGS = [
@@ -162,9 +167,9 @@
     return shape ? `${shape.walls.length} walls round ${shape.rooms.length === 1 ? "one room" : `${shape.rooms.length} rooms`}.` : "";
   });
   const picked = $derived(things[chosen]);
-  const pickedKind = $derived(picked ? thingKind(picked.type) : null);
+  const pickedKind = $derived(picked ? kindOf(picked.type) : null);
   const counts = $derived.by(() => {
-    const count = (group: string) => things.filter((thing) => thingKind(thing.type).group === group).length;
+    const count = (group: string) => things.filter((thing) => kindOf(thing.type).group === group).length;
     return `${things.length} things: ${count("monster")} monsters, ${count("pickup")} to pick up, ${count("start")} starts, ${count("scenery")} scenery.`;
   });
 
@@ -476,7 +481,7 @@
       }
     }
     things.forEach((thing, i) => {
-      const kind = thingKind(thing.type);
+      const kind = kindOf(thing.type);
       const [x, y] = toScreen(thing.x, thing.y);
       const radius = Math.max(3.5, kind.radius * view.scale);
       pen.fillStyle = COLOURS[kind.group];
@@ -524,7 +529,7 @@
     things.forEach((thing, i) => {
       const [x, y] = toScreen(thing.x, thing.y);
       const distance = Math.hypot(px - x, py - y);
-      if (distance < Math.max(14, thingKind(thing.type).radius * view.scale + 4) && distance < nearest) {
+      if (distance < Math.max(14, kindOf(thing.type).radius * view.scale + 4) && distance < nearest) {
         nearest = distance;
         best = i;
       }

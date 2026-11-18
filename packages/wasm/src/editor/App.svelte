@@ -15,9 +15,9 @@
   import wasm from "../../games/shooter/shooter.wasm?url";
   import { asset as fetched } from "../../host/assets.ts";
   import { type Asset, canAdd, catalogue, isDrawn, isNewNameFor, key, type Kind, KINDS } from "../../wad/catalogue.ts";
-  import { RULES } from "../../wad/rules.ts";
+  import { OWN_THINGS, readRules, RULES, thingsOf } from "../../wad/rules.ts";
   import { WORDS } from "../../wad/words.ts";
-  import { wallNames } from "../../wad/level.ts";
+  import { type ThingKind, wallNames } from "../../wad/level.ts";
   import { composeWall, wallPictures as readWallPictures } from "../../wad/texture.ts";
   import { applyMod, type Change, isAddition, modFromWad, modToWad } from "../../wad/mod.ts";
   import { decodePatch, type Palette, paletteOf } from "../../wad/picture.ts";
@@ -92,6 +92,15 @@
   const wallPictures = $derived(newWalls.length ? [...wallNames(wad), ...newWalls.map((asset) => asset.name)].sort() : wallNames(wad));
   /** The pieces wall pictures are put together from, by name. */
   const pieces = $derived(new Map(all.filter((asset) => asset.kind === "wall").map((asset) => [asset.name, asset])));
+  /** The kinds of thing the rules made that a level can place: what the Levels tab offers beside the engine's own. */
+  const extraKinds = $derived(
+    thingsOf(readRules(changes.get(key("rules", RULES))?.data ?? wad.lumps.find((lump) => lump.name === RULES)?.data))
+      .filter((thing) => thing.index >= OWN_THINGS && thing.number > 4)
+      .map((thing): ThingKind => {
+        const sort = thing.sort === "monster" ? "monster" : thing.sort === "pickup" ? "pickup" : "scenery";
+        return { number: thing.number, name: `Yours, number ${thing.number} (${thing.sprite})`, group: sort, sprite: thing.sprite, frame: "A", radius: thing.radius, sort, solid: sort !== "pickup" };
+      }),
+  );
   /** What a wall picture looks like, from its patches as they now are: one that has been changed shows changed. */
   const wallPicture = (name: string) => {
     const recipe = recipes.get(name);
@@ -400,7 +409,7 @@
       </section>
       <section data-tab="level">
         {#if tab === "level"}
-          <Levels {wad} assets={all} {palette} bind:level wallPictures={wallPictures} {wallPicture} {builder} saved={(kind, name) => changes.get(key(kind, name))?.data} {keep} {restore} {toast} ontry={tryIn} />
+          <Levels {wad} assets={all} {palette} {extraKinds} bind:level wallPictures={wallPictures} {wallPicture} {builder} saved={(kind, name) => changes.get(key(kind, name))?.data} {keep} {restore} {toast} ontry={tryIn} />
         {/if}
       </section>
       <section data-tab="play">

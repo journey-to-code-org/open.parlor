@@ -1153,7 +1153,10 @@ typedef struct
     int misc2;
 } state_t;
 
-extern state_t	states[NUMSTATES];
+// [open.wasm] Places past the engine's own for moments and kinds of thing a WAD's rules make: see rules.c.
+#define SPARESTATES 512
+#define SPARETHINGS 32
+extern state_t	states[NUMSTATES + SPARESTATES];
 // [open.wasm] Places past the engine's own for sprites a WAD's rules name: see rules.c.
 #define SPARESPRITES 64
 extern char *sprnames[];
@@ -1328,6 +1331,6 @@ typedef struct
 
 } mobjinfo_t;
 
-extern mobjinfo_t mobjinfo[NUMMOBJTYPES];
+extern mobjinfo_t mobjinfo[NUMMOBJTYPES + SPARETHINGS];
 
 #endif

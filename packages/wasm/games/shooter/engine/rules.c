@@ -8,12 +8,24 @@
 //   thing.12.health=45        a thing, by its place in info.c's list (12 is MT_SERGEANT)
 //   thing.12.seesound=DSRAT1  a sound by its lump's name, or - for none
 //   thing.12.sprite=RATA      what it is drawn with, in every state of its own
+//   thing.12.seestate=970     where its moments start: spawn, see, pain, melee, missile, death,
+//                             xdeath and raise, each "...state", by a moment's number
+//   thing.137.like=12         a kind of thing of the WAD's own, in one of the spare places past
+//                             the engine's 137, begun as a copy of another
+//   thing.137.number=5000     the number a level names it by
+//   state.970.like=475        a moment: a copy of another, then what differs. Past the engine's
+//   state.970.tics=3          967 are spare places for moments of the WAD's own.
+//   state.970.frame=2         which picture of the sprite (0 is A), and bright=1 for lit
+//   state.970.action=A_Chase  what it runs, by the engine's name for it, or - for nothing
+//   state.970.next=971        the moment after it
 //   ammo.0.max=400            bullets, shells, cells, rockets: 0 to 3
 //   rule.gun.damage=8         a number by name: see Rules_Number's callers
 //
 // A sound or a sprite named here that the engine has none of is given one of the spare places
 // at the end of its list, so a WAD can bring sounds and sprites under names of its own. A line
-// that starts with # is a comment, and one that makes no sense is passed over.
+// that starts with # is a comment, and one that makes no sense is passed over. The lines are
+// taken in three goes, whatever order they are written in: the copies ("like"), then
+// everything else, then the sprites things are drawn with.
 //
 // A game shared with other devices must have the same rules on every one of them.
 #include <ctype.h>
@@ -27,6 +39,11 @@
 #include "w_wad.h"
 
 #include "rules.h"
+#include "rules_actions.h"
+
+// A moment's picture has a bit for "lit": as p_pspr.h has them.
+#define FF_FULLBRIGHT 0x8000
+#define FF_FRAMEMASK 0x7fff
 
 #define MAXNUMBERS 64
 
@@ -107,7 +124,7 @@ static int Rules_Sprite(const char *name)
 // Every state a thing goes through is drawn with the sprite: each chain of states, from where the thing's own list says it starts.
 static void Rules_Draw(mobjinfo_t *info, int sprite)
 {
-    static byte seen[NUMSTATES];
+    static byte seen[NUMSTATES + SPARESTATES];
     int starts[8];
     int i, state;
 
@@ -121,23 +138,114 @@ static void Rules_Draw(mobjinfo_t *info, int sprite)
     starts[7] = info->raisestate;
     memset(seen, 0, sizeof(seen));
     for (i = 0; i < 8; i++)
-        for (state = starts[i]; state > S_NULL && state < NUMSTATES && !seen[state]; state = states[state].nextstate)
+        for (state = starts[i]; state > S_NULL && state < NUMSTATES + SPARESTATES && !seen[state]; state = states[state].nextstate)
         {
             seen[state] = 1;
             states[state].sprite = sprite;
         }
 }
 
-static void Rules_Thing(int type, const char *field, const char *value)
+// A moment by its number, or -1 if there is no such place.
+static int Rules_State(int number)
+{
+    return number >= 0 && number < NUMSTATES + SPARESTATES ? number : -1;
+}
+
+static void Rules_Moment(int which, const char *field, const char *value, int go)
+{
+    state_t *state;
+    int number = atoi(value);
+    int i;
+
+    if (which <= S_NULL || Rules_State(which) < 0)
+        return;
+    state = &states[which];
+    if (!strcmp(field, "like"))
+    {
+        if (go == 0 && Rules_State(number) >= 0)
+            *state = states[number];
+        return;
+    }
+    if (go != 1)
+        return;
+    if (!strcmp(field, "sprite"))
+    {
+        i = Rules_Sprite(value);
+        if (i >= 0)
+            state->sprite = i;
+    }
+    else if (!strcmp(field, "frame") && number >= 0 && number < 29)
+        state->frame = (state->frame & FF_FULLBRIGHT) | number;
+    else if (!strcmp(field, "bright"))
+        state->frame = (state->frame & FF_FRAMEMASK) | (number ? FF_FULLBRIGHT : 0);
+    else if (!strcmp(field, "tics") && number >= -1)
+        state->tics = number;
+    else if (!strcmp(field, "next") && Rules_State(number) >= 0)
+        state->nextstate = number;
+    else if (!strcmp(field, "action"))
+    {
+        if (!strcmp(value, "-"))
+        {
+            state->action.acp1 = NULL;
+            return;
+        }
+        for (i = 0; i < (int) (sizeof(rules_actions) / sizeof(*rules_actions)); i++)
+            if (!strcmp(rules_actions[i].name, value))
+                state->action.acv = rules_actions[i].action;
+    }
+}
+
+static void Rules_Thing(int type, const char *field, const char *value, int go)
 {
     mobjinfo_t *info;
     int number = atoi(value);
     int found;
+    size_t length = strlen(field);
 
-    if (type < 0 || type >= NUMMOBJTYPES)
+    if (type < 0 || type >= NUMMOBJTYPES + SPARETHINGS)
         return;
     info = &mobjinfo[type];
-    if (!strcmp(field, "health") && number > 0)
+    if (!strcmp(field, "like"))
+    {
+        // A copy is of the kind, not of its place in a level: the number it is placed by is its own to be given.
+        if (go == 0 && number >= 0 && number < NUMMOBJTYPES + SPARETHINGS)
+        {
+            *info = mobjinfo[number];
+            info->doomednum = -1;
+        }
+        return;
+    }
+    if (!strcmp(field, "sprite"))
+    {
+        found = go == 2 ? Rules_Sprite(value) : -1;
+        if (found >= 0)
+            Rules_Draw(info, found);
+        return;
+    }
+    if (go != 1)
+        return;
+    if (!strcmp(field, "number") && number > 4)
+        info->doomednum = number;
+    else if (length > 5 && !strcmp(field + length - 5, "state") && Rules_State(number) >= 0)
+    {
+        if (!strcmp(field, "spawnstate"))
+            info->spawnstate = number;
+        else if (!strcmp(field, "seestate"))
+            info->seestate = number;
+        else if (!strcmp(field, "painstate"))
+            info->painstate = number;
+        else if (!strcmp(field, "meleestate"))
+            info->meleestate = number;
+        else if (!strcmp(field, "missilestate"))
+            info->missilestate = number;
+        else if (!strcmp(field, "deathstate"))
+            info->deathstate = number;
+        else if (!strcmp(field, "xdeathstate"))
+            info->xdeathstate = number;
+        else if (!strcmp(field, "raisestate"))
+            info->raisestate = number;
+    }
+    else if (!strcmp(field, "health") && number > 0)
         info->spawnhealth = number;
     // A thing that flies of itself (a fireball) has its speed kept in the engine's fractions; one that walks, in whole numbers.
     else if (!strcmp(field, "speed") && number >= 0)
@@ -154,12 +262,6 @@ static void Rules_Thing(int type, const char *field, const char *value)
         info->painchance = number > 256 ? 256 : number;
     else if (!strcmp(field, "reaction") && number >= 0)
         info->reactiontime = number;
-    else if (!strcmp(field, "sprite"))
-    {
-        found = Rules_Sprite(value);
-        if (found >= 0)
-            Rules_Draw(info, found);
-    }
     else if (strlen(field) > 5 && !strcmp(field + strlen(field) - 5, "sound"))
     {
         found = Rules_Sound(value);
@@ -180,49 +282,65 @@ static void Rules_Thing(int type, const char *field, const char *value)
 
 void Rules_Apply(void)
 {
-    int lump, length, which;
-    char *text, *line, *next, *equals, *field;
+    int lump, length, which, go, i;
+    char *text, *copy, *line, *next, *equals, *field;
 
+    // The spare kinds of thing are placed by no number until the rules give them one.
+    for (i = NUMMOBJTYPES; i < NUMMOBJTYPES + SPARETHINGS; i++)
+        mobjinfo[i].doomednum = -1;
     lump = W_CheckNumForName("RULES");
     if (lump < 0)
         return;
     length = W_LumpLength(lump);
     text = malloc(length + 1);
+    copy = malloc(length + 1);
     W_ReadLump(lump, text);
     text[length] = '\0';
-    for (line = text; line && *line; line = next)
+    for (go = 0; go < 3; go++)
     {
-        next = strchr(line, '\n');
-        if (next)
-            *next++ = '\0';
-        if (*line && line[strlen(line) - 1] == '\r')
-            line[strlen(line) - 1] = '\0';
-        equals = strchr(line, '=');
-        if (*line == '#' || !equals || equals == line || !equals[1])
-            continue;
-        *equals++ = '\0';
-        if (!strncmp(line, "thing.", 6))
+        // Each go cuts the text up as it reads, so each has the text afresh.
+        memcpy(copy, text, length + 1);
+        for (line = copy; line && *line; line = next)
         {
-            which = atoi(line + 6);
-            field = strchr(line + 6, '.');
-            if (field && isdigit((unsigned char) line[6]))
-                Rules_Thing(which, field + 1, equals);
-        }
-        else if (!strncmp(line, "ammo.", 5) && isdigit((unsigned char) line[5]) && line[6] == '.')
-        {
-            which = line[5] - '0';
-            if (which >= NUMAMMO || atoi(equals) <= 0)
+            next = strchr(line, '\n');
+            if (next)
+                *next++ = '\0';
+            if (*line && line[strlen(line) - 1] == '\r')
+                line[strlen(line) - 1] = '\0';
+            equals = strchr(line, '=');
+            if (*line == '#' || !equals || equals == line || !equals[1])
                 continue;
-            if (!strcmp(line + 7, "max"))
-                maxammo[which] = atoi(equals);
-            else if (!strcmp(line + 7, "clip"))
-                clipammo[which] = atoi(equals);
-        }
-        else if (!strncmp(line, "rule.", 5) && numnumbers < MAXNUMBERS && strlen(line + 5) < sizeof(numbers[0].name))
-        {
-            strcpy(numbers[numnumbers].name, line + 5);
-            numbers[numnumbers++].value = atoi(equals);
+            *equals++ = '\0';
+            if (!strncmp(line, "thing.", 6) || !strncmp(line, "state.", 6))
+            {
+                which = atoi(line + 6);
+                field = strchr(line + 6, '.');
+                if (!field || !isdigit((unsigned char) line[6]))
+                    continue;
+                if (line[0] == 't')
+                    Rules_Thing(which, field + 1, equals, go);
+                else
+                    Rules_Moment(which, field + 1, equals, go);
+            }
+            else if (go != 1)
+                continue;
+            else if (!strncmp(line, "ammo.", 5) && isdigit((unsigned char) line[5]) && line[6] == '.')
+            {
+                which = line[5] - '0';
+                if (which >= NUMAMMO || atoi(equals) <= 0)
+                    continue;
+                if (!strcmp(line + 7, "max"))
+                    maxammo[which] = atoi(equals);
+                else if (!strcmp(line + 7, "clip"))
+                    clipammo[which] = atoi(equals);
+            }
+            else if (!strncmp(line, "rule.", 5) && numnumbers < MAXNUMBERS && strlen(line + 5) < sizeof(numbers[0].name))
+            {
+                strcpy(numbers[numnumbers].name, line + 5);
+                numbers[numnumbers++].value = atoi(equals);
+            }
         }
     }
+    free(copy);
     free(text);
 }

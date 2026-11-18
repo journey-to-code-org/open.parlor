@@ -13,7 +13,7 @@ import { decodeThings, encodeThings, FLAG_EASY, FLAG_HARD, FLAG_MEDIUM, levelLum
 import { applyMod, type Change, fits, modFromWad, modToWad } from "../wad/mod.ts";
 import { decodeFlat, decodePatch, encodeFlat, encodePatch, fromRgba, paletteOf, type Picture, toRgba } from "../wad/picture.ts";
 import { decodeDmx, encodeDmx, mixDown, resample } from "../wad/sound.ts";
-import { named, readRules, RULE_THINGS, RULES, thingKey, writeRules } from "../wad/rules.ts";
+import { ACTIONS, copyThing, momentOf, momentsFrom, named, OWN_STATES, OWN_THINGS, readRules, removeThing, RULE_THINGS, RULES, thingKey, thingsOf, writeRules } from "../wad/rules.ts";
 import { wallPictures } from "../wad/texture.ts";
 import { readWad, writeWad } from "../wad/wad.ts";
 
@@ -351,6 +351,86 @@ describe.skipIf(!existsSync(file))("the real game", () => {
     const back = modFromWad(modToWad([sprite, voice, ruled, song], wad), assets, wad);
     expect(back.changes.map((change) => key(change.kind, change.name)).sort()).toEqual(["other/D_E1M1", "rules/RULES", "sound/DSMINE", "sprite/RATXA0"]);
     expect(readRules(back.changes.find((change) => change.kind === "rules")!.data)).toEqual(rules);
+  }, 60000);
+
+  test("a new kind of thing is made from another, with moments of its own, and does what its moments say", async () => {
+    const zombie = RULE_THINGS.find((thing) => thing.id === "MT_POSSESSED")!;
+    // The engine's moments, as the editor has them: a zombie stands looking about, two moments round and round.
+    expect([OWN_STATES, OWN_THINGS, ACTIONS.length]).toEqual([967, 137, 74]);
+    const standing = momentsFrom(new Map(), zombie.spawnstate);
+    expect(standing.map((moment) => [moment.sprite, moment.frame, moment.tics, moment.action])).toEqual([["POSS", 0, 10, "A_Look"], ["POSS", 1, 10, "A_Look"]]);
+    expect(standing[1]!.next).toBe(zombie.spawnstate);
+
+    // A new kind, like the zombie: a place of its own, a number for levels, and every moment it can reach copied to spare places.
+    const made = copyThing(new Map(), zombie)!;
+    const mine = thingsOf(made.rules).find((thing) => thing.index === made.index)!;
+    expect([made.index, mine.number, mine.health, mine.seesound]).toEqual([137, 5000, zombie.health, zombie.seesound]);
+    expect(mine.spawnstate).toBeGreaterThanOrEqual(OWN_STATES);
+    const copied = momentsFrom(made.rules, mine.spawnstate);
+    expect(copied.map((moment) => [moment.sprite, moment.frame, moment.tics, moment.action])).toEqual(standing.map((moment) => [moment.sprite, moment.frame, moment.tics, moment.action]));
+    // Its moments go round among themselves, not back to the zombie's.
+    expect(copied.every((moment) => moment.number >= OWN_STATES && moment.next >= OWN_STATES)).toBe(true);
+    expect(momentsFrom(made.rules, mine.deathstate).at(-1)!.tics).toBe(-1);
+    // The zombie is as it was; and a second copy takes the next place and the next number.
+    expect(thingsOf(made.rules).find((thing) => thing.index === zombie.index)).toEqual(zombie);
+    const second = copyThing(made.rules, mine)!;
+    expect([second.index, thingsOf(second.rules).find((thing) => thing.index === second.index)!.number]).toEqual([138, 5001]);
+    // Taken out again, nothing of it is left.
+    expect(removeThing(made.rules, made.index).size).toBe(0);
+    expect([...removeThing(second.rules, second.index)].sort()).toEqual([...made.rules].sort());
+
+    // What it does: standing about, it screams (its dying sound, which is ours) where a zombie looks for a player; and it is drawn with a sprite of its own.
+    const rules = new Map(made.rules);
+    for (const moment of copied) rules.set(`state.${moment.number}.action`, "A_Scream");
+    rules.set(`state.${copied[0]!.number}.tics`, "4");
+    rules.set(thingKey(mine, "deathsound"), "DSMINE");
+    rules.set(thingKey(mine, "sprite"), "RATX");
+    expect(momentOf(rules, copied[0]!.number)).toMatchObject({ action: "A_Scream", tics: 4 });
+    expect(readRules(writeRules(rules))).toEqual(rules);
+
+    const green = fromRgba(new Uint8ClampedArray([0, 255, 0, 255]), 1, 1, palette).pixels[0]!;
+    const body: Picture = { width: 60, height: 70, left: 30, top: 68, pixels: new Uint8Array(60 * 70).fill(green), solid: new Uint8Array(60 * 70).fill(1) };
+    const tone = encodeDmx({ rate: 11025, samples: Float32Array.from({ length: 1777 }, (_, i) => Math.sin(i / 3)) });
+    const changes: Change[] = [
+      { kind: "sprite", name: "RATXA0", data: encodePatch(body) },
+      { kind: "sprite", name: "RATXB0", data: encodePatch(body) },
+      { kind: "sound", name: "DSMINE", data: tone },
+      { kind: "rules", name: RULES, data: writeRules(rules) },
+    ];
+    /** The first level with one thing of a number stood in front of the player, facing away, and nothing else alive. */
+    const play = async (type: number, with_: Change[]) => {
+      const from = readWad(applyMod(game, with_));
+      const things = levelLumps(from, "E1M1")!.get("THINGS")!;
+      const placed = decodeThings(things.lump.data);
+      const me = placed.find((thing) => thing.type === 1)!;
+      const turn = (me.angle * Math.PI) / 180;
+      const kept = placed.filter((thing) => thing.type <= 4 || thingKind(thing.type)?.group !== "monster");
+      kept.push({ type, x: Math.round(me.x + Math.cos(turn) * 160), y: Math.round(me.y + Math.sin(turn) * 160), angle: me.angle, flags: FLAG_EASY | FLAG_MEDIUM | FLAG_HARD | 8 });
+      const level = writeWad({ kind: from.kind, lumps: from.lumps.map((one, index) => (index === things.index ? { name: one.name, data: encodeThings(kept) } : one)) });
+      let clock = 0;
+      let picture = new Uint8ClampedArray(0);
+      const heard: Uint8Array[] = [];
+      const sound = { start: (_c: number, _l: number, bytes: () => Uint8Array) => void heard.push(bytes()), update() {}, stop() {}, playing: () => false };
+      const engine = await startEngine(module, new Map([["freedoom1.wad", level]]), "freedoom1.wad", { now: () => clock, frame: (pixels) => (picture = pixels.slice()), sound }, ["-warp", "1", "1"]);
+      for (let i = 0; i < 90; i++) {
+        clock += 1000 / 35;
+        engine.frame();
+      }
+      let count = 0;
+      for (let i = 0; i < 320 * 168 * 4; i += 4) if (picture[i + 1]! > picture[i]! + 40 && picture[i + 1]! > picture[i + 2]! + 40) count++;
+      return { stopped: engine.stopped, green: count / (320 * 168), tones: heard.filter((one) => one.length === tone.length && one.every((byte, i) => byte === tone[i])).length };
+    };
+    // The new kind, placed by its number: there, in its own sprite, screaming every few moments.
+    const ours = await play(5000, changes);
+    expect(ours.stopped).toBeNull();
+    expect(ours.green).toBeGreaterThan(0.02);
+    expect(ours.tones).toBeGreaterThan(3);
+    // A zombie in the same game is still a zombie: its own colours, and quiet with its back turned.
+    const theirs = await play(3004, changes);
+    expect(theirs).toMatchObject({ stopped: null, tones: 0 });
+    expect(theirs.green).toBeLessThan(0.01);
+    // A level that places the new kind, played without the rules that made it: the thing is left out, and the game goes on.
+    expect(await play(5000, [])).toMatchObject({ stopped: null, tones: 0 });
   }, 60000);
 
   test("changes kept as a WAD of their own come back as the same changes", () => {
