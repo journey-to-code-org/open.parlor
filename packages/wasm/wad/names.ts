@@ -180,10 +180,26 @@ const SCREENS: [string, string][] = [
   ["END", "Ending text picture"],
 ];
 
+/** The lumps that are none of the kinds with a tab of their own. */
+const OTHERS: [RegExp, string][] = [
+  [/^PLAYPAL$/, "The game's 256 colours, fourteen times over: as they are, and tinted for being hurt, picking up and the suit"],
+  [/^COLORMAP$/, "Each colour at each of 32 lights, and all in grey"],
+  [/^PNAMES$/, "The list of wall pieces by name"],
+  [/^TEXTURE\d$/, "Which pieces make which wall picture, and where"],
+  [/^ENDOOM$/, "The text screen shown on leaving, where there is one"],
+  [/^GENMIDI$/, "Instruments for the songs"],
+  [/^DMXGUSC?$/, "Instruments for the songs, for one old sound card"],
+  [/^DEMO\d$/, "A recorded game, played behind the title"],
+  [/^D_/, "A song. Put an MP3, an Ogg or a WAV in its place and the game plays it. The game's own songs are in a form nothing here plays yet"],
+  [/^DP/, "A sound for the old PC speaker. Not played here"],
+  [/^DEHACKED$/, "Changes for other engines. Not read by this one"],
+];
+
 /** What a lump is for, or "" when its name is all there is to go on. */
 export function describe(kind: string, name: string): string {
   if (kind === "sprite") return SPRITES[name.slice(0, 4)] ?? "";
   if (kind === "sound") return SOUNDS[name] ?? "";
   if (kind === "screen") return SCREENS.find(([start]) => name.startsWith(start))?.[1] ?? "";
+  if (kind === "other") return OTHERS.find(([start]) => start.test(name))?.[1] ?? "";
   return "";
 }

@@ -89,6 +89,10 @@ too), and one that draws any table sport on a canvas (Mini Golf is the first).
 | Shut the Box | 1 to 6 | A dice game: roll and shut the tiles that add up to it, until a roll can't be made; what's left open is your score. Nine tiles or twelve, one round or several, or alone for a score |
 | Liar's Dice | 2 to 6 | A dice game: everyone's dice are hidden. Bid how many of a number are under all the cups, or call the last bidder a liar; lose a call, lose a die. Ones wild or not, three to five dice each |
 | Backgammon | 2 | A board game: race your checkers home and hit theirs on the way. A friendly game, a money game with the doubling cube, a match to 3, 5 or 7 points, or Nackgammon |
+| Mancala | 2 | A board game (Kalah): sow a pit of seeds round the board, one a pit. End in your store to go again; end in your own empty pit to capture what is across. Three to six seeds a pit, one game or a match |
+| Dominoes | 2 to 4 | The double-six set: lay tiles end to end, matching numbers, and play out your hand. Draw, Block or All Fives (ends that add up to a multiple of five score), to 50, 100, 150 or 200 |
+| Ludo | 2 to 4 | A race round a cross-shaped board: roll a six to come out, move your tokens round the track and up your home column, and send anyone you land on back to their yard. Four tokens or two, with or without safe stars |
+| Chinese Checkers | 2 to 6 | A star of 121 holes: move a peg one hole, or jump over a peg and keep jumping, to get all ten into the point across. Played to 50, 100 or 200 turns each |
 | Mini Golf | 1 to 6 | A table sport: nine holes round a garden (a drainpipe, a pond, toadstools that kick, a mole's tunnels), in turn with balls that knock into each other, or everyone at once |
 
 Poker and Blackjack are for chips only: everyone starts with the same stack, and the chips are
@@ -124,9 +128,9 @@ connection to come back.
 
 A game with nothing hidden can also be **shared on one device**: on its setup screen, *On this
 device* seats two or more of you (computer players take any seats left), and the screen turns to
-whoever's move it is. That is Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon,
-Yacht, Pig, Ten Thousand, Ship, Captain, Crew, Shut the Box, Memory, Hangman, Mini Golf, Bowling, Billiards and Carrom. A game with a hand to hide (every
-turn-based card game, Combat, Liar's Dice, Criss-Crosswords, Secret Word, Anagrams) is **passed round** instead:
+whoever's move it is. That is Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon, Mancala, Ludo, Chinese Checkers,
+Yacht, Pig, Ten Thousand, Ship, Captain, Crew, Shut the Box, Memory, Hangman, Mini Golf, Bowling, Billiards, Carrom, Shuffleboard, Crokinole and Flick Football. A game with a hand to hide (every
+turn-based card game, Dominoes, Combat, Liar's Dice, Criss-Crosswords, Secret Word, Anagrams) is **passed round** instead:
 between people the screen is covered ("Pass to Grammi") until the next person taps. Games played at
 once (Speed, Slapjack, War, Word Hunt, the Mahjongs) can't be shared on one device.
 
@@ -455,8 +459,8 @@ The game engine and the rooms live in their own repositories and come in from np
 | [`packages/designer`](packages/designer) | The card designer (Svelte): draw a deck, keep it or share it, play with it |
 | [`packages/courses`](packages/courses) | Mini Golf courses and bowling lanes people make: painted on a grid, checked, and turned into a hole or a lane the game plays |
 | [`packages/watch`](packages/watch) | The watch page (Solid): the tables playing now, and tables of computer players to learn from |
-| [`packages/wasm`](packages/wasm) | Games compiled to WebAssembly, at `/wasm/`. The first is a shooter on the open-source Doom engine, playing Freedoom, alone or up to four together with others watching; the server only passes the players' commands along. Where there is no server, one device hosts for the others on the same wifi. With an editor (Svelte) that swaps the game's pictures and sounds for your own and changes its levels: what is placed in them, and their walls and rooms, rebuilt by a node builder that is also compiled to WebAssembly. Its engine is GPL-2.0: see the package's README |
-| [`packages/admin`](packages/admin) | The admin app (Angular): the host moderates tables, players, shared designs and shared golf courses |
+| [`packages/wasm`](packages/wasm) | Games compiled to WebAssembly, at `/wasm/`. The first is Delbie's Doomsday, a shooter on the open-source Doom engine with twelve levels of its own laid over Freedoom, alone or up to four together with others watching; the server only passes the players' commands along. Where there is no server, one device hosts for the others on the same wifi. With an editor (Svelte) that swaps the game's pictures and sounds for your own and changes its levels: what is placed in them, and their walls and rooms, rebuilt by a node builder that is also compiled to WebAssembly. Its engine is GPL-2.0: see the package's README |
+| [`packages/admin`](packages/admin) | The admin app (Angular): the host moderates tables, players, shared designs and shared golf courses. A page per part at its own address (`/admin/tables/<id>`, `/admin/tables?show=open`), loaded when opened; reactive forms over the Zubra fields and switches |
 | [`packages/conformance`](packages/conformance) | One fixture of the components in every framework, and one set of browser tests run against them all |
 | [`packages/ui`](packages/ui) | Components in Zubra: our own (cards, seats), the ones copied from zubra-ui, and the `<card-room>` embed |
 
@@ -492,7 +496,8 @@ The clue count is the only dial for "hard", so a Saturday puzzle is fewer clues,
 harder techniques.
 
 One set of Zubra components serves five frameworks: React and Vue in the parlor, Svelte in the
-designer, Solid on the watch page and Angular in the admin app.
+designer and in the Mini Golf course and bowling lane editors (Svelte inside the React app,
+`packages/web/src/golf/`), Solid on the watch page and Angular in the admin app.
 
 The server decides every move. Each player's browser only ever receives its own view of a table
 (its own hand), never the whole game; moves the rules don't allow are refused on the server.
@@ -574,6 +579,8 @@ one of the parlor's own decks, one of theirs, or any deck in the gallery. Everyo
 and everyone watching then sees those cards. The table keeps its own copy of the design, so its
 maker changing or deleting it, or the host hiding it, never changes the cards in the middle of a
 game. A table can only wear a deck its chooser could show everyone: theirs, or a shared one.
+
+**A house's chat.** A house's page has one conversation for everyone in the house, whichever table they are at or none (`/houses/:slug/chat`, `packages/server/src/housechat.ts`). Members only; the last 200 messages are kept, 280 characters each. Anyone can take down their own message, and the owner and admins anyone's. Words aren't covered, as they aren't at a family table. A member who doesn't have the chat open gets a buzz, at most one every five minutes. The page asks for what is new every four seconds while it is being looked at. The chat also shows who is here: the members whose pages asked in the last twenty seconds. On the page it is a Vue island of Zubra components (`packages/web/src/house/HouseChat.vue`) over a plain store (`house/chat.ts`).
 
 **A house's cards.** A house's owner or an admin picks, on the house's page, the deck its tables start with (`POST /houses/:slug/deck`), from the same choices. The house keeps its own copy, as a table does, every member sees which it is, and the players at a table can still pick another before the deal. Tournament matches start with it too.
 
@@ -828,13 +835,14 @@ open.blog post, a WordPress HTML block, a Squarespace code block), with the parl
 | Attribute | |
 | --- | --- |
 | `server` | The parlor's address. Required. |
-| `game` | Any game that can be played against the computer, by its id (`hearts`, `chess`, `minigolf`, `secretword`…), or leave it out to offer Spades and Palace. |
+| `game` | Any game that can be played against the computer, or any arcade game, by its id (`hearts`, `chess`, `minigolf`, `secretword`, `airhockey`…), or leave it out to offer Spades and Palace. Draw & Guess is the one game it can't deal: computer players can't draw. |
 | `challenge` | Your challenge link's code (the end of `?challenge=…`), for a "Challenge Grammi" button. |
 | `who` | The name on that button. |
 
 **Play here** deals a practice game against the computer inside the page. **Challenge** and
 family tables open the parlor in a new tab: browsers don't let a game in a frame on someone
-else's site keep you signed in, and the parlor is where your houses and tables live.
+else's site keep you signed in, and the parlor is where your houses and tables live. An arcade
+game is played against the game itself, so it gets **Play here** and a link to the game in the parlor.
 
 The build also writes a WordPress plugin and a Shopify app block to `packages/web/dist/embed`
 (see its README).
@@ -846,11 +854,18 @@ section**, with a form and no code ([ADR 0408](https://github.com/journey-to-cod
 The web build writes `<card-room>` in that shape to `packages/web/dist/embed/openblog/` (also served at
 `/embed/openblog/`):
 
-1. Copy `card-room.js`, `card-room.zb` and `card-room.css` into the theme's `components/` folder.
+1. Copy `card-room.js`, `card-room.zb`, `card-room.css` and `card-room.games.json` into the theme's
+   `components/` folder.
 2. Add the `components` entry from `theme-components.json` to the theme's `theme.json`, and list
    `components/card-room.css` under its `stylesheets`. With seasons, put it on the theme they extend.
-3. In Admin: **Landing page → Add a section → Parlor**, then the parlor's address and, for a
+3. In Admin: **Landing page → Add a section → Parlor**, then the parlor's address, the game and, for a
    Challenge button, your challenge link code.
+
+The form's games come from `card-room.games.json` (the game setting's `choicesFrom`, open.blog
+[ADR 0433](https://github.com/journey-to-code-org/open.blog/blob/main/docs/adr/0433-a-choice-setting-may-read-more-choices-from-a-file-of-the-themes-own.md)):
+when the parlor gains a game, replace that one file. The widget itself asks the parlor for its
+list (`/embed/games.json`) when it starts, so the copied `card-room.js` plays a new game without
+being copied again.
 
 With the `zubra` command installed where the site builds, open.blog renders the widget ahead, so
 readers without JavaScript still see it and its link to the parlor.

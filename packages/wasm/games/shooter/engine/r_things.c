@@ -105,9 +105,12 @@ R_InstallSpriteLump
 {
     int		r;
 	
+    // [open.wasm] None of what follows is the end of the game any more: a WAD someone is
+    // adding sprites to can have a picture misnamed, one picture for all sides where there were
+    // eight, or the same side twice. A name that makes no sense is passed over, and otherwise the
+    // later picture is the one used.
     if (frame >= 29 || rotation > 8)
-	I_Error("R_InstallSpriteLump: "
-		"Bad frame characters in lump %i", lump);
+	return;
 	
     if ((int)frame > maxframe)
 	maxframe = frame;
@@ -115,14 +118,6 @@ R_InstallSpriteLump
     if (rotation == 0)
     {
 	// the lump should be used for all rotations
-	if (sprtemp[frame].rotate == false)
-	    I_Error ("R_InitSprites: Sprite %s frame %c has "
-		     "multip rot=0 lump", spritename, 'A'+frame);
-
-	if (sprtemp[frame].rotate == true)
-	    I_Error ("R_InitSprites: Sprite %s frame %c has rotations "
-		     "and a rot=0 lump", spritename, 'A'+frame);
-			
 	sprtemp[frame].rotate = false;
 	for (r=0 ; r<8 ; r++)
 	{
@@ -133,19 +128,11 @@ R_InstallSpriteLump
     }
 	
     // the lump is only used for one rotation
-    if (sprtemp[frame].rotate == false)
-	I_Error ("R_InitSprites: Sprite %s frame %c has rotations "
-		 "and a rot=0 lump", spritename, 'A'+frame);
-		
     sprtemp[frame].rotate = true;
 
     // make 0 based
     rotation--;		
-    if (sprtemp[frame].lump[rotation] != -1)
-	I_Error ("R_InitSprites: Sprite %s : %c : %c "
-		 "has two lumps mapped to it",
-		 spritename, 'A'+frame, '1'+rotation);
-		
+
     sprtemp[frame].lump[rotation] = lump - firstspritelump;
     sprtemp[frame].flip[rotation] = (byte)flipped;
 }
@@ -244,8 +231,8 @@ void R_InitSpriteDefs (char** namelist)
 	    {
 	      case -1:
 		// no rotations were found for that frame at all
-		I_Error ("R_InitSprites: No patches found "
-			 "for %s frame %c", spritename, frame+'A');
+		// [open.wasm] Not the end of the game: a sprite someone is part way through
+		// drawing has frames missing. The frame is left marked, and isn't drawn.
 		break;
 		
 	      case 0:
@@ -254,11 +241,20 @@ void R_InitSpriteDefs (char** namelist)
 			
 	      case 1:
 		// must have all 8 frames
+		// [open.wasm] A side that is missing is shown as one that isn't, not the end of the game.
 		for (rotation=0 ; rotation<8 ; rotation++)
 		    if (sprtemp[frame].lump[rotation] == -1)
-			I_Error ("R_InitSprites: Sprite %s frame %c "
-				 "is missing rotations",
-				 spritename, frame+'A');
+		    {
+			int other;
+
+			for (other=0 ; other<8 ; other++)
+			    if (sprtemp[frame].lump[other] != -1)
+			    {
+				sprtemp[frame].lump[rotation] = sprtemp[frame].lump[other];
+				sprtemp[frame].flip[rotation] = sprtemp[frame].flip[other];
+				break;
+			    }
+		    }
 		break;
 	    }
 	}
@@ -501,12 +497,12 @@ void R_ProjectSprite (mobj_t* thing)
 		 thing->sprite);
 #endif
     sprdef = &sprites[thing->sprite];
-#ifdef RANGECHECK
+    // [open.wasm] A frame the WAD hasn't a picture for is not drawn, where it was the end of the game.
     if ( (thing->frame&FF_FRAMEMASK) >= sprdef->numframes )
-	I_Error ("R_ProjectSprite: invalid sprite frame %i : %i ",
-		 thing->sprite, thing->frame);
-#endif
+	return;
     sprframe = &sprdef->spriteframes[ thing->frame & FF_FRAMEMASK];
+    if ((int) sprframe->rotate == -1)
+	return;
 
     if (sprframe->rotate)
     {
@@ -654,12 +650,12 @@ void R_DrawPSprite (pspdef_t* psp)
 		 psp->state->sprite);
 #endif
     sprdef = &sprites[psp->state->sprite];
-#ifdef RANGECHECK
+    // [open.wasm] As for a thing: a frame with no picture is not drawn.
     if ( (psp->state->frame & FF_FRAMEMASK)  >= sprdef->numframes)
-	I_Error ("R_ProjectSprite: invalid sprite frame %i : %i ",
-		 psp->state->sprite, psp->state->frame);
-#endif
+	return;
     sprframe = &sprdef->spriteframes[ psp->state->frame & FF_FRAMEMASK ];
+    if ((int) sprframe->rotate == -1)
+	return;
 
     lump = sprframe->lump[0];
     flip = (boolean)sprframe->flip[0];
