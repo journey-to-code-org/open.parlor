@@ -16,9 +16,8 @@
 <script lang="ts">
   import { bowling, LANES, newBowling, tenFrames, type SportView } from "@journey-to-code/games";
   import { buildLane, LANE_LIMITS, LANE_PIECES, starterLane, type CustomLane, type LanePiece, type LaneTest } from "@open-parlor/courses";
-  // `?element`: the element itself. In this React app a .zb import from anywhere but a .vue file is
-  // React's wrapper otherwise (zubra#377).
-  import "@open-parlor/ui/zubra-ui/text-field.zb?element";
+  // A .zb import in a .svelte file is the element itself, whatever the app (Zubra 5.23).
+  import "@open-parlor/ui/zubra-ui/text-field.zb";
   import { untrack } from "svelte";
   import { loadName } from "../storage";
   import { learnLane, lanes, type SavedLane } from "./coursesApi";
