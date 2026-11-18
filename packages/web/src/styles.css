@@ -2193,6 +2193,8 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 }
 
 /* ---------- Mini Golf: the course editor ---------- */
+/* The Svelte editors' host (golf/editors.tsx): their <main> lays out as if React drew it. */
+.svelte-island { display: contents; }
 .setup.golf-editor { max-width: 980px; }
 .golf-editor .setup-head h1 { font-size: clamp(2rem, 6vw, 2.6rem); }
 .golf-holes { display: flex; flex-wrap: wrap; gap: 6px; }
