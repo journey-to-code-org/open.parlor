@@ -27,6 +27,9 @@ export interface Verdict {
   empty: number;
 }
 
+// Numbers the host has promoted into the code: a pull request opened from the admin app commits this file.
+import promoted from "./promoted/sudoku.json" with { type: "json" };
+
 const LEVELS = [
   { level: "Easy", clues: 40 }, // Sunday
   { level: "Easy", clues: 38 }, // Monday
@@ -35,7 +38,11 @@ const LEVELS = [
   { level: "Medium", clues: 31 },
   { level: "Hard", clues: 29 },
   { level: "Hard", clues: 27 }, // Saturday
-];
+].map((day, weekday) => {
+  // The clues promoted into the code stand in for the table's, when they are seven whole numbers in range.
+  const own = (promoted as { clues?: unknown }).clues;
+  return Array.isArray(own) && own.length === 7 && own.every((n) => Number.isInteger(n) && n >= 22 && n <= 60) ? { ...day, clues: own[weekday] as number } : day;
+});
 
 // 0..80 -> the bit each of its houses (row, column, box) needs.
 const ROW = (i: number) => Math.floor(i / 9);

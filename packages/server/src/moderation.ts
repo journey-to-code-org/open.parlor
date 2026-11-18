@@ -15,6 +15,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { playerOf, type ChatMessage, type RoomDoc } from "@journey-to-code/rooms/server";
 import type { Catalogue } from "./catalogue.js";
 import type { Tunables } from "./tunables.js";
+import { PromoteError, type Promote } from "./promote.js";
 import type { GithubLogin } from "./github-login.js";
 import type { Backups } from "./backup.js";
 import type { Courses } from "./courses.js";
@@ -74,7 +75,7 @@ const finished = (summary: unknown) => {
 /** How many wrong tokens a minute before everyone waits. */
 const WRONG_TOKENS_PER_MINUTE = 20;
 
-export function createModeration(rooms: Rooms, designs: Designs, { token, github, houses, catalogue, tunables, backups, bots, courses, packs, mount = "/moderation", now = () => Date.now() }: { token?: string; /** The pack Road to the Shootout plays, when the host has published one (see packs.ts). */ packs?: Packs; /** Who may sign in with GitHub instead of the token (see github-login.ts). */ github?: Pick<GithubLogin, "enabled" | "valid">; houses?: Houses; catalogue?: Catalogue; /** The numbers a game lets its host change (see tunables.ts). */ tunables?: Tunables; /** Mini Golf courses people make, to take out of the gallery. */ courses?: Courses; /** Copies of the database, when the parlor keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
+export function createModeration(rooms: Rooms, designs: Designs, { token, github, houses, catalogue, tunables, promote, backups, bots, courses, packs, mount = "/moderation", now = () => Date.now() }: { token?: string; /** Who may sign in with GitHub instead of the token (see github-login.ts). */ github?: Pick<GithubLogin, "enabled" | "valid">; houses?: Houses; catalogue?: Catalogue; /** The numbers a game lets its host change (see tunables.ts). */ tunables?: Tunables; /** Opens a pull request for them (see promote.ts). */ promote?: Promote; /** The pack Road to the Shootout plays, when the host has published one (see packs.ts). */ packs?: Packs; /** Mini Golf courses people make, to take out of the gallery. */ courses?: Courses; /** Copies of the database, when the parlor keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
   const secret = token?.trim() ? digest(token.trim()) : null;
   const docs = rooms.sync.documents();
   let wrong: number[] = [];
@@ -369,13 +370,26 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, github
 
     if (area === "tunables" && tunables) {
       // GET /moderation/tunables → every game that can be tuned, the shape of what it takes, and what is saved
-      if (!id && method === "GET") return json({ games: await Promise.all(tunables.games().map(async (g) => ({ ...g, saved: await tunables.get(g.id) }))) });
+      if (!id && method === "GET") return json({ canPromote: promote?.enabled === true, games: await Promise.all(tunables.games().map(async (g) => ({ ...g, saved: await tunables.get(g.id), promoted: (await promote?.last(g.id)) ?? null }))) });
       // POST /moderation/tunables/:game { values } → the game's overrides, replaced (what's wrong comes back as 422 and nothing changes)
       if (id && !action && method === "POST") {
         const result = await tunables.set(id, input.values);
         if ("problems" in result) return json({ error: result.problems[0], problems: result.problems }, 422);
         await record("Changed a game's numbers", id, `version ${result.saved.version}`);
         return json(result.saved);
+      }
+      // POST /moderation/tunables/:game/promote → a draft pull request that writes the saved numbers into the code
+      if (id && action === "promote" && method === "POST") {
+        if (!promote) return json({ error: "Opening pull requests isn't set up on this parlor." }, 503);
+        const saved = await tunables.get(id);
+        try {
+          const made = await promote.open(id, saved);
+          await record("Opened a pull request for a game's numbers", id, `version ${made.version}: ${made.url}`);
+          return json(made);
+        } catch (error) {
+          if (error instanceof PromoteError) return json({ error: error.message }, error.status);
+          throw error;
+        }
       }
       // POST /moderation/tunables/:game/reset → back to the game's own numbers
       if (id && action === "reset" && method === "POST") {

@@ -44,6 +44,16 @@ const DEFAULTS: Record<string, string> = { "back-room": "../wasm/battler-default
               <action-button variant="outline" [disabled]="saving() || !f.dirty" (click)="revert()">Undo my changes</action-button>
               <action-button variant="outline" [disabled]="saving() || !changed(game)" (click)="reset(game)">Back to the game's own numbers</action-button>
             </div>
+            @if (canPromote()) {
+              <div class="actions" data-testid="promote">
+                <action-button variant="outline" [disabled]="saving() || f.dirty || !changed(game) || done(game)" (click)="promote(game)">Open a pull request</action-button>
+                <span class="quiet">
+                  @if (game.promoted?.version === game.saved.version) { Opened for this version: <a [href]="game.promoted!.url" target="_blank" rel="noopener">#{{ game.promoted!.number }}</a>. }
+                  @else if (f.dirty) { Save first: the pull request is for what is saved. }
+                  @else { Writes the saved numbers into the code, as a draft for review. Nothing is merged. }
+                </span>
+              </div>
+            }
             @if (f.invalid && f.dirty) { <p class="problem" role="alert">{{ trouble() }}</p> }
           </form>
         }
@@ -56,6 +66,7 @@ export class TuningPage implements OnInit {
   private readonly ask = inject(Ask);
   protected readonly games = signal<TunableGame[]>([]);
   protected readonly loadError = signal("");
+  protected readonly canPromote = signal(false);
   protected readonly saving = signal(false);
   protected readonly problems = signal<string[]>([]);
   protected readonly pick = new FormControl("", { nonNullable: true });
@@ -72,7 +83,8 @@ export class TuningPage implements OnInit {
   async ngOnInit(): Promise<void> {
     this.pick.valueChanges.subscribe((id) => void this.show(id));
     try {
-      const games = await this.admin.api.tunables();
+      const { games, canPromote } = await this.admin.api.tunables();
+      this.canPromote.set(canPromote === true);
       this.games.set(games);
       const first = games[0]?.id ?? "";
       this.pick.setValue(first);
@@ -125,6 +137,21 @@ export class TuningPage implements OnInit {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  protected done = (game: TunableGame) => game.promoted?.version === game.saved.version;
+
+  protected promote(game: TunableGame): void {
+    this.ask.ask({
+      title: `Open a pull request for ${game.name}?`,
+      body: `The numbers saved as version ${game.saved.version} are written into the code on a new branch, and a draft pull request is opened for review. Nothing is merged, and the live numbers don't change.`,
+      action: "Open the pull request",
+      run: async () => {
+        const made = await this.admin.api.promoteTunables(game.id);
+        this.games.update((all) => all.map((g) => (g.id === game.id ? { ...g, promoted: made } : g)));
+        return `Pull request #${made.number} is open for ${game.name}.`;
+      },
+    });
   }
 
   protected reset(game: TunableGame): void {
