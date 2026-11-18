@@ -652,6 +652,8 @@ h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; }
 /* Inside another site's page: no big header, a little tighter. */
 .setup.embedded { padding-top: 16px; gap: 12px; }
 .setup.embedded a { color: var(--gold); }
+/* An arcade or idle game keeps its own screens in the embed, without the way back to the front page. */
+.in-embed .all-games, .in-embed .delbies-back, .in-embed .pinks-back { display: none; }
 
 /* Table settings: the ⚙︎ beside the sound toggle, and its sheet. */
 .settings-toggle {
@@ -1763,6 +1765,48 @@ html[data-motion="off"] .track .cube { animation: none; transition: none; }
    The dice sit in a row, as big as a phone's width allows. A held die sits up out of the row with a
    gold edge and a tag, so what's kept is plain without colour; dice left over from the last turn are dim. */
 .dice { --die: clamp(46px, 14.5vw, 72px); display: flex; justify-content: center; gap: calc(var(--die) * 0.2); padding: calc(var(--die) * 0.34) 4px calc(var(--die) * 0.1); }
+/* Mancala: a wooden board, a pit a cell, and the number of seeds in each. Your own row is the gold one. */
+.board-mancala .board-grid { background: linear-gradient(#9a6a3a, #7d5229); border-radius: 22px; padding: 3cqw; gap: 2.4cqw; aspect-ratio: auto; --line: transparent; }
+.board-mancala .board-grid .cell { aspect-ratio: 1; border: 0; border-radius: 50%; background: radial-gradient(circle at 50% 35%, #5b3817, #3f2610); box-shadow: inset 0 0.8cqw 1.6cqw rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.18); font-size: 6.4cqw; }
+.board-mancala .piece.kind-seeds { font-weight: 700; text-shadow: none; }
+.board-mancala .piece.kind-seeds.tone-gold { color: #f3d77f; }
+.board-mancala .piece.kind-seeds.tone-blue { color: #b9d6f7; }
+.board-mancala .board-grid .cell.can { box-shadow: inset 0 0.8cqw 1.6cqw rgba(0, 0, 0, 0.55), 0 0 0 max(2px, 0.6cqw) rgba(232, 196, 106, 0.95); }
+@media (hover: hover) { .board-mancala .board-grid .cell.can:hover { background: radial-gradient(circle at 50% 35%, #74491f, #4f3014); } }
+.board-mancala .board-grid .cell.mark-last { box-shadow: inset 0 0.8cqw 1.6cqw rgba(0, 0, 0, 0.55), 0 0 0 max(2px, 0.6cqw) #fffdf8; }
+.board-mancala .board-grid .cell.mark-from { background: radial-gradient(circle at 50% 35%, #7a5630, #5a3a1c); }
+.board-mancala .board-grid .cell.mark-threat { box-shadow: inset 0 0.8cqw 1.6cqw rgba(0, 0, 0, 0.55), 0 0 0 max(2px, 0.6cqw) var(--red); }
+
+/* Dominoes: the line is tiles laid end to end, wrapping where the table runs out; a double stands
+   across it. Your own tiles stand upright under it, big enough to tap. */
+.board-dominoes .boards.many .board-wrap, .board-dominoes .boards.many .board-wrap.side { width: 100%; --board-max: 100%; flex: 1 1 100%; }
+.board-dominoes .board-grid {
+  --tile: clamp(20px, 6.2vw, 34px);
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; align-content: center; gap: 3px;
+  aspect-ratio: auto; min-height: calc(var(--tile) * 2 + 16px); padding: 8px 4px; overflow: visible;
+  background: rgba(8, 28, 20, 0.35); box-shadow: inset 0 0 0 1px rgba(255, 253, 248, 0.08); border-radius: 12px;
+}
+.board-dominoes .board-wrap.side .board-grid { --tile: clamp(30px, 10.5vw, 46px); gap: 6px; background: none; box-shadow: none; padding: 4px 0; }
+.board-dominoes .board-grid .cell { border: 0; flex: none; font-size: 1rem; border-radius: 6px; }
+.board-dominoes .board-grid .cell:empty { width: calc(var(--tile) * 2); height: var(--tile); }
+.board-dominoes .piece.kind-domino { display: block; color: inherit; text-shadow: none; }
+.domino {
+  display: flex; align-items: stretch; width: calc(var(--tile) * 2); height: var(--tile);
+  background: linear-gradient(#fffdf8, #efe6d2); border-radius: calc(var(--tile) * 0.16); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(29, 26, 22, 0.25);
+}
+/* Upright: a double in the line, and every tile in your hand. */
+.domino.double, .board-wrap.side .domino { flex-direction: column; width: var(--tile); height: calc(var(--tile) * 2); }
+.domino-half { flex: 1 1 0; min-width: 0; min-height: 0; display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); padding: 14%; gap: 6%; }
+.domino-half .pip { border-radius: 50%; background: #1d1a16; }
+.domino-bar { flex: none; align-self: center; width: 1px; height: 70%; background: rgba(29, 26, 22, 0.45); }
+.domino.double .domino-bar, .board-wrap.side .domino .domino-bar { width: 70%; height: 1px; }
+.board-dominoes .board-grid .cell.mark-last { box-shadow: 0 0 0 2px rgba(232, 196, 106, 0.95); }
+/* On your turn the tiles that can't be played step back, and one picked up to choose its end lifts. */
+.board-dominoes .board-wrap.side .board-grid:has(.cell.can) .cell:not(.can) .domino { opacity: 0.45; }
+.board-dominoes .board-wrap.side .cell.can { cursor: pointer; transition: transform 0.12s; }
+.board-dominoes .board-wrap.side .cell.mark-from { background: none; transform: translateY(-8px); box-shadow: 0 0 0 2px rgba(232, 196, 106, 0.95); }
+@media (hover: hover) { .board-dominoes .board-grid .cell.can:hover { background: none; transform: translateY(-3px); } }
+
 /* Shut the Box: an open tile is a dark number on the light wood; a shut one is turned face down, dark, its number faint. */
 .board-shutthebox .piece.kind-tile { color: #1d1a16; text-shadow: none; }
 .board-shutthebox .board-grid .cell:has(.kind-shut) { background: #2b231c; }
@@ -2149,6 +2193,8 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 }
 
 /* ---------- Mini Golf: the course editor ---------- */
+/* The Svelte editors' host (golf/editors.tsx): their <main> lays out as if React drew it. */
+.svelte-island { display: contents; }
 .setup.golf-editor { max-width: 980px; }
 .golf-editor .setup-head h1 { font-size: clamp(2rem, 6vw, 2.6rem); }
 .golf-holes { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -2880,6 +2926,13 @@ button.mj-slot { cursor: pointer; }
 .sr-laptop li { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 8px 10px; background: #fff; border: 1px solid #c7d0db; }
 .sr-laptop li div { display: grid; }
 
+/* Road to the Shootout as it is now: a game compiled to WebAssembly, in a frame that fills the screen under its bar. */
+.shootout { display: flex; flex-direction: column; height: 100dvh; background: #000; }
+.shootout-game { flex: 1; min-height: 0; width: 100%; border: 0; display: block; background: #000; }
+.shootout .pinks-top { flex-wrap: nowrap; }
+.shootout .pinks-top h1 { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shootout-workshop { font-size: 0.85rem; color: var(--amber); white-space: nowrap; }
+
 /* ---------- Offline ---------- */
 /* A note that floats over the top of any screen: no connection, or (once) that the games are kept here now. */
 .offline-note {
@@ -3169,3 +3222,35 @@ button.word-tile:active:not(:disabled) { transform: translateY(2px); }
 .counter-dream span { font-style: normal; color: var(--muted-foreground, #667); }
 .counter-final { margin: 0.4rem 0 0; font-size: 2.4rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 @media (min-width: 720px) { .counter-lookup { grid-template-columns: 1fr 1.4fr; } .counter-add { grid-column: 1 / -1; } }
+
+/* Read the Room: a question, a form, and what the room said. The components bring their own looks; the felt's colours are handed to them here. */
+.room {
+  --card: rgba(0, 0, 0, 0.24); --border: rgba(255, 255, 255, 0.2); --input: rgba(0, 0, 0, 0.24); --muted: rgba(255, 255, 255, 0.14); --muted-foreground: #cfe2d6;
+  --primary: var(--gold); --primary-foreground: var(--ink); --foreground: #fff; --card-foreground: #fff; --accent: rgba(255, 255, 255, 0.12); --accent-foreground: #fff; --secondary: rgba(255, 255, 255, 0.14); --secondary-foreground: #fff; --ring: var(--gold);
+  box-sizing: border-box; width: 100%; max-width: 40rem; margin: 0 auto; padding: 0.75rem 1rem 0.25rem; display: grid; gap: 0.9rem; color: #fff;
+}
+.room > *, .room-form > * { min-width: 0; }
+.room-board { display: grid; gap: 0.6rem; }
+.room-count { margin: 0; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
+.room-question { margin: 0; font-size: 1.45rem; line-height: 1.25; }
+.room-headline { margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--gold); }
+.room-seats, .room-gains { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.9rem; }
+.room-seats[hidden], .room-gains[hidden] { display: none; }
+.room-seats li { display: grid; justify-items: center; gap: 0.3rem; opacity: 0.7; }
+.room-seats li.done { opacity: 1; }
+.room-gains li { display: flex; gap: 0.4rem; align-items: baseline; padding: 0.3rem 0.7rem; border-radius: 999px; background: rgba(0, 0, 0, 0.25); font-weight: 700; }
+.room-gains li.none { opacity: 0.55; font-weight: 400; }
+.room-form { display: grid; gap: 0.85rem; }
+.room-form range-slider, .room-form text-field, .room-form tag-input, .room-form choice-cards, .room-form segmented-control { display: block; }
+.room-ends { display: flex; justify-content: space-between; gap: 1rem; margin: -0.4rem 0 0; font-size: 0.85rem; color: var(--muted-foreground); }
+.room-ends span:last-child { text-align: right; }
+.room-hint, .room-waiting { margin: 0; color: var(--muted-foreground); }
+.room-line { padding: 0.6rem 0.8rem; border-radius: 0.8rem; background: rgba(0, 0, 0, 0.2); }
+.room-line p { margin: 0 0 0.3rem; font-size: 1.05rem; }
+/* The big screen: for a television in the corner, read from across the room. */
+.room-watching { max-width: 64rem; padding-top: 2rem; gap: 1.5rem; }
+.room-board.big { gap: 1.2rem; text-align: center; justify-items: center; }
+.room-board.big .room-question { font-size: clamp(1.8rem, 4.6vw, 3.4rem); }
+.room-board.big .room-headline { font-size: clamp(1.3rem, 3vw, 2.2rem); }
+.room-board.big bar-chart { display: block; width: min(100%, 44rem); font-size: 1.25rem; text-align: left; }
+.room-board.big .room-seats, .room-board.big .room-gains { justify-content: center; font-size: 1.2rem; }

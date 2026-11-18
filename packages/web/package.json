@@ -5,14 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && zubra build --embed ../ui/embed --out dist/embed --name cardroom && node scripts/embed-titles.mjs && node scripts/openblog-component.mjs && node scripts/precache.mjs",
+    "build": "vite build && zubra build --embed ../ui/embed --out dist/embed --name cardroom && node scripts/embed-games.mjs --manifest dist/embed/games.json && node scripts/embed-titles.mjs && node scripts/openblog-component.mjs && node scripts/precache.mjs",
     "preview": "vite preview",
-    "typecheck": "zubra types ../ui/src --dir .zubra/types --framework react && tsc -p tsconfig.json --noEmit",
+    "typecheck": "zubra types ../ui/src --dir .zubra/types --framework react && tsc -p tsconfig.json --noEmit && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "test": "vitest run"
   },
   "dependencies": {
     "@journey-to-code/decks": "^0.1.0",
-    "@journey-to-code/games": "^0.1.34",
+    "@journey-to-code/games": "^0.1.38",
     "@journey-to-code/palace": "^0.1.0",
     "@journey-to-code/physics": "^0.1.2",
     "@journey-to-code/relay": "^0.1.0",
@@ -29,10 +29,13 @@
     "qrcode-generator": "^2.0.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "solid-js": "^1.9.19",
+    "svelte": "^5.57.3",
     "three": "^0.187.0",
     "vue": "^3.5.45"
   },
   "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
@@ -40,8 +43,10 @@
     "@vitejs/plugin-react": "^6.3.0",
     "@zubra/compiler": "^5.22.0",
     "@zubra/unplugin": "^5.22.0",
+    "svelte-check": "^4.7.8",
     "typescript": "^5.6.0",
     "vite": "^8.3.8",
+    "vite-plugin-solid": "^2.11.16",
     "vitest": "^2.1.0"
   }
 }

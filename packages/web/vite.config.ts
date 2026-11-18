@@ -1,8 +1,10 @@
 import { fileURLToPath } from "node:url";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 import react from "@vitejs/plugin-react";
 import vue from "@vitejs/plugin-vue";
 import zubra from "@zubra/unplugin/vite";
 import { defineConfig } from "vite";
+import solid from "vite-plugin-solid";
 
 const local = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 const base = process.env.BASE_PATH ?? "/";
@@ -14,13 +16,19 @@ export default defineConfig({
   define: { __BUILT__: JSON.stringify(new Date().toISOString().slice(0, 16) + "Z") },
   // In .tsx files, a .zb import is a typed React component: props in, on<Event> handlers out.
   // The start page's game picker is a Vue island inside the React app: in a .vue file, a .zb import
-  // is a Vue component (Zubra's Vue adapter), so the same components serve both frameworks.
+  // is a Vue component (Zubra's Vue adapter), so the same components serve both frameworks. The
+  // Mini Golf and bowling editors are Svelte (src/golf/*.svelte): there a .zb import asks for the
+  // element itself (`?element`), which Svelte uses like any other.
   plugins: [
     // Each app keeps the typings Zubra writes for it in its own folder: the components are shared with
     // apps in other frameworks.
     zubra({ dts: { dir: ".zubra/types" } }),
-    react(),
+    // Two frameworks write .tsx. The files in src/solid/ are Solid's (Read the Room's board); every
+    // other .tsx is React's. In a Solid file a .zb import is asked for as the element (?element).
+    react({ exclude: /src\/solid\// }),
+    solid({ include: /src\/solid\/.*\.tsx$/ }),
     vue(),
+    svelte(),
     {
       // Link previews need the image's full address. With SITE_ORIGIN (the Pages build) it's written
       // in now; otherwise __ORIGIN__ stays for the server to fill in with its own address.

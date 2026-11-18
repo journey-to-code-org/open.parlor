@@ -19,7 +19,7 @@ import { Setup } from "./Setup";
 const Home = lazy(() => import("./home/Home").then((m) => ({ default: m.Home })));
 import { isArcadeGame, isIdleGame, isKitGame, type ArcadeGameId, type KitGameId } from "@journey-to-code/games";
 import { IdleTable } from "./idle/IdleTable";
-import { PinkSlips } from "./drive/PinkSlips";
+import { Shootout } from "./drive/Shootout";
 import type { SoloGameId } from "./GamePicker";
 import { ArcadeSetup } from "./arcade/ArcadeSetup";
 import { ArcadeTable, isLiveArcade } from "./arcade/ArcadeTable";
@@ -27,9 +27,8 @@ import { AirHockeyTable } from "./arcade/AirHockeyTable";
 import { QuestTable } from "./quest/QuestTable";
 import { CounterTable } from "./counter/CounterTable";
 import { KitSetup } from "./kit/KitSetup";
-import { CourseEditor } from "./golf/CourseEditor";
+import { CourseEditor, LaneEditor } from "./golf/editors";
 import { onCourse } from "./golf/CoursePicker";
-import { LaneEditor } from "./golf/LaneEditor";
 import { onLane } from "./golf/LanePicker";
 import { fiveFrames, nineHoles } from "@journey-to-code/games";
 import { LocalKit } from "./kit/LocalKit";
@@ -86,8 +85,7 @@ const gameInUrl = (): GameId | SoloGameId | null => {
   const q = new URLSearchParams(location.search);
   const asked = q.get("game");
   if (asked === "palace" || asked === "spades" || isKitGame(asked)) return asked as GameId;
-  // An arcade game is played on the parlor's own pages, not inside the blog embed.
-  return (isArcadeGame(asked) || isIdleGame(asked)) && q.get("embed") !== "1" ? asked : null;
+  return isArcadeGame(asked) || isIdleGame(asked) ? asked : null;
 };
 
 function go(params: Record<string, string | null>) {
@@ -111,6 +109,11 @@ export function App() {
     setScreen({ kind: "setup" });
     scrollTo(0, 0);
   };
+
+  // In the embed there is no front page to go back to: the "all games" buttons are hidden (styles.css).
+  useEffect(() => {
+    document.documentElement.classList.toggle("in-embed", embedded);
+  }, [embedded]);
 
   // A bug report says which screen and game it came from.
   useEffect(() => {
@@ -193,7 +196,8 @@ export function App() {
     openTable(id, null);
   };
 
-  // Inside the <card-room> embed on someone's page: practice only.
+  // Inside the <card-room> embed on someone's page: practice only. An arcade or idle game is played
+  // against the game itself, so it keeps its own screens below, without the ways out to a table.
   if (embedded && screen.kind === "setup" && !isArcadeGame(game) && !isIdleGame(game)) {
     return (
       <EmbedHome
@@ -298,10 +302,10 @@ export function App() {
   if (screen.kind === "arcade" && screen.game === "airhockey") return <AirHockeyTable key={screen.seed} rules={screen.rules} seats={screen.seats} seed={screen.seed} onLeave={() => setScreen({ kind: "setup" })} />;
   if (screen.kind === "arcade") return <ArcadeTable key={`${screen.seed}:${screen.rival?.name ?? ""}`} {...screen} onLeave={() => setScreen({ kind: "setup" })} />;
   if (isIdleGame(game)) return <IdleTable key={game} game={game} onHome={home} />;
-  // Road to the Shootout has a garage in front of its races, so it has a screen of its own.
-  if (game === "pinkslips") return <PinkSlips key={game} onHome={home} />;
+  // Road to the Shootout is a game compiled to WebAssembly, shown in a frame of its own.
+  if (game === "pinkslips") return <Shootout key={game} onHome={home} />;
   if (isArcadeGame(game)) {
-    return <ArcadeSetup key={game} game={game} onHome={home} onPlay={(rules, seats, autofire, rival) => setScreen({ kind: "arcade", game, rules, seats, autofire, seed: rival ? rival.seed : Math.floor(Math.random() * 2 ** 31), rival })} onTogether={isLiveArcade(game) ? (rules, seats, where) => openTogether(game, rules, seats, where) : undefined} />;
+    return <ArcadeSetup key={game} game={game} onHome={home} onPlay={(rules, seats, autofire, rival) => setScreen({ kind: "arcade", game, rules, seats, autofire, seed: rival ? rival.seed : Math.floor(Math.random() * 2 ** 31), rival })} onTogether={isLiveArcade(game) && !embedded ? (rules, seats, where) => openTogether(game, rules, seats, where) : undefined} />;
   }
   if (isKitGame(game)) {
     return (

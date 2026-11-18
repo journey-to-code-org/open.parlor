@@ -13,6 +13,7 @@ import { roomAt, trouble } from "../../../wad/shape.ts";
 import { type Lump, readWad, writeWad } from "../../../wad/wad.ts";
 import * as attic from "./attic.ts";
 import * as basement from "./basement.ts";
+import { generate, TITLES } from "./generated.ts";
 import * as mainFloor from "./main-floor.ts";
 
 export interface Level {
@@ -26,13 +27,15 @@ export interface Level {
 /** The levels, built from their plans. */
 export function levels(): Level[] {
   // The three floors, in the order they are played: each in the place of one of the game's levels.
-  return [mainFloor, attic, basement].map((floor, index) => {
+  // After them, the floors made by rule (generated.ts). Nine levels to an episode, as the engine counts them.
+  const made = Object.keys(TITLES).map((level) => generate(Number(level)));
+  return [mainFloor, attic, basement, ...made].map((floor, index) => {
     const { shape } = fromPlan(floor.plan);
     // The switch that ends the level.
     const out = shape.walls[wallNear(shape, floor.exit.x, floor.exit.y)]!;
     out.special = 11;
     shape.sides[out.front]!.middle = floor.exit.picture;
-    return { name: `E1M${index + 1}`, title: floor.title, shape, things: floor.things };
+    return { name: `E${Math.floor(index / 9) + 1}M${(index % 9) + 1}`, title: floor.title, shape, things: floor.things };
   });
 }
 

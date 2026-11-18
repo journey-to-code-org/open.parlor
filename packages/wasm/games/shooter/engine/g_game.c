@@ -1353,6 +1353,14 @@ void G_SecretExitLevel (void)
     gameaction = ga_completed; 
 } 
  
+// [open.wasm] How many levels the WAD says the game has, or 0 where it doesn't say: see words.c.
+static boolean nextepisode;
+
+int G_Levels (void)
+{
+    return Words_Number("levels", 0);
+}
+
 void G_DoCompleted (void) 
 { 
     int             i; 
@@ -1366,7 +1374,20 @@ void G_DoCompleted (void)
     if (automapactive) 
 	AM_Stop (); 
 	
-    if (gamemode != commercial)
+    // [open.wasm] A WAD that says how many levels it has ("!levels") is played straight through
+    // them: nine to an episode, the ninth no secret, and on into the next episode's first.
+    nextepisode = false;
+    if (gamemode != commercial && G_Levels() > 0)
+    {
+	if ((gameepisode - 1) * 9 + gamemap >= G_Levels())
+	{
+	    gameaction = ga_victory;
+	    return;
+	}
+	secretexit = false;
+	nextepisode = gamemap == 9;
+    }
+    else if (gamemode != commercial)
     {
         // Chex Quest ends after 5 levels, rather than 8.
 
@@ -1394,8 +1415,7 @@ void G_DoCompleted (void)
     }
 
 //#if 0  Hmmm - why?
-    // [open.wasm] An episode is as many levels as the WAD says ("!levels"), or the eight it always was.
-    if ( (gamemap == Words_Number("levels", 8))
+    if ( (gamemap == 8) && G_Levels() == 0
 	 && (gamemode != commercial) ) 
     {
 	// victory 
@@ -1403,7 +1423,7 @@ void G_DoCompleted (void)
 	return; 
     } 
 	 
-    if ( (gamemap == 9)
+    if ( (gamemap == 9) && G_Levels() == 0
 	 && (gamemode != commercial) ) 
     {
 	// exit secret level 
@@ -1436,7 +1456,10 @@ void G_DoCompleted (void)
     }
     else
     {
-	if (secretexit) 
+	// [open.wasm] Straight through: after the ninth, the next episode's first.
+	if (G_Levels() > 0)
+	    wminfo.next = nextepisode ? 0 : gamemap;
+	else if (secretexit) 
 	    wminfo.next = 8; 	// go to secret level 
 	else if (gamemap == 9) 
 	{
@@ -1530,6 +1553,12 @@ void G_WorldDone (void)
 void G_DoWorldDone (void) 
 {        
     gamestate = GS_LEVEL; 
+    // [open.wasm] On into the next episode, where G_DoCompleted said so.
+    if (nextepisode)
+    {
+	gameepisode++;
+	nextepisode = false;
+    }
     gamemap = wminfo.next+1; 
     G_DoLoadLevel (); 
     gameaction = ga_nothing; 

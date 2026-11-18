@@ -4,14 +4,20 @@ The shooter set in the store its crew call Delbie's Daycare & Geriatrics. (That 
 of the parlor's idle game, and what the title picture says.)
 
 The game's own part: what is laid over Freedoom to make it ours. So far that is the title
-picture, the name over the menu, the rats, the status bar, the words, and three levels, after
-which the game ends. Everything else (the other monsters, the weapons' pictures, the sounds, and
-33 levels that are no longer reached) is still Freedoom's.
+picture, the name over the menu, the rats, the status bar, the tools and pick-ups, some of the
+walls, the words, and twelve levels, after which the game ends. Everything else (the other
+monsters, the rest of the walls and floors, the other sounds, and 24 levels that are no longer
+reached) is still Freedoom's.
 
 - `attic.ts` and `basement.ts` are the second and third levels, written the same way: the attic's
   good side and bad side (holes in the floor, the attic key at the far end), and the basement's
   warehouse, hose room (the bay door key), bay door, yard and dump trailer, where the King Rat is.
-  The game ends after the third (`!levels` and `!ending` in `words.txt`).
+- `generated.ts` makes the fourth level to the twelfth by rule, each from its number, the same
+  floor every time: rooms on a grid joined by halls with a door in each, one door locked and its
+  key on the near side of it, shelves, pillars and bad floor in the rooms, more and worse rats
+  the further in, and a switch at the far end. They are built to be finishable, not laid out by
+  anyone. The engine has nine levels to an episode, so the twelve are E1M1 to E1M9 and E2M1 to
+  E2M3, and the game ends after the twelfth (`!levels` and `!ending` in `words.txt`).
 - `main-floor.ts` is the first level, written as a floor plan (`wad/plan.ts`): rooms as
   rectangles, a wall wherever a gap is left between two, a door wherever a small rectangle
   crosses the gap. The front porch, the store front with its counter and shelves, the break

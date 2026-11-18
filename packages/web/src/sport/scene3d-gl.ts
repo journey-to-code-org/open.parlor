@@ -28,6 +28,7 @@ import {
   Material,
   Mesh,
   MeshBasicMaterial,
+  PlaneGeometry,
   MeshPhysicalMaterial,
   MeshStandardMaterial,
   NoToneMapping,
@@ -556,7 +557,9 @@ function makeThing(d: Disc): Thing {
   } else if (d.look && d.look.height && (!/^(ball|cue|striker)$/.test(kind) || d.look.height < r)) {
     // A bumper or a peg: a short post in its own colour. A flat disc too (a carrom piece, its
     // striker): a post lower than it is wide.
-    skin = mesh(new CylinderGeometry(r, r, height, 24), paint(toneColour(d.look.tone), 0.5));
+    // A paper football is a folded triangle, lying flat with a point up the table.
+    skin = kind === "football" ? mesh(new CylinderGeometry(r * 1.25, r * 1.25, height, 3), paint("#f3ead6", 0.8)) : mesh(new CylinderGeometry(r, r, height, 24), paint(toneColour(d.look.tone), 0.5));
+    if (kind === "football") skin.rotation.y = Math.PI;
     skin.position.y = height / 2;
     group.add(skin);
   } else {
@@ -901,6 +904,26 @@ export function build(canvas: HTMLCanvasElement): Sport3d | null {
       const o = decorOf(d);
       o.position.set(d.x, ground(d.x, d.y) + layer * 3, d.y);
       g.add(o);
+    }
+    // What is painted on the table: a zone's number, a ring's worth. Each is a flat card of its own, lying just above the ground.
+    for (const m of look.marks ?? []) {
+      const wide = Math.max(1, m.text.length * 0.62);
+      const c = document.createElement("canvas");
+      c.height = 128;
+      c.width = Math.ceil(128 * wide);
+      const pen = c.getContext("2d")!;
+      pen.font = "700 104px system-ui, sans-serif";
+      pen.textAlign = "center";
+      pen.textBaseline = "middle";
+      pen.fillStyle = "#3c240e";
+      pen.fillText(m.text, c.width / 2, 68, c.width);
+      const map = new CanvasTexture(c);
+      map.colorSpace = SRGBColorSpace;
+      const card = new Mesh(new PlaneGeometry(m.size * 1.2 * wide, m.size * 1.2), new MeshBasicMaterial({ map, transparent: true, opacity: 0.45, depthWrite: false }));
+      card.rotation.x = -Math.PI / 2;
+      card.position.set(m.x, ground(m.x, m.y) + layer * 3 + 6, m.y);
+      card.renderOrder = 1;
+      g.add(card);
     }
     stat = g;
     turn.add(g);
