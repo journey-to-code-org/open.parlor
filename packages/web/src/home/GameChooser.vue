@@ -31,6 +31,8 @@ export interface ChooserGame {
   screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][]; chip?: boolean; shop?: boolean; strip?: boolean; rink?: boolean; quest?: boolean; hill?: boolean };
   /** A dice game shows a few dice: the face each one shows. */
   dice?: number[];
+  /** A game that is a page of its own, not one of the parlor's tables: picking it goes to the page. */
+  href?: string;
   /** A table sport shows a little table from above: its surface, a hole, a ball or two (in a 100 × 100 box). */
   table?: { surface: string; cup?: [number, number]; balls: { x: number; y: number; tone: string }[] };
 }
@@ -198,6 +200,9 @@ function pick(id: string) {
   } catch {
     /* private mode: they'll see "Start here" again, which is harmless */
   }
+  // A game with a page of its own is gone to; the rest are the parlor's to open.
+  const page = props.games.find((g) => g.id === id)?.href;
+  if (page) return void location.assign(page);
   emit("pick", id);
 }
 /** A few to start with, one from each kind of game, in the order a newcomer might like them. */
@@ -437,7 +442,6 @@ async function toShelf(id: string) {
     <p class="fine links">
       <a class="design" href="watch/">👀 Watch a game</a>
       <a class="design" href="designer/">🎨 Design your own deck of cards</a>
-      <a class="design" href="wasm/">👾 Play Delbie's Doomsday, a first-person shooter</a>
       <a class="design" href="wasm/market/">📦 Run Delbie's Stockroom, a parts-market sim</a>
       <a v-if="canList" class="design" href="games">📋 Every game on one page</a>
       <a v-if="canDaily" class="design" href="daily">🔢 The daily sudoku</a>
