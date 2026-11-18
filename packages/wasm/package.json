@@ -16,7 +16,8 @@
     "build:net": "tsc -p tsconfig.net.json",
     "nodes": "node scripts/build-engine.mjs shooter/nodes",
     "delbies": "node scripts/build-delbies.mjs",
-    "shootout": "node scripts/update-shootout.mjs"
+    "shootout": "node scripts/update-shootout.mjs",
+    "battler:defaults": "node --experimental-strip-types scripts/battler-defaults.mjs"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.0",

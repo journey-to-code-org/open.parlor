@@ -792,11 +792,12 @@ server has an admin token (see **Settings**); sign in with that token.
 | **Players** | Everyone who's sat down, joined a house or saved a design. Blocking someone stops them sitting, playing, chatting, opening houses and sharing designs; tables they're at carry on without them. Unblocking undoes it. |
 | **Houses** | Every house and its members. Rename a house (its invite link stays the same), remove a member, hand it to a new owner, or delete it. |
 | **Games** | Which games the parlor offers and in what order: the front page follows. Switching a game off stops new tables of it everywhere (tables already going carry on). Also the switch for whether tables with players can be watched (the table, never a hand). |
+| **Tuning** | The numbers a game lets its host change without a release: Delbie's Back Room's hit points, healing, each card's cost and effects and each foe's hit points and attacks, and the daily sudoku's clues for each weekday. The form is built from the game's own ranges (a mistake shows where it was made and Save waits), a number left empty is the game's own, and *Back to the game's own numbers* undoes it all. Each save is a new version in the activity log. |
 | **Card designs** | Every shared deck. Hiding one takes it out of the gallery; its maker keeps it and sees your reason. |
 | **Courses & lanes** | Every shared Mini Golf course (with a plan of its first hole) and bowling lane (with its plan). Hiding one takes it out of the game's list and stops new tables on it (tables already playing it finish); its maker keeps it and sees your reason. |
 | **Activity** | Everything done from the admin app, newest first. |
 
-**Tuning a game's numbers.** A game can let its host change some of its numbers without a release
+**Tuning a game's numbers** (the **Tuning** page above). A game can let its host change some of its numbers without a release
 (Delbie's Back Room's cards and foes, the daily sudoku's clues for each weekday). What is kept is a
 sparse override with a version, replaced as a whole and checked against that game's ranges
 (`packages/server/src/tunables.ts`): a game reads `GET /tunables/<game>` when it starts and merges it
