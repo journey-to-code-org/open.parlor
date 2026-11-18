@@ -12,5 +12,5 @@
     "types": ["vite/client", "node"],
     "paths": { "@open-parlor/ui/*": ["../ui/src/*"] }
   },
-  "include": ["src/shared", "src/element", "src/react", "src/report", "src/zb.d.ts", "tests", "playwright.config.ts", "vite.config.ts"]
+  "include": ["src/shared", "src/element", "src/react", "src/report", "src/zb.d.ts", "tests", "server-tests", "playwright.config.ts", "playwright.server.config.ts", "vite.config.ts"]
 }

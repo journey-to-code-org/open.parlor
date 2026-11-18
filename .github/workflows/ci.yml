@@ -18,9 +18,14 @@ jobs:
       - run: npm run build
       - run: npm run typecheck
       - run: npm test
-      # The same Zubra components in six frameworks, checked in the runner's own Chrome.
+      # The same Zubra components in every framework, checked in Chrome, Firefox and WebKit.
       - run: npm run build -w @open-parlor/conformance
-      - run: npm run conformance -w @open-parlor/conformance
+      # Chrome is on the runner; Firefox and WebKit are Playwright's own builds.
+      - run: npx playwright install --with-deps firefox webkit
+        working-directory: packages/conformance
+      - run: npm run conformance:engines -w @open-parlor/conformance
+      # The page the server draws itself (/games), in a browser with JavaScript off and on.
+      - run: npm run server-page:engines -w @open-parlor/conformance
       # Tests run through vitest, which forgives some Node ESM import mistakes; boot the real build.
       - name: Smoke test the built server
         run: |

@@ -24,6 +24,8 @@ import type { SoloGameId } from "./GamePicker";
 import { ArcadeSetup } from "./arcade/ArcadeSetup";
 import { ArcadeTable, isLiveArcade } from "./arcade/ArcadeTable";
 import { AirHockeyTable } from "./arcade/AirHockeyTable";
+import { QuestTable } from "./quest/QuestTable";
+import { CounterTable } from "./counter/CounterTable";
 import { KitSetup } from "./kit/KitSetup";
 import { CourseEditor } from "./golf/CourseEditor";
 import { onCourse } from "./golf/CoursePicker";
@@ -45,7 +47,7 @@ type Screen =
   | { kind: "local-palace"; name: string; rules: PalaceRules; seats: number; seed: number }
   | { kind: "sketchbook" }
   | { kind: "local-kit"; game: KitGameId; name: string; /** The other people playing at this device, after `name`. */ others?: string[]; rules: unknown; seats: number; seed: number; /** Leaving goes back to the course (or lane) editor, at this one. */ back?: string }
-  | { kind: "wifi-host"; game: KitGameId; name: string; rules: unknown; seats: number; seed: number }
+  | { kind: "wifi-host"; game: KitGameId; name: string; /** The other people playing at the host's device. */ others?: string[]; rules: unknown; seats: number; seed: number }
   | { kind: "wifi-join" }
   | { kind: "move" }
   | { kind: "arcade"; game: ArcadeGameId; rules: ArcadeRules; seats: number; seed: number; autofire: boolean; rival?: { name: string; score: number } }
@@ -291,6 +293,8 @@ export function App() {
     return <TournamentPage key={screen.id} slug={screen.slug} id={screen.id} onOpenTable={(id) => openTable(id, screen.slug)} onBack={() => openHouse(screen.slug)} />;
   }
   // Air hockey is two ends of one table, with a finger at each: it has a table of its own.
+  if (screen.kind === "arcade" && screen.game === "counter") return <CounterTable key={screen.seed} rules={screen.rules} seed={screen.seed} onLeave={() => setScreen({ kind: "setup" })} />;
+  if (screen.kind === "arcade" && screen.game === "zubraquest") return <QuestTable key={screen.seed} rules={screen.rules} seed={screen.seed} onLeave={() => setScreen({ kind: "setup" })} />;
   if (screen.kind === "arcade" && screen.game === "airhockey") return <AirHockeyTable key={screen.seed} rules={screen.rules} seats={screen.seats} seed={screen.seed} onLeave={() => setScreen({ kind: "setup" })} />;
   if (screen.kind === "arcade") return <ArcadeTable key={`${screen.seed}:${screen.rival?.name ?? ""}`} {...screen} onLeave={() => setScreen({ kind: "setup" })} />;
   if (isIdleGame(game)) return <IdleTable key={game} game={game} onHome={home} />;
@@ -306,7 +310,7 @@ export function App() {
         game={game}
         onHome={home}
         onPractice={(name, rules, seats, others) => setScreen({ kind: "local-kit", game, name, others, rules, seats, seed: Math.floor(Math.random() * 2 ** 31) })}
-        onWifi={(name, rules, seats) => setScreen({ kind: "wifi-host", game, name, rules, seats, seed: Math.floor(Math.random() * 2 ** 31) })}
+        onWifi={(name, rules, seats, others) => setScreen({ kind: "wifi-host", game, name, others, rules, seats, seed: Math.floor(Math.random() * 2 ** 31) })}
         onFamilyTable={async (rules, seats) => openTable(await createRoom({ game, rules, seats }, { settings: loadTableSettings() }), null)}
         onFindPlayers={(name, rules, seats) => findPlayers(game, name, rules, seats)}
         onOpenHouse={openHouse}
