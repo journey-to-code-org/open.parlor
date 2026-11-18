@@ -1922,6 +1922,23 @@ html[data-motion="off"] .die, html[data-motion="off"] .die.tumbling { animation:
 .sport-player-here { min-width: 1.5em; padding: 0 3px; border-radius: 6px; text-align: center; background: rgba(74, 44, 18, 0.16); font-variant-numeric: tabular-nums; }
 .sport-player-total { min-width: 1.6em; padding: 0 4px; border-radius: 6px; text-align: center; background: #4a2c12; color: #fff3c4; font-variant-numeric: tabular-nums; }
 
+/* The pool balls again, big enough to read: in their groups, with whose they are. */
+.pool-rack { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 10px; margin-top: 5px; }
+.pool-group { display: flex; align-items: center; gap: 5px; padding: 2px 6px; border-radius: 999px; background: rgba(0, 0, 0, 0.22); border: 1.5px solid transparent; }
+.pool-group.is-mine { border-color: #ffe27a; background: rgba(255, 226, 122, 0.16); }
+.pool-group-name { display: flex; flex-direction: column; line-height: 1.05; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; color: #f3ddb0; }
+.pool-group-name em { font-style: normal; font-weight: 600; color: #fff; max-width: 9ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pool-balls { display: flex; gap: 2px; }
+.pool-ball {
+  --size: 21px; position: relative; display: grid; place-items: center; width: var(--size); height: var(--size); flex: none; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.45), transparent 45%), var(--ball);
+  box-shadow: inset -2px -3px 4px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+.pool-ball.is-striped { background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.45), transparent 45%), linear-gradient(#fdfdf8 0 22%, var(--ball) 22% 78%, #fdfdf8 78%); }
+.pool-ball b { display: grid; place-items: center; width: 62%; height: 62%; border-radius: 50%; background: #fdfdf8; color: #1d1a16; font: 800 9.5px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -0.04em; }
+.pool-ball.is-down { opacity: 0.22; filter: grayscale(0.6); }
+.pool-ball.is-next { outline: 2px solid #ffe27a; outline-offset: 1px; }
+
 /* The hole's sign: a chunky board on the course, a little askew. */
 .sport-sign { position: absolute; left: 6px; top: 6px; z-index: 1; max-width: calc(100% - 12px); pointer-events: none; display: flex; align-items: flex-start; gap: 8px; }
 .sport-sign-board {
@@ -1999,6 +2016,8 @@ html[data-motion="off"] .die, html[data-motion="off"] .die.tumbling { animation:
   .sport-player { padding: 6px 8px 6px 10px; font-size: var(--ui-m); }
   .sport-player-name { flex: 1; max-width: none; }
   .sport-felt .center-info { grid-column: 1; grid-row: 3; align-self: end; align-items: stretch; text-align: center; }
+  /* The pool balls sit under the players' names, at the top of the room that is left. */
+  .pool-rack { grid-column: 1; grid-row: 3; align-self: start; justify-content: flex-start; margin-top: 0; }
 }
 @media (min-width: 1024px) {
   /* No oval card table here: the hole is its own table. */
@@ -2971,10 +2990,43 @@ button.word-tile:active:not(:disabled) { transform: translateY(2px); }
 /* Word Hunt's square (word/WordPieces.tsx): big tiles, the path numbered as it is traced. */
 .trace-grid { display: grid; grid-template-columns: repeat(var(--cols), 1fr); gap: 8px; width: min(92vw, 380px); touch-action: none; user-select: none; -webkit-user-select: none; }
 .trace-tile { --size: 100%; position: relative; aspect-ratio: 1; width: 100%; height: auto; font-size: clamp(22px, 8vw, 34px); }
-.trace-tile.on { background: var(--gold); color: #241a00; transform: scale(0.94); }
-.trace-tile.last { box-shadow: 0 0 0 3px var(--cream); }
-.trace-tile.next:not(.on) { outline: 2px dashed rgba(251, 246, 236, 0.45); outline-offset: 2px; }
-.trace-tile small { position: absolute; top: 3px; right: 6px; font-size: 0.7rem; font-weight: 700; opacity: 0.7; }
+.trace-grid { position: relative; }
+.trace-tile { border-radius: 16%; background: linear-gradient(#fffaf0, #f1e7d3); box-shadow: 0 3px 0 #c9b997, 0 6px 10px rgba(0, 0, 0, 0.28); transition: opacity 120ms ease, background 120ms ease; }
+.trace-tile.on { background: linear-gradient(#f7d77c, #e2b446); color: #241a00; box-shadow: 0 2px 0 #b98a1f, 0 4px 8px rgba(0, 0, 0, 0.3); transform: scale(0.95); animation: trace-pop 170ms ease-out; }
+.trace-tile.last { box-shadow: 0 0 0 3px var(--cream), 0 4px 8px rgba(0, 0, 0, 0.3); }
+/* While a word is being traced, the letters it can't go to next stand back. */
+.trace-grid.tracing .trace-tile:not(.on):not(.next) { opacity: 0.45; }
+/* The word just sent: green if it counted, red and shaken if not. */
+.trace-grid.is-good .trace-tile.on { background: linear-gradient(#58b86b, var(--hit)); color: #fff; box-shadow: 0 2px 0 #2b6e3a, 0 4px 8px rgba(0, 0, 0, 0.3); animation: trace-good 420ms ease-out both; animation-delay: calc(var(--i, 0) * 45ms); }
+.trace-grid.is-bad .trace-tile.on { background: linear-gradient(#e2685f, #c0392b); color: #fff; box-shadow: 0 2px 0 #7f231a, 0 4px 8px rgba(0, 0, 0, 0.3); animation: trace-bad 320ms ease-in-out; }
+@keyframes trace-pop { from { transform: scale(1.1); } to { transform: scale(0.95); } }
+@keyframes trace-good { 0% { transform: scale(0.95); } 45% { transform: scale(1.09) translateY(-3px); } 100% { transform: scale(1); } }
+@keyframes trace-bad { 0%, 100% { transform: translateX(0) scale(0.95); } 25% { transform: translateX(-5px) scale(0.95); } 75% { transform: translateX(5px) scale(0.95); } }
+/* The trace: a line through the letters taken, in order, and on to the finger. */
+.trace-line { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; overflow: visible; }
+.trace-line-path { fill: none; stroke: #c96a12; stroke-opacity: 0.5; stroke-linecap: round; stroke-linejoin: round; mix-blend-mode: multiply; }
+.trace-line-tail { stroke: #fbf6ec; stroke-opacity: 0.55; stroke-linecap: round; }
+.trace-line-start { fill: #c96a12; fill-opacity: 0.35; mix-blend-mode: multiply; }
+.trace-grid.is-good .trace-line-path, .trace-grid.is-bad .trace-line-path { stroke: #fff; stroke-opacity: 0.28; mix-blend-mode: normal; }
+.trace-grid.is-good .trace-line-start, .trace-grid.is-bad .trace-line-start { fill: #fff; fill-opacity: 0.22; mix-blend-mode: normal; }
+/* The word being traced, over the square. */
+.trace-area { display: grid; justify-items: center; gap: 8px; width: 100%; }
+.trace-word { margin: 0; min-height: 2.5rem; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 4px 16px; border-radius: 999px; font-size: 0.9rem; color: rgba(251, 246, 236, 0.75); }
+.trace-word b { font-size: 1.5rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--cream); }
+.trace-word.is-typing { background: rgba(0, 0, 0, 0.28); }
+.trace-word.is-good { background: var(--hit); color: #fff; }
+.trace-word.is-good b { color: #fff; }
+.trace-word.is-good span { font-weight: 800; font-size: 1.1rem; }
+.trace-word.is-bad { background: #c0392b; color: #fff; }
+.trace-word.is-bad b { color: #fff; text-decoration: line-through; text-decoration-thickness: 2px; }
+/* The words found so far, while the hunt is on. */
+.word-found { list-style: none; margin: 0; padding: 0 2px; display: flex; align-items: center; gap: 6px; width: min(92vw, 380px); min-height: 2.5rem; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.word-found::-webkit-scrollbar { display: none; }
+.word-found li.count { background: none; padding-left: 0; font-weight: 600; letter-spacing: 0; text-transform: none; color: rgba(251, 246, 236, 0.75); }
+.word-found li { flex: none; display: flex; align-items: baseline; gap: 5px; padding: 3px 10px; border-radius: 999px; background: rgba(0, 0, 0, 0.28); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.word-found li.mine { background: rgba(232, 196, 106, 0.2); box-shadow: inset 0 0 0 1px rgba(232, 196, 106, 0.55); }
+.word-found li strong { color: var(--gold); letter-spacing: 0; }
+@media (prefers-reduced-motion: reduce) { .trace-tile.on, .trace-grid.is-good .trace-tile.on, .trace-grid.is-bad .trace-tile.on { animation: none; } }
 .word-tiles.typed .small-tile { --size: 30px; }
 .word-tiles.typed .fine { margin: 6px 0; }
 
@@ -3058,3 +3110,62 @@ button.word-tile:active:not(:disabled) { transform: translateY(2px); }
 .league-table td:nth-child(n + 3), .league-table th:nth-child(n + 3) { text-align: right; }
 .league-table tr.mine td { color: var(--gold); font-weight: 700; }
 .league-table tbody tr:first-child td { font-weight: 700; }
+
+/* Zubra Quest: a screen of 256 by 224 pixels, every one of them square, and under a finger a pad and two buttons. */
+.quest-stage { background: #05060f; }
+.quest-screen { image-rendering: pixelated; image-rendering: crisp-edges; box-shadow: 0 0 0 2px #0b0b14, 0 0 0 4px #2e3248, 0 18px 50px rgba(0, 0, 0, 0.6); }
+.quest-end { background: rgba(3, 4, 12, 0.25); align-items: end; }
+.quest-pad { display: none; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 22px; background: var(--arc-rail); border-top: 1px solid var(--arc-line); touch-action: none; }
+@media (pointer: coarse) { .quest-pad { display: flex; } }
+.quest-stick { position: relative; flex: none; width: 132px; height: 132px; border-radius: 50%; background: radial-gradient(circle at 50% 45%, #2a3160, #141a3a 70%); border: 2px solid #3a4480; touch-action: none; }
+.quest-stick i { position: absolute; width: 0; height: 0; border: 9px solid transparent; opacity: 0.75; }
+.quest-stick i:nth-child(1) { top: 10px; left: calc(50% - 9px); border-bottom-color: #c8ccd8; border-top-width: 0; }
+.quest-stick i:nth-child(2) { bottom: 10px; left: calc(50% - 9px); border-top-color: #c8ccd8; border-bottom-width: 0; }
+.quest-stick i:nth-child(3) { left: 10px; top: calc(50% - 9px); border-right-color: #c8ccd8; border-left-width: 0; }
+.quest-stick i:nth-child(4) { right: 10px; top: calc(50% - 9px); border-left-color: #c8ccd8; border-right-width: 0; }
+.quest-tool { align-self: flex-end; font: inherit; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #c8ccd8; padding: 8px 14px; border-radius: 999px; border: 1px solid #3a4480; background: #141a3a; touch-action: none; }
+.quest-buttons { display: flex; gap: 14px; align-items: center; transform: rotate(-12deg); }
+.quest-buttons button { width: 64px; height: 64px; border-radius: 50%; font: inherit; font-size: 1.3rem; font-weight: 800; color: #fff; border: 0; touch-action: none; box-shadow: 0 5px 0 rgba(0, 0, 0, 0.45); }
+.quest-buttons button:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45); }
+.quest-a { background: #c8283c; }
+.quest-b { background: #2850b0; margin-top: 26px; }
+
+/* Delbie's Counter: a page of forms. The components bring their own looks; this is only where they sit. */
+/* It is a pad of paper on a counter: cream, with ink on it, so every component is dark on light whatever the table's felt is. */
+.counter-page {
+  --card: #fffdf7; --border: #d6cfba; --input: #fffdf7; --background: var(--cream); --foreground: var(--ink); --muted-foreground: #646b60;
+  --primary: var(--felt); --primary-foreground: #fffdf7; --accent: #efe8d4; --accent-foreground: var(--ink); --ring: var(--gold); --switch-off: #cfc8b4;
+  --muted: #ebe4cf; --secondary: #ebe4cf; --secondary-foreground: var(--ink); --card-foreground: var(--ink);
+  min-height: 100dvh; background: var(--cream); color: var(--ink);
+}
+.counter-page > * { box-sizing: border-box; width: 100%; max-width: 46rem; margin-left: auto; margin-right: auto; padding-left: 0.9rem; padding-right: 0.9rem; }
+.counter-page > :last-child { padding-bottom: 5rem; }
+.counter-top { padding-top: 0.75rem; }
+.counter-top .arcade-btn { color: var(--ink); border-color: var(--border); background: var(--card); }
+.counter-form[hidden] { display: none; }
+.counter-top { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.6rem; }
+.counter-top h1 { margin: 0; font-size: 1.15rem; }
+.counter { display: grid; gap: 0.8rem; min-width: 0; }
+.counter > *, .counter-form > *, .counter-lookup > *, .counter-pay > * { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.counter tab-list, .counter data-table, .counter select-field, .counter combo-box, .counter money-input { display: block; }
+.counter data-table { overflow-x: auto; }
+.counter-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.counter-line { display: flex; align-items: flex-end; gap: 0.75rem; min-height: 4.6rem; padding: 0.5rem 0.25rem; overflow-x: auto; border-bottom: 3px solid var(--border, #dde); }
+.counter-who { display: grid; justify-items: center; gap: 0.25rem; flex: none; }
+.counter-who.first { margin-right: 0.75rem; padding-right: 1rem; border-right: 1px dashed var(--border, #dde); }
+.counter-quiet, .counter-hint, .counter-receipt { color: var(--muted-foreground, #667); margin: 0; }
+.counter-says { font-size: 1.02rem; line-height: 1.45; }
+.counter-tender { display: block; margin-top: 0.4rem; }
+.counter-form { display: grid; gap: 0.85rem; padding-top: 0.75rem; }
+.counter-lookup { display: grid; gap: 0.6rem; }
+.counter-part { display: block; }
+.counter-add { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+.counter-totals { margin: 0; display: grid; gap: 0.2rem; font-variant-numeric: tabular-nums; }
+.counter-totals div { display: flex; justify-content: space-between; }
+.counter-totals dd { margin: 0; }
+.counter-totals .total { margin-top: 0.3rem; padding-top: 0.4rem; border-top: 1px solid var(--border, #dde); font-weight: 800; font-size: 1.2rem; }
+.counter-pay { display: grid; gap: 0.6rem; }
+.counter-dream { margin: 0 0 0.5rem; font-size: 1.15rem; font-style: italic; }
+.counter-dream span { font-style: normal; color: var(--muted-foreground, #667); }
+.counter-final { margin: 0.4rem 0 0; font-size: 2.4rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+@media (min-width: 720px) { .counter-lookup { grid-template-columns: 1fr 1.4fr; } .counter-add { grid-column: 1 / -1; } }

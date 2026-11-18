@@ -80,7 +80,7 @@ export function LobbyPage({ onOpenTable, onLeave }: { onOpenTable: (id: string) 
           ♠ ♥ ♣ ♦
         </div>
         <h1>Open tables</h1>
-        <p>People waiting for players right now. Jump into a seat; the game deals when the table fills.</p>
+        <p>People waiting for players right now. Jump into a seat; the game starts when the table fills.</p>
       </header>
 
       <TextField label="Your name" required value={name} maxlength={20} autocomplete="nickname" onValueChange={(e: CustomEvent<string>) => setName(e.detail)} />

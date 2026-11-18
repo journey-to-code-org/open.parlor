@@ -51,7 +51,8 @@ function play(id: ArcadeGameId, seed: number, skill = 0.75, seats = 1) {
 describe("a house's arcade scores", () => {
   it("keeps a run that earns its score, for every arcade game", async () => {
     const { slug, owner } = await house();
-    for (const game of ARCADE_GAMES) {
+    // Zubra Quest is hours long and no computer player finishes it: the parlor keeps it on the device and posts no run.
+    for (const game of ARCADE_GAMES.filter((g) => g.id !== "zubraquest")) {
       const run = play(game.id, 11);
       const sent = await owner(`/houses/${slug}/scores`, run);
       expect(sent.status, game.id).toBe(200);

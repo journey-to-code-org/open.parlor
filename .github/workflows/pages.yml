@@ -44,7 +44,10 @@ jobs:
       # the checks run against them here in the runner's Chrome, and a page of how they went. A
       # failing check doesn't stop the parlor being published; the page says what failed.
       - run: npm run build -w @open-parlor/conformance
-      - run: npm run conformance -w @open-parlor/conformance
+      # Chrome is on the runner; Firefox and WebKit are Playwright's own builds.
+      - run: npx playwright install --with-deps firefox webkit
+        working-directory: packages/conformance
+      - run: npm run conformance:engines -w @open-parlor/conformance
         continue-on-error: true
       - run: cp -r packages/conformance/dist packages/web/dist/conformance
       - uses: actions/upload-pages-artifact@v3

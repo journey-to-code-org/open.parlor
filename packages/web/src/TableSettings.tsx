@@ -244,6 +244,7 @@ export function TableSettingsButton({
   sport = false,
   stones = false,
   depth = false,
+  cards = true,
 }: {
   settings: TableSettings;
   onChange: (next: TableSettings) => Promise<void> | void;
@@ -254,6 +255,8 @@ export function TableSettingsButton({
   stones?: boolean;
   /** At a table that has a 3-D look (Chess, Palace): this device may choose it or the flat drawing. */
   depth?: boolean;
+  /** Whether the game is played with cards: a table with none has no suit colours to choose. */
+  cards?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -268,7 +271,7 @@ export function TableSettingsButton({
         className={`settings-toggle movable ${drag.moved ? "moved" : ""}`}
         style={drag.style}
         {...drag.handle}
-        aria-label={solo ? "Table settings: animations and suit colours" : "Table settings: opponents, speed and animations"}
+        aria-label={solo ? (cards ? "Table settings: animations and suit colours" : "Table settings: animations") : "Table settings: opponents, speed and animations"}
         aria-expanded={open}
         title="Table settings (drag to move)"
         onClick={() => !drag.wasDrag() && setOpen(true)}
@@ -305,7 +308,7 @@ export function TableSettingsButton({
               {problem && <p className="error">{problem}</p>}
               <PlayersFields />
               {!solo && <h3>On this device</h3>}
-              <DisplayFields sport={sport} stones={stones} depth={depth} />
+              <DisplayFields sport={sport} stones={stones} depth={depth} cards={cards} />
               {anythingMoved && (
                 <button type="button" className="link" onClick={putEverythingBack}>
                   Put the buttons I've moved back
