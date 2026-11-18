@@ -8,7 +8,7 @@ import { CUSTOM_ELEMENTS_SCHEMA, ChangeDetectionStrategy, Component, computed, e
 import { FormsModule } from "@angular/forms";
 import { deckStyle, type CardDesign } from "@journey-to-code/decks";
 import { ZubraModel } from "@zubra/runtime/angular";
-import { Api, ApiError, type Catalogue, type CatalogueGame, type ChatLine, type House, type HouseMember, type LogEntry, type Overview, type Player, type SharedCourse, type SharedDesign, type Table, type TableStatus } from "./api";
+import { Api, ApiError, type Catalogue, type CatalogueGame, type ChatLine, type House, type HouseChatLine, type HouseMember, type LogEntry, type Overview, type Player, type SharedCourse, type SharedDesign, type Table, type TableStatus } from "./api";
 import "./zubra";
 
 type Section = "overview" | "tables" | "players" | "houses" | "games" | "designs" | "courses" | "activity";
@@ -106,6 +106,9 @@ export class App implements OnDestroy {
   protected readonly pickedTables = signal<string[]>([]);
   protected readonly closable = computed(() => this.tables().filter((t) => this.pickedTables().includes(t.id) && t.status !== "closed"));
 
+  /** The house whose chat is open in its dialog, and the chat. */
+  protected readonly houseChat = signal<{ house: { slug: string; name: string }; messages: HouseChatLine[] } | null>(null);
+  protected readonly houseChatOpen = signal(false);
   /** The table open in the dialog, with its chat. */
   protected readonly detail = signal<{ table: Table; chat: ChatLine[] } | null>(null);
   protected readonly detailOpen = signal(false);
@@ -404,6 +407,26 @@ export class App implements OnDestroy {
         return `Removed ${member.name} from ${house.name}.`;
       },
     });
+  }
+
+  protected async openHouseChat(slug: string, quiet = false): Promise<void> {
+    try {
+      this.houseChat.set(await this.api.houseChat(slug));
+      this.houseChatOpen.set(true);
+    } catch (error) {
+      if (!quiet) this.toast(this.message(error), "danger");
+    }
+  }
+
+  protected async redactHouseChat(slug: string, line: HouseChatLine): Promise<void> {
+    try {
+      await this.api.redactHouseChat(slug, line.id);
+      await this.openHouseChat(slug, true);
+      this.toast("Removed the message.", "success");
+      void this.refresh(true);
+    } catch (error) {
+      this.toast(this.message(error), "danger");
+    }
   }
 
   protected askDeleteHouse(house: House): void {

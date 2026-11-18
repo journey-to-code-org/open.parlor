@@ -176,6 +176,7 @@
                   </ul>
                   <cluster-layout slot="footer" gap="0.5rem">
                     <action-button variant="outline" size="sm" (click)="askRename(house)">Rename</action-button>
+                    <action-button variant="outline" size="sm" (click)="openHouseChat(house.slug)">Chat</action-button>
                     <action-button variant="destructive" size="sm" (click)="askDeleteHouse(house)">Delete house</action-button>
                   </cluster-layout>
                 </content-card>
@@ -389,6 +390,30 @@
   </modal-dialog>
 
   <!-- Are you sure? -->
+  <!-- A house's chat -->
+  <modal-dialog [open]="houseChatOpen()" (openchange)="houseChatOpen.set(detailOf($event))" [label]="houseChat() ? houseChat()!.house.name + '’s chat' : 'House chat'">
+    @if (houseChat(); as c) {
+      @if (c.messages.length) {
+        <ul class="chat" tabindex="0" aria-label="House chat messages">
+          @for (line of c.messages; track line.id) {
+            <li>
+              <span class="line"
+                ><strong>{{ line.name }}</strong> {{ line.poll ? "📊 " : "" }}{{ line.text }}
+                @if (line.poll) {
+                  <span class="quiet">({{ line.poll.options.join(" / ") }} · {{ line.poll.votes }} {{ line.poll.votes === 1 ? "vote" : "votes" }})</span>
+                }</span
+              >
+              <action-button variant="ghost" size="sm" [label]="'Remove ' + line.name + '’s message'" (click)="redactHouseChat(c.house.slug, line)">Remove</action-button>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="quiet">Nobody's said anything.</p>
+      }
+    }
+    <action-button slot="actions" variant="outline" data-close>Done</action-button>
+  </modal-dialog>
+
   <modal-dialog [open]="confirmOpen()" (openchange)="confirmOpen.set(detailOf($event))" [label]="confirm()?.title ?? 'Are you sure?'">
     @if (confirm(); as c) {
       <stack-layout gap="1rem">

@@ -36,6 +36,8 @@ interface Rooms {
 interface Houses {
   all(): Promise<HouseDoc[]>;
   moderate(slug: string, change: { name?: unknown; removeMember?: string; owner?: string; delete?: true }): Promise<string | null>;
+  /** A house's chat: every message, and taking one down. */
+  chat?: { messages(slug: string): Promise<{ id: number; by: string; name: string; text: string; at: number; poll?: { options: string[]; votes: Record<string, number> } }[]>; redact(slug: string, id: number): Promise<{ name: string; text: string } | null> };
 }
 
 export interface Ban {
@@ -304,6 +306,11 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
         });
       }
       const house = all.find((h) => h.slug === id);
+      // GET /moderation/houses/:slug/chat → the house's chat, oldest first
+      if (house && action === "chat" && method === "GET" && houses.chat) {
+        const messages = await houses.chat.messages(house.slug);
+        return json({ house: { slug: house.slug, name: house.name }, messages: messages.map((m) => ({ ...m, poll: m.poll ? { options: m.poll.options, votes: Object.keys(m.poll.votes).length } : undefined })) });
+      }
       if (!house || method !== "POST") return json({ error: "There's no such house." }, 404);
       const member = house.members.find((m) => m.id === input.member);
       const done = async (problem: string | null, what: string, target: string, note = "") => {
@@ -317,6 +324,13 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
       if (action === "remove-member") return done(await houses.moderate(id, { removeMember: String(input.member ?? "") }), "Removed a member from a house", `${member?.name ?? "Someone"} from ${house.name}`);
       // POST /moderation/houses/:slug/owner { member } → the house's new owner; the old one stays as an admin
       if (action === "owner") return done(await houses.moderate(id, { owner: String(input.member ?? "") }), "Changed a house's owner", house.name, `Now ${member?.name ?? "someone"}`);
+      // POST /moderation/houses/:slug/chat-redact { id } → a message in the house's chat is gone, for everyone in the house
+      if (action === "chat-redact" && houses.chat) {
+        const gone = await houses.chat.redact(house.slug, Number(input.id));
+        if (!gone) return json({ error: "That message has already gone." }, 404);
+        await record("Removed a house chat message", `${gone.name} in ${house.name}`, clean(gone.text, 120));
+        return json({ ok: true });
+      }
       // POST /moderation/houses/:slug/delete → gone, for everyone; its tables carry on
       if (action === "delete") return done(await houses.moderate(id, { delete: true }), "Deleted a house", house.name);
       return json({ error: "Not found" }, 404);
