@@ -297,3 +297,20 @@ buy at the shelf price, rats that chew the stock, traps, standing orders, rent e
   long for a link goes without its log and shows as unchecked.
 - The typecheck is two projects: `tsconfig.json` (Svelte and plain TypeScript) and
   `tsconfig.market.json` (the Solid page, with Zubra's typings for Solid).
+
+## Delbie's Back Room (`/wasm/battler/`)
+
+A third game: a five-floor deck-building card battler (a rat, two customers, a back order, three
+pups, the landlord). Fight with parts, add one good card to the deck after each floor, put a dud back
+on the shelf. It exists to test Zubra on lists that reorder, slots, things entering and leaving, and
+dragging between zones.
+
+- **The engine** (`src/battler/cards.ts`, `engine.ts`) is plain TypeScript with a seeded RNG. A run is
+  a seed plus commands (`play`, `move`, `end`, `take`, `remove`, `go`); refused commands change
+  nothing, and `replay(seed, commands)` rebuilds any run.
+- **The screen is Svelte 5** (runes, keyed `{#each}` with `animate:flip`, `in:`/`out:` transitions) on
+  Zubra's `battle-card` (a light-DOM component with an `art` slot). Drag is pointer events
+  (`ui/drag.ts`): drop a card on a foe or on yourself to play it, between cards to reorder the hand,
+  on the deck or shelf on the rewards screen. Tapping works everywhere, so nothing needs a drag.
+- **The numbers are kept honest by bots** (`test/battler.test.ts`): the starting deck almost never
+  clears the five floors but usually reaches the boss, and a deck-building bot wins a middling share.

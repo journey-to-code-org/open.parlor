@@ -1,0 +1,80 @@
+@import "../../../../ui/src/zubra-ui/themes/default.css";
+@import "../../../../ui/src/zubra-ui/themes/system.css";
+
+:root {
+  --felt: #1f4d3a;
+  --primary: var(--felt);
+  --primary-foreground: #fbf6ec;
+  --ring: color-mix(in oklab, var(--felt) 60%, white);
+  --battle-card-w: min(5.2rem, 16vw);
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) { --primary: #7fc8a4; --primary-foreground: #0f2a1f; --ring: #7fc8a4; }
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { background: var(--background); color: var(--foreground); }
+h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; font-size: clamp(1.6rem, 4vw, 2.1rem); line-height: 1.2; margin: 0; }
+h2 { margin: 0; font-size: 1.25rem; }
+h3 { margin: 0.75rem 0 0; font-size: 1rem; }
+p { margin: 0; }
+[hidden] { display: none !important; }
+
+.page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.9rem; width: min(52rem, 100%); margin: 0 auto; padding: 1rem clamp(0.75rem, 3vw, 1.5rem) 4rem; }
+.quiet { color: var(--muted-foreground); font-size: 0.9rem; max-width: 40rem; }
+.top { display: grid; gap: 0.25rem; }
+.home { font-size: 0.9rem; color: var(--muted-foreground); text-decoration: none; justify-self: start; }
+.status { display: grid; gap: 0.5rem; }
+.line { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.line action-button:first-of-type { margin-left: auto; }
+
+/* The fight. */
+.fight { display: grid; gap: 0.75rem; }
+.foes { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.6rem; min-height: 9.5rem; }
+.foe { display: grid; gap: 0.2rem; justify-items: center; width: min(9rem, 29vw); padding: 0.5rem; border: 2px solid var(--border); border-radius: 0.75rem; background: var(--card); text-align: center; cursor: pointer; transition: border-color 120ms, transform 120ms, background 120ms; }
+.foe .art { font-size: 2.4rem; line-height: 1; }
+.foe .name { font-size: 0.75rem; font-weight: 700; line-height: 1.15; }
+.foe progress-bar { width: 100%; }
+.foe .line { justify-content: center; }
+.hp { font-size: 0.75rem; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.foe.aimed, .self.aimed { border-color: var(--primary); background: color-mix(in oklab, var(--primary) 10%, var(--card)); }
+.foe.over, .self.over { border-color: var(--primary); transform: scale(1.04); background: color-mix(in oklab, var(--primary) 22%, var(--card)); }
+.foe:focus-visible, .self:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+
+.self { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.5rem 0.75rem; border: 2px solid var(--border); border-radius: 0.75rem; background: var(--card); transition: border-color 120ms, transform 120ms, background 120ms; }
+.who { display: flex; align-items: center; gap: 0.6rem; flex: 1; min-width: 0; }
+.who .art { font-size: 2rem; }
+.bars { display: grid; gap: 0.2rem; flex: 1; min-width: 0; }
+.energy { display: flex; gap: 0.1rem; font-size: 1.3rem; }
+.energy .spent { opacity: 0.25; filter: grayscale(1); }
+
+.hand { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 0.35rem; min-height: calc(var(--battle-card-w) * 1.4 + 1rem); padding: 0.75rem 0.25rem 0.25rem; border-radius: 0.75rem; transition: background 120ms; }
+.hand.over { background: color-mix(in oklab, var(--primary) 10%, transparent); }
+.empty { color: var(--muted-foreground); align-self: center; }
+.slot { touch-action: none; }
+.slot.dragging { position: relative; z-index: 60; pointer-events: none; cursor: grabbing; filter: drop-shadow(0 12px 14px #0006); transition: none; }
+.bar { display: flex; align-items: center; gap: 0.75rem; }
+.bar action-button { margin-left: auto; }
+.pile { font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+
+.story { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.1rem; font-size: 0.85rem; color: var(--muted-foreground); min-height: 4.6rem; }
+
+/* Between fights. */
+.rewards { display: grid; gap: 0.6rem; }
+.offers { --battle-card-w: min(6.6rem, 27vw); }
+.offers, .deck { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+.deck { --battle-card-w: min(4.6rem, 15.5vw); }
+.deck.viewer { max-height: 60vh; overflow: auto; padding: 0.5rem; }
+.buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+.zones { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.zone { display: grid; place-items: center; min-height: 3.2rem; padding: 0.4rem; border: 2px dashed var(--border); border-radius: 0.75rem; font-size: 0.8rem; text-align: center; color: var(--muted-foreground); transition: border-color 120ms, background 120ms; }
+.zone.ready { border-color: var(--primary); color: var(--foreground); }
+.zone.over { background: color-mix(in oklab, var(--primary) 20%, transparent); border-style: solid; }
+.result { display: grid; gap: 0.5rem; }
+
+@media (prefers-reduced-motion: reduce) { * { transition-duration: 0s !important; animation-duration: 0s !important; } }
