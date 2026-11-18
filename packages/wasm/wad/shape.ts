@@ -1,11 +1,12 @@
-// Changes to what a level is built of: moving a corner, splitting a wall, adding a room. Each
-// takes a shape and changes it in place, or leaves it alone and says why it can't be done.
+// Changes to what a level is built of: moving a corner, splitting a wall, adding a room, taking a
+// room or a corner away. Each takes a shape and changes it in place, or leaves it alone and says
+// why it can't be done. And a level to start from: one empty room.
 //
 // What a level's shape has to be for the engine to draw it: every wall's front is in a room; a
 // wall with a room behind it has a back; no two walls cross; and each room is closed, its walls
 // meeting corner to corner all the way round. Nothing here opens a room, and anything that would
 // make walls cross is refused.
-import { type Corner, type Room, type Shape, type Side, type Wall, WALL_BLOCKS, WALL_TWO_SIDED } from "./level.ts";
+import { type Corner, FLAG_EASY, FLAG_HARD, FLAG_MEDIUM, type Room, type Shape, type Side, type Thing, type Wall, WALL_BLOCKS, WALL_TWO_SIDED } from "./level.ts";
 
 /** Corners are kept on a grid of this many units, the size wall pictures line up on. */
 export const GRID = 8;
@@ -194,5 +195,139 @@ export function addRoomBeyond(shape: Shape, index: number, depth = 128): number 
   return room;
 }
 
+/** How thick a door is. */
+const DOOR = 16;
+
+/**
+ * A door in a wall that has nothing behind it, and a room behind the door, `depth` deep. A door
+ * is a thin room with its ceiling on its floor, between two openings that lift it when pushed;
+ * it opens from either side. `picture`, if given, is what the door looks like; otherwise it
+ * looks like the wall. The room behind comes back, or why it can't be done.
+ */
+export function addDoor(shape: Shape, index: number, depth = 128, picture?: string): number | string {
+  const before = structuredClone(shape);
+  const door = addRoomBeyond(shape, index, DOOR);
+  if (typeof door === "string") return door;
+  // The door's far wall is the second of the three that were made.
+  const far = shape.walls.length - 2;
+  const beyond = addRoomBeyond(shape, far, depth);
+  if (typeof beyond === "string") {
+    Object.assign(shape, before);
+    return beyond;
+  }
+  // Shut, after the room behind was copied from it. Pushed from the front only, so the far opening is turned to face the room behind.
+  shape.rooms[door]!.ceiling = shape.rooms[door]!.floor;
+  flip(shape.walls[far]!);
+  for (const opening of [shape.walls[index]!, shape.walls[far]!]) {
+    opening.special = 1;
+    if (picture) shape.sides[opening.front]!.upper = picture;
+  }
+  return beyond;
+}
+
 /** A change to a room that the engine can't draw: its ceiling below its floor. */
 export const roomTrouble = (room: Room) => (room.ceiling < room.floor ? "A room's ceiling can't be below its floor." : null);
+
+/** The room on one side of a wall; -1 for the back of a wall that has none. */
+const roomOn = (shape: Shape, wall: Wall, which: "front" | "back") => (wall[which] < 0 ? -1 : shape.sides[wall[which]]!.room);
+/** The walls of a room: those with a side in it. */
+export const wallsOf = (shape: Shape, room: number) => shape.walls.flatMap((wall, index) => (roomOn(shape, wall, "front") === room || roomOn(shape, wall, "back") === room ? [index] : []));
+
+/** Turns a wall round: its front is its back. Only a wall with a room on both sides can be. */
+function flip(wall: Wall) {
+  [wall.from, wall.to, wall.front, wall.back] = [wall.to, wall.from, wall.back, wall.front];
+}
+
+/**
+ * Takes a room away. A room that lies inside one other (all its walls openings into it) is
+ * taken with its walls, and the room round it closes over where it was. Any other room leaves a
+ * hole: its openings into its neighbours become their walls, and its own walls go. `placed` is
+ * where things are in the level: nothing may be left in a hole.
+ */
+export function removeRoom(shape: Shape, room: number, placed: Corner[] = []): string | null {
+  if (shape.rooms.length < 2) return "A level needs one room at least.";
+  const own = wallsOf(shape, room);
+  const beyond = (wall: Wall) => (roomOn(shape, wall, "front") === room ? roomOn(shape, wall, "back") : roomOn(shape, wall, "front"));
+  const neighbours = new Set(own.map((index) => beyond(shape.walls[index]!)));
+  const inside = neighbours.size === 1 && !neighbours.has(-1) && !neighbours.has(room);
+  if (!inside && placed.some((thing) => roomAt(shape, thing.x, thing.y) === room)) return "Move what is placed in it somewhere else first: it would be left inside solid wall.";
+  const gone = new Set<number>();
+  for (const index of own) {
+    const wall = shape.walls[index]!;
+    const next = beyond(wall);
+    // An opening into another room becomes that room's wall, in the picture that was above or below the opening.
+    if (inside || next < 0 || next === room) {
+      gone.add(index);
+      continue;
+    }
+    if (roomOn(shape, wall, "front") === room) flip(wall);
+    const kept = shape.sides[wall.front]!;
+    const picture = [kept.middle, kept.upper, kept.lower].find((name) => name !== "-") ?? pictureIn(shape, next);
+    Object.assign(kept, { upper: "-", lower: "-", middle: picture });
+    Object.assign(wall, { back: -1, flags: (wall.flags | WALL_BLOCKS) & ~WALL_TWO_SIDED, special: 0, tag: 0 });
+  }
+  shape.walls = shape.walls.filter((_, index) => !gone.has(index));
+  shape.rooms.splice(room, 1);
+  // Every room after it is one earlier. (A side of the room that went is on no wall now.)
+  for (const one of shape.sides) one.room = one.room === room ? 0 : one.room > room ? one.room - 1 : one.room;
+  return null;
+}
+
+/**
+ * Takes a corner away where just two walls meet, making them one: what undoes a split. The two
+ * must be the same wall carried on: the same rooms on the same sides.
+ */
+export function removeCorner(shape: Shape, corner: number): string | null {
+  const at = wallsAt(shape, corner);
+  if (at.length !== 2) return at.length > 2 ? "More than two walls meet here: it can only be moved." : "Nothing would be left of this wall.";
+  let [first, second] = [shape.walls[at[0]!]!, shape.walls[at[1]!]!];
+  if (first.from === corner && second.to === corner) [first, second] = [second, first];
+  const before = [{ ...first }, { ...second }];
+  const back = () => (Object.assign(first, before[0]), Object.assign(second, before[1]), "The walls either side of it belong to different rooms, or face different ways.");
+  // One into the corner and one out of it; a wall with a room on both sides can be turned round to make it so.
+  if (first.to !== corner || second.from !== corner) {
+    const turned = first.to === corner ? second : first;
+    if (turned.back < 0) return back();
+    flip(turned);
+  }
+  if (roomOn(shape, first, "front") !== roomOn(shape, second, "front") || roomOn(shape, first, "back") !== roomOn(shape, second, "back")) return back();
+  first.to = second.to;
+  // From behind, the wall begins at its far end: the second half's back is the one that begins there.
+  first.back = second.back;
+  const index = shape.walls.indexOf(second);
+  shape.walls.splice(index, 1);
+  const why = trouble(shape, [shape.walls.indexOf(first)]);
+  if (why) {
+    shape.walls.splice(index, 0, second);
+    back();
+  }
+  return why;
+}
+
+/**
+ * A level to start from: one square room, 512 across, with the four players' starts in it,
+ * facing north. `look` is what it is made of: a wall picture and two flats the game has.
+ */
+export function emptyLevel(look: { wall: string; floor: string; ceiling: string }): { shape: Shape; things: Thing[] } {
+  const corners = [{ x: -256, y: -256 }, { x: -256, y: 256 }, { x: 256, y: 256 }, { x: 256, y: -256 }];
+  const shape: Shape = {
+    corners,
+    // Clockwise, so each wall's front is inside.
+    walls: corners.map((_, i) => ({ from: i, to: (i + 1) % 4, flags: WALL_BLOCKS, special: 0, tag: 0, front: i, back: -1 })),
+    sides: corners.map(() => side(0, look.wall, false)),
+    rooms: [{ floor: 0, ceiling: 128, floorFlat: look.floor, ceilingFlat: look.ceiling, light: 192, special: 0, tag: 0 }],
+  };
+  const things = [1, 2, 3, 4].map((type, i): Thing => ({ x: -96 + i * 64, y: -128, angle: 90, type, flags: FLAG_EASY | FLAG_MEDIUM | FLAG_HARD }));
+  return { shape, things };
+}
+
+/** The wall picture and the flats a shape uses most: what to make a new level of, so it looks of a piece with the game. */
+export function lookOf(shape: Shape): { wall: string; floor: string; ceiling: string } {
+  const most = (names: string[]) => {
+    const counts = new Map<string, number>();
+    for (const name of names) if (name !== "-") counts.set(name, (counts.get(name) ?? 0) + 1);
+    return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "-";
+  };
+  // Not the sky: a room under it needs walls made for it.
+  return { wall: most(shape.sides.map((one) => one.middle)), floor: most(shape.rooms.map((room) => room.floorFlat)), ceiling: most(shape.rooms.map((room) => room.ceilingFlat).filter((name) => name !== "F_SKY1")) };
+}
