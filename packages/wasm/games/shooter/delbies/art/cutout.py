@@ -35,9 +35,10 @@ def biggest(mask, keep=1, least=40):
 
 def filled(mask):
     """A mask with the holes in it closed."""
-    flood = mask.astype(np.uint8).copy()
+    # A margin round it, so what touches every edge isn't taken for a hole all the way round.
+    flood = np.pad(mask.astype(np.uint8), 1)
     cv2.floodFill(flood, np.zeros((flood.shape[0] + 2, flood.shape[1] + 2), np.uint8), (0, 0), 1)
-    return mask | (flood == 0)
+    return mask | (flood[1:-1, 1:-1] == 0)
 
 def off(image, colour, by):
     """Where a picture isn't its plain background."""
@@ -245,3 +246,78 @@ for index, (x0, x1) in enumerate(((20, 250), (275, 505), (525, 755), (780, 1010)
     rows, cols = np.where(mask)
     y0, y1, a, b = rows.min(), rows.max() + 1, cols.min(), cols.max() + 1
     save(f"face-{index}", smaller(faces[y0:y1, a:b], mask[y0:y1, a:b], (24, 29)))
+
+# The rats, off the sheets Mikey gave of them: each sheet a row or two of one rat, seen from the front round to the back, then
+# attacking, hurt and dying, on a plain ground. Each figure is found as a patch that isn't the ground, taken in order from the left,
+# and made the size it is in the game.
+def figures(name, rows, scale, least=250):
+    sheet = load(name)
+    ground = np.median(sheet.reshape(-1, 3), 0)
+    differs = np.abs(sheet.astype(int) - ground).max(2) > 14
+    found = []
+    for top, bottom in rows:
+        band = np.zeros(differs.shape, np.uint8)
+        band[top:bottom] = differs[top:bottom]
+        joined = cv2.morphologyEx(band, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+        count, labels, stats, _ = cv2.connectedComponentsWithStats(joined)
+        row = sorted((i for i in range(1, count) if stats[i, cv2.CC_STAT_AREA] > least and stats[i, cv2.CC_STAT_HEIGHT] > 22), key=lambda i: stats[i, cv2.CC_STAT_LEFT])
+        # A small thing beside a figure (what it spits) isn't a figure.
+        tallest = max(stats[i, cv2.CC_STAT_HEIGHT] for i in row)
+        for i in row:
+            x, y, w, h = stats[i, :4]
+            if h < 0.4 * tallest:
+                continue
+            mask = filled(labels[y:y + h, x:x + w] == i)
+            found.append(smaller(sheet[y:y + h, x:x + w], mask, (max(1, round(w * scale)), max(1, round(h * scale)))))
+    return found
+for rat, sheet, rows, scale in (
+    ("grease", "rats-sheet.png", [(18, 102)], 0.62),
+    ("mutant", "rats-sheet.png", [(190, 292)], 0.62),
+    ("king", "rats-sheet.png", [(418, 551)], 0.8),
+    ("brute", "brute-sheet.webp", [(40, 280), (280, 572)], 0.42),
+    ("coolant", "coolant-sheet.webp", [(30, 260), (300, 572)], 0.3),
+    ("plugs", "plugs-sheet.webp", [(80, 270), (290, 572)], 0.27),
+    ("fat", "fat-sheet.webp", [(15, 195), (195, 385), (385, 572)], 0.5),
+    ("cyborg", "cyborg-sheet.webp", [(40, 280), (280, 572)], 0.5),
+):
+    for index, figure in enumerate(figures(sheet, rows, scale)):
+        save(f"{rat}-{index}", figure, crop=True)
+
+# Walls, floors and ceilings, off two sheets of six squares each: one grey and rusted, one in the store's blue and yellow.
+def squares(name):
+    sheet = load(name)
+    ground = np.median(sheet[:12].reshape(-1, 3), 0)
+    differs = cv2.morphologyEx((np.abs(sheet.astype(int) - ground).max(2) > 22).astype(np.uint8), cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8))
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(differs)
+    boxes = sorted((tuple(int(v) for v in stats[i, :4]) for i in range(1, count) if stats[i, cv2.CC_STAT_AREA] > 40000), key=lambda box: (box[1] > 300, box[0]))
+    return [sheet[y + 3:y + h - 3, x + 3:x + w - 3] for x, y, w, h in boxes]
+def wall(name, square, size, part=(0, 0, 1, 1)):
+    """A square, or a part of it given as fractions (left, top, right, bottom), made the size of a wall or floor."""
+    h, w = square.shape[:2]
+    cut = square[round(part[1] * h):round(part[3] * h), round(part[0] * w):round(part[2] * w)]
+    Image.fromarray(cut).resize(size, Image.LANCZOS).save(out / f"wall-{name}.png", optimize=True)
+grey, blue = squares("walls-sheet.webp"), squares("walls-blue-sheet.webp")
+print(len(grey), "grey squares,", len(blue), "blue")
+wall("GRAY1", blue[0], (128, 128))
+wall("CRATWIDE", blue[1], (128, 128))
+wall("CRATE1", blue[1], (64, 128), (0, 0, 0.5, 1))
+wall("BIGDOOR1", blue[2], (128, 96))
+wall("BIGDOOR2", blue[4], (128, 128))
+wall("DOOR3", grey[4], (64, 72))
+wall("BRICK1", grey[3], (128, 128))
+wall("METAL1", grey[0], (128, 128))
+wall("BROWNGRN", blue[3], (128, 128))
+wall("FLOOR0_1", grey[2], (64, 64), (0, 0, 0.667, 0.667))
+wall("FLOOR5_1", grey[2], (64, 64), (0.333, 0.333, 1, 1))
+wall("CEIL1_1", blue[5], (64, 64), (0, 0, 0.5, 0.5))
+wall("CEIL3_5", blue[5], (64, 64), (0.5, 0.25, 1, 0.75))
+
+# And a third sheet, of the hydraulic shop in the basement: hoses on a block wall, a bench of tools, shelves of hose on reels, and oil on the floor.
+# Its squares run to the sheet's edge, so they are taken by where they are.
+sheet = load("walls-shop-sheet.webp")
+shop = [sheet[top:bottom, left:right] for top, bottom in ((12, 370), (394, 738)) for left, right in ((12, 331), (352, 671), (694, 1012))]
+print(len(shop), "shop squares")
+wall("PIPE2", shop[0], (128, 128))
+wall("STONE2", shop[4], (128, 128))
+wall("CRATE2", shop[5], (64, 128), (0, 0, 0.5, 1))
+wall("FLOOR0_3", shop[3], (64, 64))

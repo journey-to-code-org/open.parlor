@@ -44,9 +44,10 @@ have no pictures and are placed in no level.
 - `art/title.webp` is the title picture, Mikey's. `art/convert.py` brings it into the game's
   256 colours as `title.raw` and, for the lettering over the menu, `logo.raw` and `logo.mask`.
   It needs Pillow and is run by hand when the picture changes.
-- `art/rats.py` draws the rats: each is a handful of rounded lumps, posed and looked at from the
-  eight sides the engine wants, lit and edged like the engine's own sprites. It writes
-  `sprites.bin.gz` and `sprites.json`: 175 pictures. It needs numpy and Pillow and is run by hand.
+- `art/monsters.py` makes every picture of the rats from the figures `cutout.py` cut off the
+  sheets Mikey gave: each rat from five sides (the engine's other three are those turned over),
+  attacking, hurt and dying. A walk is one figure lifted a pixel on every other step, since a
+  sheet has one figure a side. It writes `sprites.bin.gz` and `sprites.json`: 240 pictures.
 - `art/hud.py` makes the status bar: Delbie's face, from four pictures of him Mikey gave
   (smiling, cross, bruised, bloodied: one for each state of health, moved a pixel or two for
   where he looks, since the engine wants 42), and the bar
@@ -92,7 +93,10 @@ have no pictures and are placed in no level.
 - `art/walls.py` draws the pieces three of the walls are put together from: the shop wall (cream
   over a navy wainscot), shelves of parts in orange and blue boxes, and the counter's front. It
   writes `walls.bin.gz` and `walls.json`: 10 pieces.
-- `art/textures.py` draws every wall, sky, floor and ceiling the levels use, by rule (courses of
+- `art/textures.py` makes every wall, sky, floor and ceiling the levels use. Fifteen are Mikey's
+  (`given/wall-*.png`, off his three sheets: the blue block wall, shelves, the bay door, the
+  shop front, pegboards, brick, cracked concrete, the ceiling, and the hydraulic shop's hoses,
+  bench and oil), under the names the levels already used. The rest are painted by rule (courses of
   brick, planks, cinder block, a bay door's slats, ceiling tiles) and from `walls.py`'s pieces.
   It writes `textures.bin.gz` and `textures.json`: 25 walls and 17 floors. Run it after `walls.py`.
 - `words.txt` is what the game says: Delbie's lines for when a level starts, a rat notices you,
@@ -107,20 +111,28 @@ The page fetches `delbies.wad` and gives it to the engine as the game (`src/shoo
 for a game alone and for a game with others alike, and it is what the editor opens.
 
 The art scripts are run in this order after a change of colours: `palette.py`, `convert.py`,
-`rats.py`, `cutout.py` (only if the pictures changed), `tools.py`, `walls.py`, `textures.py`, `hud.py`, `menu.py`, `sounds.py`.
+`cutout.py` (only if the pictures changed), `monsters.py`, `tools.py`, `walls.py`, `textures.py`, `hud.py`, `menu.py`, `sounds.py`.
 
 ## The rats
 
 Each is one of the engine's monsters under that monster's sprite names, so the engine needs
-telling nothing:
+telling little:
 
 | Rat | To the engine | Sprites |
 | --- | --- | --- |
-| Grease rat | the charging, biting one | `SARG` |
-| Brake-fluid mutant | the one that throws; what it spits is `BAL1`, green | `TROO` |
+| Grease rat | the one that charges and bites | `SARG` |
+| Brake-fluid mutant | the one that throws; what it spits is `BAL1` | `TROO` |
 | The King Rat | the boss | `BOSS` |
+| Tire brute | the boss's lesser brother, made to only swing its iron | `BOS2` |
+| Coolant rat | the one that floats and spits (`BAL2`) | `HEAD` |
+| Spark-plug swarm | the skull that flies at you | `SKUL` |
+| Fat rat in coveralls | the one with a cannon on each arm (`FATB`) | `FATT` |
+| Cyborg rat | the biggest, which fires rockets: here, brake rotors | `CYBR` |
 
-The grease rat is also given a rat's numbers in the engine (`engine/CHANGES.md`): less health,
-faster, smaller, and a bite of 2 to 8, since they come in numbers. The other two behave as the
-engine's monsters do, with voices of their own. The engine's other monsters have no pictures
-here and are in none of the levels.
+The first three are in the hand-made levels. The other five are on the generated floors only:
+spark plugs from the fourth, coolant rats from the fifth, tire brutes from the seventh, fat
+rats from the tenth, and the cyborg rat beside the King Rat on the twelfth.
+
+The grease rat is given a rat's numbers in the engine (`engine/CHANGES.md`). The game's `RULES`
+lump (`rules()` in `game.ts`) makes the tire brute melee only with 350 health, and gives the
+cyborg rat 1,500 health in place of 4,000.

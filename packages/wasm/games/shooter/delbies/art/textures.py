@@ -300,6 +300,14 @@ floors = {
     "SFLR6_1": tiles((22, 34, 92), (16, 26, 76), 32, (10, 14, 44)),
 }
 
+# Mikey's own walls, floors and ceilings (given/wall-*.png, cut off his two sheets by cutout.py) take the place of the ones painted
+# above under the same names: the store's blue block wall with its yellow band, shelves of jugs and boxes, the blue bay door, the
+# shop front, a pegboard of tools, brick over a hazard stripe, cracked concrete, and a ceiling of tiles and strip lights.
+for given in sorted((here / "given").glob("wall-*.png")):
+    name = given.stem[5:]
+    picture = np.array(Image.open(given).convert("RGB")).astype(float)
+    (floors if name in floors else walls)[name] = picture
+
 blob, manifest = bytearray(), []
 for kind, set_ in (("wall", walls), ("floor", floors)):
     for name, rgb in set_.items():

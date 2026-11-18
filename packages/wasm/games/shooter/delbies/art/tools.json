@@ -1182,5 +1182,109 @@
   "left": 11,
   "top": 9,
   "at": 1217656
+ },
+ {
+  "name": "BAL1C0",
+  "width": 34,
+  "height": 33,
+  "left": 17,
+  "top": 16,
+  "at": 1218448
+ },
+ {
+  "name": "BAL1D0",
+  "width": 34,
+  "height": 33,
+  "left": 17,
+  "top": 20,
+  "at": 1220692
+ },
+ {
+  "name": "BAL1E0",
+  "width": 34,
+  "height": 33,
+  "left": 17,
+  "top": 23,
+  "at": 1222936
+ },
+ {
+  "name": "BAL2A0",
+  "width": 13,
+  "height": 13,
+  "left": 6,
+  "top": 12,
+  "at": 1225180
+ },
+ {
+  "name": "BAL2B0",
+  "width": 13,
+  "height": 13,
+  "left": 6,
+  "top": 12,
+  "at": 1225518
+ },
+ {
+  "name": "BAL2C0",
+  "width": 34,
+  "height": 33,
+  "left": 17,
+  "top": 16,
+  "at": 1225856
+ },
+ {
+  "name": "BAL2D0",
+  "width": 34,
+  "height": 33,
+  "left": 17,
+  "top": 20,
+  "at": 1228100
+ },
+ {
+  "name": "BAL2E0",
+  "width": 34,
+  "height": 33,
+  "left": 17,
+  "top": 23,
+  "at": 1230344
+ },
+ {
+  "name": "FATBA0",
+  "width": 22,
+  "height": 20,
+  "left": 11,
+  "top": 13,
+  "at": 1232588
+ },
+ {
+  "name": "FATBB0",
+  "width": 22,
+  "height": 20,
+  "left": 11,
+  "top": 14,
+  "at": 1233468
+ },
+ {
+  "name": "FBXPA0",
+  "width": 53,
+  "height": 54,
+  "left": 26,
+  "top": 18,
+  "at": 1234348
+ },
+ {
+  "name": "FBXPB0",
+  "width": 53,
+  "height": 54,
+  "left": 26,
+  "top": 24,
+  "at": 1240072
+ },
+ {
+  "name": "FBXPC0",
+  "width": 53,
+  "height": 54,
+  "left": 26,
+  "top": 30,
+  "at": 1245796
  }
 ]

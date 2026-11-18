@@ -112,6 +112,19 @@ sounds = {
     # The jump starter's arc.
     # The tank's valve opened: a long hiss that climbs.
     "DSBFG": over(hiss(1.2, 0.1)[::-1] * 1.4, tone(1.2, 300, 1400, 2.0, 0.4) * 0.5),
+    # The stranger rats. The tire brute and the fat rat: low and wet. The coolant rat: a gargle. The spark plugs: a crackle. The cyborg: iron feet.
+    "DSKNTSIT": over(tone(0.6, 320, 200, 1.0, 0.8), hiss(0.6, 0.6)),
+    "DSKNTDTH": join(tone(0.3, 300, 200, 1.0, 0.6), tone(0.7, 200, 70, 1.4, 0.8)),
+    "DSMANSIT": over(tone(0.7, 180, 120, 1.0, 0.9), hiss(0.7, 0.8)),
+    "DSMANATK": over(hiss(0.5, 0.3)[::-1], tone(0.5, 140, 260, 1.0, 0.7) * 0.7),
+    "DSMANDTH": join(tone(0.4, 200, 140, 1.0, 0.8), over(hiss(0.8, 0.8) * 1.5, tone(0.8, 140, 50, 1.3, 0.9))),
+    "DSCACSIT": over(hiss(0.4, 0.4), tone(0.4, 700, 420, 1.0, 0.9)),
+    "DSCACDTH": over(hiss(0.8, 0.7) * 1.5, tone(0.8, 600, 120, 1.2, 0.9)),
+    "DSSKLATK": over(hiss(0.35, 0.02) * 1.3, tone(0.35, 2600, 3600, 1.0, 0.95) * 0.5),
+    "DSCYBSIT": join(tone(0.5, 150, 110, 1.0, 0.9), tone(0.5, 420, 300, 1.0, 0.7)),
+    "DSCYBDTH": over(hiss(1.6, 0.5) * 1.6, join(tone(0.6, 400, 200, 1.0, 0.8), tone(1.0, 200, 40, 1.4, 0.9))),
+    "DSHOOF": over(hiss(0.12, 0.9) * 2, tone(0.12, 120, 60)),
+    "DSMETAL": join(tone(0.05, 1800, 1400), over(hiss(0.1, 0.8), tone(0.1, 160, 90))),
     "DSPLASMA": over(hiss(0.22, 0.05) * 1.2, tone(0.22, 3200, 900, 0.5, 0.9) * 0.8),
 }
 

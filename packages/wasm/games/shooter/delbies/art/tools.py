@@ -471,6 +471,23 @@ given("BAR1B0", lit(picture("drum"), 14))
 BALL = scaled(picture("spit"), 22)
 given("BAL1A0", BALL, middle=True)
 given("BAL1B0", BALL[::-1], middle=True)
+GREENS, TEALS = ((40, 120, 20), (110, 230, 50), (220, 255, 170)), ((20, 110, 120), (70, 220, 220), (220, 255, 250))
+for letter, r in zip("CDE", (8, 12, 15)):
+    flat(f"BAL1{letter}0", burst(34, GREENS, (r, r - 4, r - 9), spokes=7), top=r + 8)
+# What the coolant rat spits, and where it lands: the same in teal.
+for letter, turn in (("A", 0), ("B", 1)):
+    image, draw = small(14, 14)
+    draw.ellipse((1, 1, 13, 13), fill=TEALS[0])
+    draw.ellipse((3, 3, 11, 11), fill=TEALS[1])
+    draw.ellipse((4 + turn * 3, 4, 7 + turn * 3, 7), fill=TEALS[2])
+    flat(f"BAL2{letter}0", image, top=12)
+for letter, r in zip("CDE", (8, 12, 15)):
+    flat(f"BAL2{letter}0", burst(34, TEALS, (r, r - 4, r - 9), spokes=7), top=r + 8)
+# What the fat rat's cannons throw: a bigger gout of the green, and where that lands.
+for letter, r in (("A", 7), ("B", 8)):
+    flat(f"FATB{letter}0", burst(22, GREENS, (r, r - 3, r - 6), spokes=5), top=r + 6)
+for letter, r in zip("ABC", (12, 18, 24)):
+    flat(f"FBXP{letter}0", burst(54, GREENS, (r, r - 5, r - 11), spokes=9), top=r + 6)
 
 blob = bytearray()
 manifest = []

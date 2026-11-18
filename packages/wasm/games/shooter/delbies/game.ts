@@ -10,6 +10,8 @@ import { encodeFlat, encodePatch, type Picture } from "../../../wad/picture.ts";
 import { encodeDmx, RATE, songLump } from "../../../wad/sound.ts";
 import { fromPlan, wallNear } from "../../../wad/plan.ts";
 import { roomAt, trouble } from "../../../wad/shape.ts";
+import { RULE_THINGS } from "../../../wad/rule-things.ts";
+import { RULES, thingKey, writeRules } from "../../../wad/rules.ts";
 import { type Lump, readWad, writeWad } from "../../../wad/wad.ts";
 import * as attic from "./attic.ts";
 import * as basement from "./basement.ts";
@@ -106,6 +108,15 @@ export function wallLists(walls: { name: string; width: number; height: number }
   return [{ name: "TEXTURE1", data: table }, { name: "PNAMES", data: names }];
 }
 
+/**
+ * What the game changes of the engine's rules: the tire brute only swings its iron (the monster it is throws things as well),
+ * and the cyborg rat can be brought down with what a player has by the last floor (the monster it is takes 4,000).
+ */
+export function rules(): Map<string, string> {
+  const thing = (id: string) => RULE_THINGS.find((one) => one.id === id)!;
+  return new Map([[thingKey(thing("MT_KNIGHT"), "missilestate"), "0"], [thingKey(thing("MT_KNIGHT"), "health"), "350"], [thingKey(thing("MT_CYBORG"), "health"), "1500"]]);
+}
+
 /** The whole of it as a WAD: a game of its own, needing no other. `nodes` is the node builder, compiled. */
 export async function buildGame(nodes: WebAssembly.Module, art: Art): Promise<Uint8Array> {
   const marker = (name: string): Lump => ({ name, data: new Uint8Array(0) });
@@ -117,6 +128,7 @@ export async function buildGame(nodes: WebAssembly.Module, art: Art): Promise<Ui
     { name: "TITLEPIC", data: encodePatch({ width: 320, height: 200, left: 0, top: 0, pixels: art.title, solid: new Uint8Array(64000).fill(1) }) },
     { name: "M_DOOM", data: encodePatch({ width: art.logo.width, height: art.logo.height, left: 0, top: 0, pixels: art.logo.pixels, solid: art.logo.solid }) },
   ];
+  lumps.push({ name: RULES, data: writeRules(rules()) });
   lumps.push({ name: "WORDS", data: art.words }, ...art.screens.map((screen) => ({ name: screen.name, data: encodePatch(screen) })));
   // The songs: each lump only names its song, which the page fetches when the engine first asks for it (songs.ts).
   lumps.push(...Object.entries(SONGS).map(([name, song]) => ({ name, data: songLump(song) })));

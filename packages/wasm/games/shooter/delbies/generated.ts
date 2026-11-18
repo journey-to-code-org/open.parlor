@@ -54,6 +54,8 @@ const WAYS: [number, number][] = [[1, 0], [0, 1], [-1, 0], [0, -1]];
 
 const ALL = FLAG_EASY | FLAG_MEDIUM | FLAG_HARD;
 const [GREASE_RAT, MUTANT, KING_RAT] = [3002, 3001, 3003];
+// The engine's flying skull, its floating spitter, its lesser boss, its fat one with two cannons, and its biggest.
+const [SPARK_PLUGS, COOLANT_RAT, TIRE_BRUTE, FAT_RAT, CYBORG_RAT] = [3006, 3005, 69, 67, 16];
 // The engine's chainsaw, rocket launcher and box of rockets, plasma gun and pack of cells.
 const [TORCH, ROTORS, ROTOR_STACK, JUMP_STARTER, BATTERY_CASE] = [2005, 2003, 2046, 2004, 17];
 const [SHOTGUN, CHAINGUN, CLIP, SHELLS, SHELL_BOX, AMMO_BOX, STIMPACK, MEDIKIT, ARMOUR_BONUS, ARMOUR, DEATHMATCH] = [2001, 2002, 2007, 2008, 2049, 2048, 2011, 2012, 2015, 2018, 11];
@@ -231,7 +233,9 @@ export function generate(level: number): Floor {
     const rats = Math.min(places.length - 8, 2 + Math.round(far * 4) + Math.min(3, cell.depth) + roll.below(2));
     for (let i = 0; i < rats; i++) {
       const mutant = roll.chance(0.2 + far * 0.35);
-      put(mutant ? MUTANT : GREASE_RAT, ...next(), angle, i < 2 ? ALL : i % 3 === 2 ? FLAG_HARD : FLAG_MEDIUM | FLAG_HARD);
+      // Further into the game, some of them are the stranger ones: a swarm of spark plugs, a coolant rat, a tire brute, a fat rat with cannons.
+      const stranger = level >= 10 && i % 6 === 5 ? FAT_RAT : level >= 7 && i % 7 === 6 ? TIRE_BRUTE : level >= 5 && i % 5 === 4 ? COOLANT_RAT : level >= 4 && i % 4 === 3 ? SPARK_PLUGS : 0;
+      put(stranger || (mutant ? MUTANT : GREASE_RAT), ...next(), angle, i < 2 ? ALL : i % 3 === 2 ? FLAG_HARD : FLAG_MEDIUM | FLAG_HARD);
     }
     // Something for the trouble.
     put(roll.chance(0.5) ? SHELLS : CLIP, ...next());
@@ -251,7 +255,8 @@ export function generate(level: number): Floor {
     if (index === locked) put(ARMOUR, ...next());
     if (roll.chance(0.4) && places.length) put(ARMOUR_BONUS, ...next());
   });
-  for (let i = 0; i < kings; i++) put(KING_RAT, ex + (ox ? 0 : (i ? 72 : -72) * (kings - 1)), ey + (ox ? (i ? 72 : -72) * (kings - 1) : 0), facing(end));
+  // On the last floor the second of them is the cyborg rat.
+  for (let i = 0; i < kings; i++) put(level === 12 && i === 1 ? CYBORG_RAT : KING_RAT, ex + (ox ? 0 : (i ? 72 : -72) * (kings - 1)), ey + (ox ? (i ? 72 : -72) * (kings - 1) : 0), facing(end));
   // Where a game against each other puts people: four rooms, the start among them.
   for (const index of [keyRoom, last, locked]) if (index > 0) put(DEATHMATCH, ...middle(cells[index]!), facing(cells[index]!));
   return { title, plan, exit, things };

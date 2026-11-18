@@ -16,7 +16,7 @@
  {
   "name": "BRICK1",
   "kind": "wall",
-  "width": 64,
+  "width": 128,
   "height": 128,
   "at": 28672
  },
@@ -25,272 +25,272 @@
   "kind": "wall",
   "width": 128,
   "height": 128,
-  "at": 36864
+  "at": 45056
  },
  {
   "name": "BROWNGRN",
   "kind": "wall",
-  "width": 64,
+  "width": 128,
   "height": 128,
-  "at": 53248
+  "at": 61440
  },
  {
   "name": "CRATE1",
   "kind": "wall",
   "width": 64,
   "height": 128,
-  "at": 61440
+  "at": 77824
  },
  {
   "name": "CRATE2",
   "kind": "wall",
   "width": 64,
   "height": 128,
-  "at": 69632
+  "at": 86016
  },
  {
   "name": "CRATWIDE",
   "kind": "wall",
   "width": 128,
   "height": 128,
-  "at": 77824
+  "at": 94208
  },
  {
   "name": "DOOR1",
   "kind": "wall",
   "width": 64,
   "height": 72,
-  "at": 94208
+  "at": 110592
  },
  {
   "name": "DOOR3",
   "kind": "wall",
   "width": 64,
   "height": 72,
-  "at": 98816
+  "at": 115200
  },
  {
   "name": "DOORBLU2",
   "kind": "wall",
   "width": 16,
   "height": 128,
-  "at": 103424
+  "at": 119808
  },
  {
   "name": "DOORTRAK",
   "kind": "wall",
   "width": 8,
   "height": 128,
-  "at": 105472
+  "at": 121856
  },
  {
   "name": "GRAY1",
   "kind": "wall",
-  "width": 64,
+  "width": 128,
   "height": 128,
-  "at": 106496
+  "at": 122880
  },
  {
   "name": "GRAY4",
   "kind": "wall",
   "width": 64,
   "height": 128,
-  "at": 114688
+  "at": 139264
  },
  {
   "name": "METAL1",
   "kind": "wall",
-  "width": 64,
+  "width": 128,
   "height": 128,
-  "at": 122880
+  "at": 147456
  },
  {
   "name": "PANEL1",
   "kind": "wall",
   "width": 64,
   "height": 128,
-  "at": 131072
+  "at": 163840
  },
  {
   "name": "PIPE2",
   "kind": "wall",
-  "width": 256,
+  "width": 128,
   "height": 128,
-  "at": 139264
+  "at": 172032
  },
  {
   "name": "STEP4",
   "kind": "wall",
   "width": 32,
   "height": 16,
-  "at": 172032
+  "at": 188416
  },
  {
   "name": "STONE2",
   "kind": "wall",
   "width": 128,
   "height": 128,
-  "at": 172544
+  "at": 188928
  },
  {
   "name": "SW1BRN2",
   "kind": "wall",
   "width": 64,
   "height": 128,
-  "at": 188928
+  "at": 205312
  },
  {
   "name": "SW2BRN2",
   "kind": "wall",
   "width": 64,
   "height": 128,
-  "at": 197120
+  "at": 213504
  },
  {
   "name": "WOOD1",
   "kind": "wall",
   "width": 256,
   "height": 128,
-  "at": 205312
+  "at": 221696
  },
  {
   "name": "WOOD5",
   "kind": "wall",
   "width": 256,
   "height": 128,
-  "at": 238080
+  "at": 254464
  },
  {
   "name": "SKY1",
   "kind": "wall",
   "width": 256,
   "height": 128,
-  "at": 270848
+  "at": 287232
  },
  {
   "name": "SKY2",
   "kind": "wall",
   "width": 256,
   "height": 128,
-  "at": 303616
+  "at": 320000
  },
  {
   "name": "CEIL1_1",
   "kind": "floor",
   "width": 64,
   "height": 64,
-  "at": 336384
+  "at": 352768
  },
  {
   "name": "CEIL3_5",
   "kind": "floor",
   "width": 64,
   "height": 64,
-  "at": 340480
+  "at": 356864
  },
  {
   "name": "CEIL5_1",
   "kind": "floor",
   "width": 64,
   "height": 64,
-  "at": 344576
+  "at": 360960
  },
  {
   "name": "CRATOP1",
   "kind": "floor",
   "width": 64,
   "height": 64,
-  "at": 348672
+  "at": 365056
  },
  {
   "name": "CRATOP2",
   "kind": "floor",
   "width": 64,
   "height": 64,
-  "at": 352768
+  "at": 369152
  },
  {
   "name": "FLAT14",
   "kind": "floor",
   "width": 64,
   "height": 64,
-  "at": 356864
+  "at": 373248
  },
  {
   "name": "FLAT23",
   "kind": "floor",
   "width": 64,
   "height": 64,
-  "at": 360960
+  "at": 377344
  },
  {
   "name": "FLAT5_2",
   "kind": "floor",
   "width": 64,
   "height": 64,
-  "at": 365056
+  "at": 381440
  },
  {
   "name": "FLOOR0_1",
   "kind": "floor",
   "width": 64,
   "height": 64,
-  "at": 369152
+  "at": 385536
  },
  {
   "name": "FLOOR0_3",
   "kind": "floor",
   "width": 64,
   "height": 64,
-  "at": 373248
+  "at": 389632
  },
  {
   "name": "FLOOR4_8",
   "kind": "floor",
   "width": 64,
   "height": 64,
-  "at": 377344
+  "at": 393728
  },
  {
   "name": "FLOOR5_1",
   "kind": "floor",
   "width": 64,
   "height": 64,
-  "at": 381440
+  "at": 397824
  },
  {
   "name": "FLOOR7_1",
   "kind": "floor",
   "width": 64,
   "height": 64,
-  "at": 385536
+  "at": 401920
  },
  {
   "name": "FLOOR7_2",
   "kind": "floor",
   "width": 64,
   "height": 64,
-  "at": 389632
+  "at": 406016
  },
  {
   "name": "F_SKY1",
   "kind": "floor",
   "width": 64,
   "height": 64,
-  "at": 393728
+  "at": 410112
  },
  {
   "name": "STEP1",
   "kind": "floor",
   "width": 64,
   "height": 64,
-  "at": 397824
+  "at": 414208
  },
  {
   "name": "SFLR6_1",
   "kind": "floor",
   "width": 64,
   "height": 64,
-  "at": 401920
+  "at": 418304
  }
 ]
