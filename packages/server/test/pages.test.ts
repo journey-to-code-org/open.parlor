@@ -279,3 +279,31 @@ describe("the daily sudoku", () => {
     expect(await off.fetch(new Request("http://parlor.test/daily"))).toBeNull();
   });
 });
+
+describe("the daily sudoku with clues the host has set", () => {
+  const NOW = new Date("2026-11-20T15:00:00Z");
+  const state = { state: async () => ({ games: GAMES as never, watching: true }) };
+  const withSaved = (clues: number[], at: string) => createPages(state, { now: () => NOW, tunables: { get: async () => ({ version: 1, values: { clues }, at: new Date(at).getTime() }) } });
+  const filled = async (pages: ReturnType<typeof createPages>, d: string) => {
+    const html = await (await pages.fetch(new Request(`http://parlor.test/daily?d=${d}`)))!.text();
+    return [...(/givens="([0-9]{81})"/.exec(html)?.[1] ?? "")].filter((c) => c !== "0").length;
+  };
+
+  it("applies them to days after the day they were saved, and leaves that day and the ones before alone", async () => {
+    const easy = withSaved([40, 40, 40, 40, 40, 40, 40], "2026-11-19T15:00:00Z");
+    // The 19th was saved on: the 20th (today, a Friday) is tuned, the 19th is not.
+    expect(await filled(easy, "2026-11-20")).toBe(40);
+    expect(await filled(easy, "2026-11-19")).toBe([...puzzleFor("2026-11-19").givens].filter((c) => c !== "0").length);
+    // Saved today: nothing changes until tomorrow.
+    const now = withSaved([40, 40, 40, 40, 40, 40, 40], "2026-11-20T14:00:00Z");
+    expect(await filled(now, "2026-11-20")).toBe([...puzzleFor("2026-11-20").givens].filter((c) => c !== "0").length);
+  });
+
+  it("checks a form against the same puzzle it drew", async () => {
+    const easy = withSaved([40, 40, 40, 40, 40, 40, 40], "2026-11-19T15:00:00Z");
+    const puzzle = puzzleFor("2026-11-20", [40, 40, 40, 40, 40, 40, 40]);
+    const body = new URLSearchParams({ date: "2026-11-20", ...Object.fromEntries([...puzzle.givens].flatMap((d, i) => (d === "0" ? [[`c${i}`, puzzle.solution[i]!]] : []))) });
+    const answer = await easy.fetch(new Request("http://parlor.test/_zb/action/daily-sudoku/check", { method: "POST", headers: { accept: "application/json", cookie: "player=abc" }, body }));
+    expect(await answer!.json()).toMatchObject({ state: "solved", wrong: 0, empty: 0 });
+  });
+});

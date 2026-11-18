@@ -28,8 +28,11 @@ const needed = (required: string[]): ValidatorFn => (control) => {
 };
 
 const listLength = (min: number, max: number): ValidatorFn => (control) => {
-  const n = (control as FormArray).length;
-  return n < min || n > max ? { length: `${min === max ? `Exactly ${min}` : `${min} to ${max}`} needed.` } : null;
+  const rows = (control as FormArray).controls;
+  if (rows.length < min || rows.length > max) return { length: `${min === max ? `Exactly ${min}` : `${min} to ${max}`} needed.` };
+  // A list of a set length (a number for each weekday) is all of it or none: it comes with a row for each, and is saved only when each has its number.
+  const empty = rows.filter((r) => !(r instanceof FormGroup) && String(r.value ?? "").trim() === "").length;
+  return min === max && empty > 0 && empty < rows.length ? { partial: `Fill in all ${rows.length}, or leave them all empty.` } : null;
 };
 
 /** The name of a card or foe: as the server wants it. */
@@ -60,8 +63,9 @@ export function build(shape: Shape, value: unknown): AbstractControl {
     }
     case "list": {
       const saved = Array.isArray(value) ? value : [];
+      const rows = saved.length === 0 && shape.min === shape.max ? Array.from({ length: shape.min }, () => undefined) : saved;
       return new FormArray(
-        saved.map((item) => build(shape.item, item)),
+        rows.map((item) => build(shape.item, item)),
         { validators: [listLength(shape.min, shape.max)] },
       );
     }
@@ -100,7 +104,7 @@ export function read(shape: Shape, control: AbstractControl): unknown {
     case "list": {
       const items = (control as FormArray).controls.map((c) => read(shape.item, c));
       // A list is one thing: all of it or none. A row left empty is a mistake, not a gap.
-      return items.length ? items : undefined;
+      return items.length && !items.every((item) => item === undefined) ? items : undefined;
     }
   }
 }

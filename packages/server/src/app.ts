@@ -156,7 +156,7 @@ export function createCardRoom(
   const catalogue = createCatalogue(rooms.sync);
   const tunables = createTunables(rooms.sync);
   // "Ask for a game" on the server's own page goes the way the app's does: past the block list, to the relay.
-  const pages = createPages(catalogue, { asking: () => bugs.enabled, ask: async (request) => (await refusal(request)) ?? (await bugs.fetch(request)) });
+  const pages = createPages(catalogue, { tunables, asking: () => bugs.enabled, ask: async (request) => (await refusal(request)) ?? (await bugs.fetch(request)) });
   const designs = createDesigns(rooms.sync, { tables: rooms });
   const houses = createHouses(rooms, { push, ai, gameOn: catalogue.isOn, deckFor: designs.deckFor });
   const challenges = createChallenges(rooms, push, { gameOn: catalogue.isOn });

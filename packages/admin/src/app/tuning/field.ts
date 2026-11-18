@@ -66,12 +66,16 @@ const words = (key: string) => key.replace(/([A-Z])/g, " $1").toLowerCase();
           @if (label()) { <legend>{{ label() }}</legend> }
           @for (item of rows(); track item; let i = $index) {
             <div class="entry">
-              <app-shape-field [shape]="itemShape()" [control]="item" [label]="'Step ' + (i + 1)" [defaults]="defaultAt(i)"></app-shape-field>
-              <action-button variant="ghost" size="sm" [label]="'Remove step ' + (i + 1)" [disabled]="control().disabled" (click)="removeRow(i)">Remove</action-button>
+              <app-shape-field [shape]="itemShape()" [control]="item" [label]="rowLabel(i)" [defaults]="defaultAt(i)"></app-shape-field>
+              @if (!fixed()) {
+                <action-button variant="ghost" size="sm" [label]="'Remove ' + rowLabel(i).toLowerCase()" [disabled]="control().disabled" (click)="removeRow(i)">Remove</action-button>
+              }
             </div>
           }
           @if (listProblem(); as why) { <p class="problem" role="alert">{{ why }}</p> }
-          <action-button variant="outline" size="sm" [disabled]="control().disabled || rows().length >= listMax()" (click)="addRow()">Add a step</action-button>
+          @if (!fixed()) {
+            <action-button variant="outline" size="sm" [disabled]="control().disabled || rows().length >= listMax()" (click)="addRow()">Add a step</action-button>
+          }
         </fieldset>
       }
     }
@@ -96,7 +100,13 @@ export class ShapeField {
     return (c.touched || c.dirty) && c.errors ? String(Object.values(c.errors)[0]) : "";
   };
   protected groupProblem = () => (this.control().errors?.["needed"] as string | undefined) ?? "";
-  protected listProblem = () => (this.control().errors?.["length"] as string | undefined) ?? "";
+  protected listProblem = () => ((this.control().errors?.["length"] ?? this.control().errors?.["partial"]) as string | undefined) ?? "";
+  /** A list of one set length (a number for each weekday) has its rows and no way to add or take one away. */
+  protected fixed = () => {
+    const shape = this.shape();
+    return shape.type === "list" && shape.min === shape.max;
+  };
+  protected rowLabel = (i: number) => (this.label() === "clues" ? (["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][i] ?? `Day ${i + 1}`) : `Step ${i + 1}`);
   protected options = computed(() => ((this.shape() as { of?: string[] }).of ?? []).map((value) => ({ value, label: value })));
 
   protected keys = computed(() => Object.keys((this.shape() as { fields: Record<string, Shape> }).fields));

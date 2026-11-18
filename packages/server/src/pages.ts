@@ -18,7 +18,8 @@ import { ARCADE_GAMES, IDLE_GAMES } from "@journey-to-code/games";
 import { createActions, type Actions } from "@zubra/actions";
 import { createZubra, type ZubraOptions } from "@zubra/server";
 import type { Catalogue } from "./catalogue.js";
-import { FIRST_DAY, clampDate, entriesOf, grade, isDate, puzzleFor, shift, today, type Verdict } from "./sudoku.js";
+import { FIRST_DAY, clampDate, entriesOf, grade, isDate, puzzleFor, shift, today, tunedClues, type Verdict } from "./sudoku.js";
+import type { Tunables } from "./tunables.js";
 
 const KINDS = [
   { value: "all", label: "Every kind" },
@@ -60,6 +61,8 @@ export interface PagesOptions {
   asking?: () => boolean;
   /** Sends a request on to the relay's own route, as the app's sheet does: POST /bugs/request. */
   ask?: (request: Request) => Promise<Response | null>;
+  /** The numbers the host may change (the daily sudoku's clues). */
+  tunables?: Pick<Tunables, "get">;
 }
 
 /** The address the browser used, behind a proxy too: a form's post is checked against it and sent back to it. */
@@ -107,7 +110,7 @@ function shell({ title, about, theme, body }: { title: string; about: string; th
 </html>`;
 }
 
-export function createPages(catalogue: Pick<Catalogue, "state">, { mount = "/games", daily: dailyMount = "/daily", now = () => new Date(), components = fileURLToPath(new URL("../pages", import.meta.url)), asking = () => false, ask }: PagesOptions = {}) {
+export function createPages(catalogue: Pick<Catalogue, "state">, { mount = "/games", daily: dailyMount = "/daily", now = () => new Date(), components = fileURLToPath(new URL("../pages", import.meta.url)), asking = () => false, ask, tunables }: PagesOptions = {}) {
   // `packages` is in @zubra/server and its guide, and not yet in its types.
   const options: ZubraOptions & { packages: string[] } = { components, packages: ["@open-parlor/ui/zubra-ui"] };
   // Made at the first request, not at start-up, and never allowed to take the tables down with it:
@@ -147,13 +150,18 @@ export function createPages(catalogue: Pick<Catalogue, "state">, { mount = "/gam
   }
 
   /** "Check", on the daily sudoku: what is typed, against the answer only this side has. */
-  function checkSudoku(date: string, form: FormData): Checked | { error: string } {
+  /** The day's puzzle, with the clues the host has set for it if they apply. */
+  async function puzzleOf(date: string) {
+    return puzzleFor(date, tunedClues(date, await tunables?.get("sudoku")));
+  }
+
+  async function checkSudoku(date: string, form: FormData): Promise<Checked | { error: string }> {
     if (!isDate(date) || date !== clampDate(date, now())) return { error: "There's no puzzle for that day." };
     const typed = Array.from({ length: 81 }, (_, i) => {
       const value = form.get(`c${i}`);
       return typeof value === "string" && /^[1-9]$/.test(value.trim()) ? value.trim() : "0";
     }).join("");
-    const puzzle = puzzleFor(date);
+    const puzzle = await puzzleOf(date);
     return { date, entries: entriesOf(puzzle, typed), ...grade(puzzle, typed) };
   }
 
@@ -161,7 +169,7 @@ export function createPages(catalogue: Pick<Catalogue, "state">, { mount = "/gam
   async function daily(request: Request, { zubra, actions, theme }: Made, headers: Headers): Promise<string> {
     const url = new URL(request.url);
     const date = clampDate(url.searchParams.get("d"), now());
-    const puzzle = puzzleFor(date);
+    const puzzle = await puzzleOf(date);
     const latest = today(now());
     const sent = actions.result<Checked | { error: string }>(request, (name, value) => headers.append(name, value));
     // A post made without JavaScript comes back once, with what was typed and how it stood.

@@ -805,6 +805,7 @@ over its own numbers; `GET /moderation/tunables` lists what can be tuned, `POST
 /moderation/tunables/<game> { values }` saves (a problem comes back as 422 and nothing changes) and
 `POST /moderation/tunables/<game>/reset` goes back to the game's own numbers. Every change is in the
 activity log. The version goes up on each, so a replay made on other numbers can say which it needs.
+The sudoku's clues apply from the day after they were saved (in New York time), so the puzzle somebody has open is never changed under them; only the latest change is kept, so changing it again also changes the days since the first change.
 
 Players are browsers, not accounts: a player is a cookie, and a name is whatever they typed when
 they sat down. The admin app never sees the cookies, only a reference that's enough to block

@@ -19,6 +19,8 @@ async function open(page: Page) {
 }
 /** The Add button of one table (cards, foes): each table has its own. */
 const adder = (page: Page, table: "cards" | "foes") => page.getByRole("group", { name: table }).getByRole("button", { name: "Add", exact: true });
+/** A weekday's clues field (its label ends "(optional)", so it is matched by its start). */
+const weekday = (page: Page, day: string) => page.getByLabel(new RegExp(`^${day}`));
 const served = async () => {
   const api = await request.newContext({ baseURL: BASE });
   return (await api.get("/tunables/back-room")).json() as Promise<{ version: number; values: Record<string, unknown> }>;
@@ -97,4 +99,27 @@ test("a foe's attacks are a list, and a step needs its number", async ({ page })
   await expect(page.getByText(/version \d+ is saved/i).first()).toBeVisible();
   expect((await served()).values).toEqual({ foes: { rat: { pattern: [{ kind: "attack", amount: 4 }] } } });
   await back(page);
+});
+
+test("the sudoku's clues are a number for each weekday, all of them or none", async ({ page }) => {
+  await open(page);
+  await page.getByLabel("Game", { exact: true }).selectOption({ label: "The daily sudoku" });
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  // A row for each day, and no way to add or take one away.
+  for (const day of days) await expect(weekday(page, day)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add a step" })).toHaveCount(0);
+  // Some, and the rest empty: not enough to save.
+  await weekday(page, "Sunday").fill("45");
+  await expect(page.getByText("Fill in all 7, or leave them all empty.").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save" })).toBeDisabled();
+  await weekday(page, "Monday").fill("5");
+  await expect(page.getByText("From 22 to 60.").first()).toBeVisible();
+  for (const [i, day] of days.entries()) await weekday(page, day).fill(String(40 - i * 2));
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText(/version \d+ is saved/i).first()).toBeVisible();
+  const api = await request.newContext({ baseURL: BASE });
+  const saved = (await (await api.get("/tunables/sudoku")).json()) as { values: { clues: number[] } };
+  expect(saved.values.clues).toEqual([40, 38, 36, 34, 32, 30, 28]);
+  await api.post("/moderation/tunables/sudoku/reset", { data: {}, headers: { authorization: `Bearer ${TOKEN}` } });
+  await page.close();
 });
