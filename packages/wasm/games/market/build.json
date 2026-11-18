@@ -1,0 +1,8 @@
+{
+  "sources": ["engine"],
+  "output": "market.wasm",
+  "defines": [],
+  "freestanding": true,
+  "cflags": ["-mbulk-memory", "-Wall", "-Wextra"],
+  "stack": 16384
+}

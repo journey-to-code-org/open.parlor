@@ -4,9 +4,13 @@ import { expect, test } from "vitest";
 // @ts-expect-error a plain script, with no typings
 import { sourcesHash } from "../scripts/sources.mjs";
 
-const game = join(import.meta.dirname, "../games/shooter");
+const games = join(import.meta.dirname, "../games");
 
-test("shooter.wasm was compiled from the C as it is now (if not: npm run engine -w @open-parlor/wasm)", () => {
-  const built = JSON.parse(readFileSync(join(game, "shooter.wasm.json"), "utf8")) as { sources: string };
+test.each([
+  { name: "shooter", file: "shooter.wasm", build: "npm run engine" },
+  { name: "market", file: "market.wasm", build: "npm run market" },
+])("$name's .wasm was compiled from the C as it is now (if not: $build -w @open-parlor/wasm)", ({ name, file }) => {
+  const game = join(games, name);
+  const built = JSON.parse(readFileSync(join(game, `${file}.json`), "utf8")) as { sources: string };
   expect(built.sources).toBe(sourcesHash(game));
 });

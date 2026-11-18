@@ -276,7 +276,10 @@ src/
   shooter/keys.ts, touch.ts, gamepad.ts, audio.ts
   main.ts             this package's own page
   editor/             the editor: App.svelte, Levels.svelte (the map), Thumb.svelte and Shown.svelte (pictures), and convert.ts (a dropped file to a lump)
+  market/             the stockroom: sim.ts (the module and its tables, read in place), catalog.ts (names and words), ui/ (the Solid page)
 editor/index.html     the editor's page
+market/index.html     the stockroom's page
+games/market/         the stockroom's sim: freestanding C, integers only (market.wasm, 10 KB, no imports)
 public/sw.js          keeps the page for playing offline
 scripts/              build-engine.mjs, toolchain.mjs, fetch-data.mjs, sources.mjs, gen-things.mjs, gen-rules.mjs
 lib/                  net/ compiled for a server to import (npm run build:net); git ignores it
@@ -338,3 +341,32 @@ To make this folder a repository: copy it, and take from the parlor
 
 The page's link back to the parlor (`../`) and its icon (`../icons/icon.svg`) are the only two
 things in `index.html` that assume the parlor is one folder up.
+
+## Delbie's Stockroom (`/wasm/market/`)
+
+A second game, and not a shooter: run the store's stockroom for 28 days. Forty-eight invented parts
+on eight shelves, wholesale prices that drift (and jump on supplier news and weather), customers who
+buy at the shelf price, rats that chew the stock, traps, standing orders, rent every seventh day.
+
+- **The sim** is `games/market/engine/market.c`: freestanding C with no libc and no floating point,
+  compiled for plain `wasm32` (`npm run market`; `"freestanding": true` in its `build.json`, so
+  there is no toolchain to fetch). It is 10 KB and imports nothing. Money is cents; a game is a seed
+  and its commands, so `state_hash` is the same on any machine (a test pins one).
+- **The page reads its tables in place** (`src/market/sim.ts`): the store, the parts and the
+  wholesale prices sit at fixed addresses in the module's memory, seen through typed arrays, so
+  reading 48 prices is 48 array reads and not 48 calls.
+- **The screen is Solid** on Zubra components (data-table, line-chart, spark-line, bar-chart,
+  number-ticker, stat-card, progress-bar, tab-list, steppers, sliders, switches, dialogs, toasts).
+  It exists to test Zubra under live numbers: 48 rows whose cells change many times a second. The
+  *Under the hood* tab measures it, and lets you cut how often the screen is given new numbers.
+- **The numbers are kept honest by bots** (`test/market.test.ts`): doing nothing earns nothing,
+  stocking at a fair mark-up beats that, traps beat no traps, 250% prices go broke by week three.
+- **Same month, two devices** (`src/market/replay.ts`, `challenge.ts`): a game is a seed plus the
+  commands given, so the page logs every command that did something. *Challenge a friend* at the end
+  of a month makes a link (`#c=...`, base64url, a few hundred bytes) with the seed, a name, the score and
+  that log. Whoever opens it plays the same market, and the page first replays the commands on a second
+  copy of the module and only believes the score if it comes out the same. This proves the score is
+  *achievable* by those commands, not that a human played them (a bot's log verifies too). A month too
+  long for a link goes without its log and shows as unchecked.
+- The typecheck is two projects: `tsconfig.json` (Svelte and plain TypeScript) and
+  `tsconfig.market.json` (the Solid page, with Zubra's typings for Solid).

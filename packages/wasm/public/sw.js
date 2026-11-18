@@ -40,7 +40,7 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET" || !request.url.startsWith(scope)) return;
   const path = request.url.slice(scope.length).split(/[?#]/)[0];
   if (request.mode === "navigate") {
-    // The game, and the editor for its pictures and sounds.
-    if (/^(editor\/)?(index\.html)?$/.test(path)) event.respondWith(page(request));
+    // The game, the editor for its pictures and sounds, and the stockroom.
+    if (/^((editor|market)\/)?(index\.html)?$/.test(path)) event.respondWith(page(request));
   } else if (path.startsWith("assets/")) event.respondWith(file(request));
 });
