@@ -182,6 +182,30 @@ SCREENS.counter = { ship: [0, 0], foes: [], bullets: [], shop: true };
 SCREENS.overthehill = { ship: [0, 0], foes: [], bullets: [], hill: true };
 const EMPTY_SCREEN: MiniScreen = { ship: [50, 82], foes: [], bullets: [] };
 
+/**
+ * Games that are pages of their own beside the parlor, on the shelves with the rest: a tile each,
+ * found by the search like any other, that goes to the page. They aren't the host's to arrange or
+ * leave out, having no table in the parlor.
+ */
+const ELSEWHERE = [
+  {
+    id: "delbies-doomsday",
+    name: "Delbie's Doomsday",
+    emoji: "👾",
+    blurb: "A first-person shooter on the Doom engine: twelve floors of an auto parts store, and rats. Alone, or up to four together.",
+    category: "arcade" as const,
+    group: undefined,
+    seats: [1, 4] as [number, number],
+    teams: false,
+    fan: [],
+    screen: { ship: [50, 84], foes: [[24, 30], [50, 22], [76, 30]], bullets: [[50, 58]] } as MiniScreen,
+    dice: undefined,
+    board: undefined,
+    table: undefined,
+    href: "wasm/",
+  },
+];
+
 const SEATS: Record<string, { seats: [number, number]; teams: boolean }> = {
   spades: { seats: [4, 4], teams: true },
   palace: { seats: [2, 6], teams: false },
@@ -199,7 +223,7 @@ export function Home({ last, onPick, onOpenHouse, onLobby, onWifi, onMove }: { l
 
   useEffect(() => {
     // The games the parlor's host offers, in their order (every game, where there's no server).
-    const games = () => arranged(EVERY_GAME).map((g) => ({ ...g, category: categoryOf(g.id), group: cardGroupOf(g.id), screen: isArcadeGame(g.id) || isIdleGame(g.id) || isFieldGame(g.id) ? (SCREENS[g.id] ?? EMPTY_SCREEN) : undefined, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: (isBoardGame(g.id) && !DICE[g.id]) || isWordGame(g.id) ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
+    const games = () => [...arranged(EVERY_GAME).map((g) => ({ ...g, category: categoryOf(g.id), group: cardGroupOf(g.id), screen: isArcadeGame(g.id) || isIdleGame(g.id) || isFieldGame(g.id) ? (SCREENS[g.id] ?? EMPTY_SCREEN) : undefined, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: (isBoardGame(g.id) && !DICE[g.id]) || isWordGame(g.id) ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined, href: undefined as string | undefined })), ...ELSEWHERE];
     const props = reactive({
       games: games(),
       categories: GAME_CATEGORIES,
