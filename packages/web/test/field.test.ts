@@ -4,7 +4,9 @@
 import { QUICK_STYLE, kitGame, type FieldView } from "@journey-to-code/games";
 import { describe, expect, it } from "vitest";
 import { fitField } from "../src/field/draw";
-import { BURST_FOR, HOLD, beginPlayback, eventsBetween, frameAt, playbackOver } from "../src/field/play";
+import { Fx } from "../src/field/fx";
+import { lookOf } from "../src/field/looks";
+import { BURST_FOR, HOLD, beginPlayback, eventsBetween, frameAt, playbackOver, shellLook } from "../src/field/play";
 import { controls } from "../src/HowToPlay";
 import { sharesDevice } from "../src/kit/sameDevice";
 
@@ -76,6 +78,121 @@ describe("playing a shot back", () => {
     const view = shots(1)[0]!;
     expect(beginPlayback({ ...view, last: { ...view.last!, version: view.last!.version + 1 } })).toBeNull();
     expect(beginPlayback({ ...view, last: null })).toBeNull();
+  });
+});
+
+describe("what a thing in the air looks like", () => {
+  it("goes by what the shell does", () => {
+    const shells = Object.fromEntries((game.view(game.newGame(game.normalize({}), 2, 1), 0) as FieldView).shells.map((s) => [s.id, s]));
+    expect(shellLook(shells.shot, false)).toBe("shell");
+    expect(shellLook(shells.laser, false)).toBe("beam");
+    expect(shellLook(shells.jump, false)).toBe("orb");
+    expect(shellLook(shells.dirt, false)).toBe("dirt");
+    expect(shellLook(shells.napalm, false)).toBe("fire");
+    // The pieces of a shell that splits look like what they are.
+    expect(shellLook(shells.cluster, true)).toBe("bomblet");
+    expect(shellLook(shells.napalm, true)).toBe("fire");
+    expect(shellLook(shells.slide, true)).toBe("dirt");
+    expect(shellLook(undefined, false)).toBe("shell");
+  });
+
+  it("is between its two points between two ticks", () => {
+    const p = beginPlayback(shots(1)[0]!)!;
+    const [a, b, mid] = [frameAt(p, 3).shells[0]!, frameAt(p, 4).shells[0]!, frameAt(p, 3.5).shells[0]!];
+    expect(mid.x).toBeCloseTo((a.x + b.x) / 2, 6);
+    expect(mid.y).toBeCloseTo((a.y + b.y) / 2, 6);
+  });
+});
+
+describe("the show", () => {
+  const earth = lookOf("meadow").earth;
+  const flat = () => 400;
+
+  it("makes fire, sparks, flying earth and smoke of a burst, more of a bigger one, and shakes the screen", () => {
+    const small = new Fx();
+    small.event({ tick: 1, kind: "burst", x: 500, y: 400, r: 50, hits: [] }, earth);
+    const big = new Fx();
+    big.event({ tick: 1, kind: "burst", x: 500, y: 400, r: 200, hits: [] }, earth);
+    for (const kind of ["flash", "ring", "fire", "spark", "chunk", "smoke"]) expect(small.bits.some((b) => b.kind === kind), kind).toBe(true);
+    expect(big.bits.length).toBeGreaterThan(small.bits.length);
+    expect(big.shake).toBeGreaterThan(small.shake);
+    expect(small.shake).toBeGreaterThan(0);
+    expect(big.jolt.some((n) => n !== 0)).toBe(true);
+  });
+
+  it("has something to show for every kind of thing a flight does", () => {
+    for (const kind of ["burst", "fire", "heap", "skip", "bore", "split", "carry"] as const) {
+      const fx = new Fx();
+      fx.event({ tick: 1, kind, x: 500, y: 400, r: 60, hits: [] }, earth);
+      expect(fx.bits.length, kind).toBeGreaterThan(0);
+    }
+    // A tracer has no bang: a puff, and no shake.
+    const tracer = new Fx();
+    tracer.event({ tick: 1, kind: "burst", x: 500, y: 400, r: 8, hits: [] }, earth);
+    expect(tracer.shake).toBe(0);
+    expect(tracer.bits.some((b) => b.kind === "fire")).toBe(false);
+  });
+
+  it("dies away by itself: everything ages out, the shake settles, and earth comes to rest on the ground", () => {
+    const fx = new Fx();
+    fx.event({ tick: 1, kind: "burst", x: 500, y: 400, r: 120, hits: [{ piece: "tank1", damage: 30 }] }, earth);
+    fx.say("Direct hit!", 500, 400, "good");
+    expect(fx.busy).toBe(true);
+    let rested = 0;
+    for (let i = 0; i < 400; i++) {
+      fx.step(1, 0, 100, flat);
+      rested += fx.bits.filter((b) => b.kind === "chunk" && b.vx === 0 && b.vy === 0 && b.y === 400).length;
+      for (const b of fx.bits) if (b.kind === "chunk") expect(b.y).toBeGreaterThanOrEqual(400);
+    }
+    expect(rested).toBeGreaterThan(0);
+    expect(fx.bits).toEqual([]);
+    expect(fx.shouts).toEqual([]);
+    expect(fx.shake).toBe(0);
+    expect(fx.busy).toBe(false);
+  });
+
+  it("keeps a fire burning for a while, and a wreck smoking for good, wherever the wreck ends up", () => {
+    const fire = new Fx();
+    fire.event({ tick: 1, kind: "fire", x: 500, y: 400, r: 50, hits: [] }, earth);
+    for (let i = 0; i < 100; i++) fire.step(1, 0, 100, flat);
+    expect(fire.bits.some((b) => b.kind === "flame")).toBe(true);
+    for (let i = 0; i < 400; i++) fire.step(1, 0, 100, flat);
+    expect(fire.busy).toBe(false);
+
+    const wreck = new Fx();
+    wreck.wreck("tank1", 800, 400, earth);
+    for (let i = 0; i < 600; i++) {
+      wreck.smoulder("tank1", 800, 300);
+      wreck.step(1, 3, 100, flat);
+    }
+    expect(wreck.busy).toBe(true);
+    const smoke = wreck.bits.filter((b) => b.kind === "smoke");
+    expect(smoke.length).toBeGreaterThan(0);
+    // The wind leans it, and it rises from where the wreck now is.
+    expect(smoke.some((b) => b.vx > 0)).toBe(true);
+    expect(Math.min(...smoke.map((b) => b.y))).toBeGreaterThan(300);
+    // A new game clears the air, but a wreck is asked after again by whoever draws it.
+    wreck.clear();
+    expect(wreck.bits).toEqual([]);
+  });
+
+  it("never holds more than it can draw", () => {
+    const fx = new Fx();
+    for (let i = 0; i < 60; i++) fx.event({ tick: 1, kind: "burst", x: 500, y: 400, r: 240, hits: [] }, earth);
+    expect(fx.bits.length).toBeLessThanOrEqual(700);
+  });
+});
+
+describe("the look of a place", () => {
+  it("is there for every place the game has, and for one nobody has heard of", () => {
+    for (const scene of ["meadow", "dusk", "desert", "snow", "moon"]) {
+      const look = lookOf(scene);
+      expect(look.sky.length).toBeGreaterThan(1);
+      expect(look.earth.soil.length).toBeGreaterThan(1);
+      expect((game.view(game.newGame(game.normalize({ scene }), 2, 1), 0) as FieldView).field.scene).toBe(scene);
+    }
+    expect(lookOf("moon")).not.toBe(lookOf("dusk"));
+    expect(lookOf("the bottom of the sea")).toBe(lookOf("dusk"));
   });
 });
 
