@@ -1,7 +1,7 @@
 // The parlor as one handler: houses, rooms, card designs, moderation and the sync log. index.ts
 // serves it with the web app, the card designer and the admin app.
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { Log } from "@zubra/sync/server";
+import { createSyncServer, memoryLog, type Log } from "@zubra/sync/server";
 import { createRooms, type RoomDoc } from "@journey-to-code/rooms/server";
 import { createCatalogue } from "./catalogue.js";
 import { createTunables } from "./tunables.js";
@@ -121,8 +121,11 @@ export function createCardRoom(
   // With `bots`, a computer player's heavy think (a search, a simulation) happens in a worker thread
   // and the rooms wait for the answer; without, every think is a call to the game's bot, as ever.
   const bots = options.bots ? createBots({ ...options.bots, courseFor: (id) => courses.courseNow(id) }) : null;
+  // One log for the whole parlor: the rooms' Sync server and the houses' chats' (below) both keep it,
+  // each in collections of its own, so one database (and one backup) holds everything.
+  const log = options.log ?? memoryLog({ keep: "latest" });
   const rooms = createRooms(bots ? { ...tableRoom, think: bots.think } : tableRoom, {
-    log: options.log,
+    log,
     botDelay: options.botDelay,
     // A game the host has switched off takes no new tables.
     // Whether people's tables can be watched is the host's call.
@@ -163,7 +166,10 @@ export function createCardRoom(
   // "Ask for a game" on the server's own page goes the way the app's does: past the block list, to the relay.
   const pages = createPages(catalogue, { tunables, asking: () => bugs.enabled, ask: async (request) => (await refusal(request)) ?? (await bugs.fetch(request)) });
   const designs = createDesigns(rooms.sync, { tables: rooms });
-  const houses = createHouses(rooms, { push, ai, gameOn: catalogue.isOn, deckFor: designs.deckFor });
+  // The houses' chats, followed live by their members' pages at /_zb/house: a Sync server of their
+  // own, since the rooms' decides only what the rooms kit knows. Only the server writes them.
+  const houseSync = createSyncServer({ mount: "/_zb/house", log, device: "house", authorize: (from) => houses.mayFollow(from), warn: false });
+  const houses = createHouses(rooms, { push, ai, gameOn: catalogue.isOn, deckFor: designs.deckFor, chatSync: houseSync, blockedWords: options.lobby?.blockedNames });
   const challenges = createChallenges(rooms, push, { gameOn: catalogue.isOn });
   // The same player on another device: the houses they are told about are the ones they belong to.
   const devices = createDevices({ housesOf: async (player) => (await houses.all()).filter((h) => h.members.some((m) => m.player === player)).map((h) => ({ slug: h.slug, name: h.name })) });
@@ -199,7 +205,7 @@ export function createCardRoom(
   }
 
   /** Everything a blocked player may not do: sit, move, talk, make houses, challenges or designs. Reading is left alone. */
-  const ACTS = ["/rooms", "/houses", "/challenges", "/lobby", "/designs", "/courses", "/push", "/spectate", "/bugs", "/me"];
+  const ACTS = ["/rooms", "/houses", "/_zb/house", "/challenges", "/lobby", "/designs", "/courses", "/push", "/spectate", "/bugs", "/me"];
   const under = (pathname: string, mounts: string[]) => mounts.some((m) => pathname === m || pathname.startsWith(`${m}/`));
   async function refusal(request: Request): Promise<Response | null> {
     if (request.method === "GET" || request.method === "HEAD" || !under(new URL(request.url).pathname, ACTS)) return null;
@@ -252,7 +258,7 @@ export function createCardRoom(
         answered.headers.append("set-cookie", as.setCookie);
         return answered;
       }
-      return (await ours(request)) ?? (await rooms.fetch(request));
+      return (await ours(request)) ?? (await houseSync.fetch(request)) ?? (await rooms.fetch(request));
     },
     /** For Node's http: answers and resolves true, or resolves false for anything else. */
     async handle(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
@@ -299,9 +305,10 @@ export function createCardRoom(
         // Only the server's own pages can pass: when they are off, /games is the app's address again.
         return response ? answer(response) : false;
       }
-      // The rooms kit reads the request itself; a blocked player is turned away before it does.
+      // The rooms kit and the houses' chats read the request themselves; a blocked player is turned away before they do.
       const blocked = await refusal(new Request(url, { method: req.method === "GET" || req.method === "HEAD" ? "GET" : "POST", headers }));
       if (blocked) return answer(blocked);
+      if (under(url.pathname, ["/_zb/house"])) return houseSync.handle(req, res);
       return rooms.handle(req, res);
     },
     close: () => {

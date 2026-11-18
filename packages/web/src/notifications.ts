@@ -24,7 +24,8 @@ async function serverKey(): Promise<string | null> {
   return data?.enabled ? data.publicKey : null;
 }
 
-async function current(): Promise<NotifyState> {
+/** Where this phone stands on notifications, for a screen that isn't React (the lobby's Vue page). */
+export async function current(): Promise<NotifyState> {
   if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
     return isIos() && !standalone() ? "install-first" : "unsupported";
   }

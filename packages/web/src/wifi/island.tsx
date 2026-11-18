@@ -15,3 +15,25 @@ export function SolidIsland<P extends object>({ mount, props, className }: { mou
   }, [mount]);
   return <div ref={host} className={className ?? "solid-island"} />;
 }
+
+/**
+ * A Solid island whose props change with React's: `mount` returns `update`, which is handed the
+ * props on every render after the first.
+ */
+export function LiveSolidIsland<P extends object>({ mount, props, className }: { mount: (into: HTMLElement, props: P) => { update: (props: P) => void; dispose: () => void }; props: P; className?: string }) {
+  const host = useRef<HTMLDivElement>(null);
+  const island = useRef<{ update: (props: P) => void; dispose: () => void } | null>(null);
+  useEffect(() => {
+    island.current = mount(host.current!, props);
+    return () => {
+      island.current?.dispose();
+      island.current = null;
+    };
+    // Mounted once; the effect below hands it each render's props.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mount]);
+  useEffect(() => {
+    island.current?.update(props);
+  });
+  return <div ref={host} className={className ?? "solid-island"} />;
+}

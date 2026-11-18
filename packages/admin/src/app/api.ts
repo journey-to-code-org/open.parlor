@@ -31,6 +31,16 @@ export interface Table {
   seats: Seat[];
 }
 
+/** A message in a house's chat; a poll comes with its answers and how many have voted. */
+export interface HouseChatLine {
+  id: number;
+  by: string;
+  name: string;
+  text: string;
+  at: number;
+  poll?: { options: string[]; votes: number };
+}
+
 export interface ChatLine {
   key: string;
   seat: number;
@@ -229,6 +239,8 @@ export class Api {
   renameHouse = (slug: string, name: string) => this.send(`/houses/${slug}/rename`, { name });
   removeMember = (slug: string, member: string) => this.send(`/houses/${slug}/remove-member`, { member });
   makeOwner = (slug: string, member: string) => this.send(`/houses/${slug}/owner`, { member });
+  houseChat = (slug: string) => this.send<{ house: { slug: string; name: string }; messages: HouseChatLine[] }>(`/houses/${slug}/chat`);
+  redactHouseChat = (slug: string, id: number) => this.send(`/houses/${slug}/chat-redact`, { id });
   deleteHouse = (slug: string) => this.send(`/houses/${slug}/delete`, {});
   games = () => this.send<Catalogue>("/games");
   setGames = (change: { order?: string[]; off?: string[]; watching?: boolean }) => this.send<Catalogue>("/games", change);

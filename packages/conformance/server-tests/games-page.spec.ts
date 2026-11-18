@@ -64,7 +64,12 @@ test.describe("with JavaScript on", () => {
   test.beforeEach(({ page }) => {
     errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    page.on("console", (message) => (message.type() === "error" || message.type() === "warning") && errors.push(`${message.type()}: ${message.text()}`));
+    page.on("console", (message) => {
+      // Firefox reports what a page had in flight when it's left (a click to /games) as an error of
+      // the page left behind. That isn't a fault of either page.
+      if (message.text().includes("Navigated away from page")) return;
+      if (message.type() === "error" || message.type() === "warning") errors.push(`${message.type()}: ${message.text()}`);
+    });
   });
   test.afterEach(() => expect(errors, "errors and warnings on the page").toEqual([]));
 

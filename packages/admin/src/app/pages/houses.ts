@@ -1,7 +1,7 @@
 // Every house: rename it, hand it to someone else, take a member out, or delete it.
-import { CUSTOM_ELEMENTS_SCHEMA, ChangeDetectionStrategy, Component, inject } from "@angular/core";
-import { Admin } from "../admin";
-import type { House, HouseMember } from "../api";
+import { CUSTOM_ELEMENTS_SCHEMA, ChangeDetectionStrategy, Component, inject, signal } from "@angular/core";
+import { Admin, detailOf, message } from "../admin";
+import type { House, HouseChatLine, HouseMember } from "../api";
 import { Ask } from "../ask";
 
 @Component({
@@ -36,6 +36,7 @@ import { Ask } from "../ask";
             </ul>
             <cluster-layout slot="footer" gap="0.5rem">
               <action-button variant="outline" size="sm" (click)="rename(house)">Rename</action-button>
+              <action-button variant="outline" size="sm" (click)="openChat(house.slug)">Chat</action-button>
               <action-button variant="destructive" size="sm" (click)="remove(house)">Delete house</action-button>
             </cluster-layout>
           </content-card>
@@ -44,11 +45,56 @@ import { Ask } from "../ask";
     } @else {
       <empty-state heading="No houses yet">A house is a family's own corner of the parlor: its members, its house rules and its tournaments. When someone starts one, it shows up here.</empty-state>
     }
+    <modal-dialog [open]="chatOpen()" (openchange)="chatOpen.set(detailOf($event))" [label]="chat() ? chat()!.house.name + '’s chat' : 'House chat'">
+      @if (chat(); as c) {
+        @if (c.messages.length) {
+          <ul class="chat" tabindex="0" aria-label="House chat messages">
+            @for (line of c.messages; track line.id) {
+              <li>
+                <span class="line"
+                  ><strong>{{ line.name }}</strong> {{ line.poll ? "📊 " : "" }}{{ line.text }}
+                  @if (line.poll) {
+                    <span class="quiet">({{ line.poll.options.join(" / ") }} · {{ line.poll.votes }} {{ line.poll.votes === 1 ? "vote" : "votes" }})</span>
+                  }</span
+                >
+                <action-button variant="ghost" size="sm" [label]="'Remove ' + line.name + '’s message'" (click)="redact(c.house.slug, line)">Remove</action-button>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="quiet">Nobody's said anything.</p>
+        }
+      }
+      <action-button slot="actions" variant="outline" data-close>Done</action-button>
+    </modal-dialog>
   `,
 })
 export class HousesPage {
   protected readonly admin = inject(Admin);
   private readonly ask = inject(Ask);
+  protected readonly detailOf = detailOf;
+  /** The house whose chat is open in its dialog, and the chat. */
+  protected readonly chat = signal<{ house: { slug: string; name: string }; messages: HouseChatLine[] } | null>(null);
+  protected readonly chatOpen = signal(false);
+
+  protected async openChat(slug: string, quiet = false): Promise<void> {
+    try {
+      this.chat.set(await this.admin.api.houseChat(slug));
+      this.chatOpen.set(true);
+    } catch (error) {
+      if (!quiet) this.admin.toast(message(error), "danger");
+    }
+  }
+
+  protected async redact(slug: string, line: HouseChatLine): Promise<void> {
+    try {
+      await this.admin.api.redactHouseChat(slug, line.id);
+      await this.openChat(slug, true);
+      this.admin.toast("Removed the message.", "success");
+    } catch (error) {
+      this.admin.toast(message(error), "danger");
+    }
+  }
 
   protected rename(house: House): void {
     this.ask.ask({

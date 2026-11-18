@@ -54,9 +54,9 @@ const REPO = "https://github.com/journey-to-code-org";
 const PAGES = [
   { id: "element", name: "No framework", does: "The components as plain custom elements, driven by the DOM. The baseline the others are measured against." },
   { id: "react", name: "React", does: "In the parlor: every game table, the setup screens, houses and tournaments." },
-  { id: "vue", name: "Vue", does: "In the parlor: the front page, where you choose a game, and Read the Room's answer form." },
+  { id: "vue", name: "Vue", does: "In the parlor: the front page, where you choose a game, the open tables, a house's invite, tables, tournaments, family and standings, its chat, and Read the Room's answer form." },
   { id: "svelte", name: "Svelte", does: "In the parlor: the card designer, and the Mini Golf course and bowling lane editors, inside the React app." },
-  { id: "solid", name: "Solid", does: "In the parlor: the page for watching a game, Read the Room's board and Delbie's Stockroom's screen." },
+  { id: "solid", name: "Solid", does: "In the parlor: the page for watching a game, Read the Room's board, Delbie's Stockroom's screen, the screens for hosting and joining a table on the same wifi, the arcade's pause and game-over sheets, and the sheets over Delbie's Daycare & Geriatrics." },
   { id: "angular", name: "Angular", does: "In the parlor: the admin app, with Angular's router (a page per part, loaded when opened) and reactive forms over the components." },
   { id: "preact", name: "Preact", does: "Not in the parlor. Here because Zubra supports it, and it is the one page that found something in its first run." },
   { id: "lit", name: "Lit", does: "Not in the parlor. Here for what the others don't do: the whole fixture sits inside a shadow root." },
@@ -65,8 +65,8 @@ const PAGES = [
 /** What the checks have found so far, newest first. */
 const FOUND = [
   { what: "A tab panel that arrived later, or changed its tab, was never set up", where: "Found by the admin app, whose router changes the tab and the panel in the same pass: every page after the first was blank. Fixed in zubra-ui; a check now adds and moves a panel in all eight pages.", links: [["zubra-ui#23", `${REPO}/zubra-ui/issues/23`], ["zubra-ui#24", `${REPO}/zubra-ui/pull/24`]] },
-  { what: "A Svelte file in a React app got React's wrapper", where: "Found by the Mini Golf and bowling editors, Svelte inside the React app. Fixed in Zubra, not released yet; the editors ask for the element until then.", links: [["zubra#377", `${REPO}/zubra/issues/377`], ["zubra#378", `${REPO}/zubra/pull/378`]] },
-  { what: "Preact 11 couldn't reorder a keyed list inside a component", where: "Preact, in browsers that have moveBefore(). A Zubra host passed insertBefore on to its slots but not moveBefore. Fixed in Zubra, not released yet; a known difference here until the parlor has the fix.", links: [["zubra#370", `${REPO}/zubra/issues/370`], ["zubra#372", `${REPO}/zubra/pull/372`]] },
+  { what: "A Svelte file in a React app got React's wrapper", where: "Found by the Mini Golf and bowling editors, Svelte inside the React app. Fixed in Zubra 5.23.0.", links: [["zubra#377", `${REPO}/zubra/issues/377`], ["zubra#378", `${REPO}/zubra/pull/378`]] },
+  { what: "Preact 11 couldn't reorder a keyed list inside a component", where: "Preact, in browsers that have moveBefore(). A Zubra host passed insertBefore on to its slots but not moveBefore. Fixed in Zubra 5.23.0, and passing here since.", links: [["zubra#370", `${REPO}/zubra/issues/370`], ["zubra#372", `${REPO}/zubra/pull/372`]] },
   { what: "A disabled Angular form left controls usable", where: "Angular's forms put disabled on the element, and the switch, the colour swatches, the segmented control and six more controls had no disabled state. Fixed in zubra-ui and in the parlor's copies.", links: [["zubra-ui#20", `${REPO}/zubra-ui/issues/20`], ["zubra-ui#21", `${REPO}/zubra-ui/pull/21`], ["zubra-ui#22", `${REPO}/zubra-ui/issues/22`], ["zubra-ui#26", `${REPO}/zubra-ui/pull/26`]] },
   { what: "Named-slot elements stayed after the framework removed them", where: "Vue, Svelte and Solid. Fixed in Zubra 5.15.0.", links: [["zubra#269", `${REPO}/zubra/issues/269`]] },
   { what: "Signal text as a component's direct child never updated", where: "Solid. Fixed in Zubra 5.15.0.", links: [["zubra#268", `${REPO}/zubra/issues/268`]] },

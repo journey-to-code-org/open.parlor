@@ -495,10 +495,12 @@ for the day in the browser, and checks without reloading. Past days are at `/dai
 The clue count is the only dial for "hard", so a Saturday puzzle is fewer clues, not necessarily
 harder techniques.
 
-One set of Zubra components serves five frameworks: React and Vue in the parlor, Svelte in the
+One set of Zubra components serves five frameworks: React and Vue in the parlor (Vue for the front
+of house: the start page, the open tables, and a house's page and chat), Svelte in the
 designer and in the Mini Golf course and bowling lane editors (Svelte inside the React app,
 `packages/web/src/golf/`), Solid on the watch page and in the web app's islands (Read the Room's
-board, and the screens for hosting and joining a table on this wifi, `packages/web/src/solid/`),
+board, the screens for hosting and joining a table on this wifi, and the sheets over the arcade
+and Delbie's Daycare & Geriatrics, `packages/web/src/solid/`),
 and Angular in the admin app.
 
 The server decides every move. Each player's browser only ever receives its own view of a table
@@ -582,7 +584,9 @@ and everyone watching then sees those cards. The table keeps its own copy of the
 maker changing or deleting it, or the host hiding it, never changes the cards in the middle of a
 game. A table can only wear a deck its chooser could show everyone: theirs, or a shared one.
 
-**A house's chat.** A house's page has one conversation for everyone in the house, whichever table they are at or none (`/houses/:slug/chat`, `packages/server/src/housechat.ts`). Members only; the last 200 messages are kept, 280 characters each. Anyone can take down their own message, and the owner and admins anyone's. Words aren't covered, as they aren't at a family table. A member who doesn't have the chat open gets a buzz, at most one every five minutes. The page asks for what is new every four seconds while it is being looked at. The chat also shows who is here: the members whose pages asked in the last twenty seconds. On the page it is a Vue island of Zubra components (`packages/web/src/house/HouseChat.vue`) over a plain store (`house/chat.ts`).
+**A house's chat.** A house's page has one conversation for everyone in the house, whichever table they are at or none (`packages/server/src/housechat.ts`). Members only; the last 200 messages are kept, 280 characters each. A member can ask the house a question with two to four answers; everyone gets one vote and can change it. Anyone can take down their own message, and the owner and admins anyone's; the parlor's host can too, from the admin app (a house's **Chat**). Crude words aren't covered unless the owner or an admin switches that on. A member who doesn't have the chat open gets a buzz, at most one every five minutes.
+
+The chat is live. It is a document on a Zubra Sync server of its own, `/_zb/house`, which keeps the parlor's one log beside the rooms' server: a house's members may read their house's chat and say they're there (presence), and only the server writes it, through `POST /houses/:slug/chat`. On the page, `<house-chat-feed>` (`packages/web/src/house/house-chat-feed.zb`) is a `'use collection housechat'` element: the chat arrives through it, and who else has the page open is its `peers()`. Around it is a Vue island of zubra-ui components (`house/HouseChat.vue`). `packages/web/scripts/house-chat-leaks.mjs` checks that it leaves nothing behind when it leaves the page.
 
 **A house's cards.** A house's owner or an admin picks, on the house's page, the deck its tables start with (`POST /houses/:slug/deck`), from the same choices. The house keeps its own copy, as a table does, every member sees which it is, and the players at a table can still pick another before the deal. Tournament matches start with it too.
 

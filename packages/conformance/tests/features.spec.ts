@@ -21,17 +21,9 @@ interface Known {
 
 const REORDER = "a keyed list reordered in a slot keeps its elements";
 
-const KNOWN: Partial<Record<Framework, Record<string, Known>>> = {
-  // Preact 11 reorders with moveBefore() where the browser has it, and a Zubra host routes
-  // insertBefore to its slots but not moveBefore: the move throws and the list keeps its order.
-  // A browser without moveBefore takes Preact's insertBefore path, which works.
-  preact: {
-    [REORDER]: {
-      issue: "https://github.com/journey-to-code-org/zubra/issues/370",
-      when: (page) => page.evaluate(() => "moveBefore" in Element.prototype),
-    },
-  },
-};
+// What a framework is known to do differently, with the issue it was reported in: none now. Preact
+// 11's moveBefore() (zubra#370) was the last, fixed in Zubra 5.23.0.
+const KNOWN: Partial<Record<Framework, Record<string, Known>>> = {};
 
 const t = (page: Page, name: string) => page.locator(`[data-t="${name}"]`);
 

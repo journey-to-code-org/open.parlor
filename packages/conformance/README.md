@@ -123,15 +123,14 @@ CI runs them in all three browsers.
 
 ## Known differences
 
-One, on Zubra 5.22.0. Preact 11 can't reorder a keyed list inside a component
+None, on Zubra 5.23.0: every check passes in all three browsers.
+
+The last was Preact 11 reordering a keyed list inside a component
 ([zubra#370](https://github.com/journey-to-code-org/zubra/issues/370)): it moves children with
-`moveBefore()` where the browser has it, and a Zubra host passes `insertBefore` on to its slots
-but not `moveBefore`, so the move throws and the list keeps its old order. The check is expected
-to fail only in browsers that have `moveBefore()`; elsewhere Preact uses `insertBefore`, which
-works. It is fixed upstream ([zubra#372](https://github.com/journey-to-code-org/zubra/pull/372)) but not
-in a release yet: when the parlor moves to a Zubra that has it, the check passes, the run says it
-expected a failure, and the entry comes out of `KNOWN`. Everything else passes: the 18 component checks in all eight frameworks, and the feature
-checks in the frameworks that have each feature.
+`moveBefore()` where the browser has it, and a Zubra host passed `insertBefore` on to its slots
+but not `moveBefore`, so the move threw and the list kept its old order. Fixed in
+[zubra#372](https://github.com/journey-to-code-org/zubra/pull/372), released in 5.23.0, and out of
+`KNOWN` since.
 
 `KNOWN` in each spec is where a difference goes when one turns up: the check's title and the
 Zubra issue it was reported in. A listed check is expected to fail, so the run stays
