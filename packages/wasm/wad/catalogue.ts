@@ -1,15 +1,21 @@
 // Which of a WAD's lumps are things someone might want to change, and what kind each is. A WAD
 // doesn't say what a lump is: sprites, wall pieces and floors sit between marker lumps, and the
 // rest is told by its name and by whether its bytes are a picture or a sound.
+import { isLevelName } from "./level.ts";
 import { describe } from "./names.ts";
 import { decodePatch, FLAT } from "./picture.ts";
 import { decodeDmx } from "./sound.ts";
 import type { Wad } from "./wad.ts";
 
-/** A sprite, a piece of wall, a floor or ceiling, any other picture (screens, menus, the status bar), a sound effect. */
-export type Kind = "sprite" | "wall" | "floor" | "screen" | "sound";
+/**
+ * A sprite, a piece of wall, a floor or ceiling, any other picture (screens, menus, the status
+ * bar), a sound effect; and "things": everything placed in one level, named by the level.
+ */
+export type Kind = "sprite" | "wall" | "floor" | "screen" | "sound" | "things";
 
+/** The kinds that are a picture or a sound: one lump, swapped for a file. */
 export const KINDS: Kind[] = ["sprite", "wall", "floor", "screen", "sound"];
+export const EVERY_KIND: Kind[] = [...KINDS, "things"];
 
 export interface Asset {
   kind: Kind;
@@ -38,6 +44,8 @@ export function catalogue(wad: Wad): Asset[] {
   const found = new Map<string, Asset>();
   let section: Kind | null = null;
   wad.lumps.forEach(({ name, data }, index) => {
+    // A level: its marker, then its lumps, the first of them what is placed in it.
+    if (isLevelName(name) && wad.lumps[index + 1]?.name === "THINGS") found.set(key("things", name), { kind: "things", name, index: index + 1, note: "What is placed in this level" });
     const opening = SECTIONS.find(([start]) => start.test(name));
     if (opening) return void (section = opening[2]);
     if (SECTIONS.some(([, end]) => end.test(name))) return void (section = null);
