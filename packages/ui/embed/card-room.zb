@@ -348,6 +348,11 @@
       "emoji": "🧩",
       "blurb": "Seven tiles, one board, and every word has to cross."
     },
+    "readtheroom": {
+      "name": "Read the Room",
+      "emoji": "🫶",
+      "blurb": "How well do you know these people?"
+    },
     "minigolf": {
       "name": "Mini Golf",
       "emoji": "⛳",
@@ -367,6 +372,21 @@
       "name": "Carrom",
       "emoji": "🪙",
       "blurb": "Flick the striker from your baseline and pocket your pieces before they pocket theirs."
+    },
+    "shuffleboard": {
+      "name": "Shuffleboard",
+      "emoji": "🥌",
+      "blurb": "Four pucks each, slid in turn. Stop in the far zones, and send theirs off the end."
+    },
+    "crokinole": {
+      "name": "Crokinole",
+      "emoji": "🎯",
+      "blurb": "A round board, a ring of pegs, and one rule: if they have a disc out there, you have to hit it."
+    },
+    "flickfootball": {
+      "name": "Flick Football",
+      "emoji": "🏈",
+      "blurb": "One folded football, two ends of a table. Hang it over the far edge for a touchdown."
     }
   }
   // GAMES end

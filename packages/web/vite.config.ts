@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import vue from "@vitejs/plugin-vue";
 import zubra from "@zubra/unplugin/vite";
 import { defineConfig } from "vite";
+import solid from "vite-plugin-solid";
 
 const local = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 const base = process.env.BASE_PATH ?? "/";
@@ -19,7 +20,10 @@ export default defineConfig({
     // Each app keeps the typings Zubra writes for it in its own folder: the components are shared with
     // apps in other frameworks.
     zubra({ dts: { dir: ".zubra/types" } }),
-    react(),
+    // Two frameworks write .tsx. The files in src/solid/ are Solid's (Read the Room's board); every
+    // other .tsx is React's. In a Solid file a .zb import is asked for as the element (?element).
+    react({ exclude: /src\/solid\// }),
+    solid({ include: /src\/solid\/.*\.tsx$/ }),
     vue(),
     {
       // Link previews need the image's full address. With SITE_ORIGIN (the Pages build) it's written

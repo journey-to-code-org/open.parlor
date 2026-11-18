@@ -3169,3 +3169,35 @@ button.word-tile:active:not(:disabled) { transform: translateY(2px); }
 .counter-dream span { font-style: normal; color: var(--muted-foreground, #667); }
 .counter-final { margin: 0.4rem 0 0; font-size: 2.4rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 @media (min-width: 720px) { .counter-lookup { grid-template-columns: 1fr 1.4fr; } .counter-add { grid-column: 1 / -1; } }
+
+/* Read the Room: a question, a form, and what the room said. The components bring their own looks; the felt's colours are handed to them here. */
+.room {
+  --card: rgba(0, 0, 0, 0.24); --border: rgba(255, 255, 255, 0.2); --input: rgba(0, 0, 0, 0.24); --muted: rgba(255, 255, 255, 0.14); --muted-foreground: #cfe2d6;
+  --primary: var(--gold); --primary-foreground: var(--ink); --foreground: #fff; --card-foreground: #fff; --accent: rgba(255, 255, 255, 0.12); --accent-foreground: #fff; --secondary: rgba(255, 255, 255, 0.14); --secondary-foreground: #fff; --ring: var(--gold);
+  box-sizing: border-box; width: 100%; max-width: 40rem; margin: 0 auto; padding: 0.75rem 1rem 0.25rem; display: grid; gap: 0.9rem; color: #fff;
+}
+.room > *, .room-form > * { min-width: 0; }
+.room-board { display: grid; gap: 0.6rem; }
+.room-count { margin: 0; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-foreground); }
+.room-question { margin: 0; font-size: 1.45rem; line-height: 1.25; }
+.room-headline { margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--gold); }
+.room-seats, .room-gains { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.9rem; }
+.room-seats[hidden], .room-gains[hidden] { display: none; }
+.room-seats li { display: grid; justify-items: center; gap: 0.3rem; opacity: 0.7; }
+.room-seats li.done { opacity: 1; }
+.room-gains li { display: flex; gap: 0.4rem; align-items: baseline; padding: 0.3rem 0.7rem; border-radius: 999px; background: rgba(0, 0, 0, 0.25); font-weight: 700; }
+.room-gains li.none { opacity: 0.55; font-weight: 400; }
+.room-form { display: grid; gap: 0.85rem; }
+.room-form range-slider, .room-form text-field, .room-form tag-input, .room-form choice-cards, .room-form segmented-control { display: block; }
+.room-ends { display: flex; justify-content: space-between; gap: 1rem; margin: -0.4rem 0 0; font-size: 0.85rem; color: var(--muted-foreground); }
+.room-ends span:last-child { text-align: right; }
+.room-hint, .room-waiting { margin: 0; color: var(--muted-foreground); }
+.room-line { padding: 0.6rem 0.8rem; border-radius: 0.8rem; background: rgba(0, 0, 0, 0.2); }
+.room-line p { margin: 0 0 0.3rem; font-size: 1.05rem; }
+/* The big screen: for a television in the corner, read from across the room. */
+.room-watching { max-width: 64rem; padding-top: 2rem; gap: 1.5rem; }
+.room-board.big { gap: 1.2rem; text-align: center; justify-items: center; }
+.room-board.big .room-question { font-size: clamp(1.8rem, 4.6vw, 3.4rem); }
+.room-board.big .room-headline { font-size: clamp(1.3rem, 3vw, 2.2rem); }
+.room-board.big bar-chart { display: block; width: min(100%, 44rem); font-size: 1.25rem; text-align: left; }
+.room-board.big .room-seats, .room-board.big .room-gains { justify-content: center; font-size: 1.2rem; }
