@@ -6,6 +6,7 @@ export const SECTIONS = [
   { value: "houses", label: "Houses" },
   { value: "games", label: "Games" },
   { value: "tuning", label: "Tuning" },
+  { value: "inspector", label: "Inspector" },
   { value: "designs", label: "Card designs" },
   { value: "courses", label: "Courses & lanes" },
   { value: "shootout", label: "Road to the Shootout" },

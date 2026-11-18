@@ -52,6 +52,7 @@ export const routes: Routes = [
       { path: "houses", title: title("houses"), loadComponent: () => import("./pages/houses").then((m) => m.HousesPage) },
       { path: "games", title: title("games"), loadComponent: () => import("./pages/games").then((m) => m.GamesPage) },
       { path: "tuning", title: title("tuning"), loadComponent: () => import("./pages/tuning").then((m) => m.TuningPage) },
+      { path: "inspector", title: title("inspector"), loadComponent: () => import("./pages/inspector").then((m) => m.InspectorPage) },
       { path: "designs", title: title("designs"), loadComponent: () => import("./pages/designs").then((m) => m.DesignsPage) },
       { path: "courses", title: title("courses"), loadComponent: () => import("./pages/courses").then((m) => m.CoursesPage) },
       { path: "shootout", title: title("shootout"), loadComponent: () => import("./pages/shootout").then((m) => m.ShootoutPage) },
