@@ -1,0 +1,66 @@
+# Brings Road to the Shootout over from journey-to-code-org/wasm-toolkit, where it is made, and
+# opens a pull request with it. Run it by hand (Actions > Update Road to the Shootout > Run
+# workflow), naming the wasm-toolkit branch, tag or commit to take; main by default.
+#
+# The same as doing it at home: "make engine" in wasm-toolkit, then
+# "npm run shootout -w @open-parlor/wasm -- ../wasm-toolkit" here. The engine's own tests run
+# first, so a build that doesn't pass them never gets this far.
+name: Update Road to the Shootout
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: The wasm-toolkit branch, tag or commit to take
+        default: main
+        required: true
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: update-shootout
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: open.parlor
+      - uses: actions/checkout@v4
+        with:
+          repository: journey-to-code-org/wasm-toolkit
+          ref: ${{ inputs.ref }}
+          path: wasm-toolkit
+          # The whole history, to list what changed since the build the parlor has.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: open.parlor/.nvmrc
+      - run: rustup target add wasm32-unknown-unknown && pip install pillow numpy
+      - name: Build the engine and its pack, and test them
+        working-directory: wasm-toolkit
+        run: make test-engine
+      - name: Copy the game and the workshop over
+        working-directory: open.parlor
+        run: node packages/wasm/scripts/update-shootout.mjs ../wasm-toolkit
+      - name: Open a pull request
+        working-directory: open.parlor
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "The parlor already has this build. Nothing to do."
+            exit 0
+          fi
+          commit=$(git -C ../wasm-toolkit rev-parse HEAD)
+          short=${commit:0:7}
+          branch="shootout/$short"
+          git config user.name "Mikey Nichols"
+          git config user.email "33106391+mnichols08@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add -A packages/wasm/public/shootout packages/admin/public/workshop
+          git commit -m "Road to the Shootout from wasm-toolkit $short"
+          git push --force -u origin "$branch"
+          log=$(git -C ../wasm-toolkit log --format='- %s' -n 15 "$(git show HEAD~1:packages/wasm/public/shootout/VERSION 2>/dev/null | awk '{print $2}')..$commit" 2>/dev/null || true)
+          body=$(printf 'Road to the Shootout and its workshop, from [wasm-toolkit %s](https://github.com/journey-to-code-org/wasm-toolkit/commit/%s), built and tested by the engine'\''s own tests in this run.\n\nSince the last update:\n%s\n\nMade by the "Update Road to the Shootout" workflow. A pull request opened by a workflow does not start CI on its own: close and reopen it, or push to it, to run it.' "$short" "$commit" "${log:-- (see wasm-toolkit)}")
+          gh pr create --base main --head "$branch" --title "Road to the Shootout from wasm-toolkit $short" --body "$body" \
+            || echo "::warning::The branch $branch is pushed, but the pull request could not be opened (Settings > Actions > General > 'Allow GitHub Actions to create and approve pull requests'). Open it from the branch."
