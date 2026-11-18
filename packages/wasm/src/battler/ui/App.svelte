@@ -9,7 +9,8 @@
   import CardView from "./CardView.svelte";
   import Fight from "./Fight.svelte";
   import Rewards from "./Rewards.svelte";
-  import { best, createRun } from "./run.svelte.ts";
+  import { encode } from "../record.ts";
+  import { best, createRun, toast } from "./run.svelte.ts";
 
   type News<T> = Event & { detail: T };
   const fresh = () => Math.floor(Math.random() * 1_000_000) + 1;
@@ -19,6 +20,18 @@
   // svelte-ignore state_referenced_locally
   const run = createRun(asked > 0 ? Math.floor(asked) : fresh(), tables);
   const view = $derived(run.view);
+
+  // The run as text (seed, the numbers it is played on, every command): what the parlor's host pastes into
+  // the admin app's inspector to play it back.
+  async function copyRun() {
+    const text = encode({ seed: run.seed, numbers: run.tables.version, commands: [...run.commands] });
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(`Run code copied (${run.commands.length} ${run.commands.length === 1 ? "move" : "moves"}).`, "success");
+    } catch {
+      toast("Couldn't copy. Your browser won't let this page use the clipboard.", "danger");
+    }
+  }
 
   let showDeck = $state(false);
   let again = $state(false);
@@ -56,6 +69,7 @@
       <status-badge>Seed {run.seed}</status-badge>
       <status-badge variant="primary">Turn {view.turn}</status-badge>
       <action-button variant="outline" size="sm" onclick={() => (showDeck = true)}>Deck ({view.deck.length})</action-button>
+      <action-button variant="ghost" size="sm" onclick={copyRun}>Copy run code</action-button>
       <action-button variant="ghost" size="sm" onclick={() => (over ? restart(fresh()) : (again = true))}>New run</action-button>
     </div>
   </div>
