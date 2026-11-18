@@ -13,6 +13,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { playerOf, type ChatMessage, type RoomDoc } from "@journey-to-code/rooms/server";
 import type { Catalogue } from "./catalogue.js";
+import type { Tunables } from "./tunables.js";
 import type { Backups } from "./backup.js";
 import type { Courses } from "./courses.js";
 import type { Designs } from "./designs.js";
@@ -71,7 +72,7 @@ const finished = (summary: unknown) => {
 /** How many wrong tokens a minute before everyone waits. */
 const WRONG_TOKENS_PER_MINUTE = 20;
 
-export function createModeration(rooms: Rooms, designs: Designs, { token, houses, catalogue, backups, bots, courses, mount = "/moderation", now = () => Date.now() }: { token?: string; houses?: Houses; catalogue?: Catalogue; /** Mini Golf courses people make, to take out of the gallery. */ courses?: Courses; /** Copies of the database, when the parlor keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
+export function createModeration(rooms: Rooms, designs: Designs, { token, houses, catalogue, tunables, backups, bots, courses, mount = "/moderation", now = () => Date.now() }: { token?: string; houses?: Houses; catalogue?: Catalogue; /** The numbers a game lets its host change (see tunables.ts). */ tunables?: Tunables; /** Mini Golf courses people make, to take out of the gallery. */ courses?: Courses; /** Copies of the database, when the parlor keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
   const secret = token?.trim() ? digest(token.trim()) : null;
   const docs = rooms.sync.documents();
   let wrong: number[] = [];
@@ -332,6 +333,25 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
         const parts = [input.order !== undefined ? "order" : "", input.off !== undefined ? "which games are on" : "", input.watching !== undefined ? `watching ${input.watching === true ? "on" : "off"}` : ""].filter(Boolean);
         await record("Changed the games", parts.join(", ") || "nothing");
         return json(await catalogue.state());
+      }
+    }
+
+    if (area === "tunables" && tunables) {
+      // GET /moderation/tunables → every game that can be tuned, the shape of what it takes, and what is saved
+      if (!id && method === "GET") return json({ games: await Promise.all(tunables.games().map(async (g) => ({ ...g, saved: await tunables.get(g.id) }))) });
+      // POST /moderation/tunables/:game { values } → the game's overrides, replaced (what's wrong comes back as 422 and nothing changes)
+      if (id && !action && method === "POST") {
+        const result = await tunables.set(id, input.values);
+        if ("problems" in result) return json({ error: result.problems[0], problems: result.problems }, 422);
+        await record("Changed a game's numbers", id, `version ${result.saved.version}`);
+        return json(result.saved);
+      }
+      // POST /moderation/tunables/:game/reset → back to the game's own numbers
+      if (id && action === "reset" && method === "POST") {
+        const saved = await tunables.reset(id);
+        if (!saved) return json({ error: "Not found" }, 404);
+        await record("Put a game's numbers back", id, `version ${saved.version}`);
+        return json(saved);
       }
     }
 

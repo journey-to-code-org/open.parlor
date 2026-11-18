@@ -793,6 +793,15 @@ server has an admin token (see **Settings**); sign in with that token.
 | **Courses & lanes** | Every shared Mini Golf course (with a plan of its first hole) and bowling lane (with its plan). Hiding one takes it out of the game's list and stops new tables on it (tables already playing it finish); its maker keeps it and sees your reason. |
 | **Activity** | Everything done from the admin app, newest first. |
 
+**Tuning a game's numbers.** A game can let its host change some of its numbers without a release
+(Delbie's Back Room's cards and foes, the daily sudoku's clues for each weekday). What is kept is a
+sparse override with a version, replaced as a whole and checked against that game's ranges
+(`packages/server/src/tunables.ts`): a game reads `GET /tunables/<game>` when it starts and merges it
+over its own numbers; `GET /moderation/tunables` lists what can be tuned, `POST
+/moderation/tunables/<game> { values }` saves (a problem comes back as 422 and nothing changes) and
+`POST /moderation/tunables/<game>/reset` goes back to the game's own numbers. Every change is in the
+activity log. The version goes up on each, so a replay made on other numbers can say which it needs.
+
 Players are browsers, not accounts: a player is a cookie, and a name is whatever they typed when
 they sat down. The admin app never sees the cookies, only a reference that's enough to block
 someone with. A blocked person who clears their cookies is a new player, so blocking is for
