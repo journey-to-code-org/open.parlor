@@ -15,6 +15,8 @@ import { boardOf, sendRun, type HouseRun } from "./scores";
 import { wants3d } from "../display";
 import { controlsFor } from "./controls";
 import { createPredictor, type Frame } from "./predict";
+import { mountArcadeSheets, type SheetsProps } from "../solid/arcade/Sheets";
+import { LiveSolidIsland } from "../wifi/island";
 import { arcadeSays } from "./flavour";
 import { hasArcade3d, loadArcade3d, type Arcade3d } from "./scene3d";
 import { createArcadeScreen, type ArcadePointer } from "./screen";
@@ -590,6 +592,49 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
     if (next) wakeArcadeSound();
   }
 
+  const seated = table ?? stream;
+  const sheets: SheetsProps = {
+    paused,
+    controls: game.controls.map(says),
+    ending: ending && {
+      final: points(ending.score),
+      best: shared ? "Everyone at the table, together." : ending.isBest ? "A new best on this device." : `Your best: ${points(ending.best)}`,
+      rival: rival
+        ? ending.score > rival.score
+          ? `You beat ${rival.name} (${points(rival.score)}) at the very same game.`
+          : ending.score === rival.score
+            ? `Level with ${rival.name} at the very same game.`
+            : `${rival.name === "your best" ? "Your best" : rival.name} had ${points(rival.score)} at this same game.`
+        : null,
+      market: !!market,
+      stage: market ? null : ending.stage,
+      time: ending.time,
+      pairs:
+        ending.scores.length > 1
+          ? ending.scores.map((n, seat) => ({
+              who: shared ? (seat === seated!.seat ? `${seated!.names[seat] ?? "You"} (you)` : (seated!.names[seat] ?? `Seat ${seat + 1}`)) : seat === 0 ? "You" : `Computer ${seat}`,
+              points: points(n),
+            }))
+          : [],
+    },
+    house: house && {
+      name: house.name,
+      posted:
+        posted && posted.state === "done"
+          ? {
+              state: "done",
+              line: posted.kept ? `That is your best in ${house.name}${posted.place ? `: number ${posted.place} with these rules.` : "."}` : `Your best in ${house.name} is still ${points(posted.best)}.`,
+              top: posted.top.map((r) => ({ key: r.name + r.at, who: r.me ? `${r.name} (you)` : r.name, points: points(r.score), me: !!r.me })),
+            }
+          : posted,
+    },
+    shared,
+    again: rival ? "Try that game again" : "Play again",
+    onCarryOn: () => setPaused(false),
+    onLeave,
+    onAgain: () => setRun((n) => n + 1),
+  };
+
   return (
     <main className="arcade">
       <div className="arcade-cabinet">
@@ -611,89 +656,8 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
         <div className={`arcade-stage ${market ? "short" : ""}`}>
           <canvas ref={glCanvas} className="arcade-gl" aria-hidden />
           <canvas ref={canvas} tabIndex={0} aria-label={`${game.name}: the field`} />
-          {paused && !ending && (
-            <section className="arcade-sheet" aria-label="Paused">
-              <div className="arcade-card">
-                <h2>Paused</h2>
-                <ul className="arcade-controls">
-                  {game.controls.map((line) => (
-                    <li key={line}>{says(line)}</li>
-                  ))}
-                </ul>
-                <div className="arcade-row">
-                  <button type="button" className="primary" autoFocus onClick={() => setPaused(false)}>
-                    Carry on
-                  </button>
-                  <button type="button" className="secondary" onClick={onLeave}>
-                    Leave the game
-                  </button>
-                </div>
-              </div>
-            </section>
-          )}
-          {ending && (
-            <section className="arcade-sheet" aria-label="Game over">
-              <div className="arcade-card">
-                <h2>Game over</h2>
-                <div className="arcade-final">{points(ending.score)}</div>
-                {shared ? <p>Everyone at the table, together.</p> : <p>{ending.isBest ? "A new best on this device." : `Your best: ${points(ending.best)}`}</p>}
-                {rival && (
-                  <p className="arcade-rival">
-                    {ending.score > rival.score ? `You beat ${rival.name} (${points(rival.score)}) at the very same game.` : ending.score === rival.score ? `Level with ${rival.name} at the very same game.` : `${rival.name === "your best" ? "Your best" : rival.name} had ${points(rival.score)} at this same game.`}
-                  </p>
-                )}
-                {house && posted && (
-                  <div className="arcade-house">
-                    {posted.state === "sending" ? (
-                      <p>Sending the run to {house.name}…</p>
-                    ) : posted.state === "failed" ? (
-                      <p>{house.name} could not be reached, so this run stays here.</p>
-                    ) : (
-                      <>
-                        <p>{posted.kept ? `That is your best in ${house.name}${posted.place ? `: number ${posted.place} with these rules.` : "."}` : `Your best in ${house.name} is still ${points(posted.best)}.`}</p>
-                        <ol>
-                          {posted.top.map((r) => (
-                            <li key={r.name + r.at} className={r.me ? "mine" : ""}>
-                              <b>{r.me ? `${r.name} (you)` : r.name}</b>
-                              <span>{points(r.score)}</span>
-                            </li>
-                          ))}
-                        </ol>
-                      </>
-                    )}
-                  </div>
-                )}
-                {market && <p>Every chip earned in the run.</p>}
-                <dl className="arcade-stats">
-                  {!market && (
-                    <>
-                      <dt>Reached</dt>
-                      <dd>{ending.stage}</dd>
-                    </>
-                  )}
-                  <dt>Time</dt>
-                  <dd>{ending.time}</dd>
-                  {ending.scores.length > 1 &&
-                    ending.scores.map((n, seat) => (
-                      <div key={seat} className="arcade-pair">
-                        <dt>{shared ? (seat === (table ?? stream)!.seat ? `${(table ?? stream)!.names[seat] ?? "You"} (you)` : ((table ?? stream)!.names[seat] ?? `Seat ${seat + 1}`)) : seat === 0 ? "You" : `Computer ${seat}`}</dt>
-                        <dd>{points(n)}</dd>
-                      </div>
-                    ))}
-                </dl>
-                <div className="arcade-row">
-                  {!shared && (
-                    <button type="button" className="primary" autoFocus onClick={() => setRun((n) => n + 1)}>
-                      {rival ? "Try that game again" : "Play again"}
-                    </button>
-                  )}
-                  <button type="button" className={shared ? "primary" : "secondary"} onClick={onLeave}>
-                    {shared ? "Leave the table" : "Change the rules"}
-                  </button>
-                </div>
-              </div>
-            </section>
-          )}
+          {/* The pause and game-over sheets are a Solid island (solid/arcade/Sheets.tsx). */}
+          <LiveSolidIsland mount={mountArcadeSheets} props={sheets} />
         </div>
         {market && (
           <div className="arcade-market">
