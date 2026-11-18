@@ -7,6 +7,20 @@ This package is meant to move to a repository of its own (open.wasm) and takes n
 rest of the parlor: no shared components, no server. What the parlor has of it is listed under
 [Moving it out](#moving-it-out).
 
+## Road to the Shootout
+
+At `/wasm/shootout/`, and behind the parlor's own tile for it. It is not built here: it is a Rust
+engine compiled to WebAssembly and the pack of content it plays, from
+[journey-to-code-org/wasm-toolkit](https://github.com/journey-to-code-org/wasm-toolkit), copied
+into `public/shootout/` and committed. `VERSION` there says which commit it is. To bring over a
+newer one:
+
+    (in wasm-toolkit)  make engine
+    (here)             npm run shootout -w @open-parlor/wasm -- ../wasm-toolkit
+
+`/wasm/shootout/workshop.html` is the workshop, where a pack's cars, rooms, parts, rivals and maps
+are edited in the browser. A season is saved in the browser; nothing of it is kept on the server.
+
 ## The shooter
 
 The engine is [doomgeneric](https://github.com/ozkl/doomgeneric), a port of the Doom engine made

@@ -1,5 +1,13 @@
 # Roadmap: Road to the Shootout
 
+> **Where the game is now.** The game the parlor serves is no longer the one this roadmap was
+> written for. It was rebuilt as an engine in Rust, compiled to WebAssembly, that plays a pack of
+> content (cars, rooms, parts, rivals, maps), with a workshop page for making packs. It is built
+> in [journey-to-code-org/wasm-toolkit](https://github.com/journey-to-code-org/wasm-toolkit) and
+> kept here as files: see [packages/wasm](../packages/wasm/README.md#road-to-the-shootout). What
+> follows is the plan for the game as it was first meant, kept for what has yet to be carried
+> over: playing with other people, the phone, and the Shootout itself.
+
 The garage-and-street-race games of around 1990, where the wrenching mattered as much as the
 driving, but set now and with other people in it. It is called **Road to the Shootout**.
 

@@ -15,7 +15,8 @@ play offline" once, when it is done.
 | | Offline |
 | --- | --- |
 | Practice against the computer, every kit game, Spades and Palace | Yes. The computer players already think in the browser (and in a Web Worker for the heavy ones); the worker's file is in the copy. |
-| The solitaires, the arcade games alone, Delbie's, Road to the Shootout | Yes. Scores and garages that are kept at a house wait for the connection. |
+| The solitaires, the arcade games alone, Delbie's | Yes. Scores that are kept at a house wait for the connection. |
+| Road to the Shootout | Once it has been opened with a connection. Its season is kept in the browser. |
 | Air Hockey, against the house or two at one screen | Yes. It is played on the device: two people share the screen, an end and a finger each. |
 | A game shared on this device (below) | Yes. |
 | Mini Golf courses and bowling lanes | The built-in ones. A course someone else shared has to have been loaded while online. |
