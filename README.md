@@ -12,8 +12,8 @@ yourself (Docker or Railway), and practice games work anywhere, including the Gi
 The parlor is also the proving ground for [Zubra](https://github.com/journey-to-code-org/zubra): its
 components are written once and used from React, Vue, Svelte, Solid and Angular, each in a different
 part of the app. [How the parlor is built](https://journey-to-code-org.github.io/open.parlor/conformance/)
-shows the checks that they behave the same in every one, how the last run went, and what the checks
-have found.
+shows the checks that they behave the same in every one (and in Preact and Lit, in Chrome, Firefox
+and WebKit), how the last run went, and what the checks have found.
 
 This repository is the app. The games and the rooms they are played in come from two packages' repositories:
 [open.games](https://github.com/journey-to-code-org/open.games) (the engine and every game) and
@@ -450,7 +450,7 @@ The game engine and the rooms live in their own repositories and come in from np
 | [`@journey-to-code/games`](https://github.com/journey-to-code-org/open.games/tree/main/packages/games) | The game kit and the fifty-four games built on it: the `TableGame` engine contract, the card, board and table-sport kits, and the games |
 | [`@journey-to-code/rules`](https://github.com/journey-to-code-org/open.games/tree/main/packages/rules), [`palace`](https://github.com/journey-to-code-org/open.games/tree/main/packages/palace), [`physics`](https://github.com/journey-to-code-org/open.games/tree/main/packages/physics), [`decks`](https://github.com/journey-to-code-org/open.games/tree/main/packages/decks) | Spades and the computer players' personas, Palace, the deterministic physics for the table sports, and card designs |
 | [`@journey-to-code/rooms`](https://github.com/journey-to-code-org/open.rooms) | Turn-based rooms over `@zubra/sync`: seats, server-decided moves, private views, bots |
-| [`packages/server`](packages/server) | The server: every game's rooms, houses, challenges, tournaments, the lobby, the sync log and the web app |
+| [`packages/server`](packages/server) | The server: every game's rooms, houses, challenges, tournaments, the lobby, the sync log and the web app. It also draws one page itself, `/games` (below) |
 | [`packages/web`](packages/web) | The app (React, with the game chooser in Vue): the card table, the board table, the word table and the canvas table for table sports, setup screens, houses, practice |
 | [`packages/designer`](packages/designer) | The card designer (Svelte): draw a deck, keep it or share it, play with it |
 | [`packages/courses`](packages/courses) | Mini Golf courses and bowling lanes people make: painted on a grid, checked, and turned into a hole or a lane the game plays |
@@ -459,6 +459,25 @@ The game engine and the rooms live in their own repositories and come in from np
 | [`packages/admin`](packages/admin) | The admin app (Angular): the host moderates tables, players, shared designs and shared golf courses |
 | [`packages/conformance`](packages/conformance) | One fixture of the components in every framework, and one set of browser tests run against them all |
 | [`packages/ui`](packages/ui) | Components in Zubra: our own (cards, seats), the ones copied from zubra-ui, and the `<card-room>` embed |
+
+**A page the server draws.** The app needs JavaScript to show anything. `/games` doesn't: the
+server renders it with [`@zubra/server`](https://github.com/journey-to-code-org/zubra/blob/main/docs/server-rendering.md)
+([`pages.ts`](packages/server/src/pages.ts), [`games-page.zb`](packages/server/pages/games-page.zb)),
+so every game the host has switched on is in the HTML, in the host's order, each linking to its
+setup. Its form is a plain GET form: with JavaScript off, "Show" asks the server for the filtered
+page; with it on, the components take over the HTML that is already there, the list follows the
+fields as they change, and the button goes. It is made of the same zubra-ui components as the app,
+served to the browser from `/_zubra/`. The front page links to it where there is a server to draw
+it; a parlor published as plain files (GitHub Pages) has none.
+
+Where the parlor takes requests, the page ends with "Ask for a game"
+([`game-request.zb`](packages/server/pages/game-request.zb)), a form that posts to a function the
+component marks `'use server'` ([`@zubra/actions`](https://github.com/journey-to-code-org/zubra/blob/main/docs/actions.md),
+at `/_zb/action/…`). The function runs on the server and is never sent to the browser. With
+JavaScript off the browser posts the form, the server sends it back to the page, and the page is
+drawn with the answer once; with it on the post is a fetch and the page doesn't reload. A game the
+parlor already has is pointed to; anything else goes to the same relay as the app's own sheet, with
+its limits and its block list.
 
 One set of Zubra components serves five frameworks: React and Vue in the parlor, Svelte in the
 designer, Solid on the watch page and Angular in the admin app.

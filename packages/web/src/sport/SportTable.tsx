@@ -28,6 +28,7 @@ import { viewSetting, wants3d } from "../display";
 import { reducedMotion } from "../motion";
 import { TableSettingsButton } from "../TableSettings";
 import { drawOverlay, drawScene, playFrame, powerColour, toneColour, type Aim, type Disc, type Effect } from "./draw";
+import { firstBall, PoolRack } from "./PoolRack";
 import { drawsIn3d, loadSport3d, type Sport3d } from "./scene3d";
 import { fitFrame, TILT, unprojectVector, type Projection } from "./projection";
 import { advanceRoll, beginRoll, finishRoll, landed, type Roll } from "./roll";
@@ -124,6 +125,13 @@ function aimWords(v: SportView, aim: AimAt): { short: string; long: string } {
   const hole = v.table.look.pockets === "cup" ? "the cup" : "the nearest pocket";
   const pocket = nearestPocket(v, ball);
   const percent = Math.round((aim.power / 1000) * 100);
+  // Pool: the ball the aim reaches first, by its number, since a ball on a small screen can't show it.
+  const target = v.game === "billiards" ? firstBall(v, { x: aim.at ?? ball.x, y: ball.y, r: ball.r }, aim.angle) : null;
+  if (target) {
+    const eightBall = v.table.bodies.some((b) => b.mark === "15");
+    const what = `the ${target.mark}${!eightBall || target.mark === "8" ? "" : target.striped ? " (a stripe)" : " (a solid)"}`;
+    return { short: `At ${what} · ${percent}%`, long: `Aimed at ${what.replace(/[()]/g, "").replace(" a ", ", a ")}, power ${percent} percent.` };
+  }
   if (!pocket) return { short: `${(aim.angle / 100).toFixed(1)}° · ${percent}%`, long: `Aim ${(aim.angle / 100).toFixed(1)} degrees, power ${percent} percent.` };
   // Left and right as the player sees them, looking along the aim.
   const off = ((aim.angle - angleTo(ball, pocket) + 54000) % 36000) - 18000;
@@ -848,7 +856,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
               📋
             </button>
           )}
-          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} sport />}
+          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} sport cards={false} />}
           <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>
       </header>
@@ -856,6 +864,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
 
       <div className="felt sport-felt">
         {shown.game === "bowling" && shown.card ? <BowlingSheet view={shown} card={shown.card} names={names} active={shooter ?? shown.turn} /> : <ScorePanel view={shown} names={names} active={shooter ?? shown.turn} />}
+        <PoolRack view={shown} names={names} />
 
         <div className="sport-view">
           <HoleSign view={shown} names={names} board={sign} />

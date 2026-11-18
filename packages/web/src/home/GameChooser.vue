@@ -24,7 +24,7 @@ export interface ChooserGame {
   /** A board game shows a little board instead of cards. */
   board?: { cols: number; cells: ({ glyph: string; tone: string; shade?: string } | null)[]; shade?: string };
   /** An arcade game shows a little screen: a ship, what it is up against, and what is coming at it (in a 100 × 100 box). */
-  screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][]; chip?: boolean; shop?: boolean; strip?: boolean; rink?: boolean };
+  screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][]; chip?: boolean; shop?: boolean; strip?: boolean; rink?: boolean; quest?: boolean };
   /** A dice game shows a few dice: the face each one shows. */
   dice?: number[];
   /** A table sport shows a little table from above: its surface, a hole, a ball or two (in a 100 × 100 box). */
@@ -44,6 +44,8 @@ const props = defineProps<{
   open: { id: string; game: string; who: string; free: number }[];
   /** Whether this parlor takes requests for games it doesn't have. */
   canAsk?: boolean;
+  /** Whether this parlor has the page its server draws itself, with every game on it (`games`). */
+  canList?: boolean;
 }>();
 const emit = defineEmits<{ pick: [id: string]; house: [slug: string]; lobby: []; wifi: []; move: []; ask: [] }>();
 // The page about how the parlor is made: one set of Zubra components, checked in every framework
@@ -248,6 +250,12 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
                 <rect class="racer b" x="57" y="50" width="15" height="10" rx="2.5" />
                 <path class="tail" d="M27 75 h4 M37 75 h4 M59.5 57 h3 M66.5 57 h3" />
               </svg>
+              <svg v-else-if="g.screen.quest" viewBox="0 0 100 100" shape-rendering="crispEdges">
+                <rect fill="#4aa84a" x="3" y="3" width="94" height="94" rx="14" />
+                <path fill="#74cc62" d="M14 20h4v2h-4z M70 16h4v2h-4z M80 60h4v2h-4z M12 70h4v2h-4z M30 84h4v2h-4z M62 86h4v2h-4z" />
+                <path fill="#2f8a3c" d="M22 40h4v2h-4z M84 34h4v2h-4z M18 56h4v2h-4z M76 78h4v2h-4z" />
+                <g transform="translate(18 16) scale(4)"><path fill="#0b0b14" d="M6 0h4v1h-4zM1 1h2v1h-2zM5 1h1v1h-1zM10 1h1v1h-1zM13 1h2v1h-2zM0 2h1v1h-1zM3 2h1v1h-1zM5 2h1v1h-1zM7 2h2v1h-2zM10 2h1v1h-1zM12 2h1v1h-1zM15 2h1v1h-1zM0 3h1v1h-1zM3 3h2v1h-2zM11 3h2v1h-2zM15 3h1v1h-1zM1 4h2v1h-2zM13 4h2v1h-2zM1 5h1v1h-1zM14 5h1v1h-1zM1 6h1v1h-1zM4 6h2v1h-2zM10 6h2v1h-2zM14 6h1v1h-1zM1 7h1v1h-1zM4 7h2v1h-2zM10 7h2v1h-2zM14 7h1v1h-1zM1 8h1v1h-1zM14 8h1v1h-1zM2 9h1v1h-1zM13 9h1v1h-1zM2 10h1v1h-1zM6 10h1v1h-1zM9 10h1v1h-1zM13 10h1v1h-1zM1 11h1v1h-1zM14 11h1v1h-1zM1 12h1v1h-1zM14 12h1v1h-1zM1 13h1v1h-1zM3 13h1v1h-1zM12 13h1v1h-1zM14 13h1v1h-1zM2 14h2v1h-2zM12 14h2v1h-2zM3 15h1v1h-1zM6 15h1v1h-1zM9 15h1v1h-1zM12 15h1v1h-1z" /><path fill="#2e3248" d="M6 1h4v1h-4zM6 2h1v1h-1zM9 2h1v1h-1zM5 3h1v1h-1zM7 3h2v1h-2zM10 3h1v1h-1zM3 5h1v1h-1zM12 5h1v1h-1zM4 15h2v1h-2zM10 15h2v1h-2z" /><path fill="#c8ccd8" d="M1 2h1v1h-1zM14 2h1v1h-1zM1 3h1v1h-1zM14 3h1v1h-1zM2 8h1v1h-1zM13 8h1v1h-1zM3 9h1v1h-1zM12 9h1v1h-1z" /><path fill="#ffffff" d="M2 2h1v1h-1zM13 2h1v1h-1zM2 3h1v1h-1zM6 3h1v1h-1zM9 3h1v1h-1zM13 3h1v1h-1zM3 4h10v1h-10zM2 5h1v1h-1zM4 5h8v1h-8zM13 5h1v1h-1zM2 6h2v1h-2zM6 6h4v1h-4zM12 6h2v1h-2zM2 7h2v1h-2zM6 7h4v1h-4zM12 7h2v1h-2zM3 8h10v1h-10zM2 12h1v1h-1zM13 12h1v1h-1zM2 13h1v1h-1zM13 13h1v1h-1z" /><path fill="#8a90a4" d="M4 9h8v1h-8zM4 10h1v1h-1zM7 10h2v1h-2zM11 10h1v1h-1z" /><path fill="#ff5a5a" d="M3 10h1v1h-1zM12 10h1v1h-1zM2 11h1v1h-1zM4 11h8v1h-8zM13 11h1v1h-1z" /><path fill="#545a70" d="M5 10h1v1h-1zM10 10h1v1h-1z" /><path fill="#c8283c" d="M3 11h1v1h-1zM12 11h1v1h-1z" /><path fill="#3c90e8" d="M3 12h2v1h-2zM6 12h4v1h-4zM11 12h2v1h-2zM4 13h2v1h-2zM7 13h2v1h-2zM10 13h2v1h-2zM4 14h3v1h-3zM9 14h3v1h-3z" /><path fill="#2850b0" d="M5 12h1v1h-1zM10 12h1v1h-1zM6 13h1v1h-1zM9 13h1v1h-1zM7 14h2v1h-2z" /></g>
+              </svg>
               <svg v-else-if="g.screen.rink" viewBox="0 0 100 100">
                 <rect class="ice" x="3" y="3" width="94" height="94" rx="14" />
                 <path class="rinkline" d="M3 50 H97 M38 50 a12 12 0 1 0 24 0 a12 12 0 1 0 -24 0" />
@@ -278,7 +286,7 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
                 <i v-for="n in 9" :key="n" :class="{ pip: PIPS[face]?.includes(n - 1) }" />
               </span>
             </span>
-            <span v-else-if="g.board" class="mini-board" :class="g.board.shade ? `shade-${g.board.shade}` : ''" aria-hidden="true" :style="{ '--cols': g.board.cols }">
+            <span v-else-if="g.board" class="mini-board" :class="g.board.shade ? `shade-${g.board.shade}` : ''" aria-hidden="true" :style="{ '--cols': g.board.cols, '--rows': Math.ceil(g.board.cells.length / g.board.cols) }">
               <span v-for="(c, i) in g.board.cells" :key="i" class="mini-cell" :class="c ? [`tone-${c.tone}`, c.shade ? `shade-${c.shade}` : ''] : ''">{{ c?.glyph }}</span>
             </span>
             <span v-else-if="g.table" class="mini-table" :class="`surface-${g.table.surface}`" aria-hidden="true">
@@ -317,6 +325,7 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
       <a class="design" href="watch/">👀 Watch a game</a>
       <a class="design" href="designer/">🎨 Design your own deck of cards</a>
       <a class="design" href="wasm/">👾 Play Freedoom, a first-person shooter</a>
+      <a v-if="canList" class="design" href="games">📋 Every game on one page</a>
       <a class="design" :href="BUILT">🧪 How the parlor is built</a>
       <button type="button" class="design" @click="emit('move')">📱 Use the parlor on another device</button>
       <button v-if="canAsk" type="button" class="design" @click="emit('ask')">💡 Don't see your game? Ask for it</button>
@@ -450,8 +459,9 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .mini-board.shade-wood .mini-cell.tone-light { text-shadow: 0 0 1px #1d1a16, 0 1px 1px rgba(0, 0, 0, 0.5); }
 /* A board of points (Backgammon): long triangles from both edges, and no lines between the cells. */
 /* A word game: letter tiles, green in place, gold elsewhere, grey not in the word. */
-.mini-board.shade-words { width: calc(var(--tile-card) * 2.5); gap: 3px; rotate: -4deg; background: none; box-shadow: none; border-radius: 0; overflow: visible; aspect-ratio: 5 / 2; grid-template-rows: none; grid-auto-rows: auto; aspect-ratio: auto; }
-.mini-board.shade-words .mini-cell { aspect-ratio: 1; border-radius: 4px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); font-size: calc(var(--tile-card) * 1.5 / var(--cols) * 0.55); font-weight: 800; color: #1d1a16; background: #fbf6ec; }
+/* Letter tiles. A tile is as big as fits: across for a row or two of letters, and down for a square of them (Word Hunt, Criss-Crosswords), so the picture is never taller than a board and stays clear of the name under it. */
+.mini-board.shade-words { --cell: min(calc((var(--tile-card) * 2.5 - 3px * (var(--cols) - 1)) / var(--cols)), calc((var(--tile-card) * 1.5 - 3px * (var(--rows) - 1)) / var(--rows))); width: calc(var(--cell) * var(--cols) + 3px * (var(--cols) - 1)); gap: 3px; rotate: -4deg; background: none; box-shadow: none; border-radius: 0; overflow: visible; aspect-ratio: 5 / 2; grid-template-rows: none; grid-auto-rows: auto; aspect-ratio: auto; }
+.mini-board.shade-words .mini-cell { aspect-ratio: 1; border-radius: 4px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); font-size: calc(var(--cell) * 0.55); font-weight: 800; color: #1d1a16; background: #fbf6ec; }
 .mini-board.shade-words .mini-cell.tone-hit { background: #3f9a52; color: #fff; }
 .mini-board.shade-words .mini-cell.tone-near { background: #d2a52a; color: #241a00; }
 .mini-board.shade-words .mini-cell.tone-miss { background: #5b5650; color: #f1ece4; }

@@ -6,7 +6,7 @@
 // and the entry and the workaround in the parlor's own apps can go.
 import { expect, test, type Page } from "@playwright/test";
 
-const FRAMEWORKS = ["element", "react", "vue", "svelte", "solid", "angular"] as const;
+const FRAMEWORKS = ["element", "react", "vue", "svelte", "solid", "angular", "preact", "lit"] as const;
 type Framework = (typeof FRAMEWORKS)[number];
 
 const TEXT = "text the page fills in shows in a slot";

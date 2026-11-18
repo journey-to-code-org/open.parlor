@@ -49,8 +49,8 @@ export const lobby = {
   /** The games this player gets a buzz about when a table opens ("any" for every game). */
   alerts: () => call<{ games: string[]; notifications: boolean }>("/lobby/alerts"),
   setAlerts: (games: string[]) => call<{ games: string[]; notifications: boolean }>("/lobby/alerts", { games }),
-  /** Still waiting at this table. */
-  here: (id: string) => call<{ ok: true; open: boolean }>(at(id, "here"), {}),
+  /** Still waiting at this table. `second`: said for the nth extra person at this device (second.ts), who has a seat to keep too. */
+  here: (id: string, second = 0) => call<{ ok: true; open: boolean }>(`${second > 0 ? `/second/${second}` : ""}${at(id, "here")}`, {}),
 };
 
 /** What to tell someone when the lobby said no, or couldn't be reached. */
