@@ -2,6 +2,7 @@ import { createTournaments } from "./tournaments.js";
 import { createGarages } from "./garages.js";
 import { createStores } from "./stores.js";
 import { createScores } from "./scores.js";
+import { createHouseChat } from "./housechat.js";
 // Houses: a family's own corner of the parlor. A house has members (who joined with its invite
 // link), saved house rules with one as the default, and the tables it has opened.
 //
@@ -182,6 +183,7 @@ export function createHouses(
   const stores = createStores(rooms.sync);
   const garages = createGarages(rooms.sync);
   const scores = createScores(rooms.sync);
+  const chat = createHouseChat(rooms.sync, { push });
 
   /** What a member sees. No player secrets; the invite code, since members share the link. */
   async function forMember(house: HouseDoc, me: Member) {
@@ -306,6 +308,8 @@ export function createHouses(
       const owner: Member = { id: random(8), player, name: cleanName(input.you, "Host"), role: "owner", joined: Date.now() };
       const house: HouseDoc = { slug, name, code: random(6), members: [owner], presets: [rules], defaultPreset: rules.id, palacePresets: [familyPalace], palaceDefault: familyPalace.id, tables: [] };
       await save(house);
+      // A name a deleted house had comes without that house's conversation.
+      await chat.clear(slug);
       return json(await forMember(house, owner), 201, cookiePlayer ? {} : { "set-cookie": playerCookie(player, request) });
     }
 
@@ -349,6 +353,13 @@ export function createHouses(
     if (action === "scores") {
       if (!me) return json({ error: "Join the house first." }, 403);
       const reply = await scores.handle(house, me, method, input, new URL(request.url).searchParams);
+      return json(reply.body, reply.status);
+    }
+
+    // /houses/:slug/chat → the house's own conversation, for everyone in it
+    if (action === "chat") {
+      if (!me) return json({ error: "Join the house first." }, 403);
+      const reply = await chat.handle(house, me, method, input, new URL(request.url).searchParams);
       return json(reply.body, reply.status);
     }
 

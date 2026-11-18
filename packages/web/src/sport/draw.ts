@@ -673,6 +673,19 @@ export function drawScene(ctx: Ctx, width: number, height: number, dpr: number, 
     const [x, y] = cam(p[0], p[1]);
     return st.at(x, y, land.heightAt(x, y));
   };
+  // What is painted on the table: a zone's number, a ring's worth. Upright whichever way the table is turned.
+  if (look.marks?.length) {
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(60, 36, 14, 0.42)";
+    for (const m of look.marks) {
+      const [gx, gy] = onTurf([m.x, m.y]);
+      ctx.font = `700 ${Math.max(6, m.size * st.s)}px system-ui, sans-serif`;
+      ctx.fillText(m.text, gx, gy);
+    }
+    ctx.restore();
+  }
   if (scene.trace && scene.trace.length > 1) {
     ctx.save();
     for (const [width, colour] of [[4.5, "rgba(0, 0, 0, 0.4)"], [2.5, "rgba(255, 255, 255, 0.95)"]] as const) {

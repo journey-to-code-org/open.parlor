@@ -55,9 +55,9 @@ const PAGES = [
   { id: "element", name: "No framework", does: "The components as plain custom elements, driven by the DOM. The baseline the others are measured against." },
   { id: "react", name: "React", does: "In the parlor: every game table, the setup screens, houses and tournaments." },
   { id: "vue", name: "Vue", does: "In the parlor: the front page, where you choose a game." },
-  { id: "svelte", name: "Svelte", does: "In the parlor: the card designer." },
+  { id: "svelte", name: "Svelte", does: "In the parlor: the card designer, and the Mini Golf course and bowling lane editors, inside the React app." },
   { id: "solid", name: "Solid", does: "In the parlor: the page for watching a game." },
-  { id: "angular", name: "Angular", does: "In the parlor: the admin app." },
+  { id: "angular", name: "Angular", does: "In the parlor: the admin app, with Angular's router (a page per part, loaded when opened) and reactive forms over the components." },
   { id: "preact", name: "Preact", does: "Not in the parlor. Here because Zubra supports it, and it is the one page that found something in its first run." },
   { id: "lit", name: "Lit", does: "Not in the parlor. Here for what the others don't do: the whole fixture sits inside a shadow root." },
 ];

@@ -7,6 +7,7 @@ import { gunzipSync } from "node:zlib";
 import { describe, expect, test } from "vitest";
 import data from "../games/shooter/data.json";
 import { buildGame, faults, levels, picturesUsed } from "../games/shooter/delbies/game.ts";
+import { generate } from "../games/shooter/delbies/generated.ts";
 // @ts-expect-error a plain script, with no typings
 import { art } from "../scripts/build-delbies.mjs";
 import { screenOf, startEngine, STATE_ENDING } from "../src/shooter/engine.ts";
@@ -24,6 +25,9 @@ import { readWad, writeWad } from "../wad/wad.ts";
 const here = (path: string) => join(import.meta.dirname, path);
 const nodes = new WebAssembly.Module(readFileSync(here("../games/shooter/nodes/nodes.wasm")));
 const look = (more: Partial<Look> = {}): Look => ({ floor: 0, ceiling: 128, floorFlat: "FLOOR0_1", ceilingFlat: "CEIL3_5", light: 160, wall: "GRAY1", ...more });
+
+/** The twelve levels, by the names the engine knows them by. */
+const FLOORS = [...Array.from({ length: 9 }, (_, i) => `E1M${i + 1}`), "E2M1", "E2M2", "E2M3"];
 
 describe("a floor plan", () => {
   // Two rooms with a wall of 16 between them, a door through it, and a pillar in the first.
@@ -73,13 +77,28 @@ describe("a floor plan", () => {
 describe("the game's own levels", () => {
   test("have nothing wrong with them", () => {
     for (const level of levels()) expect(faults(level)).toEqual([]);
-    expect(levels().map((level) => `${level.name} ${level.title}`)).toEqual(["E1M1 The main floor", "E1M2 The attic", "E1M3 The basement"]);
+    expect(levels().map((level) => `${level.name} ${level.title}`)).toEqual([
+      "E1M1 The main floor", "E1M2 The attic", "E1M3 The basement",
+      // The nine made by rule (generated.ts): nine levels to an episode, so the last three are the second's.
+      "E1M4 The stock room", "E1M5 Receiving", "E1M6 The overflow racks", "E1M7 The battery room", "E1M8 The tire loft", "E1M9 The paint room",
+      "E2M1 The boiler room", "E2M2 The crawl space", "E2M3 The nest",
+    ]);
+    // The same number makes the same floor, every time.
+    expect(generate(7)).toEqual(generate(7));
+    // Each made-up floor has one locked door (seen from both sides), and the one key for it.
+    for (const level of levels().slice(3)) {
+      const locks = [26, 27, 28].map((door) => level.shape.walls.filter((wall) => wall.special === door).length);
+      const keys = [5, 6, 13].map((key) => level.things.filter((thing) => thing.type === key).length);
+      expect(`${level.name} ${locks.map((count) => count / 2)}`).toBe(`${level.name} ${keys}`);
+      expect(keys.reduce((sum, count) => sum + count)).toBe(1);
+      expect(level.things.filter((thing) => thing.type >= 1 && thing.type <= 4)).toHaveLength(4);
+    }
     // Each has one way out; and each of its keys opens a door that is there.
     for (const level of levels()) expect(level.shape.walls.filter((wall) => wall.special === 11)).toHaveLength(1);
     const keyed = (level: number, door: number, key: number) => [levels()[level]!.shape.walls.filter((wall) => wall.special === door).length, levels()[level]!.things.filter((thing) => thing.type === key).length];
     expect([keyed(0, 26, 5), keyed(1, 27, 6), keyed(2, 28, 13)]).toEqual([[2, 1], [2, 1], [2, 1]]);
-    // The King Rat is in the last of them only.
-    expect(levels().map((level) => level.things.filter((thing) => thing.type === 3003).length)).toEqual([0, 0, 1]);
+    // The King Rat is in the basement; his relations are on three of the later floors, two of them on the last.
+    expect(levels().map((level) => level.things.filter((thing) => thing.type === 3003).length)).toEqual([0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 2]);
     const [mainFloor] = levels();
     // One way out, at the top of the stairs; the bathroom wants its key, from either side.
     expect(mainFloor!.shape.walls.filter((wall) => wall.special === 11)).toHaveLength(1);
@@ -102,10 +121,10 @@ describe("the game's own levels", () => {
     // Delbie's face, 42 times, and the bar, its weapon panel and the four squares behind the face.
     // Then the rats' fifteen voices.
     expect(names.indexOf("SS_START")).toBe(3 + 48 + 15);
-    expect(names.slice(-11)).toEqual(["E1M3", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
+    expect(names.slice(-11)).toEqual(["E2M3", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
     // 175 pictures of rats and 33 of tools.
-    // And ten pieces of the store's walls, between markers of their own.
-    expect(names).toHaveLength(16 + 175 + 33 + 48 + 15 + 22 + 10 + 2);
+    // And ten pieces of the store's walls, between markers of their own. Then nine more levels, eleven lumps each.
+    expect(names).toHaveLength(16 + 175 + 33 + 48 + 15 + 22 + 10 + 2 + 9 * 11);
   });
 });
 
@@ -154,8 +173,9 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
 
   test("all of it has a place, and the rest of the game is as it was", () => {
     const { changes, skipped } = modFromWad(over, catalogue(wad), wad);
-    // But for its words, which Freedoom has no lump for: layer() makes them a place.
-    expect(skipped).toEqual(["WORDS"]);
+    // Its words too, which Freedoom has no lump for: a game without one is given it.
+    expect(skipped).toEqual([]);
+    expect(changes.filter((change) => change.kind === "words").map((change) => change.name)).toEqual(["WORDS"]);
     const others = changes.filter((change) => change.kind !== "sprite").map((change) => `${change.kind}/${change.name}`).sort();
     // The rats' voices: each in the place of a sound the game has, and none of them silence.
     const voices = changes.filter((change) => change.kind === "sound");
@@ -173,7 +193,7 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
       const [ours, theirs] = [decodePatch(piece.data)!, decodePatch(wad.lumps.filter((lump) => lump.name === piece.name).at(-1)!.data)!];
       expect([piece.name, ours.width, ours.height]).toEqual([piece.name, theirs.width, theirs.height]);
     }
-    expect(others.filter((name) => !/^(screen\/ST|sound\/|wall\/)/.test(name))).toEqual(["screen/M_DOOM", "screen/TITLEPIC", "things/E1M1", "things/E1M2", "things/E1M3", "walls/E1M1", "walls/E1M2", "walls/E1M3"]);
+    expect(others.filter((name) => !/^(screen\/ST|sound\/|wall\/|words\/)/.test(name))).toEqual(["screen/M_DOOM", "screen/TITLEPIC", ...FLOORS.map((name) => `things/${name}`), ...FLOORS.map((name) => `walls/${name}`)]);
     // The status bar: every face the game has is Delbie's now, each the size of the one it replaces.
     const faces = wad.lumps.map((lump) => lump.name).filter((name) => /^STF(ST|TL|TR|OUCH|EVL|KILL|GOD|DEAD)/.test(name));
     expect(faces).toHaveLength(42);
@@ -193,7 +213,7 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
     expect(laid.lumps).toHaveLength(wad.lumps.length + 1);
     expect(readWords(laid.lumps.at(-1)!.data).get("E1M1: Hangar")).toBe("The main floor");
     expect(readLevel(laid, "E1M1").shape.rooms).toHaveLength(levels()[0]!.shape.rooms.length);
-    expect(levelLumps(laid, "E1M4")!.get("LINEDEFS")!.lump.data).toEqual(levelLumps(wad, "E1M4")!.get("LINEDEFS")!.lump.data);
+    expect(levelLumps(laid, "E2M4")!.get("LINEDEFS")!.lump.data).toEqual(levelLumps(wad, "E2M4")!.get("LINEDEFS")!.lump.data);
     expect(laid.lumps.filter((lump) => lump.name === "TITLEPIC").at(-1)!.data).toEqual(readWad(over).lumps[0]!.data);
   });
 
@@ -237,12 +257,12 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
     expect(running.stopped).toBeNull();
   });
 
-  test("each floor is played, and the game ends after the third", async () => {
+  test("each floor is played, the ninth leads on to the tenth, and the game ends after the twelfth", async () => {
     const laid = layer(game, over);
     /** Starts on a level; `then` is run with the engine. */
-    const on = async (bytes: Uint8Array, map: number, then: (running: Awaited<ReturnType<typeof startEngine>>, run: (tics: number) => void) => void) => {
+    const on = async (bytes: Uint8Array, name: string, then: (running: Awaited<ReturnType<typeof startEngine>>, run: (tics: number) => void) => void) => {
       let clock = 0;
-      const running = await startEngine(engine, new Map([["freedoom1.wad", bytes]]), "freedoom1.wad", { now: () => clock, frame: () => {} }, ["-warp", "1", String(map)]);
+      const running = await startEngine(engine, new Map([["freedoom1.wad", bytes]]), "freedoom1.wad", { now: () => clock, frame: () => {} }, ["-warp", name[1]!, name[3]!]);
       then(running, (tics) => {
         for (let i = 0; i < tics; i++) {
           clock += 1000 / 35;
@@ -251,7 +271,7 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
       });
       return running;
     };
-    for (const map of [1, 2, 3]) {
+    for (const map of FLOORS) {
       const running = await on(laid, map, (engine, run) => {
         run(60);
         engine.analog(50, 0, 30);
@@ -261,17 +281,24 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
       expect(screenOf(running.state())).toBe("level");
     }
 
-    // The basement again, with the player stood at the switch that ends it and no rats: the same level but for where player 1 starts.
-    const atSwitch = (words: Uint8Array | null) => {
+    // A floor again, with the player stood at the switch that ends it and no rats: the same level but for where player 1 starts.
+    const atSwitch = (name: string, words: Uint8Array | null = null) => {
       const wad = readWad(laid);
-      const things = levelLumps(wad, "E1M3")!.get("THINGS")!;
-      const placed = decodeThings(things.lump.data).map((thing) => (thing.type === 1 ? { ...thing, x: 0, y: 688, angle: 90 } : thing)).filter((thing) => ![3001, 3002, 3003].includes(thing.type));
+      const things = levelLumps(wad, name)!.get("THINGS")!;
+      // The switch is on the front of its wall, which is to the right of the way the wall runs.
+      const { shape } = levels()[FLOORS.indexOf(name)]!;
+      const wall = shape.walls.find((one) => one.special === 11)!;
+      const [a, b] = [shape.corners[wall.from]!, shape.corners[wall.to]!];
+      const long = Math.hypot(b.x - a.x, b.y - a.y);
+      const [rx, ry] = [(b.y - a.y) / long, -(b.x - a.x) / long];
+      const stood = { x: Math.round((a.x + b.x) / 2 + rx * 32), y: Math.round((a.y + b.y) / 2 + ry * 32), angle: Math.round((Math.atan2(-ry, -rx) * 180) / Math.PI + 360) % 360 };
+      const placed = decodeThings(things.lump.data).map((thing) => (thing.type === 1 ? { ...thing, ...stood } : thing)).filter((thing) => ![3001, 3002, 3003].includes(thing.type));
       return writeWad({ kind: wad.kind, lumps: wad.lumps.map((lump, index) => (index === things.index ? { name: lump.name, data: encodeThings(placed) } : words && lump.name === "WORDS" ? { name: lump.name, data: words } : lump)) });
     };
-    /** Pushes the switch, then presses on through whatever comes for half a minute: does the game's ending come? */
-    const after = async (bytes: Uint8Array) => {
+    /** Pushes the switch, then presses on through whatever comes for half a minute: does the game's ending come, and what is on the screen after? */
+    const after = async (name: string, words: Uint8Array | null = null) => {
       let ended = false;
-      const running = await on(bytes, 3, (engine, run) => {
+      const running = await on(atSwitch(name, words), name, (engine, run) => {
         run(60);
         for (let i = 0; i < 70; i++) {
           engine.key(true, KEY.use);
@@ -282,13 +309,19 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
         }
       });
       expect(JSON.stringify(running.stopped)).toBe("null");
-      return ended;
+      return { ended, screen: screenOf(running.state()) };
     };
-    // As the engine came, after the third level comes the fourth; with our words, the ending.
-    const eight = writeWords(new Map([...readWords(readWad(laid).lumps.at(-1)!.data)].filter(([from]) => from !== "!levels")));
-    expect(await after(atSwitch(eight))).toBe(false);
-    expect(await after(atSwitch(null))).toBe(true);
-  });
+    // After the third level comes the fourth, and after the ninth the tenth, which is the next episode's first.
+    expect(await after("E1M3")).toEqual({ ended: false, screen: "level" });
+    expect(await after("E1M9")).toEqual({ ended: false, screen: "level" });
+    // After the twelfth, the ending.
+    expect((await after("E2M3")).ended).toBe(true);
+    // A game that says it is three levels long ends after the third; one that doesn't say has the engine's eight.
+    const said = (levels: string | null) => writeWords(new Map([...readWords(readWad(laid).lumps.find((lump) => lump.name === "WORDS")!.data)].filter(([from]) => from !== "!levels").concat(levels ? [["!levels", levels]] : [])));
+    expect((await after("E1M3", said("3"))).ended).toBe(true);
+    expect((await after("E1M3", said(null))).ended).toBe(false);
+    expect((await after("E1M8", said(null))).ended).toBe(true);
+  }, 60000);
 
   test("the level starts with a line of Delbie's, and without its words says nothing", async () => {
     const top = async (bytes: Uint8Array) => {

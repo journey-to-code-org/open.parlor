@@ -3,7 +3,7 @@
 // A room's options say which game it is. Spades rooms keep the options they always had (the house
 // rules themselves), so tables and logs from before there were other games still work; any other
 // game's options carry `game`.
-import { KIT_GAMES, isBoardGame, isKitGame, isSportGame, isWordGame, kitGame, kitGreet, reactToKit, type KitGameId, type ThinkBudget } from "@journey-to-code/games";
+import { KIT_GAMES, isBoardGame, isFieldGame, isKitGame, isSportGame, isWordGame, kitGame, kitGreet, reactToKit, type KitGameId, type ThinkBudget } from "@journey-to-code/games";
 import { palaceGreet, palaceReplyTo, reactToPalace, type PalaceState } from "@journey-to-code/palace";
 import { sharedView, type RoomDefinition } from "@journey-to-code/rooms/server";
 import { cleanSettings, greet, reactToMove, replyTo, type GameState, type RulePreset, type Seat } from "@journey-to-code/rules";
@@ -138,6 +138,9 @@ export function watchView(game: GameId, views: unknown[]): unknown {
     if (Array.isArray(view.info)) view.info = view.info.filter((line) => typeof line === "string");
     return view;
   }
+  // A field game has nothing hidden either: the land, the tanks and everyone's shells are in every
+  // seat's view alike. A watcher gets all of that, and nobody's aim or pick.
+  if (isFieldGame(game)) return sharedView(seats, { blank: { aim: null, pick: null, choices: null }, from: { seat: 0, keys: ["me"] } });
   // A word game: a board that is one seat's own (Secret Word's guesses) is theirs alone, and so is
   // what they know of the letters from it, what they may type or name, and a word they have handed
   // in before the words are turned over (Anagrams). How each seat's guesses went, as coloured

@@ -26,7 +26,7 @@ mountShooter(document.getElementById("game")!, {
   title: "Delbie's Doomsday",
   blurb: "Delbie's Daycare & Geriatrics is overrun with rats. Clear it out, floor by floor. A first-person shooter on the open-source Doom engine, running in your browser.",
   // Freedoom: Phase 1 is four episodes of nine maps.
-  levels: { episodes: 4, maps: 9 },
+  levels: { episodes: 2, maps: 9 },
   // The parlor's server has the rooms that let devices play together; a site without it plays alone.
   rooms: `${import.meta.env.BASE_URL}play`,
   // What the player has changed in the editor is what they play with, alone.

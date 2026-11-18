@@ -28,7 +28,13 @@ export type SoundName =
   | "hurry"
   | "bowl"
   | "pins"
-  | "strike";
+  | "strike"
+  | "cannon"
+  | "boom"
+  | "bigBoom"
+  | "thud"
+  | "zap"
+  | "sizzle";
 
 type Ctx = BaseAudioContext;
 type Play = (ctx: Ctx, out: AudioNode, t: number) => void;
@@ -190,6 +196,41 @@ export const SOUNDS: Record<SoundName, Play> = {
     [N.C5, N.E5, N.G5, N.C6, N.E6].forEach((f, i) => bell(ctx, out, t + i * 0.07, f, { peak: 0.13, decay: 0.5 }));
     swish(ctx, out, t + 0.3, { freq: 5000, q: 0.5, peak: 0.07, decay: 0.6, type: "highpass" });
   },
+  /** A tank's gun: a flat thump and a breath of smoke. */
+  cannon: (ctx, out, t) => {
+    glide(ctx, out, t, 190, 55, { peak: 0.42, decay: 0.13, type: "sine" });
+    swish(ctx, out, t, { freq: 900, q: 0.6, peak: 0.2, decay: 0.07, type: "lowpass" });
+    swish(ctx, out, t + 0.03, { freq: 2600, q: 0.5, peak: 0.05, decay: 0.2, type: "highpass" });
+  },
+  /** A shell going off: a crack, a low thump under it, and the rumble rolling away. */
+  boom: (ctx, out, t) => {
+    swish(ctx, out, t, { freq: 2800, q: 0.5, peak: 0.2, decay: 0.05 });
+    glide(ctx, out, t, 150 + Math.random() * 30, 38, { peak: 0.5, decay: 0.28, type: "sine" });
+    swish(ctx, out, t + 0.01, { freq: 420, q: 0.5, peak: 0.3, decay: 0.38, type: "lowpass" });
+  },
+  /** A very big shell going off: the same, deeper and longer, with earth coming down after. */
+  bigBoom: (ctx, out, t) => {
+    swish(ctx, out, t, { freq: 2200, q: 0.4, peak: 0.26, decay: 0.07 });
+    glide(ctx, out, t, 120, 26, { peak: 0.6, decay: 0.6, type: "sine" });
+    glide(ctx, out, t + 0.04, 80, 30, { peak: 0.3, decay: 0.5, type: "triangle" });
+    swish(ctx, out, t + 0.01, { freq: 300, q: 0.45, peak: 0.36, decay: 0.95, type: "lowpass" });
+    for (let i = 0; i < 6; i++) swish(ctx, out, t + 0.35 + i * 0.09 + Math.random() * 0.05, { freq: 500 + Math.random() * 900, q: 1.2, peak: 0.05, decay: 0.05 });
+  },
+  /** A load of earth landing: a soft, heavy thud. */
+  thud: (ctx, out, t) => {
+    glide(ctx, out, t, 110, 50, { peak: 0.36, decay: 0.16, type: "sine" });
+    swish(ctx, out, t, { freq: 600, q: 0.6, peak: 0.16, decay: 0.2, type: "lowpass" });
+  },
+  /** Something that isn't a shell at all: a quick falling whistle of light. */
+  zap: (ctx, out, t) => {
+    glide(ctx, out, t, 1800, 320, { peak: 0.16, decay: 0.22, type: "sawtooth" });
+    glide(ctx, out, t, 2700, 480, { peak: 0.08, decay: 0.18, type: "square" });
+  },
+  /** Fire catching: a hiss that takes a moment to die. */
+  sizzle: (ctx, out, t) => {
+    swish(ctx, out, t, { freq: 5200, q: 0.4, peak: 0.12, decay: 0.5, type: "highpass" });
+    swish(ctx, out, t + 0.04, { freq: 1400, q: 0.8, peak: 0.08, decay: 0.35 });
+  },
   /** A bid placed: a wooden tap. */
   bid: (ctx, out, t) => glide(ctx, out, t, 900, 600, { peak: 0.25, decay: 0.07, type: "triangle" }),
   /** Your turn: two gentle rising notes. */
@@ -270,6 +311,7 @@ export const LENGTHS: Record<SoundName, number> = {
   deal: 0.8, card: 0.2, piece: 0.15, stone: 0.12, capture: 0.45, dice: 0.75, putt: 0.15, knock: 0.1, cup: 0.75, splash: 0.45, bid: 0.15, yourTurn: 0.7, trickUs: 0.85, trickThem: 0.65, spadesBroken: 0.4,
   nilMade: 0.9, set: 1.0, handDone: 1.3, won: 2.0, lost: 1.3, nope: 0.35, message: 0.15, hurry: 0.35,
   bowl: 1.1, pins: 0.7, strike: 1.2,
+  cannon: 0.3, boom: 0.5, bigBoom: 1.2, thud: 0.3, zap: 0.3, sizzle: 0.6,
 };
 
 /** Overall level, into a limiter. Phone speakers are small: the loudest sound peaks near -3 dB. */
