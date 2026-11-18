@@ -1,12 +1,14 @@
 <!--
   The parlor on any page: a blog post, a WordPress site, plain HTML. Shows a game (any of the
-  parlor's games that can be played against the computer; Palace and Spades when none is named) with a button to play right there against the computer, a button to challenge the site's
-  owner, and a link into the parlor for family tables.
+  parlor's games that can be played against the computer, or an arcade game played against itself;
+  Palace and Spades when none is named) with a button to play right there, a button to challenge
+  the site's owner, and a link into the parlor for family tables. An arcade game has no challenge
+  and no family table: it gets the button to play and a link to the game in the parlor.
 
   A practice game runs inside the page in a frame. Challenges and family tables open the parlor in
   a new tab, because browsers don't let a game in a frame on someone else's site keep you signed in.
 
-  `server` is the parlor's address (required). `game` is a game's id ("hearts", "chess", "minigolf"…),
+  `server` is the parlor's address (required). `game` is a game's id ("hearts", "chess", "minigolf", "airhockey"…),
   or "" for Spades and Palace to choose between.
   `challenge` is a challenge link's code; `who` is the name to show on that button.
 -->
@@ -397,6 +399,54 @@
       "name": "Flick Football",
       "emoji": "🏈",
       "blurb": "One folded football, two ends of a table. Hang it over the far edge for a touchdown."
+    },
+    "skyfire": {
+      "name": "Shitstorm",
+      "emoji": "🚀",
+      "blurb": "It's raining you-know-what. Fly the plunger through the storm, wave after wave, with the fan every fifth and a score to beat.",
+      "solo": true
+    },
+    "bulwark": {
+      "name": "Tower of Ryan",
+      "emoji": "🏯",
+      "blurb": "A tower defence with no end: a new road every game, waves on a clock, and gold that grows if you can bear not to spend it. Hold the gate alone or with up to four.",
+      "solo": true
+    },
+    "chipstack": {
+      "name": "Chip Stack",
+      "emoji": "🪙",
+      "blurb": "An idle clicker against the clock: tap the chip, buy what earns for you, and see how high the stack is when time runs out. Alone, or up to four on the same chip.",
+      "solo": true
+    },
+    "pinkslips": {
+      "name": "Road to the Shootout",
+      "emoji": "🏁",
+      "blurb": "A drag race for what you built: hold the revs, leave on the green, and shift before it lets go. Alone against the clock, or up to four wide.",
+      "solo": true
+    },
+    "airhockey": {
+      "name": "Air Hockey",
+      "emoji": "🏒",
+      "blurb": "Slide your mallet, knock the puck into the far goal and keep it out of yours. Against the house, or face to face with someone else.",
+      "solo": true
+    },
+    "zubraquest": {
+      "name": "Zubra Quest",
+      "emoji": "🗡️",
+      "blurb": "Quagg stole the herd's three Great Stripes. Zub is going to get them back.",
+      "solo": true
+    },
+    "counter": {
+      "name": "Delbie's Counter",
+      "emoji": "🧾",
+      "blurb": "Welcome to the Daycare. The line is out the door and Delbie is watching.",
+      "solo": true
+    },
+    "delbies": {
+      "name": "Delbie's Daycare & Geriatrics",
+      "emoji": "🔧",
+      "blurb": "You are Delbie: hardest-working man in the building, owner of a parts store, unable to turn anyone down. Babysit the counter, dispatch the drivers, and keep the lights on. It carries on while you are away.",
+      "solo": true
     }
   }
   // GAMES end
@@ -444,7 +494,7 @@
         <span>{info().emoji} {info().name}</span>
         <button type="button" onclick={() => { playing = false }}>Close the game</button>
       </div>
-      <iframe src={frameSrc()} title={`${info().name} against the computer`} allow="autoplay; vibrate" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-modals"></iframe>
+      <iframe src={frameSrc()} title={info().solo ? info().name : `${info().name} against the computer`} allow="autoplay; vibrate; fullscreen; gamepad" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-modals"></iframe>
     </div>
     <div zb-else class="card">
       <div zb-if={offered.length > 1} class="tabs" role="group" aria-label="Game">
@@ -455,9 +505,9 @@
       <h3><span aria-hidden="true">{info().emoji}</span> Play {info().name}</h3>
       <p>{info().blurb}</p>
       <div class="actions">
-        <button type="button" class="primary" onclick={() => { playing = true }}>Play here against the computer</button>
-        <button zb-if={challenge} type="button" class="secondary" onclick={() => openTab({ challenge, game: picked })}>Challenge {who || "me"} to {info().name}</button>
-        <a class="link" style="color: #e8c46a" href={url({ game: picked })} target="_blank" rel="noopener">Open the parlor for family tables ↗</a>
+        <button type="button" class="primary" onclick={() => { playing = true }}>{info().solo ? "Play here" : "Play here against the computer"}</button>
+        <button zb-if={challenge && !info().solo} type="button" class="secondary" onclick={() => openTab({ challenge, game: picked })}>Challenge {who || "me"} to {info().name}</button>
+        <a class="link" style="color: #e8c46a" href={url({ game: picked })} target="_blank" rel="noopener">{info().solo ? `Open ${info().name} in the parlor ↗` : "Open the parlor for family tables ↗"}</a>
       </div>
     </div>
   </div>

@@ -818,13 +818,14 @@ open.blog post, a WordPress HTML block, a Squarespace code block), with the parl
 | Attribute | |
 | --- | --- |
 | `server` | The parlor's address. Required. |
-| `game` | Any game that can be played against the computer, by its id (`hearts`, `chess`, `minigolf`, `secretword`…), or leave it out to offer Spades and Palace. |
+| `game` | Any game that can be played against the computer, or any arcade game, by its id (`hearts`, `chess`, `minigolf`, `secretword`, `airhockey`…), or leave it out to offer Spades and Palace. Draw & Guess is the one game it can't deal: computer players can't draw. |
 | `challenge` | Your challenge link's code (the end of `?challenge=…`), for a "Challenge Grammi" button. |
 | `who` | The name on that button. |
 
 **Play here** deals a practice game against the computer inside the page. **Challenge** and
 family tables open the parlor in a new tab: browsers don't let a game in a frame on someone
-else's site keep you signed in, and the parlor is where your houses and tables live.
+else's site keep you signed in, and the parlor is where your houses and tables live. An arcade
+game is played against the game itself, so it gets **Play here** and a link to the game in the parlor.
 
 The build also writes a WordPress plugin and a Shopify app block to `packages/web/dist/embed`
 (see its README).
