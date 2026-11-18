@@ -1,7 +1,7 @@
 <!--
   Vue's own features around Zubra components: Transition, TransitionGroup, KeepAlive, Teleport,
-  provide/inject, async components, v-bind with an object, v-model modifiers, v-show, and class and
-  style bindings. The checks are in tests/features.spec.ts.
+  provide/inject, async components, Suspense, template refs, v-bind with an object, v-model
+  modifiers, v-show, and class and style bindings. The checks are in tests/features.spec.ts.
 -->
 <script setup lang="ts">
 import EmptyState from "@open-parlor/ui/zubra-ui/empty-state.zb";
@@ -12,6 +12,7 @@ import ToggleSwitch from "@open-parlor/ui/zubra-ui/toggle-switch.zb";
 import { computed, defineAsyncComponent, provide, ref } from "vue";
 import { FACES, VARIANTS, WORDS } from "../shared/fixture";
 import Kept from "./Kept.vue";
+import Waited from "./Waited.vue";
 import Word from "./Word.vue";
 
 const Lazy = defineAsyncComponent(() => import("./Lazy.vue"));
@@ -29,6 +30,20 @@ const spread = ref(0);
 const badge = computed(() => ({ variant: VARIANTS[spread.value % VARIANTS.length], dot: true }));
 const trimmed = ref("");
 const shown = ref(true);
+
+// <Suspense>: Waited's setup waits for this, and the button lets it go.
+let release = () => {};
+provide("ready", new Promise<void>((resolve) => (release = resolve)));
+
+// A template ref on a Zubra component: Zubra's Vue component exposes its element.
+const named = ref<{ element: HTMLElement & { value: string } } | null>(null);
+const typed = ref("");
+const throughRef = ref("");
+function readRef() {
+  const element = named.value?.element;
+  throughRef.value = element ? `${element.localName}:${element.value}` : "no element";
+  element?.querySelector("input")?.focus();
+}
 </script>
 
 <template>
@@ -96,6 +111,22 @@ const shown = ref(true);
       <h2>A v-model modifier</h2>
       <TextField v-model.trim="trimmed" data-t="f-trim" label="Trimmed" />
       <output data-t="f-trim-out">[{{ trimmed }}]</output>
+    </section>
+
+    <section>
+      <h2>Suspense</h2>
+      <Suspense>
+        <Waited />
+        <template #fallback><p data-t="f-suspense-wait">Waiting…</p></template>
+      </Suspense>
+      <button data-t="f-suspense-go" type="button" @click="release()">Go</button>
+    </section>
+
+    <section>
+      <h2>A template ref</h2>
+      <TextField ref="named" v-model="typed" data-t="f-ref" label="Through a ref" />
+      <button data-t="f-ref-read" type="button" @click="readRef">Read it through the ref</button>
+      <output data-t="f-ref-out">{{ throughRef }}</output>
     </section>
 
     <section>

@@ -1,20 +1,21 @@
-<!-- Copied from zubra-ui (ba5737e) components/color-swatches.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (7a95b65) components/color-swatches.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
 <!--
   Pick a colour from `colors`. A form control (a radio group): arrow keys move the choice.
   `names` are what each colour is called, in the same order ("Barn red"), for screen readers and
   the tooltip; a colour without one is announced by its value. With `disabled`, or inside a
-  disabled <fieldset>, the colour can't be changed and isn't submitted (zubra-ui#22).
+  disabled <fieldset>, the colour can't be changed and isn't submitted.
   @fires valuechange - The colour changed; `detail` is the colour.
 -->
 <script>
   import { effect, host } from '@zubra/runtime'
 
-  let group = null
-
   // `disabled` set from code (el.disabled = true) also goes on the element as the attribute, which
-  // is where the browser looks: it leaves a disabled control out of the form.
+  // is where the browser looks: it leaves a disabled control out of the form. A disabled
+  // <fieldset> needs nothing here; the browser disables the controls inside it too.
   const element = host()
   effect(() => element.toggleAttribute('disabled', disabled))
+
+  let group = null
 
   function pick(color) {
     if (color === value) return
@@ -33,7 +34,7 @@
   button[aria-checked=true] { border-color: var(--foreground, #1d2130); }
   button:disabled { opacity: 0.55; cursor: not-allowed; }
 </style>
-<color-swatches form-associated value:model="#16a34a" disabled={false} colors={["#16a34a", "#2563eb", "#db2777", "#ea580c", "#7c3aed", "#0891b2"]} names={["Green", "Blue", "Pink", "Orange", "Violet", "Cyan"]} label="Colour">
+<color-swatches form-associated value:model="#16a34a" colors={["#16a34a", "#2563eb", "#db2777", "#ea580c", "#7c3aed", "#0891b2"]} names={["Green", "Blue", "Pink", "Orange", "Violet", "Cyan"]} disabled={false} label="Colour">
   <div role="radiogroup" aria-label={label} ref={group}>
     <zb-each items={colors} as="color" index="index" key={color}>
       <button type="button" role="radio" style:background={color} data-color={color} aria-label={names[index] || color} title={names[index] || null} aria-checked={color === value ? "true" : "false"} tabindex={color === value ? "0" : "-1"} disabled={disabled} onclick={() => pick(color)} onkeydown.right.down.prevent={() => move(index, 1)} onkeydown.left.up.prevent={() => move(index, -1)}></button>

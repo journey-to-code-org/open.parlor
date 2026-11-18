@@ -11,7 +11,7 @@ and the Lit page puts the whole fixture inside a shadow root.
 
 ```sh
 npm run build -w @open-parlor/conformance        # the eight pages
-npm run conformance -w @open-parlor/conformance  # 18 checks × 8 frameworks, and each framework's own features, in Chrome
+npm run conformance -w @open-parlor/conformance  # 19 checks × 8 frameworks, and each framework's own features, in Chrome
 npm run conformance:engines -w @open-parlor/conformance  # the same in Chrome, Firefox and WebKit (CI runs this)
 npm run dev -w @open-parlor/conformance          # http://localhost:4179/react/ and friends (not Angular)
 ```
@@ -64,13 +64,16 @@ names that start `f-`. A check runs in the frameworks that have the feature:
 | Props handed over as one object | spread | `v-bind` | spread | spread | |
 | A component leaves with a transition | | `Transition` | `transition:fade` | | `animate.leave` |
 | A component kept off the page keeps what was typed | `Activity` | `KeepAlive` | | | |
-| Forms | | `v-model.trim` | | | reactive forms: values both ways, validity and touched, `disable()`, `reset()`, over the text field, switch, select, segmented control and swatches |
+| Forms | | `v-model.trim` | | | reactive forms: values both ways, validity and touched, `disable()`, `reset()`, over the text field, switch, select, segmented control and swatches; template-driven forms: `ngModel`, `ngForm`, `required`, `[disabled]` |
+| Waiting for data | | `Suspense` with an async setup | | `createResource` read in `Suspense` | |
+| Reaching the component | | a template ref (the component's `element`) | | a store's change reaches only the component it feeds (`createStore`) | |
 | Only there | | `v-show` | `use:` actions, `#key`, snippets | `Dynamic` | `ng-content` in the page's own wrapper |
 
-That is 45 checks: 7 in React, 10 in Vue, 9 in Svelte, 7 in Solid and 12 in Angular. Preact has 6
+That is 50 checks: 7 in React, 12 in Vue, 9 in Svelte, 9 in Solid and 13 in Angular. Preact has 6
 of them (keys, context, `class` and `style`, `createPortal`, `lazy` and `Suspense`, spread) and Lit
 has 6 (`repeat`, `@lit/context`, `classMap` and `styleMap`, `until`, `cache`, `keyed`), which makes
-57. With the 144 component checks the suite is 201, each run in three browsers.
+62. With the 152 component checks (19 on each of the eight pages) the suite is 214, each run in
+three browsers.
 
 ## Browsers
 
@@ -142,8 +145,8 @@ the admin app and the parlor.
 The first run of the feature checks found one, in the components rather than in Zubra: a
 disabled reactive form disabled `text-field` and `select-field` but left `toggle-switch`,
 `color-swatches` and `segmented-control` usable, because they had no disabled state. The parlor's
-copies have one now. Upstream it is zubra-ui#20 (the switch, fixed in zubra-ui#21) and zubra-ui#22
-(the rest).
+copies have one now. Upstream it was zubra-ui#20 (the switch, fixed in zubra-ui#21) and zubra-ui#22
+(the rest, fixed in zubra-ui#26).
 
 ## Adding a check
 

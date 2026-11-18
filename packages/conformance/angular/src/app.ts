@@ -110,9 +110,14 @@ import "./zubra";
         <tab-list data-t="tabs" label="Tabs" [tabs]="TABS" [value]="tab()" (valuechange)="tab.set(detail($event))">
           <section data-tab="one">First panel <span data-t="tab-count">{{ count() }}</span></section>
           <section data-tab="two">Second panel</section>
+          @if (late(); as late) {
+            <section [attr.data-tab]="late" data-t="tab-late">Late panel</section>
+          }
         </tab-list>
         <output data-t="tab-out">{{ tab() }}</output>
         <button data-t="tab-set" type="button" (click)="tab.set('one')">Back to One</button>
+        <button data-t="tab-late-add" type="button" (click)="late.set('two')">Add a panel for Two</button>
+        <button data-t="tab-late-move" type="button" (click)="late.set('one')">Move it to One</button>
       </section>
 
       <section>
@@ -161,6 +166,8 @@ export class App {
   protected readonly rows = signal(ROWS);
   protected readonly selected = signal<string[]>([]);
   protected readonly tab = signal("one");
+  /** A panel the page adds later, and then moves to another tab (zubra-ui#23). */
+  protected readonly late = signal<string | null>(null);
   protected readonly card = signal(0);
   protected readonly picks = signal(0);
   protected readonly bid = signal("");

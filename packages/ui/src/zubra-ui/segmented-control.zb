@@ -1,7 +1,7 @@
-<!-- Copied from zubra-ui (ba5737e) components/segmented-control.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (7a95b65) components/segmented-control.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
 <!--
   A row of mutually exclusive options. `options` is `[{ value, label }]`.
-  With `disabled` no option can be picked (zubra-ui#22).
+  With `disabled` no option can be picked.
   @fires valuechange - The choice changed; `detail` is the option's value.
 -->
 <script>
