@@ -9,6 +9,8 @@ const room = (look: Partial<Look> & Pick<Look, "wall">): Look => ({ floor: 0, ce
 const door = (look: Partial<Look> = {}): Look => room({ wall: "GRAY1", door: "DOOR3", ...look });
 const STEPS = 8;
 
+export const title = "The main floor";
+
 export const plan: Plan = {
   rooms: {
     // Outside, under the sky.

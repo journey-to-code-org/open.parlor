@@ -607,6 +607,9 @@ A_FirePlasma
 fixed_t		bulletslope;
 
 
+// [open.wasm] How wide a shot that isn't aimed goes: 18 is the engine's own.
+static int scatter = 18;
+
 void P_BulletSlope (mobj_t*	mo)
 {
     angle_t	an;
@@ -643,7 +646,7 @@ P_GunShot
     angle = mo->angle;
 
     if (!accurate)
-	angle += (P_Random()-P_Random())<<18;
+	angle += (P_Random()-P_Random())<<scatter;
 
     P_LineAttack (mo, angle, MISSILERANGE, bulletslope, damage);
 }
@@ -692,8 +695,11 @@ A_FireShotgun
 
     P_BulletSlope (player->mo);
 	
+    // [open.wasm] The shotgun is a lever-action in the hands of someone who can't aim: its shot goes four times as wide.
+    scatter = 20;
     for (i=0 ; i<7 ; i++)
 	P_GunShot (player->mo, false);
+    scatter = 18;
 }
 
 

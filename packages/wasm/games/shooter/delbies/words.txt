@@ -2,6 +2,8 @@
 # The engine's own words on the left of the =, ours on the right; a line that starts with ! is
 # what Delbie says when something happens, one of them picked each time.
 E1M1: Hangar=The main floor
+E1M2: Nuclear Plant=The attic
+E1M3: Toxin Refinery=The basement
 Picked up a stimpack.=Somebody's leftover pasta.
 Picked up a medikit.=A whole pizza!
 Picked up a clip.=Ammo, off the shelf. Put it on the tab.
@@ -9,9 +11,17 @@ You got the shotgun!=Delbie's lever-action! Aim's a little off.
 A chainsaw!  Find some meat!=A chainsaw! Aisle 9, lawn and garden.
 Picked up the armor.=A shop apron.
 Picked up a blue keycard.=The bathroom key.
+Picked up a yellow keycard.=The attic key.
+Picked up a red keycard.=The bay door key.
+You need a yellow key to open this door=Locked. The attic key is on the bad side.
+You need a red key to open this door=The bay door key is in the hose room.
+You got the chaingun!=An impact wrench! Sort of.
 You need a blue key to open this door=Occupied. Find the bathroom key.
 !start=Delbie: Alright, let's get these rats out of my store.|Delbie: Six thousand a month, and I've got RATS.|Delbie: Living that dream.
 !see=Delbie: RATS!|Delbie: There's another one!|Delbie: I HATE rats.|Delbie: Not in my store!
 !hurt=Delbie: He BIT me!|Delbie: Get OFF!|Delbie: I hate these things!
 !kill=Delbie: Got him!|Delbie: That's one less.|Delbie: Out of my store!|Delbie: Living that dream.
 !die=Delbie: What are YOOOOOU doing?
+# The game is three levels long, and this is what it says when they are done.
+!levels=3
+!ending=The rats are gone.\n\nThe main floor, the attic, the basement,\nand whatever that was in the dump trailer.\n\nDelbie looks the place over, smiling.\n\n"Living that dream," he says.\n\nThe rent is still six thousand a month.

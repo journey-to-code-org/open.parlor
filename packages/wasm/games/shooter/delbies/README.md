@@ -4,9 +4,14 @@ The shooter set in the store its crew call Delbie's Daycare & Geriatrics. (That 
 of the parlor's idle game, and what the title picture says.)
 
 The game's own part: what is laid over Freedoom to make it ours. So far that is the title
-picture, the name over the menu, the rats, and the first level. Everything else (the other 35
-levels, the other monsters, the weapons, the sounds) is still Freedoom's.
+picture, the name over the menu, the rats, the status bar, the words, and three levels, after
+which the game ends. Everything else (the other monsters, the weapons' pictures, the sounds, and
+33 levels that are no longer reached) is still Freedoom's.
 
+- `attic.ts` and `basement.ts` are the second and third levels, written the same way: the attic's
+  good side and bad side (holes in the floor, the attic key at the far end), and the basement's
+  warehouse, hose room (the bay door key), bay door, yard and dump trailer, where the King Rat is.
+  The game ends after the third (`!levels` and `!ending` in `words.txt`).
 - `main-floor.ts` is the first level, written as a floor plan (`wad/plan.ts`): rooms as
   rectangles, a wall wherever a gap is left between two, a door wherever a small rectangle
   crosses the gap. The front porch, the store front with its counter and shelves, the break

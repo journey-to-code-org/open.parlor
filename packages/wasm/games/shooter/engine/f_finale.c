@@ -138,7 +138,8 @@ void F_StartFinale (void)
 
         if (logical_gamemission == screen->mission
          && (logical_gamemission != doom || gameepisode == screen->episode)
-         && gamemap == screen->level)
+         // [open.wasm] The episode's last level is the one the WAD names, where it names one: its ending is the eighth's.
+         && (gamemap == screen->level || (screen->level == 8 && logical_gamemission == doom && gamemap == Words_Number("levels", 8))))
         {
             finaletext = screen->text;
             finaleflat = screen->background;
@@ -148,6 +149,9 @@ void F_StartFinale (void)
     // Do dehacked substitutions of strings
   
     finaletext = DEH_String(finaletext);
+    // [open.wasm] The WAD's own words for the end of the game ("!ending"), if it has them.
+    if (Words_About("ending"))
+	finaletext = Words_About("ending");
     finaleflat = DEH_String(finaleflat);
     
     finalestage = F_STAGE_TEXT;

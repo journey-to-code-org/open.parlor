@@ -24,6 +24,7 @@
 #include "doomdef.h" 
 #include "doomkeys.h"
 #include "doomstat.h"
+#include "words.h"
 
 #include "deh_main.h"
 #include "deh_misc.h"
@@ -1393,7 +1394,8 @@ void G_DoCompleted (void)
     }
 
 //#if 0  Hmmm - why?
-    if ( (gamemap == 8)
+    // [open.wasm] An episode is as many levels as the WAD says ("!levels"), or the eight it always was.
+    if ( (gamemap == Words_Number("levels", 8))
 	 && (gamemode != commercial) ) 
     {
 	// victory 

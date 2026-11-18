@@ -4,5 +4,7 @@
 
 char *Words_For(char *s);
 void Words_Tell(const char *what, int gap);
+char *Words_About(const char *what);
+int Words_Number(const char *what, int otherwise);
 
 #endif

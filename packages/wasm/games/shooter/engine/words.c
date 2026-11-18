@@ -140,6 +140,24 @@ static char *Words_Say(const char *what)
     return said[turn];
 }
 
+// What the WAD says about something, by name ("!name=..."); NULL if nothing.
+char *Words_About(const char *what)
+{
+    char key[32];
+
+    key[0] = '!';
+    strncpy(key + 1, what, sizeof(key) - 2);
+    key[sizeof(key) - 1] = '\0';
+    return Words_Find(key);
+}
+
+// A number the WAD gives for something ("!name=3"), or `otherwise`.
+int Words_Number(const char *what, int otherwise)
+{
+    char *found = Words_About(what);
+    return found && atoi(found) > 0 ? atoi(found) : otherwise;
+}
+
 // Says something to the player at this device, unless something was said less than `gap` tics ago.
 void Words_Tell(const char *what, int gap)
 {

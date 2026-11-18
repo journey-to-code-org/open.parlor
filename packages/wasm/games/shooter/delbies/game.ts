@@ -10,6 +10,8 @@ import { encodePatch, type Picture } from "../../../wad/picture.ts";
 import { fromPlan, wallNear } from "../../../wad/plan.ts";
 import { roomAt, trouble } from "../../../wad/shape.ts";
 import { type Lump, readWad, writeWad } from "../../../wad/wad.ts";
+import * as attic from "./attic.ts";
+import * as basement from "./basement.ts";
 import * as mainFloor from "./main-floor.ts";
 
 export interface Level {
@@ -22,11 +24,15 @@ export interface Level {
 
 /** The levels, built from their plans. */
 export function levels(): Level[] {
-  const { shape } = fromPlan(mainFloor.plan);
-  const out = shape.walls[wallNear(shape, mainFloor.exit.x, mainFloor.exit.y)]!;
-  out.special = 11;
-  shape.sides[out.front]!.middle = mainFloor.exit.picture;
-  return [{ name: "E1M1", title: "The main floor", shape, things: mainFloor.things }];
+  // The three floors, in the order they are played: each in the place of one of the game's levels.
+  return [mainFloor, attic, basement].map((floor, index) => {
+    const { shape } = fromPlan(floor.plan);
+    // The switch that ends the level.
+    const out = shape.walls[wallNear(shape, floor.exit.x, floor.exit.y)]!;
+    out.special = 11;
+    shape.sides[out.front]!.middle = floor.exit.picture;
+    return { name: `E1M${index + 1}`, title: floor.title, shape, things: floor.things };
+  });
 }
 
 /** What is wrong with a level, if anything: walls that cross, or something placed inside a wall. */

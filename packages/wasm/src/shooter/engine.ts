@@ -41,6 +41,8 @@ export const STATE_PAUSED = 8;
 export const STATE_QUESTION = 16;
 /** The engine reads no input for now: the screen is wiping from one thing to the next, or it has only just started. */
 export const STATE_WIPING = 32;
+/** The game is over, and its ending is on the screen. */
+export const STATE_ENDING = 64;
 
 /** The state as the one thing the player is looking at. */
 export type Screen = "title" | "menu" | "question" | "level" | "wipe";

@@ -9,10 +9,10 @@ import data from "../games/shooter/data.json";
 import { buildGame, faults, levels, picturesUsed } from "../games/shooter/delbies/game.ts";
 // @ts-expect-error a plain script, with no typings
 import { art } from "../scripts/build-delbies.mjs";
-import { startEngine } from "../src/shooter/engine.ts";
+import { screenOf, startEngine, STATE_ENDING } from "../src/shooter/engine.ts";
 import { KEY } from "../src/shooter/keys.ts";
 import { catalogue } from "../wad/catalogue.ts";
-import { levelLumps, readLevel, wallNames, WALL_LOWER_UNPEGGED } from "../wad/level.ts";
+import { decodeThings, encodeThings, levelLumps, readLevel, wallNames, WALL_LOWER_UNPEGGED } from "../wad/level.ts";
 import { layer, modFromWad } from "../wad/mod.ts";
 import { decodePatch } from "../wad/picture.ts";
 import { fromPlan, type Look, wallNear } from "../wad/plan.ts";
@@ -72,8 +72,14 @@ describe("a floor plan", () => {
 describe("the game's own levels", () => {
   test("have nothing wrong with them", () => {
     for (const level of levels()) expect(faults(level)).toEqual([]);
+    expect(levels().map((level) => `${level.name} ${level.title}`)).toEqual(["E1M1 The main floor", "E1M2 The attic", "E1M3 The basement"]);
+    // Each has one way out; and each of its keys opens a door that is there.
+    for (const level of levels()) expect(level.shape.walls.filter((wall) => wall.special === 11)).toHaveLength(1);
+    const keyed = (level: number, door: number, key: number) => [levels()[level]!.shape.walls.filter((wall) => wall.special === door).length, levels()[level]!.things.filter((thing) => thing.type === key).length];
+    expect([keyed(0, 26, 5), keyed(1, 27, 6), keyed(2, 28, 13)]).toEqual([[2, 1], [2, 1], [2, 1]]);
+    // The King Rat is in the last of them only.
+    expect(levels().map((level) => level.things.filter((thing) => thing.type === 3003).length)).toEqual([0, 0, 1]);
     const [mainFloor] = levels();
-    expect(mainFloor).toMatchObject({ name: "E1M1", title: "The main floor" });
     // One way out, at the top of the stairs; the bathroom wants its key, from either side.
     expect(mainFloor!.shape.walls.filter((wall) => wall.special === 11)).toHaveLength(1);
     expect(mainFloor!.shape.walls.filter((wall) => wall.special === 26)).toHaveLength(2);
@@ -94,8 +100,8 @@ describe("the game's own levels", () => {
     expect(names.slice(0, 4)).toEqual(["TITLEPIC", "M_DOOM", "WORDS", "STFST00"]);
     // Delbie's face, 42 times, and the bar, its weapon panel and the four squares behind the face.
     expect(names.indexOf("SS_START")).toBe(3 + 48);
-    expect(names.slice(-12)).toEqual(["SS_END", "E1M1", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
-    expect(names).toHaveLength(16 + 175 + 48);
+    expect(names.slice(-11)).toEqual(["E1M3", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
+    expect(names).toHaveLength(16 + 175 + 48 + 22);
   });
 });
 
@@ -121,7 +127,8 @@ describe("the game's words", () => {
     for (const [from, to] of ours) {
       if (!from.startsWith("!")) expect(engine).toContain(`"${from}"`);
       for (const line of to.split("|")) expect(plain(line)).toBe(line);
-      for (const line of to.split("|")) expect(line.length).toBeLessThanOrEqual(56);
+      // (But for the ending, which is a screen of its own.)
+      if (from !== "!ending") for (const line of to.split("|")) expect(line.length).toBeLessThanOrEqual(56);
     }
   });
 });
@@ -146,7 +153,7 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
     // But for its words, which Freedoom has no lump for: layer() makes them a place.
     expect(skipped).toEqual(["WORDS"]);
     const others = changes.filter((change) => change.kind !== "sprite").map((change) => `${change.kind}/${change.name}`).sort();
-    expect(others.filter((name) => !/^screen\/ST/.test(name))).toEqual(["screen/M_DOOM", "screen/TITLEPIC", "things/E1M1", "walls/E1M1"]);
+    expect(others.filter((name) => !/^screen\/ST/.test(name))).toEqual(["screen/M_DOOM", "screen/TITLEPIC", "things/E1M1", "things/E1M2", "things/E1M3", "walls/E1M1", "walls/E1M2", "walls/E1M3"]);
     // The status bar: every face the game has is Delbie's now, each the size of the one it replaces.
     const faces = wad.lumps.map((lump) => lump.name).filter((name) => /^STF(ST|TL|TR|OUCH|EVL|KILL|GOD|DEAD)/.test(name));
     expect(faces).toHaveLength(42);
@@ -165,7 +172,7 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
     expect(laid.lumps).toHaveLength(wad.lumps.length + 1);
     expect(readWords(laid.lumps.at(-1)!.data).get("E1M1: Hangar")).toBe("The main floor");
     expect(readLevel(laid, "E1M1").shape.rooms).toHaveLength(levels()[0]!.shape.rooms.length);
-    expect(levelLumps(laid, "E1M2")!.get("LINEDEFS")!.lump.data).toEqual(levelLumps(wad, "E1M2")!.get("LINEDEFS")!.lump.data);
+    expect(levelLumps(laid, "E1M4")!.get("LINEDEFS")!.lump.data).toEqual(levelLumps(wad, "E1M4")!.get("LINEDEFS")!.lump.data);
     expect(laid.lumps.filter((lump) => lump.name === "TITLEPIC").at(-1)!.data).toEqual(readWad(over).lumps[0]!.data);
   });
 
@@ -207,6 +214,59 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
     run(60);
     expect(sounds).toContain("DSSGTSIT");
     expect(running.stopped).toBeNull();
+  });
+
+  test("each floor is played, and the game ends after the third", async () => {
+    const laid = layer(game, over);
+    /** Starts on a level; `then` is run with the engine. */
+    const on = async (bytes: Uint8Array, map: number, then: (running: Awaited<ReturnType<typeof startEngine>>, run: (tics: number) => void) => void) => {
+      let clock = 0;
+      const running = await startEngine(engine, new Map([["freedoom1.wad", bytes]]), "freedoom1.wad", { now: () => clock, frame: () => {} }, ["-warp", "1", String(map)]);
+      then(running, (tics) => {
+        for (let i = 0; i < tics; i++) {
+          clock += 1000 / 35;
+          running.frame();
+        }
+      });
+      return running;
+    };
+    for (const map of [1, 2, 3]) {
+      const running = await on(laid, map, (engine, run) => {
+        run(60);
+        engine.analog(50, 0, 30);
+        run(200);
+      });
+      expect(`${map}: ${JSON.stringify(running.stopped)}`).toBe(`${map}: null`);
+      expect(screenOf(running.state())).toBe("level");
+    }
+
+    // The basement again, with the player stood at the switch that ends it and no rats: the same level but for where player 1 starts.
+    const atSwitch = (words: Uint8Array | null) => {
+      const wad = readWad(laid);
+      const things = levelLumps(wad, "E1M3")!.get("THINGS")!;
+      const placed = decodeThings(things.lump.data).map((thing) => (thing.type === 1 ? { ...thing, x: 0, y: 688, angle: 90 } : thing)).filter((thing) => ![3001, 3002, 3003].includes(thing.type));
+      return writeWad({ kind: wad.kind, lumps: wad.lumps.map((lump, index) => (index === things.index ? { name: lump.name, data: encodeThings(placed) } : words && lump.name === "WORDS" ? { name: lump.name, data: words } : lump)) });
+    };
+    /** Pushes the switch, then presses on through whatever comes for half a minute: does the game's ending come? */
+    const after = async (bytes: Uint8Array) => {
+      let ended = false;
+      const running = await on(bytes, 3, (engine, run) => {
+        run(60);
+        for (let i = 0; i < 70; i++) {
+          engine.key(true, KEY.use);
+          run(3);
+          engine.key(false, KEY.use);
+          run(12);
+          ended ||= (engine.state() & STATE_ENDING) !== 0;
+        }
+      });
+      expect(JSON.stringify(running.stopped)).toBe("null");
+      return ended;
+    };
+    // As the engine came, after the third level comes the fourth; with our words, the ending.
+    const eight = writeWords(new Map([...readWords(readWad(laid).lumps.at(-1)!.data)].filter(([from]) => from !== "!levels")));
+    expect(await after(atSwitch(eight))).toBe(false);
+    expect(await after(atSwitch(null))).toBe(true);
   });
 
   test("the level starts with a line of Delbie's, and without its words says nothing", async () => {

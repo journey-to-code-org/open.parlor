@@ -33,8 +33,13 @@ export const TEXTS = [
   { from: "Picked up a box of shotgun shells.", label: "A box of shells", group: "Picked up" },
   { from: "You got the shotgun!", label: "The shotgun", group: "Picked up" },
   { from: "A chainsaw!  Find some meat!", label: "The chainsaw", group: "Picked up" },
+  { from: "You got the chaingun!", label: "The chaingun", group: "Picked up" },
   { from: "Picked up a blue keycard.", label: "The blue key", group: "Picked up" },
+  { from: "Picked up a yellow keycard.", label: "The yellow key", group: "Picked up" },
+  { from: "Picked up a red keycard.", label: "The red key", group: "Picked up" },
   { from: "You need a blue key to open this door", label: "A door that wants the blue key", group: "Doors" },
+  { from: "You need a yellow key to open this door", label: "A door that wants the yellow key", group: "Doors" },
+  { from: "You need a red key to open this door", label: "A door that wants the red key", group: "Doors" },
 ] as const;
 
 /** The lump's name, and so the name its change goes by. */
