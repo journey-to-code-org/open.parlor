@@ -16,7 +16,8 @@ import { levelLumps, readLevel, wallNames, WALL_LOWER_UNPEGGED } from "../wad/le
 import { layer, modFromWad } from "../wad/mod.ts";
 import { fromPlan, type Look, wallNear } from "../wad/plan.ts";
 import { roomAt, trouble, wallsOf } from "../wad/shape.ts";
-import { readWad } from "../wad/wad.ts";
+import { linesFor, MOMENTS, plain, readWords, setLines, TEXTS, writeWords } from "../wad/words.ts";
+import { readWad, writeWad } from "../wad/wad.ts";
 
 const here = (path: string) => join(import.meta.dirname, path);
 const nodes = new WebAssembly.Module(readFileSync(here("../games/shooter/nodes/nodes.wasm")));
@@ -89,9 +90,36 @@ describe("the game's own levels", () => {
     const built = await buildGame(nodes, art());
     expect(Buffer.from(built).equals(readFileSync(here("../games/shooter/delbies/delbies.wad")))).toBe(true);
     const names = readWad(built).lumps.map((lump) => lump.name);
-    expect(names.slice(0, 3)).toEqual(["TITLEPIC", "M_DOOM", "SS_START"]);
+    expect(names.slice(0, 4)).toEqual(["TITLEPIC", "M_DOOM", "WORDS", "SS_START"]);
     expect(names.slice(-12)).toEqual(["SS_END", "E1M1", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
-    expect(names).toHaveLength(15 + 175);
+    expect(names).toHaveLength(16 + 175);
+  });
+});
+
+describe("the game's words", () => {
+  test("are read and written a line each, in what the engine's font can show", () => {
+    const words = readWords(new TextEncoder().encode("# a comment\r\nPicked up a clip.=Fuses.\n!kill=Got him!|One less.\n=nothing\nno equals\nempty=\n"));
+    expect([...words]).toEqual([["Picked up a clip.", "Fuses."], ["!kill", "Got him!|One less."]]);
+    expect(linesFor(words, "kill")).toEqual(["Got him!", "One less."]);
+    setLines(words, "see", ["  It\u2019s a rat\u2026 ", "", "one | two", "caf\u00e9"]);
+    expect(linesFor(words, "see")).toEqual(["It's a rat...", "one  two", "caf"]);
+    setLines(words, "kill", [" "]);
+    expect(words.has("!kill")).toBe(false);
+    expect(new TextDecoder().decode(writeWords(words))).toBe("Picked up a clip.=Fuses.\n!see=It's a rat...|one  two|caf\n");
+    expect(plain("\u201cquoted\u201d \u2013 dash")).toBe('"quoted" - dash');
+  });
+
+  test("replace words the engine really has, and Delbie has something to say at every moment", () => {
+    const engine = readFileSync(here("../games/shooter/engine/d_englsh.h"), "utf8");
+    for (const text of TEXTS) expect(engine).toContain(`"${text.from}"`);
+    const ours = readWords(new Uint8Array(readFileSync(here("../games/shooter/delbies/words.txt"))));
+    for (const moment of MOMENTS) expect(linesFor(ours, moment.key).length).toBeGreaterThan(0);
+    // Everything of ours that replaces the engine's words replaces words it has, and is short enough for the screen.
+    for (const [from, to] of ours) {
+      if (!from.startsWith("!")) expect(engine).toContain(`"${from}"`);
+      for (const line of to.split("|")) expect(plain(line)).toBe(line);
+      for (const line of to.split("|")) expect(line.length).toBeLessThanOrEqual(56);
+    }
   });
 });
 
@@ -112,7 +140,8 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
 
   test("all of it has a place, and the rest of the game is as it was", () => {
     const { changes, skipped } = modFromWad(over, catalogue(wad), wad);
-    expect(skipped).toEqual([]);
+    // But for its words, which Freedoom has no lump for: layer() makes them a place.
+    expect(skipped).toEqual(["WORDS"]);
     expect(changes.filter((change) => change.kind !== "sprite").map((change) => `${change.kind}/${change.name}`).sort()).toEqual(["screen/M_DOOM", "screen/TITLEPIC", "things/E1M1", "walls/E1M1"]);
     // The rats: every picture of the three monsters they take the place of, and of what the mutant spits; none left as it was.
     const drawn = new Set(changes.filter((change) => change.kind === "sprite").map((change) => change.name));
@@ -120,7 +149,9 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
     expect(theirs.filter((name) => !drawn.has(name))).toEqual([]);
     expect(drawn.size).toBe(theirs.length);
     const laid = readWad(layer(game, over));
-    expect(laid.lumps).toHaveLength(wad.lumps.length);
+    // One lump more than the game came with: its words, which Freedoom has no place for.
+    expect(laid.lumps).toHaveLength(wad.lumps.length + 1);
+    expect(readWords(laid.lumps.at(-1)!.data).get("E1M1: Hangar")).toBe("The main floor");
     expect(readLevel(laid, "E1M1").shape.rooms).toHaveLength(levels()[0]!.shape.rooms.length);
     expect(levelLumps(laid, "E1M2")!.get("LINEDEFS")!.lump.data).toEqual(levelLumps(wad, "E1M2")!.get("LINEDEFS")!.lump.data);
     expect(laid.lumps.filter((lump) => lump.name === "TITLEPIC").at(-1)!.data).toEqual(readWad(over).lumps[0]!.data);
@@ -164,6 +195,27 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
     run(60);
     expect(sounds).toContain("DSSGTSIT");
     expect(running.stopped).toBeNull();
-    (await import("node:fs")).writeFileSync("/tmp/rats_ingame.rgba", picture);
+  });
+
+  test("the level starts with a line of Delbie's, and without its words says nothing", async () => {
+    const top = async (bytes: Uint8Array) => {
+      let clock = 0;
+      let picture = new Uint8ClampedArray(0);
+      const running = await startEngine(engine, new Map([["freedoom1.wad", bytes]]), "freedoom1.wad", { now: () => clock, frame: (pixels) => (picture = pixels.slice()) }, ["-warp", "1", "1", "-nomonsters"]);
+      for (let i = 0; i < 70; i++) {
+        clock += 1000 / 35;
+        running.frame();
+      }
+      expect(running.stopped).toBeNull();
+      // The top ten rows: where a message is written.
+      return picture.slice(0, 320 * 10 * 4);
+    };
+    const laid = layer(game, over);
+    const quiet = readWad(laid);
+    const silent = writeWad({ kind: quiet.kind, lumps: quiet.lumps.map((lump) => (lump.name === "WORDS" ? { name: lump.name, data: writeWords(new Map([["E1M1: Hangar", "The main floor"]])) } : lump)) });
+    const [said, unsaid, again] = [await top(laid), await top(silent), await top(silent)];
+    const differ = (a: Uint8ClampedArray, b: Uint8ClampedArray) => a.some((value, i) => value !== b[i]);
+    expect(differ(unsaid, again)).toBe(false);
+    expect(differ(said, unsaid)).toBe(true);
   });
 });

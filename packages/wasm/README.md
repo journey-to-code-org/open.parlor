@@ -49,6 +49,11 @@ letters) and the sound effects. Any of them can be swapped for a file:
 
 ### Levels
 
+The **Words** tab changes what the game says: the lines for when a level starts, a rat notices
+you, one bites, you get one and you die (a line each; the game picks one), and the engine's own
+words for level names, things picked up and locked doors. They are kept as one change, a lump
+called `WORDS`, which the engine reads (`games/shooter/engine/words.c`).
+
 The **Levels** tab draws a level from above and changes it: what is placed in it (where the
 players start, the monsters, what can be picked up, the scenery) and what it is built of (its
 corners, walls and rooms). Drag the map to move about; pinch, or the wheel, to come closer.
@@ -170,6 +175,7 @@ wad/                  the Doom engine's data, read and written. No browser, no S
   level.ts            a level: what is placed in it, and its shape (corners, walls, sides, rooms), in and out
   shape.ts            changes to a shape: move or remove a corner, split a wall, add or remove a room, add a door; an empty level
   texture.ts          the pictures on walls, put together from their patches
+  words.ts            what the game says: the WORDS lump, read and written
   plan.ts             a level from a floor plan: rooms as rectangles, for levels built by a script
   nodes.ts            the node builder, run on a shape to make a level the engine can play
   does.ts             what a wall or a room can be made to do

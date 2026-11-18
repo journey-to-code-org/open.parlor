@@ -20,6 +20,10 @@ levels, the other monsters, the weapons, the sounds) is still Freedoom's.
 - `art/rats.py` draws the rats: each is a handful of rounded lumps, posed and looked at from the
   eight sides the engine wants, lit and edged like the engine's own sprites. It writes
   `sprites.bin.gz` and `sprites.json`: 175 pictures. It needs numpy and Pillow and is run by hand.
+- `words.txt` is what the game says: Delbie's lines for when a level starts, a rat notices you,
+  one bites, you get one, and you die; and our words in place of the engine's for the first
+  level's name, things picked up and the locked door. The engine reads them from the WAD
+  (`engine/words.c`), and the editor's **Words** tab changes them.
 - `delbies.wad` is the result, committed. A test checks it is what the plans and art now make.
 
 To rebuild after changing a plan: `npm run delbies -w @open-parlor/wasm`.

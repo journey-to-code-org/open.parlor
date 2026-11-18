@@ -23,7 +23,13 @@ export interface Change {
  * built on. What `over` has that the game has no place for is left out.
  */
 export function layer(game: Uint8Array, over: Uint8Array): Uint8Array {
-  const wad = readWad(game);
+  let wad = readWad(game);
+  // The game's words are a lump of our own: one the game hasn't a place for yet is given one.
+  const words = readWad(over).lumps.find((lump) => lump.name === "WORDS");
+  if (words && !wad.lumps.some((lump) => lump.name === "WORDS")) {
+    game = writeWad({ kind: wad.kind, lumps: [...wad.lumps, { name: "WORDS", data: new Uint8Array([35, 10]) }] });
+    wad = readWad(game);
+  }
   return applyMod(game, modFromWad(over, catalogue(wad), wad).changes);
 }
 
@@ -43,6 +49,7 @@ export function fits(kind: Kind, data: Uint8Array): boolean {
   // Ten bytes a thing, and a level with nothing in it has nowhere for the player to start.
   if (kind === "things") return data.length > 0 && data.length % 10 === 0;
   if (kind === "walls") return wallLumps(data) !== null;
+  if (kind === "words") return data.length > 0 && data.length < 65536;
   if (kind === "sound") return decodeDmx(data) !== null;
   if (kind === "floor") return data.length >= FLAT * FLAT;
   return decodePatch(data) !== null;

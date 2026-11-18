@@ -27,6 +27,7 @@
 #include "deh_main.h"
 #include "deh_misc.h"
 #include "doomstat.h"
+#include "words.h"
 
 #include "m_random.h"
 #include "i_system.h"
@@ -678,6 +679,12 @@ P_KillMobj
     target->flags |= MF_CORPSE|MF_DROPOFF;
     target->height >>= 2;
 
+    // [open.wasm] A word about it, for the player at this device: on dying, and on some kills.
+    if (target->player == &players[consoleplayer])
+	Words_Tell("die", 0);
+    else if (source && source->player == &players[consoleplayer] && (target->flags & MF_COUNTKILL))
+	Words_Tell("kill", 3*TICRATE);
+
     if (source && source->player)
     {
 	// count for intermission
@@ -838,6 +845,10 @@ P_DamageMobj
     // player specific
     if (player)
     {
+	// [open.wasm] A word about being hurt by a monster, for the player at this device.
+	if (player == &players[consoleplayer] && source && !source->player && damage < target->health)
+	    Words_Tell("hurt", 6*TICRATE);
+
 	// end of game hell hack
 	if (target->subsector->sector->special == 11
 	    && damage >= target->health)

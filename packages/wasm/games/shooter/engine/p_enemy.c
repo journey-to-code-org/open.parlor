@@ -33,6 +33,7 @@
 
 // State.
 #include "doomstat.h"
+#include "words.h"
 #include "r_state.h"
 
 // Data.
@@ -613,6 +614,10 @@ void A_Look (mobj_t* actor)
 		
     // go into chase state
   seeyou:
+    // [open.wasm] A word about being noticed, for the player at this device.
+    if (actor->target && actor->target->player == &players[consoleplayer])
+	Words_Tell("see", 10*TICRATE);
+
     if (actor->info->seesound)
     {
 	int		sound;

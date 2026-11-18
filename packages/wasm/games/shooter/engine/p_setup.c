@@ -39,6 +39,7 @@
 #include "s_sound.h"
 
 #include "doomstat.h"
+#include "words.h"
 
 
 void	P_SpawnMapThing (mapthing_t*	mthing);
@@ -837,6 +838,9 @@ P_SetupLevel
 
     //printf ("free memory: 0x%x\n", Z_FreeMemory());
 
+
+    // [open.wasm] A word to start the level with, for the player at this device.
+    Words_Tell("start", 0);
 }
 
 
