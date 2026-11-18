@@ -834,11 +834,18 @@ section**, with a form and no code ([ADR 0408](https://github.com/journey-to-cod
 The web build writes `<card-room>` in that shape to `packages/web/dist/embed/openblog/` (also served at
 `/embed/openblog/`):
 
-1. Copy `card-room.js`, `card-room.zb` and `card-room.css` into the theme's `components/` folder.
+1. Copy `card-room.js`, `card-room.zb`, `card-room.css` and `card-room.games.json` into the theme's
+   `components/` folder.
 2. Add the `components` entry from `theme-components.json` to the theme's `theme.json`, and list
    `components/card-room.css` under its `stylesheets`. With seasons, put it on the theme they extend.
-3. In Admin: **Landing page → Add a section → Parlor**, then the parlor's address and, for a
+3. In Admin: **Landing page → Add a section → Parlor**, then the parlor's address, the game and, for a
    Challenge button, your challenge link code.
+
+The form's games come from `card-room.games.json` (the game setting's `choicesFrom`, open.blog
+[ADR 0433](https://github.com/journey-to-code-org/open.blog/blob/main/docs/adr/0433-a-choice-setting-may-read-more-choices-from-a-file-of-the-themes-own.md)):
+when the parlor gains a game, replace that one file. The widget itself asks the parlor for its
+list (`/embed/games.json`) when it starts, so the copied `card-room.js` plays a new game without
+being copied again.
 
 With the `zubra` command installed where the site builds, open.blog renders the widget ahead, so
 readers without JavaScript still see it and its link to the parlor.

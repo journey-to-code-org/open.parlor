@@ -3,7 +3,11 @@
 // emoji and blurb. The widget is rendered ahead by open.blog's build, so the list is written into it
 // rather than fetched.
 // Run after adding a game: node scripts/embed-games.mjs (test/embed-games.test.ts checks it's current).
-import { readFileSync, writeFileSync } from "node:fs";
+//
+// The build also writes the same list as a file the parlor serves, `embed/games.json`
+// (node scripts/embed-games.mjs --manifest <file>): a widget already copied into a theme or a plugin
+// asks for it, so it learns about new games without being copied again.
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ARCADE_GAMES, IDLE_GAMES, KIT_GAMES } from "@journey-to-code/games";
@@ -19,14 +23,33 @@ const WORDED = {
   skyfire: "It's raining you-know-what. Fly the plunger through the storm, wave after wave, with the fan every fifth and a score to beat.",
 };
 
-export function gamesBlock() {
+/** Every game the widget can play, by id: its name, emoji and blurb, and `solo` for a game played against itself. */
+export function games() {
   const games = { ...OWN };
   // Draw & Guess can't be practised (computer players can't draw), so it can't be dealt in a page.
   for (const g of KIT_GAMES) if (g.practice !== false) games[g.id] = { name: g.name, emoji: g.emoji, blurb: g.tagline };
   // An arcade or idle game is played against the game itself: `solo` tells the widget there is no
   // computer opponent to mention, no challenge to send and no family table to open.
   for (const g of [...ARCADE_GAMES, ...IDLE_GAMES]) games[g.id] = { name: g.name, emoji: g.emoji, blurb: WORDED[g.id] ?? g.tagline, solo: true };
-  return `  // GAMES: written by packages/web/scripts/embed-games.mjs\n  const GAMES = ${JSON.stringify(games, null, 2).replace(/\n/g, "\n  ")}\n  // GAMES end`;
+  return games;
+}
+
+/** What the parlor serves at `embed/games.json`. */
+export const manifest = () => ({ games: games() });
+
+/**
+ * The games an open.blog form offers after Palace and Spades (which its declaration writes out), by
+ * name: the choices file scripts/openblog-component.mjs writes beside the theme component.
+ */
+export function gameChoices() {
+  return Object.entries(games())
+    .filter(([id]) => id !== "palace" && id !== "spades")
+    .map(([value, g]) => ({ value, label: g.name }))
+    .sort((a, b) => a.label.localeCompare(b.label, "en"));
+}
+
+export function gamesBlock() {
+  return `  // GAMES: written by packages/web/scripts/embed-games.mjs\n  const GAMES = ${JSON.stringify(games(), null, 2).replace(/\n/g, "\n  ")}\n  // GAMES end`;
 }
 
 export function withGames(source) {
@@ -36,4 +59,13 @@ export function withGames(source) {
   return source.slice(0, start) + gamesBlock() + source.slice(end + "  // GAMES end".length);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) writeFileSync(FILE, withGames(readFileSync(FILE, "utf8")));
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const at = process.argv.indexOf("--manifest");
+  if (at < 0) writeFileSync(FILE, withGames(readFileSync(FILE, "utf8")));
+  else {
+    const out = process.argv[at + 1];
+    if (!out) throw new Error("embed-games: --manifest needs a file to write");
+    mkdirSync(dirname(out), { recursive: true });
+    writeFileSync(out, `${JSON.stringify(manifest())}\n`);
+  }
+}

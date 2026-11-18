@@ -11,8 +11,14 @@
   `server` is the parlor's address (required). `game` is a game's id ("hearts", "chess", "minigolf", "airhockey"…),
   or "" for Spades and Palace to choose between.
   `challenge` is a challenge link's code; `who` is the name to show on that button.
+
+  The games written below are the ones this copy of the widget was built with. In the browser it also
+  asks the parlor for its list (`/embed/games.json`), so a copy sitting in a theme or a plugin learns
+  about games the parlor has added since without being replaced.
 -->
 <script>
+  import { onMount } from '@zubra/runtime'
+
   // GAMES: written by packages/web/scripts/embed-games.mjs
   const GAMES = {
     "palace": {
@@ -423,10 +429,35 @@
   // No regular expressions here: Zubra's render ahead (open.blog's build) can't evaluate them yet.
   const trimmed = String(server || "").trim()
   const base = trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed
-  const offered = game && GAMES[game] ? [game] : ["spades", "palace"]
-  let picked = offered[0]
+  // What the parlor says it has now, once asked (in the browser only); until then, and if it can't
+  // be reached, the games this copy was built with.
+  let games = GAMES
+  const offered = game && games[game] ? [game] : ["spades", "palace"]
+  let chosen = ""
+  const picked = offered.includes(chosen) ? chosen : offered[0]
   let playing = false
-  const info = () => GAMES[picked]
+  const info = () => games[picked]
+  // A game's id goes into an address, so only plain ids are taken from the parlor's list.
+  const PLAIN = "abcdefghijklmnopqrstuvwxyz0123456789"
+  const plainId = (id) => id.length > 0 && id.length <= 40 && id.split("").every((c) => PLAIN.includes(c))
+  const words = (value) => typeof value === "string" && value.length > 0 && value.length <= 300
+  onMount(() => {
+    if (!base || typeof fetch !== "function") return
+    fetch(`${base}/embed/games.json`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((list) => {
+        const listed = list && typeof list.games === "object" && list.games ? list.games : null
+        if (!listed) return
+        const next = {}
+        for (const id of Object.keys(listed)) {
+          const g = listed[id]
+          if (g && plainId(id) && words(g.name) && words(g.emoji) && words(g.blurb)) next[id] = { name: g.name, emoji: g.emoji, blurb: g.blurb, solo: g.solo === true }
+        }
+        // Spades and Palace are what it offers when no game is named, so it never goes without them.
+        if (next.spades && next.palace) games = next
+      })
+      .catch(() => {})
+  })
   // Rendered ahead too, so plain string work only: the values are fixed words and a link code.
   const url = (params) => `${base}/?${Object.keys(params).map((k) => `${k}=${params[k]}`).join("&")}`
   const frameSrc = () => url({ embed: "1", game: picked })
@@ -469,7 +500,7 @@
     <div zb-else class="card">
       <div zb-if={offered.length > 1} class="tabs" role="group" aria-label="Game">
         <zb-each items={offered} as="g" key={g}>
-          <button type="button" aria-pressed={picked === g ? "true" : "false"} onclick={() => { picked = g }}>{GAMES[g].emoji} {GAMES[g].name}</button>
+          <button type="button" aria-pressed={picked === g ? "true" : "false"} onclick={() => { chosen = g }}>{games[g].emoji} {games[g].name}</button>
         </zb-each>
       </div>
       <h3><span aria-hidden="true">{info().emoji}</span> Play {info().name}</h3>
