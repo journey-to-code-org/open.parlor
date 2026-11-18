@@ -348,6 +348,11 @@
       "emoji": "🧩",
       "blurb": "Seven tiles, one board, and every word has to cross."
     },
+    "readtheroom": {
+      "name": "Read the Room",
+      "emoji": "🫶",
+      "blurb": "How well do you know these people?"
+    },
     "minigolf": {
       "name": "Mini Golf",
       "emoji": "⛳",
