@@ -113,6 +113,8 @@ const TYPES: Record<string, string> = {
   // A browser compiles a .wasm file as it downloads only when it is served as one.
   ".wasm": "application/wasm",
   ".txt": "text/plain; charset=utf-8",
+  // The WebAssembly shooter's songs.
+  ".mp3": "audio/mpeg",
 };
 
 const server = createServer(async (req, res) => {

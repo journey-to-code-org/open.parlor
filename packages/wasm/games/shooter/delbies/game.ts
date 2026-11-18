@@ -7,13 +7,14 @@
 import { encodeThings, type Shape, type Thing } from "../../../wad/level.ts";
 import { buildLevel } from "../../../wad/nodes.ts";
 import { encodeFlat, encodePatch, type Picture } from "../../../wad/picture.ts";
-import { encodeDmx, RATE } from "../../../wad/sound.ts";
+import { encodeDmx, RATE, songLump } from "../../../wad/sound.ts";
 import { fromPlan, wallNear } from "../../../wad/plan.ts";
 import { roomAt, trouble } from "../../../wad/shape.ts";
 import { type Lump, readWad, writeWad } from "../../../wad/wad.ts";
 import * as attic from "./attic.ts";
 import * as basement from "./basement.ts";
 import { generate, TITLES } from "./generated.ts";
+import { SONGS } from "./songs.ts";
 import * as mainFloor from "./main-floor.ts";
 
 export interface Level {
@@ -117,6 +118,8 @@ export async function buildGame(nodes: WebAssembly.Module, art: Art): Promise<Ui
     { name: "M_DOOM", data: encodePatch({ width: art.logo.width, height: art.logo.height, left: 0, top: 0, pixels: art.logo.pixels, solid: art.logo.solid }) },
   ];
   lumps.push({ name: "WORDS", data: art.words }, ...art.screens.map((screen) => ({ name: screen.name, data: encodePatch(screen) })));
+  // The songs: each lump only names its song, which the page fetches when the engine first asks for it (songs.ts).
+  lumps.push(...Object.entries(SONGS).map(([name, song]) => ({ name, data: songLump(song) })));
   lumps.push(...art.sounds.map((sound) => ({ name: sound.name, data: encodeDmx({ rate: RATE, samples: Float32Array.from(sound.samples, (byte) => (byte - 128) / 127) }) })));
   // Sprites, the pictures walls are made of, and floors each go between their markers, as the engine and other tools expect.
   lumps.push(marker("S_START"), ...art.sprites.map((sprite) => ({ name: sprite.name, data: encodePatch(sprite) })), marker("S_END"));

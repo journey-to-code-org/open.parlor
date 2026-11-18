@@ -39,7 +39,8 @@ to be carried to new platforms, with the changes a web page needs
 ([`games/shooter/engine/CHANGES.md`](games/shooter/engine/CHANGES.md)). The game it plays is
 Delbie's Doomsday ([`games/shooter/delbies`](games/shooter/delbies/README.md)): one WAD, built
 in this folder, in which every level, picture, sound and colour is the game's own. Nothing of
-anyone else's game is fetched or laid under it.
+anyone else's game is fetched or laid under it. Its four songs are MP3s beside it, fetched one
+at a time as the engine first plays them.
 
 | | |
 | --- | --- |
@@ -49,11 +50,11 @@ anyone else's game is fetched or laid under it.
 | Together | Up to four, each on a device of their own, against the monsters or each other. One starts a game and sends the others its link or its four-letter code |
 | Watching | Anyone with the link can watch, through any player's eyes, and is run through the game so far if they come late. A game its host lists also shows on the parlor's watch page |
 | Changing it | An editor at `/wasm/editor/` swaps any of the game's pictures and sounds for a file of your own, adds walls, floors, sprites and sounds it never had, changes its words and its rules (what each thing is, and the numbers it plays by), its levels, what is placed in them and what they are built of, and puts a file in place of any other lump of its data; the game is played with the changes, alone |
-| Sound | Effects, through Web Audio. A song is played if someone has put an MP3, an Ogg or a WAV in its place; the game's own songs (MUS data) are not, yet |
+| Sound | Effects, through Web Audio. The game's four songs are MP3s, fetched as they are first played; an MP3, an Ogg or a WAV put in a song's place in the editor is played too |
 | Saved games and settings | Kept in the browser (IndexedDB), under the engine's own menus |
 | Offline | After the first visit the page, the engine and the game's data are kept on the device |
 
-Not there yet: the game's own music (the songs are MUS data, which wants an OPL or MIDI synthesiser), joining a
+Not there yet: songs in the engine's own MUS form (they want an OPL or MIDI synthesiser), joining a
 game that has started as a player, and replays of games that are over.
 
 ## The editor
@@ -89,8 +90,8 @@ letters) and the sound effects. Any of them can be swapped for a file:
   side; `DSRAT1`). The engine draws and plays its own by name, so a new one is seen or heard
   once the Rules tab gives it to a thing.
 - **Songs** are among Everything else (`D_E1M1` and the rest). An MP3, an Ogg or a WAV put in a
-  song's place is played, round and round, at the menu's music volume. The game's own songs are
-  MUS data, which wants an OPL or MIDI synthesiser: they are still silence.
+  song's place is played, round and round, at the menu's music volume. A song in the engine's
+  own MUS form wants an OPL or MIDI synthesiser, and is silence.
 
 The **Rules** tab changes what was fixed in the engine's code. For each of the engine's 137
 kinds of thing: its health, speed, size, weight, damage, how easily it flinches, how long before

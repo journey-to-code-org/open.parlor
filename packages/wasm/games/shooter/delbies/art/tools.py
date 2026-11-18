@@ -107,57 +107,30 @@ for name, (hx, hy, out) in {"PUNGA0": (150, 126, 0), "PUNGB0": (140, 108, 18), "
     tape(draw, hx, hy - 6, 40, out)
     keep(name, image, held=True)
 
-BRASS, BRASS_DARK = (196, 160, 72), (140, 108, 40)
+def given(name, rgba, held=False, dx=0, dy=0):
+    """A picture someone made, as it is: brought into the game's colours, with no shading or edge added.
+    Held: placed on the screen where it sits on its 320 by 200 picture, moved by dx and dy."""
+    there = rgba[..., 3] > 127
+    rows, cols = np.where(there)
+    y0, y1, x0, x1 = rows.min(), rows.max() + 1, cols.min(), cols.max() + 1
+    rgba, there = rgba[y0:y1, x0:x1], there[y0:y1, x0:x1]
+    height, width = there.shape
+    # The engine draws what is held 32 down from where its picture says.
+    left, top = (-(int(x0) + dx), -(int(y0) + dy - 32)) if held else (width // 2, height)
+    pixels = bytes(nearest(rgba[y, x, :3]) if there[y, x] else 0 for y in range(height) for x in range(width))
+    pictures.append((name, width, height, left, top, pixels, bytes(there.astype(np.uint8).tobytes())))
 
-def rifle(draw, dx=0, dy=0, lever=0):
-    """Delbie's lever-action from behind and a little above: the barrel away up the screen with its
-    magazine tube under it, a wooden forend in the left hand, a brass receiver with its hammer, and
-    the right hand in the lever, which swings down and forward when it is worked."""
-    cx, top = 166 + dx, 78 + dy
-    # The magazine tube, seen past the barrel's right side, and the barrel over it.
-    draw.polygon([(cx + 2, top + 8), (cx + 7, top + 8), (cx + 15, top + 62), (cx + 4, top + 62)], fill=STEEL_DARK)
-    draw.polygon([(cx - 4, top), (cx + 4, top), (cx + 9, top + 62), (cx - 9, top + 62)], fill=STEEL)
-    draw.line((cx - 2, top + 3, cx - 5, top + 60), fill=STEEL_LIGHT, width=2)
-    draw.line((cx + 3, top + 3, cx + 8, top + 60), fill=STEEL_DARK, width=2)
-    # The front sight, and the mouth of the barrel.
-    draw.rectangle((cx - 1, top - 6, cx + 1, top), fill=BRASS)
-    draw.ellipse((cx - 3, top - 1, cx + 3, top + 4), fill=BLACK)
-    # The band that holds barrel and tube together, and the forend: wood, with its grain.
-    draw.rectangle((cx - 9, top + 40, cx + 15, top + 45), fill=STEEL_LIGHT)
-    draw.polygon([(cx - 13, top + 46), (cx + 16, top + 46), (cx + 21, top + 84), (cx - 18, top + 84)], fill=WOOD)
-    for i, grain in enumerate((-9, -3, 4, 10)):
-        draw.line((cx + grain, top + 49 + (i % 2) * 3, cx + grain * 1.3, top + 82), fill=WOOD_DARK)
-    draw.line((cx + 15, top + 47, cx + 20, top + 84), fill=WOOD_DARK, width=3)
-    # The left hand under the forend: fingers come up round its side.
-    draw.rounded_rectangle((cx - 30, top + 56, cx - 10, top + 82), 6, fill=SKIN)
-    for i in range(4):
-        draw.rounded_rectangle((cx - 20, top + 55 + i * 7, cx - 6, top + 60 + i * 7), 2, fill=SKIN)
-        draw.line((cx - 20, top + 61 + i * 7, cx - 8, top + 61 + i * 7), fill=SKIN_DARK)
-    draw.polygon([(cx - 30, top + 80), (cx - 12, top + 82), (cx - 30, 205), (cx - 62, 205)], fill=SLEEVE)
-    # The receiver: brass, a loading gate in its side, the hammer on top.
-    draw.polygon([(cx - 18, top + 84), (cx + 21, top + 84), (cx + 25, 205), (cx - 22, 205)], fill=BRASS)
-    draw.line((cx + 21, top + 84, cx + 25, 205), fill=BRASS_DARK, width=4)
-    draw.rounded_rectangle((cx - 12, top + 96, cx - 2, top + 104), 3, fill=BRASS_DARK)
-    draw.rectangle((cx - 3, top + 80, cx + 5, top + 90), fill=STEEL_DARK)
-    draw.rectangle((cx - 2, top + 76, cx + 4, top + 82), fill=STEEL_LIGHT)
-    # The lever, a loop of steel, and the right hand through it.
-    lx, ly = cx + 22 + lever * 12, top + 92 + lever * 14
-    draw.ellipse((lx - 4, ly - 2, lx + 34, ly + 30), outline=STEEL_LIGHT, width=4)
-    draw.rounded_rectangle((lx + 2, ly + 4, lx + 38, ly + 30), 8, fill=SKIN)
-    for i in range(1, 4):
-        draw.line((lx + 2 + i * 9, ly + 6, lx + 2 + i * 9, ly + 18), fill=SKIN_DARK)
-    draw.rectangle((lx + 2, ly + 24, lx + 38, ly + 30), fill=SKIN_DARK)
-    draw.polygon([(lx + 6, ly + 30), (lx + 38, ly + 30), (lx + 64, 205), (lx + 16, 205)], fill=SLEEVE)
-
-for name, how in {"SHTGA0": dict(), "SHTGB0": dict(dx=3, dy=9), "SHTGC0": dict(dx=5, dy=12, lever=1), "SHTGD0": dict(dx=2, dy=6, lever=0.5)}.items():
-    image, draw = screen()
-    rifle(draw, **how)
-    keep(name, image, held=True)
+# Delbie's lever-action, in gloved hands, looking down the barrel. The picture is Mikey's (rifle-held.png: cut out
+# of the one he gave, and made the size of the screen). It is one picture, so working the lever is the rifle
+# coming back and down and up again.
+RIFLE = np.array(Image.open(here / "rifle-held.png").convert("RGBA"))
+for name, (dx, dy) in {"SHTGA0": (0, 0), "SHTGB0": (2, 7), "SHTGC0": (5, 15), "SHTGD0": (7, 20)}.items():
+    given(name, RIFLE, held=True, dx=dx, dy=dy)
 
 # The flash at its muzzle, small and then large.
 for name, size in (("SHTFA0", 9), ("SHTFB0", 15)):
     image, draw = screen()
-    cx, cy = 166, 70
+    cx, cy = 160, 100
     draw.polygon([(cx, cy - size * 2), (cx + size // 2, cy - size // 2), (cx + size * 2, cy), (cx + size // 2, cy + size // 2), (cx, cy + size), (cx - size // 2, cy + size // 2), (cx - size * 2, cy), (cx - size // 2, cy - size // 2)], fill=(255, 190, 40))
     draw.ellipse((cx - size // 2, cy - size // 2, cx + size // 2, cy + size // 2), fill=(255, 250, 210))
     keep(name, image, held=True)
@@ -220,15 +193,8 @@ def small(width, height):
     image = Image.new("RGBA", (width + 2, height + 2), (0, 0, 0, 0))
     return image, ImageDraw.Draw(image)
 
-# On the floor. The lever-action, side on.
-image, draw = small(44, 13)
-draw.rectangle((14, 4, 43, 6), fill=STEEL)
-draw.rectangle((16, 7, 36, 8), fill=STEEL_DARK)
-draw.polygon([(0, 3), (13, 4), (14, 9), (0, 12)], fill=WOOD)
-draw.rectangle((13, 4, 21, 9), fill=STEEL_LIGHT)
-draw.ellipse((14, 8, 21, 13), outline=STEEL_DARK)
-draw.rectangle((22, 7, 30, 9), fill=WOOD_DARK)
-keep("SHOTA0", image)
+# On the floor. The lever-action, side on: Mikey's picture too (rifle-floor.png).
+given("SHOTA0", np.array(Image.open(here / "rifle-floor.png").convert("RGBA")))
 
 # The impact wrench, side on: its anvil and socket to the right, its grip and battery below.
 image, draw = small(46, 30)
@@ -398,7 +364,7 @@ def flat(name, image, left=None, top=None):
     height, width = there.shape
     pixels = bytes(nearest(rgba[y, x, :3]) if there[y, x] else 0 for y in range(height) for x in range(width))
     pictures.append((name, width, height, width // 2 if left is None else left, height if top is None else top, pixels, bytes(there.astype(np.uint8).tobytes())))
-for letter, r in zip("ABCD", (2, 4, 5, 3)):
+for letter, r in zip("ABCD", (1, 2, 3, 2)):
     flat(f"PUFF{letter}0", burst(14, ((200, 200, 196), (240, 240, 232)), (r, r - 2)), top=r + 8)
 for letter, r in zip("ABC", (5, 4, 2)):
     flat(f"BLUD{letter}0", burst(14, ((150, 20, 20), (210, 44, 40)), (r, r - 2)), top=r + 6)

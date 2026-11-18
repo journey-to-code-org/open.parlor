@@ -22,7 +22,7 @@
   import { decodePatch, type Palette, paletteOf } from "../../wad/picture.ts";
   import { loadMod, removeChange, saveChange } from "../../wad/saved.ts";
   import { readWad, type Wad } from "../../wad/wad.ts";
-  import { DELBIES } from "../shooter/delbies.ts";
+  import { DELBIES, SONGS } from "../shooter/delbies.ts";
   import { mountShooter, type Shooter } from "../shooter/player.ts";
   import { download, type Fit, isSound, pictureLump, pictureOf, play, png, soundLump } from "./convert.ts";
   import Levels from "./Levels.svelte";
@@ -311,6 +311,7 @@
     const mounted: Shooter = mountShooter(stageElement, {
       wasm,
       wad: DELBIES,
+      songs: SONGS,
       title: where ? `Try ${tryLevel}` : "Try it",
       blurb: changes.size ? "The game, with what you have changed." : "The game as it came: nothing is changed yet.",
       args: where ? ["-warp", ...where] : [],

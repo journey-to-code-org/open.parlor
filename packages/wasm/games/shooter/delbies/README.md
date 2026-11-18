@@ -10,8 +10,7 @@ engine is given that file and no other. (It began laid over Freedoom, whose leve
 sounds filled in what wasn't drawn yet. None of that is left.)
 
 What the engine can do that the game has nothing for is simply not there: the other monsters,
-the chainsaw, the rocket launcher and the rest have no pictures and are placed in no level, and
-there is no music until someone adds some in the editor.
+the chainsaw, the rocket launcher and the rest have no pictures and are placed in no level.
 
 - `attic.ts` and `basement.ts` are the second and third levels, written the same way: the attic's
   good side and bad side (holes in the floor, the attic key at the far end), and the basement's
@@ -31,6 +30,13 @@ there is no music until someone adds some in the editor.
   a WAD with the art: the colours first, then the lists of walls (every wall is one picture of
   its own name), the screens, the sounds, the sprites, the walls and the floors between their
   markers, and the levels.
+- `songs.ts` says which song plays where, and `music/` holds the songs: four MP3s of Mikey's
+  (Brass and Heavy Iron for the title, the page between levels and the ending; Steel Teeth and
+  Stripped To Bone by turns on the levels; Aisle Four Is A Trap on the King Rat's floors, 3, 8,
+  10 and 12), brought down to 32 kHz and 112 kbit/s, 9 MB between them. They are not in the WAD:
+  a song's lump there is one line naming it (`song:steel-teeth`), and the page fetches the file
+  the first time the engine plays it and keeps it for playing with no connection. So a song
+  never heard on a device isn't there offline.
 - `art/palette.py` makes the game's 256 colours (sixteen runs of sixteen shades, chosen for a
   parts store: navy, steel, cream, cardboard, the yellow of a price gun, the green of old brake
   fluid), the same tinted for being hurt and for picking things up, and each colour at 32
@@ -48,7 +54,10 @@ there is no music until someone adds some in the editor.
 - `art/tools.py` draws tools from the store as four weapons and what is picked up: the
   "hammer" (a tape measure, in place of the fist), a price gun (the pistol), Delbie's lever-action
   (the shotgun) and an impact wrench (the chaingun), each in the hand with its flash, the last two
-  on the floor as well; cartridges loose and boxed; pasta, a pizza box and a coffee for health; a
+  on the floor as well. The lever-action is not drawn by the script: `rifle-held.png` and
+  `rifle-floor.png` are cut out of two pictures Mikey gave (by hand, once, with OpenCV's GrabCut;
+  there is no script for it) and the script brings them into the game's colours. It is one
+  picture in the hands, so working the lever is the rifle coming back and down; cartridges loose and boxed; pasta, a pizza box and a coffee for health; a
   shop apron and a hard hat for armour; boxes of ammunition and the three keys. And the rest of
   what stands in a level: another player (work shirt, cap, price gun), dust and blood where a
   shot lands, the light things arrive in, what the King Rat throws, and a drum of waste oil and

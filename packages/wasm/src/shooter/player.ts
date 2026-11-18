@@ -22,6 +22,8 @@ export interface ShooterOptions {
   wasm: string;
   /** The game's data: the address of a WAD (gzipped, if it ends in .gz), the name the engine opens it by, and the size of the download for the invitation. */
   wad: { url: string; name: string; megabytes: number };
+  /** Where each of the game's own songs is, by the name its lump gives ("song:<name>"): fetched when first played. */
+  songs?: Record<string, string>;
   /** What the game is called on its start screen. */
   title: string;
   /** A line under the title. */
@@ -152,7 +154,7 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
   const clockStart = performance.now();
   const now = () => (hiddenAt ?? performance.now()) - clockStart - lost;
 
-  const audio = createAudio();
+  const audio = createAudio(options.songs);
   const target = {
     key: (pressed: boolean, key: number) => engine?.key(pressed, key),
     state: () => engine?.state() ?? 0,

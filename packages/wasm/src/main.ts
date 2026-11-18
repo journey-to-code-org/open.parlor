@@ -5,7 +5,7 @@ import wasm from "../games/shooter/shooter.wasm?url";
 import { forgetAssetsExcept } from "../host/assets.ts";
 import { applyMod } from "../wad/mod.ts";
 import { loadMod } from "../wad/saved.ts";
-import { DELBIES } from "./shooter/delbies.ts";
+import { DELBIES, SONGS } from "./shooter/delbies.ts";
 import { mountShooter } from "./shooter/player.ts";
 import "./shooter/shooter.css";
 import "./styles.css";
@@ -17,6 +17,7 @@ import "./styles.css";
 mountShooter(document.getElementById("game")!, {
   wasm,
   wad: DELBIES,
+  songs: SONGS,
   art,
   title: "Delbie's Doomsday",
   blurb: "Delbie's Daycare & Geriatrics is overrun with rats. Clear it out, floor by floor. A first-person shooter on the open-source Doom engine, running in your browser.",
@@ -36,7 +37,7 @@ mountShooter(document.getElementById("game")!, {
 });
 
 // An older version of the game's data, kept by an earlier visit, is let go.
-void forgetAssetsExcept([DELBIES.url]);
+void forgetAssetsExcept([DELBIES.url, ...Object.values(SONGS)]);
 
 // This page's own service worker keeps it for playing with no connection. Not on the dev server,
 // where it would hold on to files that are being changed.

@@ -14,7 +14,8 @@ import { catalogue } from "../wad/catalogue.ts";
 import { decodeThings, encodeThings, levelLumps, readLevel, wallNames, WALL_LOWER_UNPEGGED } from "../wad/level.ts";
 import { wallPictures } from "../wad/texture.ts";
 import { decodePatch } from "../wad/picture.ts";
-import { decodeDmx } from "../wad/sound.ts";
+import { decodeDmx, songNamed } from "../wad/sound.ts";
+import { SONG_NAMES, SONGS } from "../games/shooter/delbies/songs.ts";
 import { fromPlan, type Look, wallNear } from "../wad/plan.ts";
 import { roomAt, trouble, wallsOf } from "../wad/shape.ts";
 import { linesFor, MOMENTS, plain, readWords, setLines, TEXTS, writeWords } from "../wad/words.ts";
@@ -119,15 +120,15 @@ describe("the game's own levels", () => {
     expect(readWad(built).kind).toBe("IWAD");
     expect(names.slice(0, 8)).toEqual(["PLAYPAL", "COLORMAP", "TEXTURE1", "PNAMES", "TITLEPIC", "M_DOOM", "WORDS", "STFST00"]);
     const between = (start: string, end: string) => names.slice(names.indexOf(start) + 1, names.indexOf(end));
-    // Delbie's face, 42 times, and the rest of the bar: 108 pictures. What is around the game: 208. Everything heard: 39 sounds.
-    expect(names.indexOf("S_START")).toBe(7 + 108 + 208 + 39);
+    // Delbie's face, 42 times, and the rest of the bar: 108 pictures. What is around the game: 208. A lump for each of 16 places a song plays. Everything heard: 39 sounds.
+    expect(names.indexOf("S_START")).toBe(7 + 108 + 208 + 16 + 39);
     // 175 pictures of rats and 101 of tools, pickups, another player and what shots and drums do.
     expect(between("S_START", "S_END")).toHaveLength(175 + 101);
     // Every wall and sky is one picture of its own name; then the floors and ceilings.
     expect(between("P_START", "P_END")).toHaveLength(25);
     expect(between("F_START", "F_END")).toHaveLength(17);
     expect(names.slice(-11)).toEqual(["E2M3", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
-    expect(names).toHaveLength(7 + 108 + 208 + 39 + 2 + 276 + 2 + 25 + 2 + 17 + 12 * 11);
+    expect(names).toHaveLength(7 + 108 + 208 + 16 + 39 + 2 + 276 + 2 + 25 + 2 + 17 + 12 * 11);
   });
 });
 
@@ -226,6 +227,21 @@ describe("the game, whole", () => {
     expect(["PLAY", "SARG", "TROO", "BOSS", "BAL1", "BAL7", "PUNG", "PISG", "PISF", "SHTG", "SHTF", "CHGG", "CHGF", "SHOT", "MGUN", "CLIP", "AMMO", "SHEL", "SBOX", "STIM", "MEDI", "BON1", "BON2", "ARM1", "BKEY", "YKEY", "RKEY", "BAR1", "BEXP", "PUFF", "BLUD", "TFOG", "IFOG"].filter((name) => !sprites.has(name))).toEqual([]);
     const placed = new Set(levels().flatMap((level) => level.things.map((thing) => thing.type)));
     expect([...placed].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 11, 13, 2001, 2002, 2007, 2008, 2011, 2012, 2014, 2015, 2018, 2035, 2048, 2049, 3001, 3002, 3003]);
+    // The music: the title, the page between levels, the ending and every level has a song, each lump only naming a file that is here.
+    const songs = names.filter((name) => name.startsWith("D_"));
+    expect(songs.sort()).toEqual(["D_INTRO", "D_INTROA", "D_INTER", "D_VICTOR", ...FLOORS.map((name) => `D_${name}`)].sort());
+    for (const song of songs) {
+      const named = songNamed(data(song))!;
+      expect([song, SONGS[song]]).toEqual([song, named]);
+      expect(SONG_NAMES).toContain(named);
+      // An MP3, small enough to fetch on a phone: under 3 MB.
+      const file = readFileSync(here(`../games/shooter/delbies/music/${named}.mp3`));
+      expect(file.length).toBeGreaterThan(500000);
+      expect(file.length).toBeLessThan(3000000);
+      expect(file[0]! === 0xff && (file[1]! & 0xe0) === 0xe0).toBe(true);
+    }
+    expect(songNamed(new TextEncoder().encode("song:Not A Name"))).toBeUndefined();
+    expect(songNamed(new Uint8Array(4000))).toBeUndefined();
     // Twelve levels and no more: there is nothing of anyone else's behind them.
     expect(names.filter((name) => /^E\dM\d$/.test(name))).toEqual(FLOORS);
     expect(readWords(data("WORDS")).get("E1M1: Hangar")).toBe("The main floor");
