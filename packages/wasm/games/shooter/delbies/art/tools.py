@@ -1,8 +1,9 @@
 """Tools from the store, in place of the engine's weapons and things to pick up.
 
 In the hand: the "hammer" (a tape measure; the store's joke is that it is only ever called a
-hammer), which is what you hit with when you have nothing else, and Delbie's lever-action, which
-is the shotgun. On the floor: the lever-action, leftover pasta and a pizza box for health, a shop
+hammer), which is what you hit with when you have nothing else; a price gun, which is the pistol;
+Delbie's lever-action, which is the shotgun; and an impact wrench, which is the chaingun. On the
+floor: the lever-action, the impact wrench, leftover pasta and a pizza box for health, a shop
 apron for armour, a box of ammunition, and the three keys on their tags.
 
 Each is drawn here with a few shapes and given a dark edge. What is held is drawn where it sits
@@ -124,6 +125,60 @@ for name, size in (("SHTFA0", 9), ("SHTFB0", 15)):
     draw.ellipse((cx - size // 2, cy - size // 2, cx + size // 2, cy + size // 2), fill=(255, 250, 210))
     keep(name, image, held=True)
 
+def price_gun(draw, dy=0):
+    """A price gun, in the pistol's place: red, a roll of labels on top, and a hand round its grip."""
+    cx, top = 160, 114 + dy
+    draw.ellipse((cx - 11, top, cx + 11, top + 18), fill=WHITE)
+    draw.ellipse((cx - 4, top + 5, cx + 4, top + 13), fill=STEEL)
+    draw.rounded_rectangle((cx - 17, top + 12, cx + 17, top + 54), 6, fill=RED)
+    draw.rectangle((cx + 11, top + 16, cx + 17, top + 52), fill=(140, 24, 20))
+    # Where the label comes out, and one on its way.
+    draw.rectangle((cx - 9, top + 8, cx + 9, top + 14), fill=BLACK)
+    draw.rectangle((cx - 7, top + 4, cx + 7, top + 10), fill=WHITE)
+    draw.line((cx - 4, top + 7, cx + 4, top + 7), fill=BLACK)
+    hand(draw, cx - 23, top + 46, 46, 30)
+
+for name, dy in {"PISGA0": 0, "PISGB0": -8, "PISGC0": -4, "PISGD0": 2, "PISGE0": 0}.items():
+    image, draw = screen()
+    price_gun(draw, dy)
+    keep(name, image, held=True)
+
+# A label leaving it, with a snap.
+image, draw = screen()
+draw.polygon([(160, 84), (166, 100), (182, 104), (166, 108), (160, 122), (154, 108), (138, 104), (154, 100)], fill=(255, 210, 60))
+draw.rectangle((153, 97, 167, 109), fill=WHITE)
+draw.line((156, 101, 164, 101), fill=BLACK)
+draw.line((156, 105, 162, 105), fill=BLACK)
+keep("PISFA0", image, held=True)
+
+def impact_wrench(draw, turned=False):
+    """An impact wrench, in the chaingun's place: yellow and black, its socket away up the screen."""
+    cx, top = 160, 106
+    draw.rectangle((cx - 8, top - 6, cx + 8, top + 4), fill=STEEL_DARK)
+    draw.rectangle((cx - 5, top + 2, cx + 5, top + 12), fill=STEEL_LIGHT)
+    # The socket's flats, which is all that shows it turning.
+    for x in ((-6, 0, 5) if turned else (-3, 3)):
+        draw.line((cx + x, top - 5, cx + x, top + 3), fill=STEEL_LIGHT)
+    draw.rounded_rectangle((cx - 20, top + 10, cx + 20, top + 56), 8, fill=YELLOW)
+    draw.rectangle((cx - 20, top + 24, cx + 20, top + 31), fill=BLACK)
+    draw.rectangle((cx + 13, top + 14, cx + 20, top + 52), fill=YELLOW_DARK)
+    draw.rounded_rectangle((cx - 14, top + 48, cx + 14, top + 62), 4, fill=BLACK)
+    hand(draw, cx - 24, top + 56, 48, 30)
+
+for name, turned in (("CHGGA0", False), ("CHGGB0", True)):
+    image, draw = screen()
+    impact_wrench(draw, turned)
+    keep(name, image, held=True)
+
+# Sparks off the socket, two ways.
+for name, spin in (("CHGFA0", 0), ("CHGFB0", 1)):
+    image, draw = screen()
+    for i in range(8):
+        dx, dy = [(0, -18), (13, -13), (18, 0), (13, 11), (0, 14), (-13, 11), (-18, 0), (-13, -13)][(i + spin) % 8] if i % 2 == spin else [(0, -9), (7, -7), (9, 0), (7, 6), (0, 8), (-7, 6), (-9, 0), (-7, -7)][i]
+        draw.line((160, 100, 160 + dx, 100 + dy), fill=(255, 200, 60), width=2)
+    draw.ellipse((154, 94, 166, 106), fill=(255, 250, 210))
+    keep(name, image, held=True)
+
 def small(width, height):
     image = Image.new("RGBA", (width + 2, height + 2), (0, 0, 0, 0))
     return image, ImageDraw.Draw(image)
@@ -137,6 +192,15 @@ draw.rectangle((13, 4, 21, 9), fill=STEEL_LIGHT)
 draw.ellipse((14, 8, 21, 13), outline=STEEL_DARK)
 draw.rectangle((22, 7, 30, 9), fill=WOOD_DARK)
 keep("SHOTA0", image)
+
+# The impact wrench, side on: its socket to the right, its grip and battery below.
+image, draw = small(40, 24)
+draw.rectangle((30, 6, 39, 10), fill=STEEL_LIGHT)
+draw.rounded_rectangle((4, 2, 31, 14), 4, fill=YELLOW)
+draw.rectangle((14, 2, 18, 14), fill=BLACK)
+draw.polygon([(10, 13), (20, 13), (18, 21), (8, 21)], fill=BLACK)
+draw.rectangle((4, 20, 22, 24), fill=YELLOW_DARK)
+keep("MGUNA0", image)
 
 # Leftover pasta, in its tub.
 image, draw = small(20, 12)

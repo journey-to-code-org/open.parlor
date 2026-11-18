@@ -80,12 +80,100 @@
   "at": 110940
  },
  {
+  "name": "PISGA0",
+  "width": 62,
+  "height": 86,
+  "left": -134,
+  "top": -82,
+  "at": 116552
+ },
+ {
+  "name": "PISGB0",
+  "width": 66,
+  "height": 94,
+  "left": -133,
+  "top": -74,
+  "at": 127216
+ },
+ {
+  "name": "PISGC0",
+  "width": 64,
+  "height": 90,
+  "left": -134,
+  "top": -78,
+  "at": 139624
+ },
+ {
+  "name": "PISGD0",
+  "width": 60,
+  "height": 84,
+  "left": -135,
+  "top": -84,
+  "at": 151144
+ },
+ {
+  "name": "PISGE0",
+  "width": 62,
+  "height": 86,
+  "left": -134,
+  "top": -82,
+  "at": 161224
+ },
+ {
+  "name": "PISFA0",
+  "width": 45,
+  "height": 39,
+  "left": -138,
+  "top": -52,
+  "at": 171888
+ },
+ {
+  "name": "CHGGA0",
+  "width": 62,
+  "height": 100,
+  "left": -134,
+  "top": -68,
+  "at": 175398
+ },
+ {
+  "name": "CHGGB0",
+  "width": 62,
+  "height": 100,
+  "left": -134,
+  "top": -68,
+  "at": 187798
+ },
+ {
+  "name": "CHGFA0",
+  "width": 37,
+  "height": 33,
+  "left": -142,
+  "top": -50,
+  "at": 200198
+ },
+ {
+  "name": "CHGFB0",
+  "width": 37,
+  "height": 33,
+  "left": -142,
+  "top": -50,
+  "at": 202640
+ },
+ {
   "name": "SHOTA0",
   "width": 44,
   "height": 11,
   "left": 22,
   "top": 11,
-  "at": 116552
+  "at": 205082
+ },
+ {
+  "name": "MGUNA0",
+  "width": 36,
+  "height": 23,
+  "left": 18,
+  "top": 23,
+  "at": 206050
  },
  {
   "name": "STIMA0",
@@ -93,7 +181,7 @@
   "height": 12,
   "left": 9,
   "top": 12,
-  "at": 117520
+  "at": 207706
  },
  {
   "name": "MEDIA0",
@@ -101,7 +189,7 @@
   "height": 20,
   "left": 15,
   "top": 20,
-  "at": 117976
+  "at": 208162
  },
  {
   "name": "ARM1A0",
@@ -109,7 +197,7 @@
   "height": 29,
   "left": 12,
   "top": 29,
-  "at": 119216
+  "at": 209402
  },
  {
   "name": "ARM1B0",
@@ -117,7 +205,7 @@
   "height": 29,
   "left": 12,
   "top": 29,
-  "at": 120666
+  "at": 210852
  },
  {
   "name": "CLIPA0",
@@ -125,7 +213,7 @@
   "height": 11,
   "left": 5,
   "top": 11,
-  "at": 122116
+  "at": 212302
  },
  {
   "name": "BKEYA0",
@@ -133,7 +221,7 @@
   "height": 21,
   "left": 6,
   "top": 21,
-  "at": 122358
+  "at": 212544
  },
  {
   "name": "BKEYB0",
@@ -141,7 +229,7 @@
   "height": 21,
   "left": 6,
   "top": 21,
-  "at": 122862
+  "at": 213048
  },
  {
   "name": "YKEYA0",
@@ -149,7 +237,7 @@
   "height": 21,
   "left": 6,
   "top": 21,
-  "at": 123366
+  "at": 213552
  },
  {
   "name": "YKEYB0",
@@ -157,7 +245,7 @@
   "height": 21,
   "left": 6,
   "top": 21,
-  "at": 123870
+  "at": 214056
  },
  {
   "name": "RKEYA0",
@@ -165,7 +253,7 @@
   "height": 21,
   "left": 6,
   "top": 21,
-  "at": 124374
+  "at": 214560
  },
  {
   "name": "RKEYB0",
@@ -173,6 +261,6 @@
   "height": 21,
   "left": 6,
   "top": 21,
-  "at": 124878
+  "at": 215064
  }
 ]

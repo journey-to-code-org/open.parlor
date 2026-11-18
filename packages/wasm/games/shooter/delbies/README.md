@@ -28,10 +28,11 @@ which the game ends. Everything else (the other monsters, the weapons' pictures,
 - `art/hud.py` draws the status bar: Delbie's face (blond, blue-eyed, 42 moods) in place of the
   engine's, and Freedoom's bar tinted steel blue with a yellow and black edge. It writes
   `hud.bin.gz` and `hud.json`.
-- `art/tools.py` draws tools from the store in place of two weapons and what is picked up: the
-  "hammer" (a tape measure, in place of the fist), Delbie's lever-action (the shotgun, in the hand,
-  on the floor, and its flash), pasta and a pizza box for health, a shop apron for armour, a box of
-  ammunition and the three keys. It writes `tools.bin.gz` and `tools.json`: 22 pictures.
+- `art/tools.py` draws tools from the store in place of four weapons and what is picked up: the
+  "hammer" (a tape measure, in place of the fist), a price gun (the pistol), Delbie's lever-action
+  (the shotgun) and an impact wrench (the chaingun), each in the hand with its flash, the last two
+  on the floor as well; pasta and a pizza box for health, a shop apron for armour, a box of
+  ammunition and the three keys. It writes `tools.bin.gz` and `tools.json`: 33 pictures.
 - `words.txt` is what the game says: Delbie's lines for when a level starts, a rat notices you,
   one bites, you get one, and you die; and our words in place of the engine's for the first
   level's name, things picked up and the locked door. The engine reads them from the WAD
