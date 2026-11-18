@@ -46,6 +46,7 @@ def keep(name, image, left=None, top=None, held=False):
     """A drawing, cut to what is in it, with a dark edge. Held: placed on the screen where it was drawn."""
     rgba = np.array(image)
     there = rgba[..., 3] > 127
+    rgba[..., :3] = rounded(rgba[..., :3], there)
     edge = there & ~(np.roll(there, 1, 0) & np.roll(there, -1, 0) & np.roll(there, 1, 1) & np.roll(there, -1, 1))
     rgba[edge, :3] = EDGE
     rows, cols = np.where(there)
@@ -59,6 +60,22 @@ def keep(name, image, left=None, top=None, held=False):
         left, top = width // 2, height
     pixels = bytes(nearest(rgba[y, x, :3]) if there[y, x] else 0 for y in range(height) for x in range(width))
     pictures.append((name, width, height, left, top, pixels, bytes(there.astype(np.uint8).tobytes())))
+
+def rounded(rgb, there):
+    """Flat shapes given some roundness: lighter toward the upper left of the whole thing, darker toward
+    the lower right, with a little grit, as the engine's own pictures are painted."""
+    def inward(dx, dy):
+        # How many of the next four pixels that way are part of the picture.
+        run, still = np.zeros(there.shape), there.copy()
+        for step in range(1, 5):
+            still = still & np.roll(np.roll(there, dy * step, 0), dx * step, 1)
+            run += still
+        return run
+    lit, shaded = 4 - inward(1, 1), 4 - inward(-1, -1)
+    ys, xs = np.indices(there.shape)
+    grit = (((xs * 7 + ys * 13) % 5) - 2) * 0.014
+    factor = 1 + 0.065 * lit - 0.085 * shaded + grit
+    return np.clip(rgb.astype(float) * factor[..., None], 0, 255).astype(np.uint8)
 
 def screen():
     image = Image.new("RGBA", (320, 200), (0, 0, 0, 0))
@@ -261,3 +278,16 @@ for name, width, height, left, top, pixels, solid in pictures:
 (here / "tools.bin.gz").write_bytes(gzip.compress(bytes(blob), 9, mtime=0))
 (here / "tools.json").write_text(json.dumps(manifest, indent=1) + "\n")
 print(len(manifest), "pictures,", len(blob), "bytes")
+
+if len(sys.argv) > 2:
+    # A sheet to look at.
+    sheet = Image.new("RGB", (640, 330), (58, 62, 84))
+    x = y = 4
+    tall = 0
+    for name, width, height, left, top, pixels, solid in pictures:
+        if x + width > 636:
+            x, y, tall = 4, y + tall + 4, 0
+        im = Image.fromarray(np.dstack([palette[np.frombuffer(pixels, np.uint8).reshape(height, width)].astype(np.uint8), np.frombuffer(solid, np.uint8).reshape(height, width) * 255]), "RGBA")
+        sheet.paste(im, (x, y), im)
+        x, tall = x + width + 4, max(tall, height)
+    sheet.resize((sheet.width * 2, sheet.height * 2), Image.NEAREST).save(sys.argv[2])
