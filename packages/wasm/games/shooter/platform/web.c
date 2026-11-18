@@ -13,8 +13,17 @@
 #include "d_event.h"
 #include "doomgeneric.h"
 #include "doomkeys.h"
+#include "d_loop.h"
+#include "d_player.h"
+#include "d_ticcmd.h"
 #include "doomstat.h"
+#include "hu_stuff.h"
 #include "m_controls.h"
+#include "m_random.h"
+#include "net_client.h"
+#include "net_defs.h"
+#include "p_local.h"
+#include "st_stuff.h"
 
 #define HOST(name) __attribute__((import_module("host"), import_name(#name)))
 #define EXPORT(name) __attribute__((export_name(#name)))
@@ -23,6 +32,8 @@
 HOST(draw_frame) void host_draw_frame(const void *pixels, int width, int height);
 HOST(now_ms) uint32_t host_now_ms(void);
 HOST(set_title) void host_set_title(const char *title, int length);
+// This device's command for a tic, in a game with other devices: `size` bytes to send them.
+HOST(net_send) void host_net_send(int tic, const void *command, int size);
 
 void doomgeneric_Tick(void);
 
@@ -185,4 +196,131 @@ int system(const char *command)
 {
     (void) command;
     return -1;
+}
+
+// ---------------------------------------------------------------------------------------------
+// A game with other devices.
+//
+// The engine is started with "-net <players> <me>" (engine/d_loop.c). From then on it hands the
+// page its own command for each tic (host.net_send) and runs a tic only when the page has given
+// it everyone's (web_net_tic). Every device runs the same game from the same commands; nothing
+// else travels. A device that watches is given the tics and sends none.
+
+void D_ReceiveTic(ticcmd_t *ticcmds, boolean *players_mask);
+int D_NetBacklog(void);
+
+// Called by the engine (BuildNewTic in d_loop.c) with each command it makes.
+void web_net_send(ticcmd_t *command, int tic)
+{
+    host_net_send(tic, command, (int) sizeof(*command));
+}
+
+// How many bytes a command is.
+EXPORT(web_net_command_size) int web_net_command_size(void)
+{
+    return (int) sizeof(ticcmd_t);
+}
+
+// One tic: a command for each of the four players, one after another, and which of them are in
+// the game (bit 0 the first player). Tics are given in order, starting from the first.
+EXPORT(web_net_tic) void web_net_tic(const ticcmd_t *commands, int playing)
+{
+    ticcmd_t all[NET_MAXPLAYERS];
+    boolean in[NET_MAXPLAYERS];
+    int i;
+
+    memset(all, 0, sizeof(all));
+
+    for (i = 0; i < NET_MAXPLAYERS; i++)
+    {
+        in[i] = i < MAXPLAYERS && ((playing >> i) & 1);
+
+        if (i < MAXPLAYERS)
+        {
+            all[i] = commands[i];
+        }
+    }
+
+    D_ReceiveTic(all, in);
+}
+
+// How many tics have been given and not run yet. There is room for BACKUPTICS (128).
+EXPORT(web_net_backlog) int web_net_backlog(void)
+{
+    return D_NetBacklog();
+}
+
+// How many tics the game has run.
+EXPORT(web_tics) int web_tics(void)
+{
+    return gametic;
+}
+
+// Which players are in the game (bit 0 the first player).
+EXPORT(web_players) int web_players(void)
+{
+    int i, playing = 0;
+
+    for (i = 0; i < MAXPLAYERS; i++)
+    {
+        playing |= playeringame[i] ? 1 << i : 0;
+    }
+
+    return playing;
+}
+
+// For a device that watches: whose eyes to look through. The picture, the status bar, the
+// messages and the sounds become that player's. Nothing in the game itself depends on which
+// player a device shows, which is what lets every device run the same game.
+EXPORT(web_view) void web_view(int player)
+{
+    if (!drone || player < 0 || player >= MAXPLAYERS || !playeringame[player] || player == consoleplayer)
+    {
+        return;
+    }
+
+    consoleplayer = displayplayer = player;
+
+    if (gamestate == GS_LEVEL)
+    {
+        ST_Start();
+        HU_Start();
+    }
+}
+
+// A number made from everything that moves in the level. Two devices that have run the same
+// tics have the same number; if they ever differ, the games have come apart.
+EXPORT(web_checksum) uint32_t web_checksum(void)
+{
+    extern int prndindex;
+    uint32_t hash = 2166136261u;
+    thinker_t *thinker;
+
+#define MIX(value) hash = (hash ^ (uint32_t) (value)) * 16777619u
+    MIX(gametic);
+    MIX(gamestate);
+    MIX(prndindex);
+
+    if (gamestate == GS_LEVEL)
+    {
+        MIX(leveltime);
+
+        for (thinker = thinkercap.next; thinker != &thinkercap; thinker = thinker->next)
+        {
+            if (thinker->function.acp1 == (actionf_p1) P_MobjThinker)
+            {
+                mobj_t *thing = (mobj_t *) thinker;
+
+                MIX(thing->type);
+                MIX(thing->x);
+                MIX(thing->y);
+                MIX(thing->z);
+                MIX(thing->angle);
+                MIX(thing->health);
+            }
+        }
+    }
+#undef MIX
+
+    return hash;
 }

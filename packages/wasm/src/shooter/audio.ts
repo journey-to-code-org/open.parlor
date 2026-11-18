@@ -22,6 +22,8 @@ export function decodeDmx(lump: Uint8Array): { rate: number; samples: Float32Arr
 }
 
 export interface Audio extends SoundHost {
+  /** No new sounds while this is on: a game being caught up on would play them all at once. */
+  mute(on: boolean): void;
   /** Browsers start audio suspended until a tap or a key: call this from one. */
   unlock(): void;
   /** Silence everything and let the device go (the page is closing the game). */
@@ -33,6 +35,7 @@ export function createAudio(): Audio {
   const context = Context ? new Context() : null;
   const buffers = new Map<number, AudioBuffer | null>();
   const voices = new Map<number, Voice>();
+  let muted = false;
 
   const level = (volume: number) => Math.max(0, Math.min(1, volume / 127));
   const side = (separation: number) => Math.max(-1, Math.min(1, (separation - 127) / 127));
@@ -52,7 +55,7 @@ export function createAudio(): Audio {
 
   return {
     start(channel, lump, data, volume, separation) {
-      if (!context || context.state !== "running") return;
+      if (!context || context.state !== "running" || muted) return;
       let buffer = buffers.get(lump);
       if (buffer === undefined) {
         const decoded = decodeDmx(data());
@@ -79,6 +82,7 @@ export function createAudio(): Audio {
     },
     stop,
     playing: (channel) => voices.has(channel),
+    mute: (on) => void (muted = on),
     unlock() {
       if (context?.state === "suspended") void context.resume();
     },

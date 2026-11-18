@@ -20,6 +20,7 @@
     "@journey-to-code/rooms": "^0.1.0",
     "@journey-to-code/rules": "^0.1.0",
     "@open-parlor/courses": "*",
+    "@open-parlor/wasm": "*",
     "@zubra/actions": "^5.22.0",
     "@zubra/compiler": "^5.22.0",
     "@zubra/runtime": "^5.22.0",

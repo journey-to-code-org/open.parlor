@@ -219,6 +219,12 @@ void D_ConnectNetGame(void)
     InitConnectData(&connect_data);
     netgame = D_InitNetGame(&connect_data);
 
+    // [open.wasm] A game with other devices, set up by the page: see D_StartNetGame.
+    if (M_CheckParmWithArgs("-net", 2) > 0)
+    {
+        netgame = true;
+    }
+
     //!
     // @category net
     //

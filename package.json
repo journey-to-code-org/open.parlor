@@ -6,11 +6,11 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @open-parlor/courses -w @open-parlor/server -w @open-parlor/web -w @open-parlor/designer -w @open-parlor/admin -w @open-parlor/watch -w @open-parlor/wasm",
+    "build": "npm run build:net -w @open-parlor/wasm && npm run build -w @open-parlor/courses -w @open-parlor/server -w @open-parlor/web -w @open-parlor/designer -w @open-parlor/admin -w @open-parlor/watch -w @open-parlor/wasm",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run build -w @open-parlor/courses && npm run typecheck --workspaces --if-present && tsc -p .railway/tsconfig.json",
     "start": "npm start -w @open-parlor/server",
-    "dev": "npm run build -w @open-parlor/courses && (npm run dev -w @open-parlor/server & npm run dev -w @open-parlor/web)"
+    "dev": "npm run build -w @open-parlor/courses && npm run build:net -w @open-parlor/wasm && (npm run dev -w @open-parlor/server & npm run dev -w @open-parlor/web)"
   },
   "devDependencies": {
     "railway": "^3.17.0",

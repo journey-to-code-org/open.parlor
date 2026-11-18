@@ -177,14 +177,14 @@ static boolean BuildNewTic(void)
     memset(&cmd, 0, sizeof(ticcmd_t));
     loop_interface->BuildTiccmd(&cmd, maketic);
 
-#ifdef FEATURE_MULTIPLAYER
-
+    // [open.wasm] Was NET_CL_SendTiccmd, inside FEATURE_MULTIPLAYER. The page carries the
+    // command to the other devices (platform/web.c).
     if (net_client_connected)
     {
-        NET_CL_SendTiccmd(&cmd, maketic);
+        extern void web_net_send(ticcmd_t *cmd, int tic);
+        web_net_send(&cmd, maketic);
     }
 
-#endif
     ticdata[maketic % BACKUPTICS].cmds[localplayer] = cmd;
     ticdata[maketic % BACKUPTICS].ingame[localplayer] = true;
 
@@ -444,9 +444,57 @@ void D_StartNetGame(net_gamesettings_t *settings,
 	settings->extratics = 1;
 	settings->ticdup = 1;
 
+    // [open.wasm] A game with other devices: "-net <players> <me>", where <me> is this
+    // device's player (0 is the first) or -1 to watch without playing. The page has already
+    // agreed the players and the settings with the others; every device starts the same game
+    // from the same command line, and the tics arrive through D_ReceiveTic.
+    {
+        int p = M_CheckParmWithArgs("-net", 2);
+        int i;
+
+        if (p > 0)
+        {
+            settings->num_players = atoi(myargv[p + 1]);
+            settings->consoleplayer = atoi(myargv[p + 2]);
+
+            if (settings->num_players < 1 || settings->num_players > 4
+             || settings->consoleplayer >= settings->num_players)
+            {
+                I_Error("-net: %s players and player %s make no game",
+                        myargv[p + 1], myargv[p + 2]);
+            }
+
+            if (settings->consoleplayer < 0)
+            {
+                drone = true;
+                settings->consoleplayer = 0;
+            }
+
+            net_client_connected = true;
+            // Run every tic that has arrived, however many: a watcher who joins late
+            // catches up through the whole game so far.
+            settings->new_sync = 1;
+            recvtic = 0;
+        }
+
+        localplayer = settings->consoleplayer;
+
+        for (i = 0; i < NET_MAXPLAYERS; ++i)
+        {
+            local_playeringame[i] = i < settings->num_players;
+        }
+    }
+
 	ticdup = settings->ticdup;
 	new_sync = settings->new_sync;
 #endif
+}
+
+// [open.wasm] How many tics have arrived from the other devices and not been run yet. The
+// page keeps this well under BACKUPTICS, which is all the room there is for them.
+int D_NetBacklog(void)
+{
+    return recvtic - gametic / ticdup;
 }
 
 boolean D_InitNetGame(net_connect_data_t *connect_data)
@@ -571,7 +619,8 @@ static int GetLowTic(void)
 
     lowtic = maketic;
 
-#ifdef FEATURE_MULTIPLAYER
+    // [open.wasm] Was inside FEATURE_MULTIPLAYER: in a game with other devices, a tic can
+    // only be run once every player's command for it has arrived.
     if (net_client_connected)
     {
         if (drone || recvtic < lowtic)
@@ -579,7 +628,6 @@ static int GetLowTic(void)
             lowtic = recvtic;
         }
     }
-#endif
 
     return lowtic;
 }

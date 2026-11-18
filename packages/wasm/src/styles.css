@@ -240,3 +240,159 @@ a {
 .pad-button[hidden] {
   display: none;
 }
+
+/* Playing together: the way in, and the room people wait in. */
+.shooter-card {
+  overflow-y: auto;
+  touch-action: pan-y;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.shooter-card input:not([type="checkbox"]),
+.shooter-card select {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #4a4a44;
+  border-radius: 0.4rem;
+  background: #171a18;
+  color: var(--ink);
+  font: inherit;
+}
+
+.lobby-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--dim);
+}
+
+.lobby-join input {
+  width: 5.5rem;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+
+.lobby-tick {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--dim);
+}
+
+.lobby-tick input {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: var(--gold);
+}
+
+.lobby-code {
+  color: var(--gold);
+  letter-spacing: 0.15em;
+}
+
+.lobby-share {
+  display: flex;
+  gap: 0.5rem;
+  width: min(100%, 30rem);
+}
+
+.lobby-share input {
+  flex: 1;
+  min-width: 0;
+}
+
+.lobby-people {
+  margin: 0.25rem 0;
+  padding: 0;
+  list-style: none;
+  font-weight: 600;
+}
+
+.lobby-watching {
+  color: var(--dim);
+  font-weight: 400;
+}
+
+.lobby-setup {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem 1.25rem;
+  max-width: 38rem;
+}
+
+.lobby-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.lobby-actions .shooter-go {
+  margin-top: 0;
+}
+
+.lobby-actions .lobby-wait {
+  width: 100%;
+}
+
+.shooter-go:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.lobby-small {
+  padding: 0.5rem 1rem;
+  border: 1px solid #5b5b53;
+  border-radius: 0.4rem;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.lobby-small:focus-visible,
+.shooter-card input:focus-visible,
+.shooter-card select:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+/* Over the picture in a game with other devices. */
+.shooter-bar {
+  position: absolute;
+  top: max(0.5rem, env(safe-area-inset-top));
+  left: max(0.5rem, env(safe-area-inset-left));
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 55%;
+  padding: 0.3rem 0.5rem;
+  border-radius: 0.5rem;
+  background: rgb(11 13 12 / 0.7);
+  font-size: 0.85rem;
+}
+
+.shooter-bar[hidden] {
+  display: none;
+}
+
+.shooter-bar .lobby-small {
+  padding: 0.25rem 0.6rem;
+}
+
+.shooter-bar [aria-pressed="true"] {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.shooter-status {
+  color: var(--gold);
+}

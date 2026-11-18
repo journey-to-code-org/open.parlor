@@ -35,6 +35,15 @@ interface Table {
   moved: number;
 }
 
+/** A game of the shooter at /wasm/ that its host has listed: up to four people, each on a device of their own. */
+interface Shooter {
+  code: string;
+  players: string[];
+  /** How long it has been going. */
+  minutes: number;
+  settings: { mode: "coop" | "deathmatch" };
+}
+
 interface Live {
   tables: Table[];
   /** Whether tables with players at them can be watched. */
@@ -80,10 +89,11 @@ const listed = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).jo
 export function App() {
   // What's on now, asked again every few seconds while the page is in view. The list is kept in a
   // store matched up by table, so a refresh only touches what changed: nothing flickers.
-  const [live, setLive] = createStore<{ ready: boolean; offline: boolean; tables: Table[]; watching: boolean; full: boolean; limit: number }>({
+  const [live, setLive] = createStore<{ ready: boolean; offline: boolean; tables: Table[]; shooters: Shooter[]; watching: boolean; full: boolean; limit: number }>({
     ready: false,
     offline: false,
     tables: [],
+    shooters: [],
     watching: true,
     full: false,
     limit: 0,
@@ -93,6 +103,12 @@ export function App() {
       const now = await ask<Live>("spectate");
       setLive({ ready: true, offline: false, watching: now.watching, full: now.computerTables.going >= now.computerTables.limit, limit: now.computerTables.limit });
       setLive("tables", reconcile(now.tables, { key: "id" }));
+      // The shooter's games are the rooms' to list, not the tables'. A parlor without them has none.
+      const shooters = await ask<{ games: Shooter[] }>("wasm/play").then(
+        (rooms) => rooms.games,
+        () => [],
+      );
+      setLive("shooters", reconcile(shooters, { key: "code" }));
     } catch {
       // A missed refresh keeps what's showing; only a page that never loaded says it can't.
       if (!live.ready) setLive({ ready: true, offline: true });
@@ -152,6 +168,24 @@ export function App() {
 
   const who = (table: Table) => listed(table.seats.flatMap((s) => (s.name ? [s.name] : [])));
 
+  const ShooterRow = (props: { game: Shooter }) => (
+    <li class="row">
+      <span class="emoji" aria-hidden="true">
+        👾
+      </span>
+      <span class="what">
+        <strong>Freedoom</strong>
+        <span class="who">{listed(props.game.players)}</span>
+        <span class="where">
+          {[props.game.settings.mode === "coop" ? "Together" : "Against each other", props.game.minutes ? `${props.game.minutes} min in` : "Just started"].join(" · ")}
+        </span>
+      </span>
+      <action-button prop:size="sm" prop:variant="primary" prop:href={`../wasm/?room=${encodeURIComponent(props.game.code)}&watch`} prop:label={`Watch ${listed(props.game.players)} play Freedoom`}>
+        Watch
+      </action-button>
+    </li>
+  );
+
   const Row = (props: { table: Table }) => (
     <li class="row">
       <span class="emoji" aria-hidden="true">
@@ -209,6 +243,16 @@ export function App() {
               </section>
             </Show>
 
+            <Show when={live.shooters.length}>
+              <section aria-labelledby="shooters-heading">
+                <h2 id="shooters-heading">Freedoom, playing now</h2>
+                <ul class="rows">
+                  <For each={live.shooters}>{(game) => <ShooterRow game={game} />}</For>
+                </ul>
+                <p class="quiet note">You see the game through any player's eyes, from its start if you come late.</p>
+              </section>
+            </Show>
+
             <Show when={computers().length}>
               <section aria-labelledby="computers-heading">
                 <h2 id="computers-heading">The computers playing</h2>
@@ -219,7 +263,7 @@ export function App() {
               </section>
             </Show>
 
-            <Show when={!live.tables.length}>
+            <Show when={!live.tables.length && !live.shooters.length}>
               <section class="calm" aria-live="polite">
                 <p class="lead">Nobody's playing right now.</p>
                 <p class="quiet">{live.watching ? "When someone is, their table shows up here." : "This parlor keeps people's tables private; the computers' tables show up here."}</p>
@@ -233,7 +277,7 @@ export function App() {
               <Show
                 when={dealOpen()}
                 fallback={
-                  <action-button prop:variant={live.tables.length ? "outline" : "primary"} prop:disabled={live.full} on:click={() => setDealOpen(true)}>
+                  <action-button prop:variant={live.tables.length || live.shooters.length ? "outline" : "primary"} prop:disabled={live.full} on:click={() => setDealOpen(true)}>
                     <span>{live.full ? "The computers' tables are all busy" : "Deal the computers a game"}</span>
                   </action-button>
                 }
