@@ -468,7 +468,18 @@ function drawBall(st: Stage, d: Disc, x: number, y: number, z: number, time: num
     ctx.fillRect(cx - R, cy + R * 0.45, 2 * R, R * 0.55);
     ctx.restore();
   }
-  if (d.look?.mark && R > 7) {
+  if (d.look?.mark && /^\d+$/.test(d.look.mark) && R > 8) {
+    // A pool ball's number, on its white spot.
+    ctx.fillStyle = "#fdfdf8";
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#1d1a16";
+    ctx.font = `700 ${R * (d.look.mark.length > 1 ? 0.78 : 0.95)}px system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(d.look.mark, cx, cy + R * 0.05);
+  } else if (d.look?.mark && !/^\d+$/.test(d.look.mark) && R > 7) {
     ctx.fillStyle = ink;
     ctx.font = `700 ${R * 1.05}px system-ui, sans-serif`;
     ctx.textAlign = "center";

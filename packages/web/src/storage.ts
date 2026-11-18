@@ -218,3 +218,13 @@ export const loadOthersHere = (): string[] => {
   return Array.isArray(names) ? names.filter((n): n is string => typeof n === "string").slice(0, 9) : [];
 };
 export const saveOthersHere = (names: string[]) => write("cardroom:people", names);
+
+/**
+ * Zubra Quest as it stands, kept between visits: the game's own state, which is plain data. Null
+ * when there is none, or when what is kept is not a game this version can carry on.
+ */
+export const loadQuest = (): unknown => {
+  const kept = read<{ v?: unknown; state?: { phase?: unknown; hero?: unknown; tiles?: unknown; rules?: unknown } } | null>("cardroom:zubraquest:save", null);
+  return kept && kept.v === 1 && kept.state && kept.state.phase === "play" && kept.state.hero && Array.isArray(kept.state.tiles) && kept.state.rules ? kept.state : null;
+};
+export const saveQuest = (state: unknown) => write("cardroom:zubraquest:save", state ? { v: 1, state } : null);

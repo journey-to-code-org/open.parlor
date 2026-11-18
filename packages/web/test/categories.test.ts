@@ -22,3 +22,12 @@ describe("categoryOf", () => {
     for (const game of ALL_GAMES) expect(shelves.has(categoryOf(game.id)), game.id).toBe(true);
   });
 });
+
+// A deck to choose, suits to colour and a deal to make are for games played with playing cards.
+describe("which games are played with cards", () => {
+  it("is the card shelf without Mahjong, which is played with tiles", async () => {
+    const { usesCards } = await import("../src/categories");
+    for (const id of ["spades", "palace", "hearts", "cribbage", "klondike", "memory"]) expect(usesCards(id), id).toBe(true);
+    for (const id of ["drawguess", "wordhunt", "minigolf", "bowling", "chess", "yacht", "liarsdice", "airhockey", "mahjongshanghai", "mahjongriichi"]) expect(usesCards(id), id).toBe(false);
+  });
+});
