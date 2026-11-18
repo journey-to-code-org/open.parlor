@@ -193,5 +193,45 @@
   "name": "DSTINK",
   "at": 156973,
   "length": 551
+ },
+ {
+  "name": "DSSAWUP",
+  "at": 157524,
+  "length": 6063
+ },
+ {
+  "name": "DSSAWIDL",
+  "at": 163587,
+  "length": 2756
+ },
+ {
+  "name": "DSSAWFUL",
+  "at": 166343,
+  "length": 4961
+ },
+ {
+  "name": "DSSAWHIT",
+  "at": 171304,
+  "length": 4961
+ },
+ {
+  "name": "DSRLAUNC",
+  "at": 176265,
+  "length": 4960
+ },
+ {
+  "name": "DSRXPLOD",
+  "at": 181225,
+  "length": 7717
+ },
+ {
+  "name": "DSBFG",
+  "at": 188942,
+  "length": 13230
+ },
+ {
+  "name": "DSPLASMA",
+  "at": 202172,
+  "length": 2425
  }
 ]

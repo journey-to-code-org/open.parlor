@@ -3,7 +3,7 @@
 import game from "../../games/shooter/delbies/delbies.wad?url";
 
 /** The game: where its WAD is, the name the engine opens it by, and the size of the download, for telling whoever is waiting. */
-export const DELBIES = { url: game, name: "delbies.wad", megabytes: 2 };
+export const DELBIES = { url: game, name: "delbies.wad", megabytes: 3 };
 
 /** Where each of the game's songs is, by name: fetched one at a time, the first time the engine plays it. */
 export const SONGS: Record<string, string> = Object.fromEntries(

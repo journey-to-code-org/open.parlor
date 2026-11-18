@@ -120,15 +120,15 @@ describe("the game's own levels", () => {
     expect(readWad(built).kind).toBe("IWAD");
     expect(names.slice(0, 8)).toEqual(["PLAYPAL", "COLORMAP", "TEXTURE1", "PNAMES", "TITLEPIC", "M_DOOM", "WORDS", "STFST00"]);
     const between = (start: string, end: string) => names.slice(names.indexOf(start) + 1, names.indexOf(end));
-    // Delbie's face, 42 times, and the rest of the bar: 108 pictures. What is around the game: 208. A lump for each of 16 places a song plays. Everything heard: 39 sounds.
-    expect(names.indexOf("S_START")).toBe(7 + 108 + 208 + 16 + 39);
-    // 175 pictures of rats and 101 of tools, pickups, another player and what shots and drums do.
-    expect(between("S_START", "S_END")).toHaveLength(175 + 101);
+    // Delbie's face, 42 times, and the rest of the bar: 108 pictures. What is around the game: 208. A lump for each of 16 places a song plays. Everything heard: 47 sounds.
+    expect(names.indexOf("S_START")).toBe(7 + 108 + 208 + 16 + 47);
+    // 175 pictures of rats and 146 of tools, pickups, another player and what shots and drums do.
+    expect(between("S_START", "S_END")).toHaveLength(175 + 146);
     // Every wall and sky is one picture of its own name; then the floors and ceilings.
     expect(between("P_START", "P_END")).toHaveLength(25);
     expect(between("F_START", "F_END")).toHaveLength(17);
     expect(names.slice(-11)).toEqual(["E2M3", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
-    expect(names).toHaveLength(7 + 108 + 208 + 16 + 39 + 2 + 276 + 2 + 25 + 2 + 17 + 12 * 11);
+    expect(names).toHaveLength(7 + 108 + 208 + 16 + 47 + 2 + 321 + 2 + 25 + 2 + 17 + 12 * 11);
   });
 });
 
@@ -182,8 +182,8 @@ describe("the game, whole", () => {
     expect([data("PLAYPAL").length, data("COLORMAP").length]).toEqual([14 * 768, 34 * 256]);
     // Everything heard is made here, and none of it silence.
     const voices = of("sound");
-    expect(voices).toHaveLength(39);
-    for (const name of ["DSSGTSIT", "DSBRSDTH", "DSPISTOL", "DSSHOTGN", "DSDOROPN", "DSSWTCHN", "DSITEMUP", "DSPLPAIN", "DSBAREXP"]) expect(voices).toContain(name);
+    expect(voices).toHaveLength(47);
+    for (const name of ["DSSGTSIT", "DSBRSDTH", "DSPISTOL", "DSSHOTGN", "DSDOROPN", "DSSWTCHN", "DSITEMUP", "DSPLPAIN", "DSBAREXP", "DSSAWFUL", "DSRLAUNC", "DSPLASMA", "DSBFG"]) expect(voices).toContain(name);
     for (const voice of voices) {
       const heard = decodeDmx(data(voice))!;
       expect(heard.rate).toBe(11025);
@@ -224,9 +224,9 @@ describe("the game, whole", () => {
     expect(size("STBAR")).toEqual([320, 32]);
     // Everything that stands in a level has its picture: whatever a level places, the rats, the tools in hand, and what shots do.
     const sprites = new Set(of("sprite").map((name) => name.slice(0, 4)));
-    expect(["PLAY", "SARG", "TROO", "BOSS", "BAL1", "BAL7", "PUNG", "PISG", "PISF", "SHTG", "SHTF", "CHGG", "CHGF", "SHOT", "MGUN", "CLIP", "AMMO", "SHEL", "SBOX", "STIM", "MEDI", "BON1", "BON2", "ARM1", "BKEY", "YKEY", "RKEY", "BAR1", "BEXP", "PUFF", "BLUD", "TFOG", "IFOG"].filter((name) => !sprites.has(name))).toEqual([]);
+    expect(["PLAY", "SARG", "TROO", "BOSS", "BAL1", "BAL7", "PUNG", "PISG", "PISF", "SHTG", "SHTF", "CHGG", "CHGF", "SHOT", "MGUN", "CLIP", "AMMO", "SHEL", "SBOX", "STIM", "MEDI", "BON1", "BON2", "ARM1", "BKEY", "YKEY", "RKEY", "BAR1", "BEXP", "PUFF", "BLUD", "TFOG", "IFOG", "SAWG", "CSAW", "MISG", "LAUN", "MISL", "ROCK", "BROK", "PLSG", "PLSF", "PLAS", "PLSS", "PLSE", "CELL", "CELP", "BFGG", "BFGF", "BFUG", "BFS1", "BFE1", "BFE2"].filter((name) => !sprites.has(name))).toEqual([]);
     const placed = new Set(levels().flatMap((level) => level.things.map((thing) => thing.type)));
-    expect([...placed].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 11, 13, 2001, 2002, 2007, 2008, 2011, 2012, 2014, 2015, 2018, 2035, 2048, 2049, 3001, 3002, 3003]);
+    expect([...placed].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 11, 13, 17, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2011, 2012, 2014, 2015, 2018, 2035, 2046, 2048, 2049, 3001, 3002, 3003]);
     // The music: the title, the page between levels, the ending and every level has a song, each lump only naming a file that is here.
     const songs = names.filter((name) => name.startsWith("D_"));
     expect(songs.sort()).toEqual(["D_INTRO", "D_INTROA", "D_INTER", "D_VICTOR", ...FLOORS.map((name) => `D_${name}`)].sort());

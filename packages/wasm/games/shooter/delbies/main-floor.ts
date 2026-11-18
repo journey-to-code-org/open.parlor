@@ -75,7 +75,7 @@ const PLAYERS = [1, 2, 3, 4];
 // The rats take the place of two of the engine's monsters: a grease rat is its charging one, a
 // brake-fluid mutant the one that throws.
 const [GREASE_RAT, MUTANT] = [3002, 3001];
-const [SHOTGUN, SHELLS, SHELL_BOX, CLIP] = [2001, 2008, 2049, 2007];
+const [SHOTGUN, SHELLS, SHELL_BOX, CLIP, TORCH] = [2001, 2008, 2049, 2007, 2005];
 const [STIMPACK, MEDIKIT, ARMOUR, HEALTH_BONUS, ARMOUR_BONUS] = [2011, 2012, 2018, 2014, 2015];
 const [BLUE_KEY, BARREL, DEATHMATCH] = [5, 2035, 11];
 
@@ -119,6 +119,8 @@ export const things: Thing[] = [
   // The bathroom.
   at(SHELL_BOX, -290, 390),
   at(MEDIKIT, -200, 330),
+  // Under the sink: a torch and a can of brake cleaner (the engine's chainsaw).
+  at(TORCH, -250, 300),
   // The office.
   at(MUTANT, 250, 340, 180),
   at(SHELL_BOX, 320, 390),

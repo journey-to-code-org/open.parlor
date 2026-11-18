@@ -76,6 +76,9 @@ export const things: Thing[] = [
   at(ARMOUR, -96, 16),
   at(SHELL_BOX, 96, 16),
   at(MEDIKIT, 0, 16),
+  // Brake rotors, to throw (the engine's rocket launcher), and a stack more.
+  at(2003, 48, 64),
+  at(2046, -48, 64),
   // The yard, and the King Rat on his trailer.
   at(KING_RAT, 0, 448),
   at(GREASE_RAT, -400, 200, 0),

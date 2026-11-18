@@ -9,8 +9,8 @@ the game ends. All of it is made in this folder, and `delbies.wad` is a game on 
 engine is given that file and no other. (It began laid over Freedoom, whose levels, pictures and
 sounds filled in what wasn't drawn yet. None of that is left.)
 
-What the engine can do that the game has nothing for is simply not there: the other monsters,
-the chainsaw, the rocket launcher and the rest have no pictures and are placed in no level.
+What the engine can do that the game has nothing for is simply not there: the other monsters
+have no pictures and are placed in no level.
 
 - `attic.ts` and `basement.ts` are the second and third levels, written the same way: the attic's
   good side and bad side (holes in the floor, the attic key at the far end), and the basement's
@@ -51,17 +51,31 @@ the chainsaw, the rocket launcher and the rest have no pictures and are placed i
   itself, a steel panel with a yellow and black edge and a dark window for each figure, with its
   big and small figures, the keys' lights and the rim round a view made smaller. It writes
   `hud.bin.gz` and `hud.json`: 108 pictures.
-- `art/tools.py` draws tools from the store as four weapons and what is picked up: the
-  "hammer" (a tape measure, in place of the fist), a price gun (the pistol), Delbie's lever-action
-  (the shotgun) and an impact wrench (the chaingun), each in the hand with its flash, the last two
-  on the floor as well. The lever-action is not drawn by the script: `rifle-held.png` and
-  `rifle-floor.png` are cut out of two pictures Mikey gave (by hand, once, with OpenCV's GrabCut;
-  there is no script for it) and the script brings them into the game's colours. It is one
-  picture in the hands, so working the lever is the rifle coming back and down; cartridges loose and boxed; pasta, a pizza box and a coffee for health; a
-  shop apron and a hard hat for armour; boxes of ammunition and the three keys. And the rest of
-  what stands in a level: another player (work shirt, cap, price gun), dust and blood where a
-  shot lands, the light things arrive in, what the King Rat throws, and a drum of waste oil and
-  what it does when shot. It writes `tools.bin.gz` and `tools.json`: 101 pictures.
+- `art/cutout.py` cuts the weapons out of the pictures Mikey gave (each a mock-up of a weapon in
+  a scene: in gloved hands as the player sees it, or on a floor) into `art/given/`, with nothing
+  behind them. It needs OpenCV and the pictures, which are not in the repository: some carry
+  another game's status bar or a real brand's label, and nothing of those is in what is cut out
+  but a label too small to read.
+- `art/tools.py` makes the sprites of everything held and picked up. Seven weapons are Mikey's
+  pictures, brought into the game's colours as they are:
+
+  | In the engine's place of | Here |
+  | --- | --- |
+  | the fist | the "hammer": a tape measure, swung with its blade out |
+  | the chainsaw | a torch and a can of brake cleaner |
+  | the shotgun | Delbie's lever-action |
+  | the rocket launcher | brake rotors, thrown |
+  | the plasma gun | a jump starter, a clamp in each hand |
+  | the biggest gun | a tank of R-134a |
+
+  Each is one picture or two, so what moves is the whole weapon (the lever isn't worked, the
+  rotor isn't seen leaving the hand). The price gun (the pistol) and the impact wrench (the
+  chaingun) are still drawn by the script, shape by shape, now in gloved hands like the rest:
+  there are no pictures of them yet. It also draws cartridges loose and boxed; pasta, a pizza
+  box and a coffee for health; a shop apron and a hard hat for armour; boxes of ammunition,
+  batteries and the three keys; another player (work shirt, cap, price gun); dust and blood
+  where a shot lands; the light things arrive in; what the King Rat throws; and a drum of waste
+  oil and what it does when shot. It writes `tools.bin.gz` and `tools.json`: 146 pictures.
 - `art/menu.py` draws what is around the game, in the colours of the title picture (yellow
   letters edged in navy, a chequered strip): every line of the menus and a hex nut where the
   skull was; the small letters the game speaks in; the page between levels, with each floor's
@@ -71,7 +85,7 @@ the chainsaw, the rocket launcher and the rest have no pictures and are placed i
   `rats.py`, whose pictures the pages show.
 - `art/sounds.py` makes everything heard, from sliding tones and noise: the rats' squeaks,
   chitters, hisses and growl, and the price gun, the lever-action, doors, the breaker on the wall,
-  things picked up, and you. It writes `sounds.bin.gz` and `sounds.json`: 39 sounds.
+  things picked up, and you. It writes `sounds.bin.gz` and `sounds.json`: 47 sounds.
 - `art/walls.py` draws the pieces three of the walls are put together from: the shop wall (cream
   over a navy wainscot), shelves of parts in orange and blue boxes, and the counter's front. It
   writes `walls.bin.gz` and `walls.json`: 10 pieces.
@@ -90,7 +104,7 @@ The page fetches `delbies.wad` and gives it to the engine as the game (`src/shoo
 for a game alone and for a game with others alike, and it is what the editor opens.
 
 The art scripts are run in this order after a change of colours: `palette.py`, `convert.py`,
-`rats.py`, `tools.py`, `walls.py`, `textures.py`, `hud.py`, `menu.py`, `sounds.py`.
+`rats.py`, `cutout.py` (only if the pictures changed), `tools.py`, `walls.py`, `textures.py`, `hud.py`, `menu.py`, `sounds.py`.
 
 ## The rats
 

@@ -209,8 +209,8 @@ window(bar, 144, 3, 177, 31)
 window(bar, 180, 4, 234, 21); label(bar, "ARMOR", 197, 24)
 window(bar, 238, 3, 246, 30)
 window(bar, 250, 4, 317, 29)
-# Each kind of ammunition by what it is here: the price gun's tags, cartridges, and the two nothing uses yet.
-for row, name in enumerate(("TAGS", "CART", "ROTR", "CLNR")):
+# Each kind of ammunition by what it is here: the price gun's tags, cartridges, brake rotors, and the jump starter's charge.
+for row, name in enumerate(("TAGS", "CART", "ROTR", "CHRG")):
     label(bar, name, 252, 5 + row * 6, GREY)
     label(bar, "/", 291, 5 + row * 6, GREY)
 add("STBAR", bar, np.ones((32, 320), bool), 0, 0)

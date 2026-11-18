@@ -301,9 +301,9 @@ title(help, "HOW TO PLAY", 12)
 write(help, "The store is overrun. Clear each floor of rats, then find", 10, 30)
 write(help, "the switch at the far end. A locked door wants its key.", 10, 40)
 write(help, "TOOLS", 10, 54, YELLOW)
-for x, picture, words, at in ((38, tools["SHOTA0"], "Delbie's lever-action", 6), (150, tools["MGUNA0"], "Impact wrench", 116), (262, tools["SBOXA0"], "Cartridges", 236)):
-    show(help, picture, x, 80, 30)
-    write(help, words, at, 81)
+for x, picture, words in ((34, tools["SHOTA0"], "Lever-action"), (98, tools["MGUNA0"], "Impact wrench"), (162, tools["CSAWA0"], "Torch"), (226, tools["LAUNA0"], "Rotors"), (290, tools["PLASA0"], "Jump starter")):
+    show(help, picture, x, 80, 24)
+    write(help, words, max(2, x - round(len(words) * 2.5)), 81)
 write(help, 'You start with a price gun, and the "hammer".', 10, 93)
 write(help, "PICK UP", 10, 107, YELLOW)
 for x, picture, words in ((26, tools["STIMA0"], "Pasta"), (78, tools["MEDIA0"], "Pizza"), (130, tools["BON1A0"], "Coffee"), (184, tools["ARM1A0"], "Apron"), (238, tools["BON2A0"], "Hard hat"), (294, tools["BKEYA0"], "Keys")):
@@ -311,7 +311,7 @@ for x, picture, words in ((26, tools["STIMA0"], "Pasta"), (78, tools["MEDIA0"], 
     write(help, words, x - 16 - 2 * (len(words) > 6), 134)
 write(help, "CONTROLS", 10, 148, YELLOW)
 write(help, "W A S D: move.  Mouse or arrows: turn.  Click or Ctrl: fire.", 10, 157)
-write(help, "E or Space: doors.  Q, R or 1 to 4: tools.  Tab: the map.", 10, 167)
+write(help, "E or Space: doors.  Q, R or 1 to 7: tools.  Tab: the map.", 10, 167)
 write(help, "On a phone: left thumb moves, right thumb turns.", 10, 177, WHITE)
 keep("HELP1", help, np.ones((200, 320), bool))
 keep("HELP2", help, np.ones((200, 320), bool))

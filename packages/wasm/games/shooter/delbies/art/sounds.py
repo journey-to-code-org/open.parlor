@@ -101,6 +101,18 @@ sounds = {
     "DSSLOP": over(hiss(0.3, 0.9) * 1.5, tone(0.2, 200, 90, 1.0, 0.5)),
     "DSBAREXP": over(hiss(0.8, 0.6) * 2, tone(0.5, 140, 40, 1.0, 0.5) * 1.4),
     "DSTINK": tone(0.05, 2400, 2000),
+    # The torch: lit, burning low, and roaring with the can let go into it, on nothing and on a rat.
+    "DSSAWUP": join(hiss(0.05) * 2, over(hiss(0.5, 0.3)[::-1], tone(0.5, 90, 160, 1.0, 0.5) * 0.5)),
+    "DSSAWIDL": over(hiss(0.25, 0.5)[::-1] * 0.7, tone(0.25, 120, 130, 1.0, 0.7) * 0.4),
+    "DSSAWFUL": over(hiss(0.45, 0.35) * 1.6 + hiss(0.45, 0.35)[::-1], tone(0.45, 140, 200, 1.0, 0.8) * 0.7),
+    "DSSAWHIT": over(hiss(0.45, 0.15) * 1.8 + hiss(0.45, 0.2)[::-1], tone(0.45, 200, 320, 1.0, 0.9) * 0.6),
+    # A rotor thrown (a grunt and the whirr of it), and landing.
+    "DSRLAUNC": join(tone(0.1, 260, 180, 1.0, 0.3), over(hiss(0.35, 0.6), tone(0.35, 500, 300, 1.0, 0.9) * 0.6)),
+    "DSRXPLOD": over(hiss(0.7, 0.5) * 2, join(tone(0.08, 1800, 900) * 0.8, tone(0.5, 160, 50, 1.0, 0.5) * 1.3)),
+    # The jump starter's arc.
+    # The tank's valve opened: a long hiss that climbs.
+    "DSBFG": over(hiss(1.2, 0.1)[::-1] * 1.4, tone(1.2, 300, 1400, 2.0, 0.4) * 0.5),
+    "DSPLASMA": over(hiss(0.22, 0.05) * 1.2, tone(0.22, 3200, 900, 0.5, 0.9) * 0.8),
 }
 
 blob = bytearray()

@@ -18,6 +18,7 @@ It writes tools.bin.gz and tools.json, in the form rats.py writes the rats.
 """
 import gzip, json, struct, sys
 from pathlib import Path
+import math
 import numpy as np
 from PIL import Image, ImageDraw
 
@@ -78,14 +79,15 @@ def screen():
     image = Image.new("RGBA", (320, 200), (0, 0, 0, 0))
     return image, ImageDraw.Draw(image)
 
+GLOVE, GLOVE_DARK = (78, 100, 60), (46, 62, 38)
 def hand(draw, x, y, w=44, h=30):
-    """A fist, knuckles up, with a sleeve below it."""
-    draw.rounded_rectangle((x, y, x + w, y + h), 7, fill=SKIN)
+    """A fist in a work glove, knuckles up, with a bare forearm below it: as the hands are in the pictures Mikey gave."""
+    draw.rounded_rectangle((x, y, x + w, y + h), 7, fill=GLOVE)
     for i in range(1, 4):
-        draw.line((x + i * w // 4, y + 2, x + i * w // 4, y + h // 2), fill=SKIN_DARK, width=1)
-    draw.rectangle((x, y + h - 6, x + w, y + h), fill=SKIN_DARK)
-    draw.polygon([(x + 2, y + h), (x + w - 2, y + h), (x + w + 18, 205), (x - 6, 205)], fill=SLEEVE)
-    draw.line((x + w - 2, y + h, x + w + 18, 205), fill=SLEEVE_DARK, width=3)
+        draw.line((x + i * w // 4, y + 2, x + i * w // 4, y + h // 2), fill=GLOVE_DARK, width=1)
+    draw.rectangle((x, y + h - 6, x + w, y + h), fill=GLOVE_DARK)
+    draw.polygon([(x + 2, y + h), (x + w - 2, y + h), (x + w + 18, 205), (x - 6, 205)], fill=SKIN)
+    draw.line((x + w - 2, y + h, x + w + 18, 205), fill=SKIN_DARK, width=3)
 
 def tape(draw, x, y, size=40, out=0):
     """A tape measure: a yellow case, a black button, and its blade, `out` long."""
@@ -100,14 +102,7 @@ def tape(draw, x, y, size=40, out=0):
     draw.ellipse((x + size // 2 - 4, y + size // 2 - 4, x + size // 2 + 4, y + size // 2 + 4), fill=STEEL_LIGHT)
     draw.rectangle((x + size - 8, y + 4, x + size - 3, y + 14), fill=RED)
 
-# The "hammer": held ready, then swung up and out with its blade, and back.
-for name, (hx, hy, out) in {"PUNGA0": (150, 126, 0), "PUNGB0": (140, 108, 18), "PUNGC0": (128, 88, 46), "PUNGD0": (142, 112, 12)}.items():
-    image, draw = screen()
-    hand(draw, hx - 4, hy + 26)
-    tape(draw, hx, hy - 6, 40, out)
-    keep(name, image, held=True)
-
-def given(name, rgba, held=False, dx=0, dy=0):
+def given(name, rgba, held=False, dx=0, dy=0, middle=False):
     """A picture someone made, as it is: brought into the game's colours, with no shading or edge added.
     Held: placed on the screen where it sits on its 320 by 200 picture, moved by dx and dy."""
     there = rgba[..., 3] > 127
@@ -116,14 +111,14 @@ def given(name, rgba, held=False, dx=0, dy=0):
     rgba, there = rgba[y0:y1, x0:x1], there[y0:y1, x0:x1]
     height, width = there.shape
     # The engine draws what is held 32 down from where its picture says.
-    left, top = (-(int(x0) + dx), -(int(y0) + dy - 32)) if held else (width // 2, height)
+    left, top = (-(int(x0) + dx), -(int(y0) + dy - 32)) if held else (width // 2, height // 2 if middle else height)
     pixels = bytes(nearest(rgba[y, x, :3]) if there[y, x] else 0 for y in range(height) for x in range(width))
     pictures.append((name, width, height, left, top, pixels, bytes(there.astype(np.uint8).tobytes())))
 
-# Delbie's lever-action, in gloved hands, looking down the barrel. The picture is Mikey's (rifle-held.png: cut out
+# Delbie's lever-action, in gloved hands, looking down the barrel. The picture is Mikey's (given/rifle-held.png: cut out by cutout.py
 # of the one he gave, and made the size of the screen). It is one picture, so working the lever is the rifle
 # coming back and down and up again.
-RIFLE = np.array(Image.open(here / "rifle-held.png").convert("RGBA"))
+RIFLE = np.array(Image.open(here / "given" / "rifle-held.png").convert("RGBA"))
 for name, (dx, dy) in {"SHTGA0": (0, 0), "SHTGB0": (2, 7), "SHTGC0": (5, 15), "SHTGD0": (7, 20)}.items():
     given(name, RIFLE, held=True, dx=dx, dy=dy)
 
@@ -193,8 +188,8 @@ def small(width, height):
     image = Image.new("RGBA", (width + 2, height + 2), (0, 0, 0, 0))
     return image, ImageDraw.Draw(image)
 
-# On the floor. The lever-action, side on: Mikey's picture too (rifle-floor.png).
-given("SHOTA0", np.array(Image.open(here / "rifle-floor.png").convert("RGBA")))
+# On the floor. The lever-action, side on: Mikey's picture too (given/rifle-floor.png).
+given("SHOTA0", np.array(Image.open(here / "given" / "rifle-floor.png").convert("RGBA")))
 
 # The impact wrench, side on: its anvil and socket to the right, its grip and battery below.
 image, draw = small(46, 30)
@@ -365,7 +360,7 @@ def flat(name, image, left=None, top=None):
     pixels = bytes(nearest(rgba[y, x, :3]) if there[y, x] else 0 for y in range(height) for x in range(width))
     pictures.append((name, width, height, width // 2 if left is None else left, height if top is None else top, pixels, bytes(there.astype(np.uint8).tobytes())))
 for letter, r in zip("ABCD", (1, 2, 3, 2)):
-    flat(f"PUFF{letter}0", burst(14, ((200, 200, 196), (240, 240, 232)), (r, r - 2)), top=r + 8)
+    flat(f"PUFF{letter}0", burst(14, ((132, 132, 128), (176, 176, 170)), (r, r - 2)), top=r + 8)
 for letter, r in zip("ABC", (5, 4, 2)):
     flat(f"BLUD{letter}0", burst(14, ((150, 20, 20), (210, 44, 40)), (r, r - 2)), top=r + 6)
 # Arriving (a player, or a thing coming back): a ring of light that opens and goes.
@@ -400,6 +395,109 @@ for letter, lit in (("A", 0), ("B", 40)):
 for letter, r in zip("ABCDE", (10, 18, 26, 30, 22)):
     colours = ((200, 60, 20), (246, 150, 30), (255, 240, 160)) if letter < "D" else ((70, 66, 62), (120, 116, 110), (170, 166, 160))
     flat(f"BEXP{letter}0", burst(64, colours, (r, r - 6, r - 13), spokes=9 if letter < "D" else 0), top=r + 6)
+
+# The rest of the weapons are Mikey's pictures too, cut out by cutout.py into given/.
+def picture(name):
+    return np.array(Image.open(here / "given" / f"{name}.png").convert("RGBA"))
+def placed(piece, right, bottom):
+    """A cut-out put on an empty screen, its right edge and its foot where they are wanted."""
+    canvas = np.zeros((240, 320, 4), np.uint8)
+    h, w = piece.shape[:2]
+    canvas[bottom - h:bottom, right - w:right] = piece
+    return canvas
+def over(under, top):
+    both = under.copy()
+    there = top[..., 3] > 127
+    both[there] = top[there]
+    return both
+def moved(rgba, dx, dy):
+    return np.roll(np.roll(rgba, dy, 0), dx, 1)
+
+# The "hammer", in the fist's place: a tape measure. Held ready, brought up, swung with its blade out, and back.
+READY, UP, SWING = picture("tape-ready"), picture("tape-up"), picture("tape-swing")
+given("PUNGA0", placed(READY, 268, 182), held=True)
+given("PUNGB0", placed(UP, 262, 168), held=True)
+given("PUNGC0", placed(SWING, 236, 172), held=True)
+given("PUNGD0", placed(UP, 266, 176), held=True)
+
+# A torch and a can of brake cleaner, in the chainsaw's place: lit and waiting (it flickers), and the can let go into the flame.
+HANDS, FLAME = picture("torch-hands"), picture("torch-flame")
+given("SAWGC0", HANDS, held=True)
+given("SAWGD0", HANDS, held=True, dy=1)
+given("SAWGA0", over(HANDS, FLAME), held=True)
+given("SAWGB0", over(HANDS, moved(FLAME, 3, -3)), held=True, dy=1)
+given("CSAWA0", picture("cleaner-floor"))
+
+# A brake rotor, in the rocket launcher's place: in the hand, and the hand come down having thrown it. On the floor; flying; and one to pick up, and a stack.
+ROTOR, DISC = picture("rotor-held"), picture("rotor-floor")
+given("MISGA0", ROTOR, held=True)
+given("MISGB0", ROTOR, held=True, dx=6, dy=14)
+given("LAUNA0", DISC)
+def scaled(rgba, wide):
+    image = Image.fromarray(rgba, "RGBA")
+    out = np.array(image.resize((wide, max(1, round(image.height * wide / image.width))), Image.BOX))
+    out[..., 3] = (out[..., 3] > 127) * 255
+    return out
+given("MISLA0", scaled(DISC, 30), middle=True)
+given("ROCKA0", scaled(DISC, 26))
+stack = np.zeros((36, 34, 4), np.uint8)
+for lift in (0, 7, 14):
+    one = scaled(DISC, 34)
+    there = one[..., 3] > 127
+    stack[36 - one.shape[0] - lift:36 - lift][there] = one[there]
+given("BROKA0", stack)
+# Where it lands: rust, sparks and dust.
+for letter, r in zip("BCD", (12, 20, 26)):
+    flat(f"MISL{letter}0", burst(60, ((120, 70, 40), (236, 150, 50), (255, 236, 170)) if letter < "D" else ((90, 80, 72), (140, 130, 120), (180, 172, 160)), (r, r - 6, r - 13), spokes=11 if letter < "D" else 0), top=r + 4)
+
+# A jump starter, in the plasma gun's place: a clamp in each hand, and the arc between them. Its box on the floor; what it throws; charge to pick up.
+CLAMPS, ARC = picture("jump-hands"), picture("jump-arc")
+given("PLSGA0", CLAMPS, held=True)
+given("PLSGB0", CLAMPS, held=True, dy=4)
+given("PLSFA0", ARC, held=True)
+given("PLSFB0", ARC[:, ::-1], held=True)
+given("PLASA0", picture("jump-floor"))
+for letter, turn in (("A", 0), ("B", 1)):
+    image, draw = small(16, 16)
+    for k in range(4):
+        a = k * math.pi / 2 + turn * math.pi / 4
+        draw.line((8, 8, 8 + math.cos(a) * 8, 8 + math.sin(a) * 8), fill=(120, 190, 255), width=1)
+    draw.ellipse((4, 4, 12, 12), fill=(90, 160, 250))
+    draw.ellipse((6, 6, 10, 10), fill=(235, 246, 255))
+    flat(f"PLSS{letter}0", image, top=14)
+for letter, r in zip("ABCDE", (5, 9, 12, 9, 5)):
+    flat(f"PLSE{letter}0", burst(30, ((70, 130, 240), (140, 200, 255), (240, 248, 255)), (r, r - 3, r - 6), spokes=6), top=r + 8)
+# A battery, and a case of them.
+image, draw = small(10, 14)
+draw.rectangle((1, 3, 9, 13), fill=(40, 44, 52))
+draw.rectangle((1, 3, 9, 6), fill=YELLOW)
+draw.rectangle((2, 1, 4, 3), fill=STEEL_LIGHT)
+draw.rectangle((6, 1, 8, 3), fill=STEEL_LIGHT)
+keep("CELLA0", image)
+image, draw = small(26, 18)
+draw.rectangle((0, 5, 25, 17), fill=(40, 44, 52))
+draw.rectangle((0, 5, 25, 9), fill=YELLOW)
+for x in (3, 10, 17):
+    draw.rectangle((x, 2, x + 2, 5), fill=RED if x == 3 else STEEL_LIGHT)
+draw.polygon([(12, 11), (15, 11), (13, 14), (16, 14), (11, 17), (12, 14), (10, 14)], fill=YELLOW)
+keep("CELPA0", image)
+
+# A tank of refrigerant, in the place of the engine's biggest gun: held, and tipped forward as it goes off; the cloud it lets go; the cloud
+# crossing the room, and where it lands; and the tank on the floor.
+TANK, CLOUD = picture("tank-hands"), picture("tank-cloud")
+given("BFGGA0", TANK, held=True)
+given("BFGGB0", TANK, held=True, dy=5)
+given("BFGFA0", scaled(CLOUD, 320)[::2, ::2].repeat(2, 0).repeat(2, 1), held=True)
+given("BFGFB0", CLOUD, held=True)
+given("BFUGA0", picture("tank-floor"))
+rows, cols = np.where(CLOUD[..., 3] > 127)
+PUFF = CLOUD[rows.min():rows.max() + 1, cols.min():cols.max() + 1]
+given("BFS1A0", scaled(PUFF, 44), middle=True)
+given("BFS1B0", scaled(PUFF, 44)[:, ::-1], middle=True)
+for letter, wide in zip("ABCDEF", (50, 80, 110, 130, 110, 70)):
+    given(f"BFE1{letter}0", scaled(PUFF, wide)[:, ::(1 if letter in "ACE" else -1)], middle=True)
+for letter, wide in zip("ABCD", (16, 26, 34, 22)):
+    given(f"BFE2{letter}0", scaled(PUFF, wide), middle=True)
 
 blob = bytearray()
 manifest = []

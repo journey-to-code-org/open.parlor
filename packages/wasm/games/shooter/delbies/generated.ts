@@ -54,6 +54,8 @@ const WAYS: [number, number][] = [[1, 0], [0, 1], [-1, 0], [0, -1]];
 
 const ALL = FLAG_EASY | FLAG_MEDIUM | FLAG_HARD;
 const [GREASE_RAT, MUTANT, KING_RAT] = [3002, 3001, 3003];
+// The engine's chainsaw, rocket launcher and box of rockets, plasma gun and pack of cells.
+const [TORCH, ROTORS, ROTOR_STACK, JUMP_STARTER, BATTERY_CASE] = [2005, 2003, 2046, 2004, 17];
 const [SHOTGUN, CHAINGUN, CLIP, SHELLS, SHELL_BOX, AMMO_BOX, STIMPACK, MEDIKIT, ARMOUR_BONUS, ARMOUR, DEATHMATCH] = [2001, 2002, 2007, 2008, 2049, 2048, 2011, 2012, 2015, 2018, 11];
 /** A locked door's action, and the key for it: blue, yellow, red. */
 const LOCKS = [{ opens: 26, key: 5 }, { opens: 27, key: 6 }, { opens: 28, key: 13 }];
@@ -237,6 +239,15 @@ export function generate(level: number): Floor {
     if (!through.includes(index) || index === last) put(roll.chance(0.5) ? MEDIKIT : SHELL_BOX, ...next());
     if (index === keyRoom && level >= 5) put(CHAINGUN, ...next());
     if (index === keyRoom) put(AMMO_BOX, ...next());
+    // The heavier tools, further into the game, where there is still room for them: a torch and brake cleaner, brake rotors to throw, a jump starter.
+    const more = (type: number) => void (places.length && put(type, ...next()));
+    if (index === locked && level >= 4 && level % 2 === 0) more(TORCH);
+    if (index === locked && level >= 6) [ROTORS, ROTOR_STACK].forEach(more);
+    if (index === last && level >= 7) more(ROTOR_STACK);
+    if (index === keyRoom && level >= 9) [JUMP_STARTER, BATTERY_CASE].forEach(more);
+    if (index === last && level >= 10) more(BATTERY_CASE);
+    // And on the last two floors, a tank of refrigerant (the engine's biggest gun), which runs on the same charge.
+    if (index === locked && level >= 11) [2006, BATTERY_CASE].forEach(more);
     if (index === locked) put(ARMOUR, ...next());
     if (roll.chance(0.4) && places.length) put(ARMOUR_BONUS, ...next());
   });
