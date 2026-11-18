@@ -1,0 +1,157 @@
+// [open.wasm] A new file. What a moment of a thing can run, by the engine's name for it: for the
+// WAD's rules to name (rules.c). Written by scripts/gen-rules.mjs from info.c: don't edit it.
+void A_Light0();
+void A_WeaponReady();
+void A_Lower();
+void A_Raise();
+void A_Punch();
+void A_ReFire();
+void A_FirePistol();
+void A_Light1();
+void A_FireShotgun();
+void A_Light2();
+void A_FireShotgun2();
+void A_CheckReload();
+void A_OpenShotgun2();
+void A_LoadShotgun2();
+void A_CloseShotgun2();
+void A_FireCGun();
+void A_GunFlash();
+void A_FireMissile();
+void A_Saw();
+void A_FirePlasma();
+void A_BFGsound();
+void A_FireBFG();
+void A_BFGSpray();
+void A_Explode();
+void A_Pain();
+void A_PlayerScream();
+void A_Fall();
+void A_XScream();
+void A_Look();
+void A_Chase();
+void A_FaceTarget();
+void A_PosAttack();
+void A_Scream();
+void A_SPosAttack();
+void A_VileChase();
+void A_VileStart();
+void A_VileTarget();
+void A_VileAttack();
+void A_StartFire();
+void A_Fire();
+void A_FireCrackle();
+void A_Tracer();
+void A_SkelWhoosh();
+void A_SkelFist();
+void A_SkelMissile();
+void A_FatRaise();
+void A_FatAttack1();
+void A_FatAttack2();
+void A_FatAttack3();
+void A_BossDeath();
+void A_CPosAttack();
+void A_CPosRefire();
+void A_TroopAttack();
+void A_SargAttack();
+void A_HeadAttack();
+void A_BruisAttack();
+void A_SkullAttack();
+void A_Metal();
+void A_SpidRefire();
+void A_BabyMetal();
+void A_BspiAttack();
+void A_Hoof();
+void A_CyberAttack();
+void A_PainAttack();
+void A_PainDie();
+void A_KeenDie();
+void A_BrainPain();
+void A_BrainScream();
+void A_BrainDie();
+void A_BrainAwake();
+void A_BrainSpit();
+void A_SpawnSound();
+void A_SpawnFly();
+void A_BrainExplode();
+
+static const struct
+{
+    const char *name;
+    void (*action)();
+} rules_actions[] = {
+    {"A_Light0", A_Light0},
+    {"A_WeaponReady", A_WeaponReady},
+    {"A_Lower", A_Lower},
+    {"A_Raise", A_Raise},
+    {"A_Punch", A_Punch},
+    {"A_ReFire", A_ReFire},
+    {"A_FirePistol", A_FirePistol},
+    {"A_Light1", A_Light1},
+    {"A_FireShotgun", A_FireShotgun},
+    {"A_Light2", A_Light2},
+    {"A_FireShotgun2", A_FireShotgun2},
+    {"A_CheckReload", A_CheckReload},
+    {"A_OpenShotgun2", A_OpenShotgun2},
+    {"A_LoadShotgun2", A_LoadShotgun2},
+    {"A_CloseShotgun2", A_CloseShotgun2},
+    {"A_FireCGun", A_FireCGun},
+    {"A_GunFlash", A_GunFlash},
+    {"A_FireMissile", A_FireMissile},
+    {"A_Saw", A_Saw},
+    {"A_FirePlasma", A_FirePlasma},
+    {"A_BFGsound", A_BFGsound},
+    {"A_FireBFG", A_FireBFG},
+    {"A_BFGSpray", A_BFGSpray},
+    {"A_Explode", A_Explode},
+    {"A_Pain", A_Pain},
+    {"A_PlayerScream", A_PlayerScream},
+    {"A_Fall", A_Fall},
+    {"A_XScream", A_XScream},
+    {"A_Look", A_Look},
+    {"A_Chase", A_Chase},
+    {"A_FaceTarget", A_FaceTarget},
+    {"A_PosAttack", A_PosAttack},
+    {"A_Scream", A_Scream},
+    {"A_SPosAttack", A_SPosAttack},
+    {"A_VileChase", A_VileChase},
+    {"A_VileStart", A_VileStart},
+    {"A_VileTarget", A_VileTarget},
+    {"A_VileAttack", A_VileAttack},
+    {"A_StartFire", A_StartFire},
+    {"A_Fire", A_Fire},
+    {"A_FireCrackle", A_FireCrackle},
+    {"A_Tracer", A_Tracer},
+    {"A_SkelWhoosh", A_SkelWhoosh},
+    {"A_SkelFist", A_SkelFist},
+    {"A_SkelMissile", A_SkelMissile},
+    {"A_FatRaise", A_FatRaise},
+    {"A_FatAttack1", A_FatAttack1},
+    {"A_FatAttack2", A_FatAttack2},
+    {"A_FatAttack3", A_FatAttack3},
+    {"A_BossDeath", A_BossDeath},
+    {"A_CPosAttack", A_CPosAttack},
+    {"A_CPosRefire", A_CPosRefire},
+    {"A_TroopAttack", A_TroopAttack},
+    {"A_SargAttack", A_SargAttack},
+    {"A_HeadAttack", A_HeadAttack},
+    {"A_BruisAttack", A_BruisAttack},
+    {"A_SkullAttack", A_SkullAttack},
+    {"A_Metal", A_Metal},
+    {"A_SpidRefire", A_SpidRefire},
+    {"A_BabyMetal", A_BabyMetal},
+    {"A_BspiAttack", A_BspiAttack},
+    {"A_Hoof", A_Hoof},
+    {"A_CyberAttack", A_CyberAttack},
+    {"A_PainAttack", A_PainAttack},
+    {"A_PainDie", A_PainDie},
+    {"A_KeenDie", A_KeenDie},
+    {"A_BrainPain", A_BrainPain},
+    {"A_BrainScream", A_BrainScream},
+    {"A_BrainDie", A_BrainDie},
+    {"A_BrainAwake", A_BrainAwake},
+    {"A_BrainSpit", A_BrainSpit},
+    {"A_SpawnSound", A_SpawnSound},
+    {"A_SpawnFly", A_SpawnFly},
+    {"A_BrainExplode", A_BrainExplode},
+};

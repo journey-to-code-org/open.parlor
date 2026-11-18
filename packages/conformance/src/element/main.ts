@@ -195,6 +195,13 @@ document.getElementById("app")!.append(
         set("tabs", "value", "one");
         show("tab-out", "one");
       }),
+      // A panel the page adds later, and then moves to another tab (zubra-ui#23).
+      button("tab-late-add", "Add a panel for Two", () => {
+        document.querySelector('[data-t="tabs"]')!.append(el("section", { "data-tab": "two", "data-t": "tab-late" }, "Late panel"));
+      }),
+      button("tab-late-move", "Move it to One", () => {
+        (document.querySelector('[data-t="tab-late"]') as HTMLElement).dataset.tab = "one";
+      }),
     ),
     section(
       "The parlor's own",

@@ -173,8 +173,9 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
 
   test("all of it has a place, and the rest of the game is as it was", () => {
     const { changes, skipped } = modFromWad(over, catalogue(wad), wad);
-    // But for its words, which Freedoom has no lump for: layer() makes them a place.
-    expect(skipped).toEqual(["WORDS"]);
+    // Its words too, which Freedoom has no lump for: a game without one is given it.
+    expect(skipped).toEqual([]);
+    expect(changes.filter((change) => change.kind === "words").map((change) => change.name)).toEqual(["WORDS"]);
     const others = changes.filter((change) => change.kind !== "sprite").map((change) => `${change.kind}/${change.name}`).sort();
     // The rats' voices: each in the place of a sound the game has, and none of them silence.
     const voices = changes.filter((change) => change.kind === "sound");
@@ -192,7 +193,7 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
       const [ours, theirs] = [decodePatch(piece.data)!, decodePatch(wad.lumps.filter((lump) => lump.name === piece.name).at(-1)!.data)!];
       expect([piece.name, ours.width, ours.height]).toEqual([piece.name, theirs.width, theirs.height]);
     }
-    expect(others.filter((name) => !/^(screen\/ST|sound\/|wall\/)/.test(name))).toEqual(["screen/M_DOOM", "screen/TITLEPIC", ...FLOORS.map((name) => `things/${name}`), ...FLOORS.map((name) => `walls/${name}`)]);
+    expect(others.filter((name) => !/^(screen\/ST|sound\/|wall\/|words\/)/.test(name))).toEqual(["screen/M_DOOM", "screen/TITLEPIC", ...FLOORS.map((name) => `things/${name}`), ...FLOORS.map((name) => `walls/${name}`)]);
     // The status bar: every face the game has is Delbie's now, each the size of the one it replaces.
     const faces = wad.lumps.map((lump) => lump.name).filter((name) => /^STF(ST|TL|TR|OUCH|EVL|KILL|GOD|DEAD)/.test(name));
     expect(faces).toHaveLength(42);

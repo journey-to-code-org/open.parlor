@@ -15,6 +15,8 @@ describe("categoryOf", () => {
     expect(categoryOf("minigolf")).toBe("sports");
     expect(categoryOf("bowling")).toBe("sports");
     expect(categoryOf("skyfire")).toBe("arcade");
+    // A game of tanks is an arcade game to someone choosing one, though it is played in turns at a table.
+    expect(categoryOf("overthehill")).toBe("arcade");
     // Both are on the word kit, and neither is a game about words.
     expect(categoryOf("drawguess")).toBe("party");
     expect(categoryOf("readtheroom")).toBe("party");

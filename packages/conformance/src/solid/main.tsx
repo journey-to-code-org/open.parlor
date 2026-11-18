@@ -21,6 +21,7 @@ function App() {
   const [rows, setRows] = createSignal(ROWS);
   const [selected, setSelected] = createSignal<string[]>([]);
   const [tab, setTab] = createSignal("one");
+  const [late, setLate] = createSignal<string | null>(null);
   const [card, setCard] = createSignal(0);
   const [picks, setPicks] = createSignal(0);
   const [bid, setBid] = createSignal("");
@@ -166,10 +167,22 @@ function App() {
             First panel <span data-t="tab-count">{count()}</span>
           </section>
           <section data-tab="two">Second panel</section>
+          <Show when={late()}>
+            <section attr:data-tab={late()!} data-t="tab-late">
+              Late panel
+            </section>
+          </Show>
         </tab-list>
         <output data-t="tab-out">{tab()}</output>
         <button data-t="tab-set" type="button" onClick={() => setTab("one")}>
           Back to One
+        </button>
+        {/* A panel the page adds later, and then moves to another tab (zubra-ui#23). */}
+        <button data-t="tab-late-add" type="button" onClick={() => setLate("two")}>
+          Add a panel for Two
+        </button>
+        <button data-t="tab-late-move" type="button" onClick={() => setLate("one")}>
+          Move it to One
         </button>
       </section>
 

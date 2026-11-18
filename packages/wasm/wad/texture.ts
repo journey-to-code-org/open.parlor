@@ -3,7 +3,7 @@
 // rectangle. PNAMES lists the patches' names; a recipe names them by their place in that list.
 // This reads the recipes and puts a picture together, to show what a wall will look like.
 import { decodePatch, type Picture } from "./picture.ts";
-import type { Wad } from "./wad.ts";
+import type { Lump, Wad } from "./wad.ts";
 
 export interface WallPicture {
   name: string;
@@ -69,4 +69,49 @@ export function composeWall(wall: WallPicture, lump: (name: string) => Uint8Arra
       }
   }
   return picture;
+}
+
+const nameBytes = (name: string) => Uint8Array.from({ length: 8 }, (_, i) => name.charCodeAt(i) || 0);
+
+/**
+ * The lumps of a game with wall pictures added: each a picture of one piece, the piece of its own
+ * name. The piece goes on the end of PNAMES and its recipe on the end of TEXTURE1, both of which
+ * the game must have. One the game already has a picture named for is left as it is.
+ */
+export function addWallPictures(lumps: Lump[], walls: { name: string; width: number; height: number }[]): Lump[] {
+  const wad: Wad = { kind: "PWAD", lumps };
+  const have = wallPictures(wad);
+  const wanted = walls.filter((wall, index) => !have.has(wall.name) && walls.findIndex((one) => one.name === wall.name) === index);
+  const at = (name: string) => lumps.map((lump) => lump.name).lastIndexOf(name);
+  const [names, table] = [at("PNAMES"), at("TEXTURE1")];
+  if (!wanted.length || names < 0 || table < 0 || lumps[names]!.data.length < 4 || lumps[table]!.data.length < 4) return lumps;
+  const [list, recipes] = [lumps[names]!.data, lumps[table]!.data];
+  const pieces = new DataView(list.buffer, list.byteOffset, list.byteLength).getInt32(0, true);
+  const count = new DataView(recipes.buffer, recipes.byteOffset, recipes.byteLength).getInt32(0, true);
+  if (pieces < 0 || 4 + pieces * 8 > list.length || count < 0 || 4 + count * 4 > recipes.length) return lumps;
+
+  const newList = new Uint8Array(4 + (pieces + wanted.length) * 8);
+  newList.set(list.subarray(0, 4 + pieces * 8));
+  new DataView(newList.buffer).setInt32(0, pieces + wanted.length, true);
+  wanted.forEach((wall, i) => newList.set(nameBytes(wall.name), 4 + (pieces + i) * 8));
+
+  // The table of where each recipe is grows by four bytes a new one, so every recipe moves along; the new ones (32 bytes each) go on the end.
+  const shift = wanted.length * 4;
+  const body = recipes.subarray(4 + count * 4);
+  const newTable = new Uint8Array(4 + (count + wanted.length) * 4 + body.length + wanted.length * 32);
+  const [from, to] = [new DataView(recipes.buffer, recipes.byteOffset, recipes.byteLength), new DataView(newTable.buffer)];
+  to.setInt32(0, count + wanted.length, true);
+  for (let i = 0; i < count; i++) to.setInt32(4 + i * 4, from.getInt32(4 + i * 4, true) + shift, true);
+  newTable.set(body, 4 + (count + wanted.length) * 4);
+  wanted.forEach((wall, i) => {
+    const start = recipes.length + shift + i * 32;
+    to.setInt32(4 + (count + i) * 4, start, true);
+    newTable.set(nameBytes(wall.name), start);
+    to.setInt16(start + 12, wall.width, true);
+    to.setInt16(start + 14, wall.height, true);
+    to.setInt16(start + 20, 1, true);
+    // One piece, at the corner: x, y, which piece, and two the engine ignores.
+    to.setInt16(start + 26, pieces + i, true);
+  });
+  return lumps.map((lump, index) => (index === names ? { name: lump.name, data: newList } : index === table ? { name: lump.name, data: newTable } : lump));
 }

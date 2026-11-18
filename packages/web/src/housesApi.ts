@@ -52,6 +52,28 @@ export interface HouseAiSettings {
   keyEnding: string;
 }
 
+/** Something said in the house's chat. */
+export interface HouseMessage {
+  id: number;
+  /** The member who said it, and their name as it was then. */
+  by: string;
+  name: string;
+  text: string;
+  at: number;
+  mine: boolean;
+}
+export interface HouseChat {
+  /** Goes up with every change: ask with the one you have and you're told only when there's news. */
+  rev: number;
+  /** The members who have the house's page open now, by id. You are always one of them. */
+  here: string[];
+  messages: HouseMessage[];
+  /** Whether you may take down what others said (the owner and admins). */
+  canRemove: boolean;
+  limit: number;
+  others: number;
+}
+
 export type KitRules = { id: string; name: string } & Record<string, unknown>;
 
 export type TournamentStatus = "signup" | "playing" | "finished";
@@ -161,6 +183,11 @@ export const houses = {
   /** The models an account can use (with the pasted key, or the saved one), and one to start with. */
   aiModels: (slug: string, provider: AiProvider | "server", key?: string) => call<{ models: string[]; suggested: string }>(at(slug, "ai-models"), { provider, key }),
   testAi: (slug: string) => call<{ line: string }>(at(slug, "ai-test"), {}),
+  /** The house's chat. With the `rev` already shown, only `{ rev, here }` comes back when nothing has been said. */
+  chat: (slug: string, rev?: number) => call<HouseChat | { rev: number; here: string[] }>(rev === undefined ? at(slug, "chat") : `${at(slug, "chat")}?rev=${rev}`),
+  say: (slug: string, text: string) => call<HouseChat>(at(slug, "chat"), { text }),
+  /** Take a message down: your own, or anyone's for the owner and admins. */
+  unsay: (slug: string, id: number) => call<HouseChat>(at(slug, "chat"), { remove: id }),
   tournament: (slug: string, id: string) => call<Tournament>(at(slug, `tournaments/${encodeURIComponent(id)}`)),
   newTournament: (slug: string, name: string, game: GameId, presetId: string, settings: TableSettings, format: "bracket" | "league" = "bracket") => call<Tournament>(at(slug, "tournaments"), { name, game, presetId, settings, format }),
   /** enter { partner? } · leave · add { players } · remove { entrant } · start · call { round, match, winner } · cancel */

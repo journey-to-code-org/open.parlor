@@ -34,6 +34,8 @@ const items = ref([...ITEMS]);
 const rows = ref(ROWS);
 const selected = ref<string[]>([]);
 const tab = ref("one");
+/** A panel the page adds later, and then moves to another tab (zubra-ui#23). */
+const late = ref<string | null>(null);
 const card = ref(0);
 const picks = ref(0);
 const bid = ref("");
@@ -131,9 +133,12 @@ function remount() {
       <TabList v-model="tab" data-t="tabs" label="Tabs" :tabs="TABS">
         <section data-tab="one">First panel <span data-t="tab-count">{{ count }}</span></section>
         <section data-tab="two">Second panel</section>
+        <section v-if="late" :data-tab="late" data-t="tab-late">Late panel</section>
       </TabList>
       <output data-t="tab-out">{{ tab }}</output>
       <button data-t="tab-set" type="button" @click="tab = 'one'">Back to One</button>
+      <button data-t="tab-late-add" type="button" @click="late = 'two'">Add a panel for Two</button>
+      <button data-t="tab-late-move" type="button" @click="late = 'one'">Move it to One</button>
     </section>
 
     <section>

@@ -1,10 +1,11 @@
 /* @jsxImportSource solid-js */
 // Solid's own features around Zubra components: For, context, classList and style, Portal, lazy
-// and Suspense, spread props and Dynamic. The checks are in tests/features.spec.ts.
+// and Suspense, spread props, Dynamic, stores and resources. The checks are in tests/features.spec.ts.
 //
 // Solid sets what it is given on a custom element as a property unless told otherwise, so a
 // data- attribute that isn't a plain string is written attr:data-…, as on the main page.
-import { For, Show, Suspense, createContext, createSignal, lazy, useContext, type Accessor } from "solid-js";
+import { For, Show, Suspense, createContext, createResource, createSignal, lazy, useContext, type Accessor } from "solid-js";
+import { createStore } from "solid-js/store";
 import { Dynamic, Portal } from "solid-js/web";
 import { FACES, VARIANTS, WORDS } from "../shared/fixture";
 
@@ -27,6 +28,19 @@ export function Features() {
   const badge = () => ({ variant: VARIANTS[spread() % VARIANTS.length], dot: true });
   const [tag, setTag] = createSignal("status-badge");
   const [presses, setPresses] = createSignal(0);
+
+  // A store: nested state, changed one field at a time, reaching the components it feeds.
+  const [table, setTable] = createStore({ seats: [ { name: "Ann", variant: "neutral" }, { name: "Bo", variant: "neutral" } ] });
+
+  // A resource: fetched (here, when the check says), read inside Suspense, fetched again when its
+  // source changes.
+  const [asked, setAsked] = createSignal(1);
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  const [fetched] = createResource(asked, async (n) => {
+    if (n === 1) await gate;
+    return { label: `Fetched ${n}`, value: n === 1 ? "first" : "second" };
+  });
 
   return (
     <main data-t="f-features">
@@ -92,6 +106,29 @@ export function Features() {
         </status-badge>
         <button data-t="f-spread-next" type="button" onClick={() => setSpread(spread() + 1)}>
           Next
+        </button>
+      </section>
+
+      <section>
+        <h2>A store</h2>
+        <stack-layout data-t="f-store" prop:gap="0.25rem">
+          <For each={table.seats}>{(seat) => <status-badge attr:data-f-item={seat.name} prop:variant={seat.variant}>{seat.name}</status-badge>}</For>
+        </stack-layout>
+        <button data-t="f-store-set" type="button" onClick={() => setTable("seats", 0, { name: "Grammi", variant: "success" })}>
+          Change the first seat
+        </button>
+      </section>
+
+      <section>
+        <h2>A resource</h2>
+        <Suspense fallback={<p data-t="f-res-wait">Fetching…</p>}>
+          <text-field data-t="f-res" prop:label={fetched()?.label ?? ""} prop:value={fetched()?.value ?? ""} />
+        </Suspense>
+        <button data-t="f-res-go" type="button" onClick={() => release()}>
+          Let it arrive
+        </button>
+        <button data-t="f-res-next" type="button" onClick={() => setAsked(2)}>
+          Fetch another
         </button>
       </section>
 

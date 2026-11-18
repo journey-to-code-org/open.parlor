@@ -276,6 +276,91 @@ const FEATURES: Feature[] = [
     },
   },
   {
+    title: "a template-driven form binds the controls both ways and knows when it's valid",
+    in: { angular: "ngModel, ngForm and required" },
+    body: async (page) => {
+      const out = t(page, "f-td-out");
+      const input = t(page, "f-td-name").locator("input");
+      const chime = t(page, "f-td-chime").getByRole("switch");
+      await expect(out).toHaveText("invalid  false");
+      await input.fill("Sam");
+      await expect(out).toHaveText("valid Sam false");
+      await chime.click();
+      await expect(out).toHaveText("valid Sam true");
+      await t(page, "f-td-set").click();
+      await expect(input).toHaveValue("Hank");
+      await expect(chime).toHaveAttribute("aria-checked", "true");
+      await expect(out).toHaveText("valid Hank true");
+      await input.fill("");
+      // Leaving the empty field shows its message, which moves what's below it: let that happen
+      // before pressing the button below (in Firefox the press otherwise lands where it was).
+      await input.blur();
+      await expect(t(page, "f-td-name").locator(".field-error")).not.toBeEmpty();
+      await expect(out).toHaveText("invalid  true");
+      await t(page, "f-td-disable").click();
+      await expect(input).toBeDisabled();
+      await expect(chime).toBeDisabled();
+      await t(page, "f-td-disable").click();
+      await expect(input).toBeEnabled();
+      await expect(chime).toBeEnabled();
+    },
+  },
+  {
+    title: "a component inside Suspense waits for its setup, then works",
+    in: { vue: "Suspense and an async setup" },
+    body: async (page) => {
+      await expect(t(page, "f-suspense-wait")).toBeVisible();
+      await expect(t(page, "f-suspense")).toHaveCount(0);
+      await t(page, "f-suspense-go").click();
+      const input = t(page, "f-suspense").locator("input");
+      await expect(input).toBeVisible();
+      await expect(t(page, "f-suspense-wait")).toHaveCount(0);
+      await input.fill("here");
+      await expect(t(page, "f-suspense-out")).toHaveText("here");
+    },
+  },
+  {
+    title: "a template ref reaches the component's element",
+    in: { vue: "ref on the component" },
+    body: async (page) => {
+      await t(page, "f-ref").locator("input").fill("hello");
+      await t(page, "f-ref").locator("input").blur();
+      await t(page, "f-ref-read").click();
+      await expect(t(page, "f-ref-out")).toHaveText("text-field:hello");
+      await expect(t(page, "f-ref").locator("input")).toBeFocused();
+    },
+  },
+  {
+    title: "a store's change reaches only the component it feeds",
+    in: { solid: "createStore" },
+    body: async (page) => {
+      const items = t(page, "f-store").locator("[data-f-item]");
+      await expect(items).toHaveText(["Ann", "Bo"]);
+      await items.first().evaluate((element) => ((element as HTMLElement & { marked?: boolean }).marked = true));
+      await items.last().evaluate((element) => ((element as HTMLElement & { marked?: boolean }).marked = true));
+      await t(page, "f-store-set").click();
+      await expect(items.first()).toHaveText("Grammi");
+      await expect(items.first().locator("span").first()).toHaveClass(/badge-success/);
+      // The first seat's component was updated, not made again; the second wasn't touched.
+      expect(await items.evaluateAll((all) => all.map((element) => (element as HTMLElement & { marked?: boolean }).marked))).toEqual([true, true]);
+      await expect(items.last()).toHaveText("Bo");
+    },
+  },
+  {
+    title: "a resource read inside Suspense fills the component when it arrives, and again when fetched again",
+    in: { solid: "createResource and Suspense" },
+    body: async (page) => {
+      await expect(t(page, "f-res-wait")).toBeVisible();
+      await t(page, "f-res-go").click();
+      await expect(t(page, "f-res").locator("label")).toContainText("Fetched 1");
+      await expect(t(page, "f-res").locator("input")).toHaveValue("first");
+      await expect(t(page, "f-res-wait")).toHaveCount(0);
+      await t(page, "f-res-next").click();
+      await expect(t(page, "f-res").locator("label")).toContainText("Fetched 2");
+      await expect(t(page, "f-res").locator("input")).toHaveValue("second");
+    },
+  },
+  {
     title: "the page's own wrapper passes its content on to the component's slots",
     in: { angular: "ng-content" },
     body: async (page) => {
