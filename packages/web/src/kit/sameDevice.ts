@@ -9,7 +9,7 @@
 import { QUICK_BUDGET, QUICK_STYLE, isKitGame, kitGame, type KitGameId, type TableGame } from "@journey-to-code/games";
 import { categoryOf } from "../categories";
 
-const SHARED: ReadonlySet<KitGameId> = new Set<KitGameId>(["tictactoe", "dropfour", "reversi", "checkers", "go", "chess", "backgammon", "mancala", "ludo", "chinesecheckers", "yacht", "pig", "tenthousand", "shipcaptaincrew", "shutthebox", "memory", "minigolf", "bowling", "billiards", "carrom", "shuffleboard", "crokinole", "flickfootball", "hangman"]);
+const SHARED: ReadonlySet<KitGameId> = new Set<KitGameId>(["tictactoe", "dropfour", "reversi", "checkers", "go", "chess", "backgammon", "mancala", "ludo", "chinesecheckers", "yacht", "pig", "tenthousand", "shipcaptaincrew", "shutthebox", "memory", "minigolf", "bowling", "billiards", "carrom", "shuffleboard", "crokinole", "flickfootball", "hangman", "overthehill"]);
 
 /**
  * Games played at once, or against each other's speed: a phone can't be passed round for these.

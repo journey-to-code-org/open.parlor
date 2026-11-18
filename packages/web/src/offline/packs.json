@@ -4,6 +4,7 @@
   { "id": "words", "name": "Word and party games", "blurb": "Secret Word, Word Hunt, Criss-Crosswords, Draw & Guess, Read the Room", "entries": ["src/word/WordTable.tsx", "src/word/Sketchbook.tsx"] },
   { "id": "sports", "name": "Table sports", "blurb": "Mini Golf, Bowling, Billiards, Carrom and the rest", "entries": ["src/sport/SportTable.tsx"] },
   { "id": "arcade", "name": "Arcade games", "blurb": "Shitstorm, Tower of Ryan, Chip Stack, Air Hockey, Road to the Shootout", "entries": ["src/arcade/ArcadeTable.tsx", "src/arcade/AirHockeyTable.tsx", "src/drive/Shootout.tsx"] },
+  { "id": "field", "name": "Over the Hill", "blurb": "The tanks, with the fire and smoke", "entries": ["src/field/FieldTable.tsx"] },
   { "id": "quest", "name": "Zubra Quest", "blurb": "The adventure, with all its pictures", "entries": ["src/quest/QuestTable.tsx"] },
   { "id": "counter", "name": "Delbie's Counter", "blurb": "A shift at the parts counter", "entries": ["src/counter/CounterTable.tsx"] },
   { "id": "idle", "name": "Delbie's Daycare & Geriatrics", "blurb": "The store that carries on while you're away", "entries": ["src/idle/IdleTable.tsx"] },

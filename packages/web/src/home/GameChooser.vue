@@ -28,7 +28,7 @@ export interface ChooserGame {
   /** A board game shows a little board instead of cards. */
   board?: { cols: number; cells: ({ glyph: string; tone: string; shade?: string } | null)[]; shade?: string; /** A sheet of paper with a drawing on it, in place of a board (Draw & Guess). */ sketch?: boolean };
   /** An arcade game shows a little screen: a ship, what it is up against, and what is coming at it (in a 100 × 100 box). */
-  screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][]; chip?: boolean; shop?: boolean; strip?: boolean; rink?: boolean; quest?: boolean };
+  screen?: { ship: [number, number]; foes: [number, number][]; bullets: [number, number][]; road?: string; towers?: [number, number][]; chip?: boolean; shop?: boolean; strip?: boolean; rink?: boolean; quest?: boolean; hill?: boolean };
   /** A dice game shows a few dice: the face each one shows. */
   dice?: number[];
   /** A table sport shows a little table from above: its surface, a hole, a ball or two (in a 100 × 100 box). */
@@ -178,7 +178,7 @@ function surprise() {
 }
 /** Where each face's pips sit in a die's three-by-three (0 is the top left). */
 const PIPS: Record<number, number[]> = { 1: [4], 2: [2, 6], 3: [2, 4, 6], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
-const seatsLabel = (g: ChooserGame) => (g.screen ? (g.seats[1] === 1 ? "1 player" : `1–${g.seats[1]} players`) : g.teams ? "4 players · partners" : g.seats[0] === g.seats[1] ? `${g.seats[0]} players` : `${g.seats[0]}–${g.seats[1]} players`);
+const seatsLabel = (g: ChooserGame) => (g.screen && g.seats[0] === 1 ? (g.seats[1] === 1 ? "1 player" : `1–${g.seats[1]} players`) : g.teams ? "4 players · partners" : g.seats[0] === g.seats[1] ? `${g.seats[0]} players` : `${g.seats[0]}–${g.seats[1]} players`);
 const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : `${props.games.length} games to play with family and friends: cards, board games, words, table sports and arcade.`));
 /** Someone who has never played here: no name, no last game. They get the line about what it costs and a few games to start with. */
 const STARTED_KEY = "parlor.started";
@@ -352,6 +352,16 @@ async function toShelf(id: string) {
                 <circle class="mallet near" cx="40" cy="78" r="10" />
                 <path class="streak" d="M47 68 L62 46" />
                 <circle class="puck" cx="62" cy="46" r="6" />
+              </svg>
+              <svg v-else-if="g.screen.hill" viewBox="0 0 100 100">
+                <rect class="dusk" x="3" y="3" width="94" height="94" rx="9" />
+                <circle class="lowsun" cx="70" cy="50" r="8" />
+                <path class="arc" d="M22 58 Q50 -8 80 62" />
+                <path class="earth" d="M4 96 V66 Q14 58 24 64 T44 74 Q54 60 64 72 T84 66 L96 72 V96 Z" />
+                <path class="turf" d="M4 66 Q14 58 24 64 T44 74 Q54 60 64 72 T84 66 L96 72" />
+                <g class="tank a"><path d="M20 58 l3 -6 M14 64 h14 l-2 -5 h-10 z" /></g>
+                <g class="tank b"><path d="M82 62 l-3 -6 M76 68 h14 l-2 -5 h-10 z" /></g>
+                <circle class="lob" cx="52" cy="26" r="3.2" />
               </svg>
               <svg v-else-if="g.screen.chip" viewBox="0 0 100 100">
                 <rect class="felt" x="3" y="3" width="94" height="94" rx="14" />
@@ -694,6 +704,15 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .mini-screen .streak { stroke: #ffd166; stroke-width: 5; stroke-linecap: round; opacity: 0.35; }
 .mini-screen .puck { fill: #ffd166; stroke: #8a6a1a; stroke-width: 1.6; }
 .mini-screen .felt { fill: #1f4d3a; stroke: #e8c46a; stroke-width: 2; }
+.mini-screen .dusk { fill: #2b3f6e; stroke: #f0b88c; stroke-width: 2; }
+.mini-screen .lowsun { fill: #f6d7a8; opacity: 0.85; }
+.mini-screen .arc { fill: none; stroke: #fff; stroke-width: 1.4; stroke-dasharray: 2 4; stroke-linecap: round; opacity: 0.8; }
+.mini-screen .earth { fill: #6b4a2e; }
+.mini-screen .turf { fill: none; stroke: #67b548; stroke-width: 3; stroke-linecap: round; }
+.mini-screen .tank path { stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.mini-screen .tank.a path { fill: #ff6b6b; stroke: #ff6b6b; }
+.mini-screen .tank.b path { fill: #5aa9ff; stroke: #5aa9ff; }
+.mini-screen .lob { fill: #1b1b1b; stroke: #ffe9a8; stroke-width: 1.4; }
 .mini-screen .coin { fill: #ffd166; stroke: #8a6a14; stroke-width: 1.6; }
 .mini-screen .bigchip { fill: #c8323c; stroke: #5b1420; stroke-width: 1.6; }
 .mini-screen .bigchip-edge { fill: none; stroke: #fbf6ec; stroke-width: 4; stroke-dasharray: 8 10.45; }
