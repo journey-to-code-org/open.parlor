@@ -101,7 +101,8 @@ describe("the game's own levels", () => {
     // Delbie's face, 42 times, and the bar, its weapon panel and the four squares behind the face.
     expect(names.indexOf("SS_START")).toBe(3 + 48);
     expect(names.slice(-11)).toEqual(["E1M3", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
-    expect(names).toHaveLength(16 + 175 + 48 + 22);
+    // 175 pictures of rats and 22 of tools.
+    expect(names).toHaveLength(16 + 175 + 22 + 48 + 22);
   });
 });
 
@@ -166,7 +167,8 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
     const drawn = new Set(changes.filter((change) => change.kind === "sprite").map((change) => change.name));
     const theirs = wad.lumps.map((lump) => lump.name).filter((name) => /^(SARG|TROO|BOSS)[A-Z][0-8]|^BAL1/.test(name));
     expect(theirs.filter((name) => !drawn.has(name))).toEqual([]);
-    expect(drawn.size).toBe(theirs.length);
+    // And 22 more: the tools in place of two weapons and what is picked up.
+    expect(drawn.size).toBe(theirs.length + 22);
     const laid = readWad(layer(game, over));
     // One lump more than the game came with: its words, which Freedoom has no place for.
     expect(laid.lumps).toHaveLength(wad.lumps.length + 1);

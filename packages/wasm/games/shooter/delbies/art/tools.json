@@ -1,0 +1,178 @@
+[
+ {
+  "name": "PUNGA0",
+  "width": 64,
+  "height": 80,
+  "left": -142,
+  "top": -88,
+  "at": 0
+ },
+ {
+  "name": "PUNGB0",
+  "width": 66,
+  "height": 119,
+  "left": -131,
+  "top": -49,
+  "at": 10240
+ },
+ {
+  "name": "PUNGC0",
+  "width": 67,
+  "height": 167,
+  "left": -119,
+  "top": -1,
+  "at": 25948
+ },
+ {
+  "name": "PUNGD0",
+  "width": 66,
+  "height": 109,
+  "left": -133,
+  "top": -59,
+  "at": 48326
+ },
+ {
+  "name": "SHTGA0",
+  "width": 71,
+  "height": 97,
+  "left": -142,
+  "top": -71,
+  "at": 62714
+ },
+ {
+  "name": "SHTGB0",
+  "width": 71,
+  "height": 87,
+  "left": -146,
+  "top": -81,
+  "at": 76488
+ },
+ {
+  "name": "SHTGC0",
+  "width": 37,
+  "height": 83,
+  "left": -148,
+  "top": -85,
+  "at": 88842
+ },
+ {
+  "name": "SHTGD0",
+  "width": 78,
+  "height": 89,
+  "left": -145,
+  "top": -79,
+  "at": 94984
+ },
+ {
+  "name": "SHTFA0",
+  "width": 37,
+  "height": 28,
+  "left": -142,
+  "top": -50,
+  "at": 108868
+ },
+ {
+  "name": "SHTFB0",
+  "width": 61,
+  "height": 46,
+  "left": -130,
+  "top": -38,
+  "at": 110940
+ },
+ {
+  "name": "SHOTA0",
+  "width": 44,
+  "height": 11,
+  "left": 22,
+  "top": 11,
+  "at": 116552
+ },
+ {
+  "name": "STIMA0",
+  "width": 19,
+  "height": 12,
+  "left": 9,
+  "top": 12,
+  "at": 117520
+ },
+ {
+  "name": "MEDIA0",
+  "width": 31,
+  "height": 20,
+  "left": 15,
+  "top": 20,
+  "at": 117976
+ },
+ {
+  "name": "ARM1A0",
+  "width": 25,
+  "height": 29,
+  "left": 12,
+  "top": 29,
+  "at": 119216
+ },
+ {
+  "name": "ARM1B0",
+  "width": 25,
+  "height": 29,
+  "left": 12,
+  "top": 29,
+  "at": 120666
+ },
+ {
+  "name": "CLIPA0",
+  "width": 11,
+  "height": 11,
+  "left": 5,
+  "top": 11,
+  "at": 122116
+ },
+ {
+  "name": "BKEYA0",
+  "width": 12,
+  "height": 21,
+  "left": 6,
+  "top": 21,
+  "at": 122358
+ },
+ {
+  "name": "BKEYB0",
+  "width": 12,
+  "height": 21,
+  "left": 6,
+  "top": 21,
+  "at": 122862
+ },
+ {
+  "name": "YKEYA0",
+  "width": 12,
+  "height": 21,
+  "left": 6,
+  "top": 21,
+  "at": 123366
+ },
+ {
+  "name": "YKEYB0",
+  "width": 12,
+  "height": 21,
+  "left": 6,
+  "top": 21,
+  "at": 123870
+ },
+ {
+  "name": "RKEYA0",
+  "width": 12,
+  "height": 21,
+  "left": 6,
+  "top": 21,
+  "at": 124374
+ },
+ {
+  "name": "RKEYB0",
+  "width": 12,
+  "height": 21,
+  "left": 6,
+  "top": 21,
+  "at": 124878
+ }
+]

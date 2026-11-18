@@ -19,7 +19,8 @@ export function art() {
     return JSON.parse(readFileSync(join(root, "delbies", "art", `${name}.json`), "utf8")).map(({ name, width, height, left, top, at }) => ({ name, width, height, left, top, pixels: drawn.subarray(at, at + width * height), solid: drawn.subarray(at + width * height, at + 2 * width * height) }));
   };
   // The rats, and the status bar: Delbie's face, and the bar tinted.
-  const [sprites, screens] = [pictures("sprites"), pictures("hud")];
+  // And tools from the store, in place of the weapons and what is picked up: sprites too.
+  const [sprites, screens] = [[...pictures("sprites"), ...pictures("tools")], pictures("hud")];
   // What the game says, as the editor would write it: no comments, one ending for a line.
   const words = writeWords(readWords(new Uint8Array(readFileSync(join(root, "delbies", "words.txt")))));
   return { words, screens, title: from("title.raw"), logo: { pixels: logo, solid: from("logo.mask"), width: 150, height: logo.length / 150 }, sprites };
