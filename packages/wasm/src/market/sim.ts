@@ -139,6 +139,8 @@ export interface Sim {
   /** Things that happened since `cursor` (start at 0), and the cursor to ask from next time. */
   events(cursor: number): { events: GameEvent[]; cursor: number };
 
+  /** A command by its numbers (COMMAND, then what it is about and how much), which is what a game's log is made of. */
+  command(kind: number, a: number, b: number): Result;
   buy(part: number, units: number): Result;
   setPrice(part: number, cents: number): Result;
   /** Orders more by itself whenever stock and truck fall under `below`, up to `to`. `to` 0 turns it off. */
@@ -208,6 +210,7 @@ export async function loadSim(source: BufferSource | WebAssembly.Module): Promis
       }
       return { events, cursor: head };
     },
+    command: (kind, a, b) => wasm.command(kind, a, b) as Result,
     buy: (part, units) => wasm.command(COMMAND.BUY, part, units) as Result,
     setPrice: (part, cents) => wasm.command(COMMAND.PRICE, part, cents) as Result,
     setAuto: (part, below, to) => wasm.command(COMMAND.AUTO, part, below + to * 1000) as Result,

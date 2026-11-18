@@ -7,7 +7,9 @@
 // (`meter`): the "Under the hood" tab is a gauge of how Zubra holds up under a live number.
 import { batch, createSignal } from "solid-js";
 import { PARTS, SHELVES, SPEEDS, partName, say, shelfName, type Line } from "../catalog.ts";
-import { G, P, PHASE, RESULT, loadSim, type Result, type Sim } from "../sim.ts";
+import { encode, verify, type Challenge } from "../challenge.ts";
+import { outcome, recorder } from "../replay.ts";
+import { COMMAND, G, P, PHASE, RESULT, loadSim, type Result, type Sim } from "../sim.ts";
 
 export interface Row {
   id: number;
@@ -96,10 +98,35 @@ export function toast(message: string, variant: Line["variant"] = "info", headin
   document.dispatchEvent(new CustomEvent("toast", { detail: { message, variant, heading } }));
 }
 
-export async function createGame(wasm: string, firstSeed: number) {
-  const sim: Sim = await loadSim(await WebAssembly.compileStreaming(fetch(wasm)).catch(async () => WebAssembly.compile(await (await fetch(wasm)).arrayBuffer())));
+/** Someone else's month, as it was played against: who, and where it ended. `proved` is whether their commands replayed to it. */
+export interface Rival {
+  name: string;
+  worth: number;
+  phase: number;
+  day: number;
+  proved: boolean;
+}
+
+export async function createGame(wasm: string, firstSeed: number, incoming: Challenge | null = null) {
+  const compiled = await WebAssembly.compileStreaming(fetch(wasm)).catch(async () => WebAssembly.compile(await (await fetch(wasm)).arrayBuffer()));
+  const sim: Sim = await loadSim(compiled);
+  const rec = recorder(sim);
   const { shape } = sim;
 
+  // A challenge is believed only if its commands, played on a second copy of the module, come to its score.
+  let rivalSeed = 0;
+  let first: Rival | null = null;
+  if (incoming) {
+    const checked = verify(await loadSim(compiled), incoming);
+    if (checked.ok || !incoming.log.length) {
+      first = { name: incoming.name, worth: incoming.worth, phase: incoming.phase, day: incoming.day, proved: checked.ok };
+      rivalSeed = incoming.seed;
+    } else {
+      queueMicrotask(() => toast("That challenge doesn't replay to the score it claims, so it's ignored. The month is still the same one.", "warning"));
+      rivalSeed = incoming.seed;
+    }
+  }
+  const [rival, setRival] = createSignal<Rival | null>(first);
   const [seed, setSeed] = createSignal(firstSeed);
   const [speed, setSpeed] = createSignal<string>("1");
   const [redraw, setRedraw] = createSignal<Redraw>("frame");
@@ -261,6 +288,9 @@ export async function createGame(wasm: string, firstSeed: number) {
   let startWorth = 0;
   function restart(next: number) {
     sim.init(next);
+    rec.clear();
+    // A new month is not the rival's month any more; the same one again still is.
+    if (next !== rivalSeed) setRival(null);
     startWorth = sim.store[G.WORTH];
     setSeed(next);
     cursor = 0;
@@ -290,6 +320,15 @@ export async function createGame(wasm: string, firstSeed: number) {
       setChart(sim.history(part, shape.history).map((cents) => cents / 100));
     },
     shape,
+    rival,
+    /** Where this month stands, as the dialog says it. */
+    outcome: () => outcome(sim),
+    /** A link that challenges whoever opens it to this month, with this player's commands in it so that the score can be checked. */
+    link(name: string) {
+      const now = outcome(sim);
+      const text = encode({ seed: seed(), name, phase: now.phase, day: now.day, worth: now.worth, log: [...rec.entries()] });
+      return `${location.origin}${location.pathname}#c=${text}`;
+    },
     /** What the store was worth when the month began: the score is how many times over it was made. */
     startWorth: () => startWorth,
     /** A part as it is this moment, for the panel that works on one. */
@@ -310,19 +349,19 @@ export async function createGame(wasm: string, firstSeed: number) {
       };
     },
     /** `quiet`: the caller is ordering several and says so once itself. */
-    buy: (part: number, units: number, quiet = false) => said(sim.buy(part, units), quiet ? undefined : `${units} × ${partName(part)} on the truck.`),
+    buy: (part: number, units: number, quiet = false) => said(rec.run(COMMAND.BUY, part, units), quiet ? undefined : `${units} × ${partName(part)} on the truck.`),
     priced,
     /** `quiet` is the part's own slider: it is where the price came from, so it need not move. */
     price(part: number, cents: number, quiet = false) {
       if (!quiet) setPriced((n) => n + 1);
-      return said(sim.setPrice(part, cents));
+      return said(rec.run(COMMAND.PRICE, part, cents));
     },
-    auto: (part: number, below: number, to: number) => said(sim.setAuto(part, below, to)),
+    auto: (part: number, below: number, to: number) => said(rec.run(COMMAND.AUTO, part, below + to * 1000)),
     markup(shelf: number, percent: number) {
       setPriced((n) => n + 1);
-      return said(sim.markup(shelf, percent), `${shelfName(shelf)} are at ${percent}% of the usual wholesale price.`);
+      return said(rec.run(COMMAND.MARKUP, shelf, percent), `${shelfName(shelf)} are at ${percent}% of the usual wholesale price.`);
     },
-    trap: () => said(sim.buyTrap(), "A trap is set."),
+    trap: () => said(rec.run(COMMAND.TRAP, 0, 0), "A trap is set."),
     restart,
   };
 

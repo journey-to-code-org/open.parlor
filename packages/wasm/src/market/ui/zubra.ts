@@ -20,5 +20,6 @@ import "@open-parlor/ui/zubra-ui/star-rating.zb";
 import "@open-parlor/ui/zubra-ui/stat-card.zb";
 import "@open-parlor/ui/zubra-ui/status-badge.zb";
 import "@open-parlor/ui/zubra-ui/tab-list.zb";
+import "@open-parlor/ui/zubra-ui/text-field.zb";
 import "@open-parlor/ui/zubra-ui/toast-region.zb";
 import "@open-parlor/ui/zubra-ui/toggle-switch.zb";

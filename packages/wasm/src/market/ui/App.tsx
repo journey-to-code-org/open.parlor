@@ -7,6 +7,7 @@
 // charts that move on the hour, and controls that have to stay put under all of it.
 import { For, Match, Show, Switch, createEffect, createMemo, createResource, createSignal, on, untrack } from "solid-js";
 import { PARTS, SHELVES, SPEEDS, dollars, money, perDay } from "../catalog.ts";
+import { decode, type Challenge } from "../challenge.ts";
 import { PHASE } from "../sim.ts";
 import { REDRAWS, best, createGame, toast, type Game, type Redraw } from "./store.ts";
 
@@ -57,10 +58,47 @@ function stars(worth: number, start: number, phase: number) {
   return times < 0.9 ? 1 : times < 1.2 ? 2 : times < 1.6 ? 3 : times < 2 ? 4 : 5;
 }
 
+const NAME_KEY = "open.parlor.stockroom.name";
+function readName() {
+  try {
+    return localStorage.getItem(NAME_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/** Offers the link to the phone's share sheet where there is one, and otherwise shows it to be copied by hand. */
+async function share(url: string, name: string, setName: (name: string) => void, show: (url: string) => void) {
+  try {
+    localStorage.setItem(NAME_KEY, name);
+  } catch {
+    /* a name that isn't kept is fine */
+  }
+  show(url);
+  try {
+    if (navigator.share) await navigator.share({ title: "Delbie's Stockroom", text: "Same month, same market: beat my store.", url });
+    else if (navigator.clipboard) {
+      await navigator.clipboard.writeText(url);
+      toast("Link copied.", "success");
+    }
+  } catch {
+    /* the share sheet was dismissed, or copying was refused: the link is on the screen either way */
+  }
+  setName(name);
+}
+
 export function App() {
   const params = new URLSearchParams(location.search);
-  const first = Number(params.get("seed")) || Math.floor(Math.random() * 1_000_000) + 1;
-  const [game] = createResource(() => createGame(WASM, first));
+  // A challenge link carries a month and what someone made of it: #c=<text>. Anything that doesn't read is just ignored.
+  let challenge: Challenge | null = null;
+  try {
+    const text = new URLSearchParams(location.hash.slice(1)).get("c");
+    if (text) challenge = decode(text);
+  } catch {
+    challenge = null;
+  }
+  const first = challenge?.seed ?? (Number(params.get("seed")) || Math.floor(Math.random() * 1_000_000) + 1);
+  const [game] = createResource(() => createGame(WASM, first, challenge));
   return (
     <main class="page stockroom">
       <header class="top">
@@ -99,6 +137,9 @@ function Stockroom(props: { game: Game }) {
   const [over, setOver] = createSignal(false);
   const [again, setAgain] = createSignal(false);
   const [bestWorth, setBestWorth] = createSignal(best.read());
+  const [name, setName] = createSignal(readName());
+  const [link, setLink] = createSignal("");
+  const rival = game.rival;
   const focus = createMemo(() => selected().at(-1) ?? null);
 
   // The month ends: say so once, and keep the best.
@@ -139,6 +180,14 @@ function Stockroom(props: { game: Game }) {
         {(n) => (
           <alert-banner prop:variant={n().variant} prop:heading={n().heading}>
             {n().text}
+          </alert-banner>
+        )}
+      </Show>
+      <Show when={finished() ? null : rival()}>
+        {(r) => (
+          <alert-banner prop:variant="info" prop:heading={`${r().name} challenged you`}>
+            Same month, same market. They ended with a store worth {money(r().worth)}
+            {r().phase === PHASE.BROKE ? ", after the rent went unpaid" : ""}. {r().proved ? "Their score was checked by replaying their month." : "Their score couldn't be checked, so take it on trust."}
           </alert-banner>
         )}
       </Show>
@@ -225,6 +274,23 @@ function Stockroom(props: { game: Game }) {
           </Show>
           <Show when={clock().phase === PHASE.BROKE}>
             <p class="quiet">The register was short on rent day. Seed {game.seed()}: the same month is waiting if you want another go.</p>
+          </Show>
+          <Show when={rival()}>
+            {(r) => (
+              <p class="versus">
+                <strong>{r().name}</strong> ended at {money(r().worth)}{r().proved ? "" : " (unchecked)"}.{" "}
+                {clock().worth > r().worth ? "You came out ahead." : clock().worth < r().worth ? `You were ${money(r().worth - clock().worth)} behind.` : "A tie."}
+              </p>
+            )}
+          </Show>
+          <Show when={clock().phase !== PHASE.OPEN}>
+            <text-field prop:label="Your name" prop:value={name()} prop:maxlength={24} on:valuechange={(e: Event) => { setName(asEvent<string>(e)); setLink(""); }} />
+            <action-button prop:variant="outline" on:click={() => share(game.link(name()), name(), setName, setLink)}>
+              Challenge a friend to this month
+            </action-button>
+            <Show when={link()}>
+              <text-field prop:label="Copy this link" prop:value={link()} prop:readonly={true} />
+            </Show>
           </Show>
         </div>
         <action-button slot="actions" prop:variant="outline" data-close on:click={() => game.restart(game.seed())}>

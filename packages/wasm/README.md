@@ -288,5 +288,12 @@ buy at the shelf price, rats that chew the stock, traps, standing orders, rent e
   *Under the hood* tab measures it, and lets you cut how often the screen is given new numbers.
 - **The numbers are kept honest by bots** (`test/market.test.ts`): doing nothing earns nothing,
   stocking at a fair mark-up beats that, traps beat no traps, 250% prices go broke by week three.
+- **Same month, two devices** (`src/market/replay.ts`, `challenge.ts`): a game is a seed plus the
+  commands given, so the page logs every command that did something. *Challenge a friend* at the end
+  of a month makes a link (`#c=...`, base64url, a few hundred bytes) with the seed, a name, the score and
+  that log. Whoever opens it plays the same market, and the page first replays the commands on a second
+  copy of the module and only believes the score if it comes out the same. This proves the score is
+  *achievable* by those commands, not that a human played them (a bot's log verifies too). A month too
+  long for a link goes without its log and shows as unchecked.
 - The typecheck is two projects: `tsconfig.json` (Svelte and plain TypeScript) and
   `tsconfig.market.json` (the Solid page, with Zubra's typings for Solid).
