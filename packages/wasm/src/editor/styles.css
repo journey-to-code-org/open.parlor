@@ -1,0 +1,71 @@
+/* zubra-ui's default theme (shadcn/ui's variables), light or dark with the system; the components
+   read these. The page adds the parlor's felt green as the primary colour, as the designer does. */
+@import "../../../ui/src/zubra-ui/themes/default.css";
+@import "../../../ui/src/zubra-ui/themes/system.css";
+
+:root {
+  --felt: #1f4d3a;
+  --primary: var(--felt);
+  --primary-foreground: #fbf6ec;
+  --ring: color-mix(in oklab, var(--felt) 60%, white);
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --primary: #7fc8a4;
+    --primary-foreground: #0f2a1f;
+    --ring: #7fc8a4;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { background: var(--background); color: var(--foreground); }
+h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; font-size: clamp(1.6rem, 4vw, 2.1rem); line-height: 1.2; margin: 0; }
+p { margin: 0; }
+[hidden], .hidden { display: none !important; }
+
+.page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; width: min(68rem, 100%); margin: 0 auto; padding: 1.25rem clamp(1rem, 3vw, 2rem) 5rem; }
+.quiet { color: var(--muted-foreground); font-size: 0.925rem; max-width: 46rem; }
+.top { display: grid; gap: 0.25rem; }
+.home { font-size: 0.9rem; color: var(--muted-foreground); text-decoration: none; justify-self: start; }
+.home:hover { color: var(--foreground); }
+.waiting { display: flex; align-items: center; gap: 0.75rem; min-height: 30vh; justify-content: center; }
+
+/* Zubra's components render in the page's own DOM (no shadow root), so the page can fit them to
+   itself: tabs that scroll sideways on a phone, and room under them. */
+tab-list [role="tablist"] { overflow-x: auto; scrollbar-width: none; }
+tab-list [role="tabpanel"] { display: grid; gap: 1rem; padding-top: 1rem; justify-items: start; }
+tab-list [role="tabpanel"][hidden] { display: none; }
+.hint { max-width: 52rem; }
+.search { width: min(22rem, 100%); }
+
+/* The things to change: a picture, its name, and what it is. */
+.tiles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(6.75rem, 1fr)); gap: 0.6rem; width: 100%; }
+.tile { display: grid; justify-items: center; align-content: start; gap: 0.2rem; width: 100%; height: 100%; padding: 0.6rem 0.4rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: inherit; font: inherit; cursor: pointer; text-align: center; }
+.tile:hover { border-color: var(--ring); }
+.tile:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+.tile.changed { border-color: var(--primary); }
+/* A checked ground shows where a picture is see-through. */
+.thumb, .view { display: grid; place-items: center; background: repeating-conic-gradient(#8883 0% 25%, transparent 0% 50%) 50% / 12px 12px; border-radius: calc(var(--radius) - 4px); }
+.thumb { width: 5.5rem; height: 5.5rem; padding: 0.35rem; overflow: hidden; }
+.sound { font-size: 2rem; color: var(--muted-foreground); }
+.name { font-size: 0.8rem; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.what { font-size: 0.75rem; color: var(--muted-foreground); line-height: 1.25; }
+
+/* One thing, opened. */
+.detail { display: grid; gap: 1rem; }
+.views { display: flex; flex-wrap: wrap; gap: 1rem; }
+.views figure { margin: 0; display: grid; gap: 0.3rem; justify-items: center; flex: 1; min-width: 8rem; }
+.view { width: 100%; height: min(14rem, 40vh); padding: 0.5rem; overflow: hidden; }
+figcaption { font-size: 0.8rem; color: var(--muted-foreground); }
+.drop { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.75rem; padding: 1rem; border: 2px dashed var(--border); border-radius: var(--radius); color: var(--muted-foreground); }
+.drop.over { border-color: var(--primary); background: color-mix(in oklab, var(--primary) 8%, transparent); }
+
+/* "Try it": the game, on this page. */
+.stage { width: 100%; height: min(70vh, 44rem); border-radius: var(--radius); overflow: hidden; }
+tab-list [data-tab="play"] { justify-items: stretch; }

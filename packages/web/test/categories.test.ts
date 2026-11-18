@@ -15,6 +15,10 @@ describe("categoryOf", () => {
     expect(categoryOf("minigolf")).toBe("sports");
     expect(categoryOf("bowling")).toBe("sports");
     expect(categoryOf("skyfire")).toBe("arcade");
+    // Both are on the word kit, and neither is a game about words.
+    expect(categoryOf("drawguess")).toBe("party");
+    expect(categoryOf("readtheroom")).toBe("party");
+    expect(GAME_CATEGORIES.find((c) => c.id === "party")?.name).toBe("Party games");
   });
 
   it("gives every game a category the front page has a shelf for", () => {

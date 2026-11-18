@@ -1,0 +1,82 @@
+[
+ {
+  "name": "W33_7",
+  "width": 64,
+  "height": 64,
+  "left": 0,
+  "top": 0,
+  "at": 0
+ },
+ {
+  "name": "W33_9",
+  "width": 64,
+  "height": 64,
+  "left": 0,
+  "top": 0,
+  "at": 8192
+ },
+ {
+  "name": "GCRATEL1",
+  "width": 32,
+  "height": 64,
+  "left": 0,
+  "top": 0,
+  "at": 16384
+ },
+ {
+  "name": "GCRATER1",
+  "width": 32,
+  "height": 64,
+  "left": 0,
+  "top": 0,
+  "at": 20480
+ },
+ {
+  "name": "GCRATEM1",
+  "width": 8,
+  "height": 64,
+  "left": 0,
+  "top": 0,
+  "at": 24576
+ },
+ {
+  "name": "BCRATEL1",
+  "width": 32,
+  "height": 64,
+  "left": 0,
+  "top": 0,
+  "at": 25600
+ },
+ {
+  "name": "BCRATER1",
+  "width": 32,
+  "height": 64,
+  "left": 0,
+  "top": 0,
+  "at": 29696
+ },
+ {
+  "name": "BCRATEM1",
+  "width": 8,
+  "height": 64,
+  "left": 0,
+  "top": 0,
+  "at": 33792
+ },
+ {
+  "name": "WALL40_1",
+  "width": 128,
+  "height": 128,
+  "left": 0,
+  "top": 0,
+  "at": 34816
+ },
+ {
+  "name": "WALL40_2",
+  "width": 128,
+  "height": 128,
+  "left": 0,
+  "top": 0,
+  "at": 67584
+ }
+]

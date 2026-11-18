@@ -24,6 +24,7 @@ import { Bubble, TableChat, useBubbles, type ChatProps } from "../Chat";
 import { Confetti } from "../Confetti";
 import { loadFeedbackSettings, play, saveFeedbackSettings } from "../feedback/sounds";
 import { named, ResultTable, sideName } from "../kit/KitTable";
+import { RoomPanel } from "../room/RoomPanel";
 import { SoundButton } from "../SoundButton";
 import { TableSettingsButton } from "../TableSettings";
 import { Canvas, PlaceBoard, TraceGrid, type TraceFlash } from "./WordPieces";
@@ -302,6 +303,7 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
         </span>
       </header>
       {banner}
+      {view.game === "readtheroom" && <RoomPanel view={view} names={names} watching={!!watching} busy={busy} send={(move) => void send(move)} />}
 
       <div className="felt word-felt">
         {others.length > 0 && (

@@ -1,10 +1,12 @@
 // The open.parlor server: rooms (moves, seats, bots), the sync log, and the built apps: the parlor
-// itself at /, the card designer at /designer/, the watch page at /watch/ and the admin app at /admin/.
+// itself at /, the card designer at /designer/, the watch page at /watch/, the admin app at /admin/
+// and the WebAssembly games at /wasm/.
 //
 //   PORT=8787 CARDROOM_DB=cardroom.db node dist/index.js
 //
 // Settings are CARDROOM_*; the older SPADES_* names still work (CARDROOM_* wins if both are set).
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
+import { Rooms } from "@open-parlor/wasm/net";
 import { WebSocketServer } from "ws";
 import { playerOf } from "@journey-to-code/rooms/server";
 import { createServer } from "node:http";
@@ -31,6 +33,7 @@ const apps = [
   { at: "/designer/", root: resolve(setting("DESIGNER") ?? fileURLToPath(new URL("../../designer/dist", import.meta.url))), build: "npm run build -w @open-parlor/designer" },
   { at: "/watch/", root: resolve(setting("WATCH") ?? fileURLToPath(new URL("../../watch/dist", import.meta.url))), build: "npm run build -w @open-parlor/watch" },
   { at: "/admin/", root: resolve(setting("ADMIN") ?? fileURLToPath(new URL("../../admin/dist/browser", import.meta.url))), build: "npm run build -w @open-parlor/admin" },
+  { at: "/wasm/", root: resolve(setting("WASM") ?? fileURLToPath(new URL("../../wasm/dist", import.meta.url))), build: "npm run build -w @open-parlor/wasm" },
 ];
 
 // A SQLite log keeps tables across restarts; without CARDROOM_DB, they live in memory.
@@ -81,6 +84,11 @@ function originOf(headers: Record<string, string | string[] | undefined>): strin
   return /^[a-z0-9.-]+(:\d{1,5})?$/i.test(host) ? `${proto}://${host}` : "";
 }
 
+// The WebAssembly games played across devices (/wasm/): a room takes each player's commands and
+// sends them on to everyone. It knows nothing of the game. See packages/wasm/net.
+const games = new Rooms({ now: () => performance.now() });
+setInterval(() => games.check(), 250).unref();
+
 const TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript",
@@ -91,6 +99,9 @@ const TYPES: Record<string, string> = {
   ".json": "application/json",
   ".webmanifest": "application/manifest+json",
   ".woff2": "font/woff2",
+  // A browser compiles a .wasm file as it downloads only when it is served as one.
+  ".wasm": "application/wasm",
+  ".txt": "text/plain; charset=utf-8",
 };
 
 const server = createServer(async (req, res) => {
@@ -101,6 +112,13 @@ const server = createServer(async (req, res) => {
     if (req.url === "/healthz/bots") return void res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(cardRoom.bots?.stats() ?? null));
     if (await cardRoom.handle(req, res)) return;
     const path = decodeURIComponent(new URL(req.url ?? "/", "http://x").pathname);
+    // The games' rooms: GET lists the games their hosts have opened to watching (none, in a parlor
+    // that keeps people's tables private), POST opens a room.
+    if (path === "/wasm/play") {
+      const room = req.method === "POST" ? games.open() : null;
+      const body = req.method === "POST" ? (room ? { code: room.code } : { error: "There are as many games going as this parlor can hold." }) : { games: (await cardRoom.catalogue.watching()) ? games.listed() : [] };
+      return void res.writeHead(req.method === "POST" && !room ? 503 : 200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(body));
+    }
     // /designer and /admin are their apps' front doors: with the slash, so their files resolve.
     const bare = apps.find((a) => `${path}/` === a.at);
     if (bare) return void res.writeHead(308, { location: bare.at }).end();
@@ -111,11 +129,18 @@ const server = createServer(async (req, res) => {
     // The embed's files are fetched by other sites' pages: a missing one is a 404, never the app.
     const embed = !app && path.startsWith("/embed/");
     if (embed && (!existsSync(file) || statSync(file).isDirectory())) return void res.writeHead(404).end();
+    // Nor is a game's data that isn't there: the page would take the app's HTML for the game.
+    if (app?.at === "/wasm/" && path.startsWith("/wasm/data/") && !existsSync(file)) return void res.writeHead(404).end();
+    // A folder of an app that has a page of its own (the WebAssembly games' editor) is that page.
+    if (app && existsSync(join(file, "index.html")) && file !== root) {
+      if (!path.endsWith("/")) return void res.writeHead(308, { location: `${path}/` }).end();
+      file = join(file, "index.html");
+    }
     if (!existsSync(file) || statSync(file).isDirectory()) file = join(root, "index.html"); // the app routes itself
     if (!existsSync(file)) return void res.writeHead(404).end(`Build the app first: ${app?.build ?? "npm run build -w @open-parlor/web"}`);
     // The page and the service worker must never be stale; the hashed assets can be cached for good.
     const fresh = file.endsWith("index.html") || file.endsWith("sw.js") || file.endsWith(".webmanifest");
-    const hashed = /[.-][A-Za-z0-9_-]{8,}\.(js|css|woff2)$/.test(file);
+    const hashed = /[.-][A-Za-z0-9_-]{8,}\.(js|css|woff2|wasm)$/.test(file);
     res.writeHead(200, {
       "content-type": TYPES[extname(file)] ?? "application/octet-stream",
       "cache-control": fresh ? "no-cache" : path.startsWith("/assets/") || (app && hashed) ? "public, max-age=31536000, immutable" : embed ? "public, max-age=300" : "public, max-age=3600",
@@ -137,7 +162,20 @@ const server = createServer(async (req, res) => {
 // and what every seat's controls did on each tick goes out.
 const sockets = new WebSocketServer({ noServer: true, maxPayload: 4096 });
 server.on("upgrade", (req, socket, head) => {
-  const match = /^\/live\/([A-Za-z0-9_-]{1,40})$/.exec(new URL(req.url ?? "/", "http://x").pathname);
+  const path = new URL(req.url ?? "/", "http://x").pathname;
+  // A device in one of the games' rooms holds a socket open at /wasm/play/<code>.
+  const game = /^\/wasm\/play\/([A-Za-z]{4})$/.exec(path);
+  if (game) {
+    return sockets.handleUpgrade(req, socket, head, (ws) => {
+      const room = games.find(game[1]!);
+      if (!room) return ws.close(4404, "There is no game with that code.");
+      const seat = room.join({ send: (data) => ws.readyState === ws.OPEN && ws.send(data), close: () => ws.close(1000) });
+      ws.on("message", (data, binary) => seat.receive(binary ? new Uint8Array(data as Buffer) : String(data)));
+      ws.on("close", () => seat.leave());
+      ws.on("error", () => seat.leave());
+    });
+  }
+  const match = /^\/live\/([A-Za-z0-9_-]{1,40})$/.exec(path);
   if (!match) return socket.destroy();
   sockets.handleUpgrade(req, socket, head, (ws) => {
     const player = playerOf(new Request("http://x/", { headers: { cookie: req.headers.cookie ?? "" } }));

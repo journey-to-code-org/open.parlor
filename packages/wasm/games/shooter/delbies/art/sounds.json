@@ -1,0 +1,77 @@
+[
+ {
+  "name": "DSSGTSIT",
+  "at": 0,
+  "length": 2645
+ },
+ {
+  "name": "DSSGTATK",
+  "at": 2645,
+  "length": 3302
+ },
+ {
+  "name": "DSDMPAIN",
+  "at": 5947,
+  "length": 2425
+ },
+ {
+  "name": "DSSGTDTH",
+  "at": 8372,
+  "length": 6394
+ },
+ {
+  "name": "DSDMACT",
+  "at": 14766,
+  "length": 1433
+ },
+ {
+  "name": "DSBGSIT1",
+  "at": 16199,
+  "length": 3307
+ },
+ {
+  "name": "DSBGSIT2",
+  "at": 19506,
+  "length": 3858
+ },
+ {
+  "name": "DSBGACT",
+  "at": 23364,
+  "length": 2205
+ },
+ {
+  "name": "DSPOPAIN",
+  "at": 25569,
+  "length": 2756
+ },
+ {
+  "name": "DSBGDTH1",
+  "at": 28325,
+  "length": 7166
+ },
+ {
+  "name": "DSBGDTH2",
+  "at": 35491,
+  "length": 6615
+ },
+ {
+  "name": "DSFIRSHT",
+  "at": 42106,
+  "length": 2425
+ },
+ {
+  "name": "DSFIRXPL",
+  "at": 44531,
+  "length": 4410
+ },
+ {
+  "name": "DSBRSSIT",
+  "at": 48941,
+  "length": 9922
+ },
+ {
+  "name": "DSBRSDTH",
+  "at": 58863,
+  "length": 16537
+ }
+]

@@ -331,6 +331,16 @@
       "emoji": "🤥",
       "blurb": "Everyone's dice are hidden. Bid how many of a number are under all the cups, raise the bid, or call the last bidder a liar. Lose a call, lose a die."
     },
+    "mancala": {
+      "name": "Mancala",
+      "emoji": "🫘",
+      "blurb": "Pick up a pit of seeds and sow them round the board, one a pit. End in your store to go again; end in your own empty pit to capture. Most seeds wins."
+    },
+    "dominoes": {
+      "name": "Dominoes",
+      "emoji": "⚅",
+      "blurb": "Lay your tiles end to end, matching the numbers. Play your last tile to win the round and score the pips left in everyone else's hand."
+    },
     "secretword": {
       "name": "Secret Word",
       "emoji": "🟩",
@@ -356,6 +366,11 @@
       "emoji": "🧩",
       "blurb": "Seven tiles, one board, and every word has to cross."
     },
+    "readtheroom": {
+      "name": "Read the Room",
+      "emoji": "🫶",
+      "blurb": "How well do you know these people?"
+    },
     "minigolf": {
       "name": "Mini Golf",
       "emoji": "⛳",
@@ -375,6 +390,21 @@
       "name": "Carrom",
       "emoji": "🪙",
       "blurb": "Flick the striker from your baseline and pocket your pieces before they pocket theirs."
+    },
+    "shuffleboard": {
+      "name": "Shuffleboard",
+      "emoji": "🥌",
+      "blurb": "Four pucks each, slid in turn. Stop in the far zones, and send theirs off the end."
+    },
+    "crokinole": {
+      "name": "Crokinole",
+      "emoji": "🎯",
+      "blurb": "A round board, a ring of pegs, and one rule: if they have a disc out there, you have to hit it."
+    },
+    "flickfootball": {
+      "name": "Flick Football",
+      "emoji": "🏈",
+      "blurb": "One folded football, two ends of a table. Hang it over the far edge for a touchdown."
     },
     "skyfire": {
       "name": "Shitstorm",
