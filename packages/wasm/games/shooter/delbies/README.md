@@ -47,7 +47,9 @@ have no pictures and are placed in no level.
 - `art/rats.py` draws the rats: each is a handful of rounded lumps, posed and looked at from the
   eight sides the engine wants, lit and edged like the engine's own sprites. It writes
   `sprites.bin.gz` and `sprites.json`: 175 pictures. It needs numpy and Pillow and is run by hand.
-- `art/hud.py` draws the status bar: Delbie's face (blond, blue-eyed, 42 moods), and the bar
+- `art/hud.py` makes the status bar: Delbie's face, from four pictures of him Mikey gave
+  (smiling, cross, bruised, bloodied: one for each state of health, moved a pixel or two for
+  where he looks, since the engine wants 42), and the bar
   itself, a steel panel with a yellow and black edge and a dark window for each figure, with its
   big and small figures, the keys' lights and the rim round a view made smaller. It writes
   `hud.bin.gz` and `hud.json`: 108 pictures.
@@ -72,9 +74,9 @@ have no pictures and are placed in no level.
 
   Each is one picture or two, so what moves is the whole weapon (the lever isn't worked, the
   rotor isn't seen leaving the hand). (The sprayer shares the price gun's
-  ammunition, as the engine's chaingun shares its pistol's.) It also draws cartridges loose and boxed; pasta, a pizza
-  box and a coffee for health; a shop apron and a hard hat for armour; boxes of ammunition,
-  batteries and the three keys; another player (work shirt, cap, price gun); dust and blood
+  ammunition, as the engine's chaingun shares its pistol's.) Pasta, a pizza and a coffee for health, a shop apron and a hard hat for armour, the drum
+  of waste oil and what the mutant spits are his pictures too. The script still draws
+  cartridges loose and boxed, batteries and the three keys; another player (work shirt, cap, price gun); dust and blood
   where a shot lands; the light things arrive in; what the King Rat throws; and a drum of waste
   oil and what it does when shot. It writes `tools.bin.gz` and `tools.json`: 146 pictures.
 - `art/menu.py` draws what is around the game, in the colours of the title picture (yellow

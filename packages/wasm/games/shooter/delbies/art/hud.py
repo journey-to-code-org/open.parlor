@@ -132,16 +132,34 @@ def add(name, rgb, there, left, top):
     pixels = bytes(nearest(rgb[y, x]) if there[y, x] else 0 for y in range(height) for x in range(width))
     pictures.append((name, width, height, left, top, pixels, bytes(there.astype(np.uint8).tobytes())))
 
-def as_face(name, **how):
+# The faces are Mikey's pictures of Delbie (given/face-0.png to face-3.png, cut out by cutout.py): smiling, cross, bruised, and bloodied.
+# There are four, and the engine wants 42: five states of health, each looking ahead and to either side, turned, hurt, grinning and
+# furious. So each state of health is one of the four, moved a pixel or two for where he looks, and the next worse one for being hurt.
+FACES = [np.array(Image.open(here / "given" / f"face-{index}.png").convert("RGBA")) for index in range(4)]
+def as_face(name, hurt=0, look=0, turn=0, mood="smile", gold=False, dead=False):
     """A face in its box: where the engine expects a face to be drawn from."""
     width, height, left, top = 24, 29, -5, -2
-    drawn, there = face(**how)
-    rgb = np.zeros((height, width, 3), np.uint8)
-    solid = np.zeros((height, width), bool)
-    ox, oy = (width - 24) // 2, max(0, height - 29)
-    rgb[oy:oy + 29, ox:ox + 24] = drawn[: height - oy, : width - ox]
-    solid[oy:oy + 29, ox:ox + 24] = there[: height - oy, : width - ox]
-    add(name, rgb, solid, left, top)
+    which = (0, 1, 2, 3, 3)[hurt]
+    if mood in ("ouch", "kill"):
+        which = min(3, which + 1)
+    if mood == "grin":
+        which = max(0, which - 1)
+    shown = FACES[which]
+    shift = -(look + turn)
+    moved = np.zeros_like(shown)
+    if shift > 0:
+        moved[:, shift:] = shown[:, :-shift]
+    elif shift < 0:
+        moved[:, :shift] = shown[:, -shift:]
+    else:
+        moved = shown.copy()
+    rgb = moved[..., :3].astype(int)
+    if gold:
+        rgb = np.clip(rgb * np.array([1.15, 1.08, 0.7]) + (30, 24, 0), 0, 255)
+    if dead:
+        grey = rgb.mean(2, keepdims=True)
+        rgb = (rgb * 0.35 + grey * 0.4)
+    add(name, rgb.astype(np.uint8), moved[..., 3] > 127, left, top)
 
 for hurt in range(5):
     for i, look in enumerate((0, 1, -1)):

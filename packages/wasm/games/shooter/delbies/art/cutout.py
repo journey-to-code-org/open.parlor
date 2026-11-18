@@ -215,3 +215,33 @@ view("sprayer-hands", jug, filled(biggest(there & ~spray)))
 view("sprayer-spray", jug, spray)
 sat = load("sprayer-floor.webp")
 lying("sprayer-floor", sat, grab(sat, (310, 225, 375, 320), sure=[(440, 290, 640, 480)]), 36)
+
+# Things that stand in a level, each alone on a plain ground.
+def alone(image, ground, by, columns=None):
+    """What is in a picture that isn't its ground, between two columns of it if there are several things side by side."""
+    mask = off(image, ground, by)
+    if columns:
+        mask[:, :columns[0]] = mask[:, columns[1]:] = False
+    return filled(biggest(mask, keep=2, least=300))
+drum = load("drum.webp")
+lying("drum", drum, alone(drum, (0, 0, 0), 22), 26)
+wear = load("armour.webp")
+lying("apron", wear, alone(wear, (255, 255, 255), 30, (0, 585)), 30)
+lying("hard-hat", wear, alone(wear, (255, 255, 255), 30, (585, 1024)), 22)
+food = load("food.webp")
+lying("pasta", food, alone(food, (0, 0, 0), 22, (0, 365)), 22)
+lying("pizza", food, alone(food, (0, 0, 0), 22, (365, 770)), 32)
+lying("coffee", food, alone(food, (0, 0, 0), 22, (770, 1024)), 13)
+spit = load("spit.webp")
+lying("spit", spit, alone(spit, (0, 0, 0), 30), 34)
+
+# Delbie's face, four ways as his day goes: the head only, without the shirt or its name tag, each made the size of a face on the status bar.
+faces = load("faces.webp")
+for index, (x0, x1) in enumerate(((20, 250), (275, 505), (525, 755), (780, 1010))):
+    mask = off(faces, (0, 0, 0), 24)
+    mask[:, :x0] = mask[:, x1:] = False
+    mask[:190] = mask[418:] = False
+    mask = filled(biggest(mask))
+    rows, cols = np.where(mask)
+    y0, y1, a, b = rows.min(), rows.max() + 1, cols.min(), cols.max() + 1
+    save(f"face-{index}", smaller(faces[y0:y1, a:b], mask[y0:y1, a:b], (24, 29)))

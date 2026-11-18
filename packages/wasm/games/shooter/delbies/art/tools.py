@@ -110,6 +110,8 @@ def given(name, rgba, held=False, dx=0, dy=0, middle=False):
     y0, y1, x0, x1 = rows.min(), rows.max() + 1, cols.min(), cols.max() + 1
     rgba, there = rgba[y0:y1, x0:x1], there[y0:y1, x0:x1]
     height, width = there.shape
+    # One of his takes the place of one drawn here under the same name.
+    pictures[:] = [one for one in pictures if one[0] != name]
     # The engine draws what is held 32 down from where its picture says.
     left, top = (-(int(x0) + dx), -(int(y0) + dy - 32)) if held else (width // 2, height // 2 if middle else height)
     pixels = bytes(nearest(rgba[y, x, :3]) if there[y, x] else 0 for y in range(height) for x in range(width))
@@ -449,6 +451,26 @@ for letter, wide in zip("ABCDEF", (50, 80, 110, 130, 110, 70)):
     given(f"BFE1{letter}0", scaled(PUFF, wide)[:, ::(1 if letter in "ACE" else -1)], middle=True)
 for letter, wide in zip("ABCD", (16, 26, 34, 22)):
     given(f"BFE2{letter}0", scaled(PUFF, wide), middle=True)
+
+# What is picked up, and the drum, are Mikey's pictures too: each takes the place of the one drawn above under its name.
+def lit(rgba, by):
+    """The same picture catching the light."""
+    out = rgba.copy()
+    out[..., :3] = np.clip(out[..., :3].astype(int) + by, 0, 255)
+    return out
+given("STIMA0", picture("pasta"))
+given("MEDIA0", scaled(picture("pizza"), 28))
+for letter, by in zip("ABCD", (0, 14, 28, 14)):
+    given(f"BON1{letter}0", lit(scaled(picture("coffee"), 10), by))
+    given(f"BON2{letter}0", lit(picture("hard-hat"), by))
+given("ARM1A0", picture("apron"))
+given("ARM1B0", lit(picture("apron"), 26))
+given("BAR1A0", picture("drum"))
+given("BAR1B0", lit(picture("drum"), 14))
+# What the brake-fluid mutant spits, crossing the room: where it lands is still rats.py's.
+BALL = scaled(picture("spit"), 22)
+given("BAL1A0", BALL, middle=True)
+given("BAL1B0", BALL[::-1], middle=True)
 
 blob = bytearray()
 manifest = []
