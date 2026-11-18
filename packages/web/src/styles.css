@@ -413,6 +413,14 @@ h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; }
 .chat-form { display: flex; gap: 8px; }
 .chat-form input { flex: 1; font: inherit; padding: 10px 12px; border-radius: 999px; border: 1px solid #d9d2c3; background: white; color: var(--ink); }
 .chat-sheet .error { color: var(--red); margin: 0; }
+/* The house's own chat, on its page: the same list and form, in a panel instead of a sheet. */
+.house-chat { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: var(--radius); background: var(--cream); color: var(--ink); }
+.house-chat .chat-list { flex: none; max-height: min(46vh, 380px); min-height: 96px; overscroll-behavior: contain; }
+.house-chat .chat-list .when { font-weight: 400; color: var(--muted); margin-left: 6px; }
+.house-chat .chat-list .take-down { align-self: flex-end; padding: 0; font-size: 0.72rem; color: var(--muted); }
+.house-chat .chat-form input { min-width: 0; }
+.house-chat .chat-form button { flex: none; }
+.house-chat .error { color: var(--red); margin: 0; }
 
 .me-badge { position: relative; }
 /* Bubbles have their own layer above the table and its sheets: a partner's "go nil!" matters

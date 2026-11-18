@@ -562,6 +562,8 @@ and everyone watching then sees those cards. The table keeps its own copy of the
 maker changing or deleting it, or the host hiding it, never changes the cards in the middle of a
 game. A table can only wear a deck its chooser could show everyone: theirs, or a shared one.
 
+**A house's chat.** A house's page has one conversation for everyone in the house, whichever table they are at or none (`/houses/:slug/chat`, `packages/server/src/housechat.ts`). Members only; the last 200 messages are kept, 280 characters each. Anyone can take down their own message, and the owner and admins anyone's. Words aren't covered, as they aren't at a family table. A member who doesn't have the chat open gets a buzz, at most one every five minutes. The page asks for what is new every four seconds while it is being looked at.
+
 **A house's cards.** A house's owner or an admin picks, on the house's page, the deck its tables start with (`POST /houses/:slug/deck`), from the same choices. The house keeps its own copy, as a table does, every member sees which it is, and the players at a table can still pick another before the deal. Tournament matches start with it too.
 
 **Your own deck.** **Play with it** in the designer makes a deck the one that browser sees at
