@@ -12,7 +12,8 @@ import type { Tic } from "../../net/protocol.ts";
 import { type Engine, netArgs, screenOf, startEngine } from "./engine.ts";
 import { createGamepad } from "./gamepad.ts";
 import { engineKey } from "./keys.ts";
-import { type Game, type Lobby, openSession, type Session } from "./session.ts";
+import { type Game, type Lobby, openSession, type Session, type Transport } from "./session.ts";
+import * as nearby from "./nearby.ts";
 import { connect, hasRooms, openRoom, showLobby } from "./together.ts";
 import { createTouch } from "./touch.ts";
 
@@ -105,6 +106,10 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
     viewing: number;
     /** What the bar last showed, so it is only redrawn when that changes. */
     shown: string;
+    /** For a game on the wifi that this device hosts: the room, which is in this page. */
+    hosting: nearby.Hosting | null;
+    /** Puts the lobby back on the card, as it last was. */
+    lobbyAgain(): void;
   }
   let net: Net | null = null;
   const watching = () => !!net?.game && net.game.slot < 0;
@@ -247,7 +252,8 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
     const room = net;
     net = null;
     room?.session.close();
-    if (new URLSearchParams(location.search).has("room")) history.replaceState(null, "", location.pathname);
+    room?.hosting?.stop();
+    if (/[?&](room|wifi)=/.test(location.search)) history.replaceState(null, "", location.pathname);
   }
 
   /** Once a frame in a game with other devices: the bar over the picture, and a watcher's view. */
@@ -278,6 +284,9 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
       });
     }
     if (status) parts.push(el("span", "shooter-status", status));
+    // The host of a game on the wifi can add people while it is on: they come to watch.
+    const hosting = room.hosting;
+    if (hosting) parts.push(button({ label: "Add someone", run: () => nearby.invite(card, location.href, hosting.attach, () => (card.hidden = true)) }, false));
     parts.push(button({ label: "Leave", run: () => (put(), leave(), home()) }, false));
     bar.replaceChildren(...parts);
     bar.hidden = false;
@@ -348,11 +357,8 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
     }
   }
 
-  /** Into a room: a new one, or the one with this code. */
+  /** Into a room on the parlor's server: a new one, or the one with this code. */
   async function join(code: string | null, name: string, watch: boolean) {
-    try {
-      localStorage.setItem("open-wasm-name", name);
-    } catch {}
     try {
       // The game is fetched before the room is joined, so nobody waits on a download once the host starts.
       await ready();
@@ -361,36 +367,71 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
       const transport = await connect(options.rooms!, room);
       const link = new URL(`?room=${room}`, location.href).href;
       history.replaceState(null, "", link);
-      const mine: Net = (net = { code: room, session: null as unknown as Session, lobby: null, game: null, early: [], waiting: [], viewing: 0, shown: "" });
-      mine.session = openSession(transport, name, watch, {
-        lobby(lobby) {
-          mine.lobby = lobby;
-          // Once the game is on, the lobby is only news of who has come and gone.
-          if (net === mine && !mine.game && !lobby.playing) showLobby(card, { code: room, link, lobby, session: mine.session, levels: options.levels, leave: () => (leave(), home()) });
-        },
-        start(game) {
-          if (net !== mine) return;
-          mine.game = game;
-          void run(netArgs(game.settings, game.players.length, game.slot), mine);
-        },
-        tics: (tics) => (mine.early ? mine.early.push(...tics) : tics.forEach((tic) => engine?.tic(tic))),
-        waiting: (slots) => (mine.waiting = slots),
-        closed(why) {
-          if (net !== mine) return;
-          net = null;
-          put();
-          history.replaceState(null, "", location.pathname);
-          show("The game has ended", [why], [{ label: "Back", run: home }]);
-        },
-      });
+      enter(transport, name, watch, room, link, null);
     } catch (error) {
       leave();
       show("Couldn't join the game", [reason(error)], [{ label: "Back", run: home }]);
     }
   }
 
+  /** A game on this wifi, hosted here: the room is in this page, and people are added a code at a time. */
+  async function hostNearby(name: string) {
+    try {
+      await ready();
+      const hosting = nearby.host();
+      enter(hosting.local(), name, false, "", null, hosting);
+    } catch (error) {
+      show("Couldn't start the game", [reason(error)], [{ label: "Back", run: home }]);
+    }
+  }
+
+  /** A game on this wifi, hosted by someone else: `offer` is their code, if it came with the link. */
+  function joinNearby(offer: string | null, name: string, watch: boolean) {
+    void ready().then(
+      () => nearby.join(card, offer, (transport) => enter(transport, name, watch, "", null, null), () => (leave(), home())),
+      (error) => show("Couldn't join the game", [reason(error)], [{ label: "Back", run: home }]),
+    );
+  }
+
+  /** In a room, however it was reached: says hello, and from then on does what the room says. */
+  function enter(transport: Transport, name: string, watch: boolean, code: string, link: string | null, hosting: nearby.Hosting | null) {
+    try {
+      localStorage.setItem("open-wasm-name", name);
+    } catch {}
+    const lobbyAgain = () => {
+      if (net !== mine || mine.game || !mine.lobby || mine.lobby.playing) return;
+      // The host of a game on the wifi adds people from the lobby; the card comes back to it after.
+      const invite = hosting ? () => nearby.invite(card, location.href, hosting.attach, lobbyAgain) : undefined;
+      showLobby(card, { code, link, invite, lobby: mine.lobby, session: mine.session, levels: options.levels, leave: () => (leave(), home()) });
+    };
+    const mine: Net = (net = { code, session: null as unknown as Session, lobby: null, game: null, early: [], waiting: [], viewing: 0, shown: "", hosting, lobbyAgain });
+    mine.session = openSession(transport, name, watch, {
+      lobby(lobby) {
+        mine.lobby = lobby;
+        // Once the game is on, the lobby is only news of who has come and gone. While the host is
+        // adding someone, the card is theirs: the lobby comes back when they are done.
+        if (!card.dataset.nearby) lobbyAgain();
+      },
+      start(game) {
+        if (net !== mine) return;
+        mine.game = game;
+        void run(netArgs(game.settings, game.players.length, game.slot), mine);
+      },
+      tics: (tics) => (mine.early ? mine.early.push(...tics) : tics.forEach((tic) => engine?.tic(tic))),
+      waiting: (slots) => (mine.waiting = slots),
+      closed(why) {
+        if (net !== mine) return;
+        net = null;
+        mine.hosting?.stop();
+        put();
+        history.replaceState(null, "", location.pathname);
+        show("The game has ended", [why], [{ label: "Back", run: home }]);
+      },
+    });
+  }
+
   /** Asks who is playing, and whether to start a game or join one. */
-  function gather(code: string | null, watch = false) {
+  function gather(code: string | null, watch = false, wifi: { offer: string | null } | null = null) {
     const name = el("input", "");
     name.maxLength = 16;
     name.setAttribute("autocomplete", "nickname");
@@ -400,6 +441,14 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
     const who = el("label", "lobby-field", "Your name");
     who.append(name);
     const named = () => name.value.trim() || "Player";
+    if (wifi?.offer) {
+      // Come by a host's code: straight in, to play or to watch.
+      const offer = wifi.offer;
+      return show("A game on this wifi", ["You have been invited to a game. Your device shows a code next, for the host to read."], [{ label: "Join the game", run: () => joinNearby(offer, named(), false) }, { label: "Just watch", run: () => joinNearby(offer, named(), true) }, { label: "Back", run: () => (leave(), home()) }], who);
+    }
+    if (wifi) {
+      return show("Play on this wifi", ["For devices on the same wifi, with or without the internet. One of you hosts; the others join by scanning a code on the host's screen. Up to four play, and others can watch."], [{ label: "Host a game", run: () => void hostNearby(named()) }, { label: "Join a game on this wifi", run: () => joinNearby(null, named(), false) }, { label: "Back", run: home }], who);
+    }
     if (code) {
       const play: Action = { label: "Join the game", run: () => void join(code, named(), false) };
       const look: Action = { label: "Just watch", run: () => void join(code, named(), true) };
@@ -438,17 +487,21 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
       show(options.title, lines, actions);
       card.append(...extras());
     };
-    start([alone]);
+    // With no server to be the room, one of the devices can be, for those on the same wifi.
+    const onWifi: Action[] = nearby.canLink() ? [{ label: "Play on this wifi", run: () => gather(null, false, { offer: null }) }] : [];
+    const invited = new URLSearchParams(location.search);
+    // A host's code, in the link their screen showed: after the "#", which never leaves the device.
+    if (invited.get("wifi") === "join" && location.hash.length > 1 && nearby.canLink()) return gather(null, false, { offer: decodeURIComponent(location.hash.slice(1)) });
+    start([alone, ...onWifi]);
     if (!options.rooms) return;
     // The server may have no rooms (a site with no server at all has none): then there is only playing alone.
     void hasRooms(options.rooms).then((rooms) => {
-      const invited = new URLSearchParams(location.search);
       const code = /^[A-Za-z]{4}$/.test(invited.get("room") ?? "") ? invited.get("room")!.toUpperCase() : null;
       // Still on the way in, and not gone on to something else meanwhile.
       if (engine || net || card.querySelector("h1")?.textContent !== options.title) return;
       if (code && rooms) return gather(code, invited.has("watch"));
-      if (code) return show(options.title, ["That link is to a game with other people, and this site has no games like that: it has no server behind it. You can still play alone."], [alone]);
-      if (rooms) start([alone, { label: "Play together", run: () => gather(null) }]);
+      if (code) return show(options.title, ["That link is to a game with other people over the internet, and this site has none of those: it has no server behind it. You can still play alone, or with people on the same wifi."], [alone, ...onWifi]);
+      if (rooms) start([alone, { label: "Play together", run: () => gather(null) }, ...onWifi]);
     });
   }
 

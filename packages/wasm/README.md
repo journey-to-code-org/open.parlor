@@ -27,9 +27,8 @@ engine, standing in until the game has its own.
 | Saved games and settings | Kept in the browser (IndexedDB), under the engine's own menus |
 | Offline | After the first visit the page, the engine and the game's data are kept on the device |
 
-Not there yet: music (the songs are MUS data, which wants an OPL or MIDI synthesiser), playing
-together with the internet out (over the parlor's same-wifi pairing), joining a game that has
-started as a player, replays of games that are over, and an editor for the game's levels.
+Not there yet: music (the songs are MUS data, which wants an OPL or MIDI synthesiser), joining a
+game that has started as a player, replays of games that are over, and an editor for the game's levels.
 
 ## The editor
 
@@ -76,7 +75,23 @@ parlor's server, behind a WebSocket at `/wasm/play/<code>`.
 - **The games coming apart** is caught by the engine itself: each command carries a check on
   where its player stood, and a device that disagrees stops with "consistency failure".
 
-A site with no server behind it (GitHub Pages) has no rooms; there the game is played alone.
+### On the same wifi, with no server
+
+A site with no server behind it (GitHub Pages), or a parlor whose internet is out, has no rooms.
+There one of the devices is the room: **Play on this wifi**, then **Host a game**. The same
+`Room` runs in the host's page, and the others reach it over WebRTC data channels with no server
+of any kind between them.
+
+A channel is opened by two scans, the parlor's own way (`packages/web/src/wifi`, brought here as
+`src/wifi/` so this package stands alone). The host's screen shows a QR code that is a link to
+this page with an offer after the `#`; a phone's camera opens it, from what the device kept. The
+guest's screen then shows a code back, which the host reads with **Use the camera**, or pastes.
+The host can add people while the game is on; they come to watch.
+
+- The game is the host's page: when the host leaves, it ends for everyone.
+- Devices have to be able to reach each other: a guest network, or a hotspot with "client
+  isolation", keeps them apart, and the screen says so.
+- Each device needs to have opened the game once with a connection, to have it kept.
 
 ## How it is put together
 
@@ -106,6 +121,8 @@ src/
   shooter/player.ts   the game on a page: mountShooter(element, options)
   shooter/session.ts  a device's side of a room. No DOM, and no WebSocket: the tests join it to a room directly
   shooter/together.ts asking the server for a room, the connection to it, and the lobby
+  shooter/nearby.ts   a room in the host's own page, and the screens that pair devices by QR code
+  wifi/               the pairing itself: the code (signal.ts), the channel (link.ts), QR codes (qr.ts)
   shooter/keys.ts, touch.ts, gamepad.ts, audio.ts
   main.ts             this package's own page
   editor/             the editor: App.svelte, Thumb.svelte, and convert.ts (a dropped file to a lump)
