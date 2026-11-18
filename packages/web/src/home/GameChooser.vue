@@ -1,7 +1,7 @@
 <!--
   The open.parlor's front door: every game as a tile, sorted onto shelves by category (or in the
-  host's order, or by name), a "who's playing?" filter, your houses, and the tables that are waiting
-  for players right now.
+  host's order, or by name), a search box and a "who's playing?" filter, your houses, and the tables
+  that are waiting for players right now.
   A Vue island inside the React app. The cards and the select are Zubra components: in a .vue file a
   .zb import is a Vue component (Zubra's Vue adapter), with props, events and v-model.
 -->
@@ -9,6 +9,8 @@
 import { computed, ref, watch } from "vue";
 import PlayingCard from "@open-parlor/ui/playing-card.zb";
 import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
+import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
+import { matchesSearch, searchWords } from "./search";
 
 export interface ChooserGame {
   id: string;
@@ -68,7 +70,14 @@ const fits = (g: ChooserGame) => {
   const n = Number(players.value);
   return n >= 5 ? g.seats[1] >= 5 : g.seats[0] <= n && n <= g.seats[1];
 };
-const shown = computed(() => props.games.filter(fits));
+
+// Search: what's typed is looked for in each game's name, blurb and category.
+const query = ref("");
+const words = computed(() => searchWords(query.value));
+const categoryName = (id: string) => props.categories.find((c) => c.id === id)?.name ?? id;
+const shown = computed(() => props.games.filter((g) => fits(g) && matchesSearch(g, categoryName(g.category), words.value)));
+/** Why nothing is showing, when nothing is. */
+const noneLine = computed(() => (words.value.length ? `No games match “${query.value.trim()}”${players.value === "any" ? "" : " for that many players"}.` : "No games for that many players yet."));
 
 // How the tiles are sorted: onto shelves by category, in the host's own order, or by name. Kept in this browser.
 type Sort = "category" | "host" | "name";
@@ -94,7 +103,6 @@ watch(sort, (value) => {
     /* private mode: it still applies for now */
   }
 });
-const categoryName = (id: string) => props.categories.find((c) => c.id === id)?.name ?? id;
 /** The tiles in groups: one shelf per category that has a game (each in the host's order), or everything in one. */
 const shelves = computed<{ id: string; name: string; emoji: string; games: ChooserGame[] }[]>(() => {
   if (sort.value === "category") {
@@ -199,6 +207,9 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
       <div class="games-head">
         <h2>Pick a game</h2>
         <div class="choosing">
+          <div class="filter search">
+            <TextField v-model="query" type="search" label="Search" placeholder="Chess, dice, words…" autocomplete="off" inputmode="search" />
+          </div>
           <div class="filter">
             <SelectField v-model="players" label="Who's playing?" :options="sizes" />
           </div>
@@ -317,7 +328,10 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
         </li>
       </ul>
       </template>
-      <p v-if="!shown.length" class="none">No games for that many players yet.</p>
+      <p v-if="!shown.length" class="none" role="status">
+        {{ noneLine }}
+        <button v-if="words.length" type="button" class="house" @click="query = ''">Clear search</button>
+      </p>
     </section>
 
     <p class="fine">Pick a game to practice against the computer, start a family table, find players, or take on a challenger.</p>
@@ -399,6 +413,8 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .shelf + .grid { margin-top: 12px; }
 .filter { min-width: 220px; --background: var(--cream); --foreground: var(--ink); --border: rgba(255, 255, 255, 0.18); --muted-foreground: #cfe2d6; --ring: var(--gold); }
 .choosing { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
+.search { flex: 1 1 220px; }
+.none .house { margin-left: 8px; }
 .surprise { white-space: nowrap; }
 .surprise:disabled { opacity: 0.45; cursor: default; }
 .grid { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: clamp(12px, 1.6vw, 20px); grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); }
