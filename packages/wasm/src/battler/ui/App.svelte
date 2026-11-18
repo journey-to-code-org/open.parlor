@@ -5,7 +5,7 @@
   one back.
 -->
 <script lang="ts">
-  import { CARD_BY_ID } from "../cards.ts";
+  import type { Tables } from "../tables.ts";
   import CardView from "./CardView.svelte";
   import Fight from "./Fight.svelte";
   import Rewards from "./Rewards.svelte";
@@ -13,8 +13,11 @@
 
   type News<T> = Event & { detail: T };
   const fresh = () => Math.floor(Math.random() * 1_000_000) + 1;
+  let { tables }: { tables: Tables } = $props();
   const asked = Number(new URLSearchParams(location.search).get("seed"));
-  const run = createRun(asked > 0 ? Math.floor(asked) : fresh());
+  // The numbers are chosen once, before the page mounts, and a run is played on them to the end.
+  // svelte-ignore state_referenced_locally
+  const run = createRun(asked > 0 ? Math.floor(asked) : fresh(), tables);
   const view = $derived(run.view);
 
   let showDeck = $state(false);
@@ -37,7 +40,7 @@
     again = false;
     run.restart(seed);
   };
-  const sortedDeck = $derived([...view.deck].sort((a, b) => CARD_BY_ID[a.def]!.cost - CARD_BY_ID[b.def]!.cost || CARD_BY_ID[a.def]!.name.localeCompare(CARD_BY_ID[b.def]!.name)));
+  const sortedDeck = $derived([...view.deck].sort((a, b) => run.tables.cardById[a.def]!.cost - run.tables.cardById[b.def]!.cost || run.tables.cardById[a.def]!.name.localeCompare(run.tables.cardById[b.def]!.name)));
 </script>
 
 <main class="page backroom">
@@ -76,7 +79,7 @@
   <span slot="heading">Your deck ({view.deck.length})</span>
   <div class="deck viewer">
     {#each sortedDeck as card (card.uid)}
-      <div class="slot small"><CardView id={card.def} disabled={false} /></div>
+      <div class="slot small"><CardView id={card.def} tables={run.tables} disabled={false} /></div>
     {/each}
   </div>
   <action-button slot="actions" data-close>Done</action-button>

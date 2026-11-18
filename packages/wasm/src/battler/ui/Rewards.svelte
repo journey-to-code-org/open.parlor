@@ -6,7 +6,6 @@
 <script lang="ts">
   import { flip } from "svelte/animate";
   import { fade, scale } from "svelte/transition";
-  import { CARD_BY_ID } from "../cards.ts";
   import { draggable } from "./drag.ts";
   import CardView from "./CardView.svelte";
   import type { Run } from "./run.svelte.ts";
@@ -21,7 +20,7 @@
   /** The offers still on the shelf: all three until one is chosen. */
   const offered = $derived(view.taken ? [] : view.offers.map((id, index) => ({ id, index })));
   const canRemove = $derived(!view.removed && view.deck.length > 5);
-  const sorted = $derived([...view.deck].sort((a, b) => CARD_BY_ID[a.def]!.cost - CARD_BY_ID[b.def]!.cost || CARD_BY_ID[a.def]!.name.localeCompare(CARD_BY_ID[b.def]!.name)));
+  const sorted = $derived([...view.deck].sort((a, b) => run.tables.cardById[a.def]!.cost - run.tables.cardById[b.def]!.cost || run.tables.cardById[a.def]!.name.localeCompare(run.tables.cardById[b.def]!.name)));
 
   function take(index: number) {
     tapped = null;
@@ -47,7 +46,7 @@
         animate:flip={{ duration: 200 }}
         use:draggable={{ enabled: true, onstart: () => (tapped = { from: "offer", index: offer.index }), onover: (zone) => (over = zoneName(zone)), ondrop: (zone) => ((over = ""), zoneName(zone) === "deck" && take(offer.index)), onend: () => (over = "") }}
       >
-        <CardView id={offer.id} selected={tapped?.from === "offer" && tapped.index === offer.index} onpick={() => (tapped = tapped?.from === "offer" && tapped.index === offer.index ? null : { from: "offer", index: offer.index })} />
+        <CardView id={offer.id} tables={run.tables} selected={tapped?.from === "offer" && tapped.index === offer.index} onpick={() => (tapped = tapped?.from === "offer" && tapped.index === offer.index ? null : { from: "offer", index: offer.index })} />
       </div>
     {/each}
     {#if view.taken}<p class="quiet">Chosen.</p>{/if}
@@ -71,7 +70,7 @@
         animate:flip={{ duration: 220 }}
         use:draggable={{ enabled: canRemove, onstart: () => (tapped = { from: "deck", uid: card.uid }), onover: (zone) => (over = zoneName(zone)), ondrop: (zone) => ((over = ""), zoneName(zone) === "shelf" && putBack(card.uid)), onend: () => (over = "") }}
       >
-        <CardView id={card.def} selected={tapped?.from === "deck" && tapped.uid === card.uid} onpick={() => canRemove && (tapped = tapped?.from === "deck" && tapped.uid === card.uid ? null : { from: "deck", uid: card.uid })} />
+        <CardView id={card.def} tables={run.tables} selected={tapped?.from === "deck" && tapped.uid === card.uid} onpick={() => canRemove && (tapped = tapped?.from === "deck" && tapped.uid === card.uid ? null : { from: "deck", uid: card.uid })} />
       </div>
     {/each}
   </div>
