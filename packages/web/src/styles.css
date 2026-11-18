@@ -415,56 +415,17 @@ h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; }
 .chat-form { display: flex; gap: 8px; }
 .chat-form input { flex: 1; font: inherit; padding: 10px 12px; border-radius: 999px; border: 1px solid #d9d2c3; background: white; color: var(--ink); }
 .chat-sheet .error { color: var(--red); margin: 0; }
-/* The house's own chat, on its page: a Vue island of Zubra components (house/HouseChat.vue). */
-/* A cream panel with ink on it, like the table's chat sheet, so every component is dark on light whatever the felt is. */
-.house-chat, .house-chat-theme {
+/* The house's own chat, on its page: open.chat's <chat-room> (house/HouseChat.vue), in the parlor's colours. */
+/* A cream panel with ink on it, like the table's chat sheet, so every component is dark on light whatever the felt is.
+   The page's own --muted is a grey ink, and the components' a pale fill, so it is set again in here. */
+chat-room.house-chat {
   --card: #fffdf7; --card-foreground: var(--ink); --border: #d9d2c3; --input: #d9d2c3; --background: #fffdf7; --foreground: var(--ink);
-  /* --muted is the page's grey ink and, in here, the components' pale fill: the ink is kept under a name of its own. */
-  --hc-ink-soft: #6c6357; --muted-foreground: var(--hc-ink-soft);
+  --muted: #efe6d4; --muted-foreground: #6c6357; --secondary: #efe6d4; --secondary-foreground: var(--ink);
   --primary: var(--felt); --primary-foreground: #fffdf7; --accent: #efe6d4; --accent-foreground: var(--ink); --ring: var(--gold);
-  --muted: #efe6d4; --secondary: #efe6d4; --secondary-foreground: var(--ink);
-  color: var(--ink);
+  --chat-bubble: #efe6d4; --chat-bubble-mine: #e8c46a55; --chat-name: var(--felt);
+  display: block; padding: 12px; border-radius: var(--radius); background: var(--cream); color: var(--ink);
 }
-.house-chat { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: var(--radius); background: var(--cream); }
-.house-chat > * { min-width: 0; }
-.hc-face { display: inline-flex; transition: opacity 0.3s; }
-.hc-face.away { opacity: 0.45; }
-.hc-count { margin-left: 4px; }
-.hc-log { max-height: min(46vh, 380px); min-height: 96px; overflow-y: auto; overscroll-behavior: contain; border-radius: 8px; }
-.hc-log:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-.hc-log empty-state .empty { padding: 1.25rem 1rem; }
-.hc-msg { display: flex; align-items: flex-end; gap: 6px; max-width: 88%; align-self: flex-start; }
-.hc-msg.mine { align-self: flex-end; }
-.hc-bubble { display: flex; flex-direction: column; min-width: 0; padding: 6px 10px; border-radius: 12px; background: #efe6d4; }
-.hc-msg.mine .hc-bubble { background: #e8c46a55; }
-.hc-who { font-size: 0.72rem; font-weight: 700; color: var(--felt); }
-.hc-who time { font-weight: 400; color: var(--hc-ink-soft); margin-left: 6px; }
-.hc-text { overflow-wrap: anywhere; }
-.hc-take { align-self: flex-end; }
-.hc-take .action-button { font-size: 0.72rem; font-weight: 400; color: var(--hc-ink-soft); }
-.hc-form { display: flex; align-items: flex-end; gap: 8px; }
-.hc-form text-field { flex: 1; min-width: 0; }
-/* Nothing to say is nothing sent: the field's "(optional)" would only be noise. */
-.hc-form .field-optional { display: none; }
-.hc-form action-button { flex: none; }
-.hc-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
-.hc-filter { font-size: 0.9rem; }
-/* A poll: the question, the cards to vote with, and how it stands. */
-.hc-msg.poll { max-width: 100%; width: 100%; }
-.hc-msg.poll .hc-bubble { flex: 1; gap: 8px; }
-.hc-msg.poll .hc-text { font-weight: 700; }
-.hc-vote, .hc-bars { display: block; }
-.hc-bars { --chart-1: var(--felt); }
-.hc-bars figcaption { margin-bottom: 0.4rem; font-size: 0.8rem; font-weight: 600; color: var(--hc-ink-soft); }
-.hc-ask { display: grid; gap: 0.75rem; }
-.hc-ask .field-optional { display: none; }
-.hc-quote { margin: 0 0 0.5rem; font-style: italic; overflow-wrap: anywhere; }
-/* Coming, going and moving along: a message slides in and fades out, and the rest close up after it. */
-.hc-msg-enter-active, .hc-msg-leave-active, .hc-msg-move, .hc-face-move { transition: opacity 0.25s, transform 0.25s; }
-.hc-msg-enter-from { opacity: 0; transform: translateY(8px); }
-.hc-msg-leave-to { opacity: 0; transform: scale(0.96); }
-.hc-msg-leave-active { position: absolute; }
-@media (prefers-reduced-motion: reduce) { .hc-msg-enter-active, .hc-msg-leave-active, .hc-msg-move, .hc-face-move, .hc-face { transition: none; } }
+chat-room.house-chat .chat-bars { --chart-1: var(--felt); }
 
 .me-badge { position: relative; }
 /* Bubbles have their own layer above the table and its sheets: a partner's "go nil!" matters

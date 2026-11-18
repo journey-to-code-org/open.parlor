@@ -166,9 +166,9 @@ export function createCardRoom(
   // "Ask for a game" on the server's own page goes the way the app's does: past the block list, to the relay.
   const pages = createPages(catalogue, { tunables, asking: () => bugs.enabled, ask: async (request) => (await refusal(request)) ?? (await bugs.fetch(request)) });
   const designs = createDesigns(rooms.sync, { tables: rooms });
-  // The houses' chats, followed live by their members' pages at /_zb/house: a Sync server of their
+  // The houses' chats (open.chat), followed live by their members' pages at /_zb/chat: a Sync server of their
   // own, since the rooms' decides only what the rooms kit knows. Only the server writes them.
-  const houseSync = createSyncServer({ mount: "/_zb/house", log, device: "house", authorize: (from) => houses.mayFollow(from), warn: false });
+  const houseSync = createSyncServer({ mount: "/_zb/chat", log, device: "chat", authorize: (from) => houses.mayFollow(from), warn: false });
   const houses = createHouses(rooms, { push, ai, gameOn: catalogue.isOn, deckFor: designs.deckFor, chatSync: houseSync, blockedWords: options.lobby?.blockedNames });
   const challenges = createChallenges(rooms, push, { gameOn: catalogue.isOn });
   // The same player on another device: the houses they are told about are the ones they belong to.
@@ -205,7 +205,7 @@ export function createCardRoom(
   }
 
   /** Everything a blocked player may not do: sit, move, talk, make houses, challenges or designs. Reading is left alone. */
-  const ACTS = ["/rooms", "/houses", "/_zb/house", "/challenges", "/lobby", "/designs", "/courses", "/push", "/spectate", "/bugs", "/me"];
+  const ACTS = ["/rooms", "/houses", "/_zb/chat", "/challenges", "/lobby", "/designs", "/courses", "/push", "/spectate", "/bugs", "/me"];
   const under = (pathname: string, mounts: string[]) => mounts.some((m) => pathname === m || pathname.startsWith(`${m}/`));
   async function refusal(request: Request): Promise<Response | null> {
     if (request.method === "GET" || request.method === "HEAD" || !under(new URL(request.url).pathname, ACTS)) return null;
@@ -308,7 +308,7 @@ export function createCardRoom(
       // The rooms kit and the houses' chats read the request themselves; a blocked player is turned away before they do.
       const blocked = await refusal(new Request(url, { method: req.method === "GET" || req.method === "HEAD" ? "GET" : "POST", headers }));
       if (blocked) return answer(blocked);
-      if (under(url.pathname, ["/_zb/house"])) return houseSync.handle(req, res);
+      if (under(url.pathname, ["/_zb/chat"])) return houseSync.handle(req, res);
       return rooms.handle(req, res);
     },
     close: () => {

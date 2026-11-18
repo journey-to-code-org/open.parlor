@@ -11,6 +11,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@journey-to-code/chat": "^0.1.0",
+    "@journey-to-code/chat-ui": "^0.1.0",
     "@journey-to-code/decks": "^0.1.0",
     "@journey-to-code/games": "^0.1.40",
     "@journey-to-code/palace": "^0.1.0",
