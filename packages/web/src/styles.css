@@ -3313,3 +3313,23 @@ button.word-tile:active:not(:disabled) { transform: translateY(2px); }
 .room-board.big .room-headline { font-size: clamp(1.3rem, 3vw, 2.2rem); }
 .room-board.big bar-chart { display: block; width: min(100%, 44rem); font-size: 1.25rem; text-align: left; }
 .room-board.big .room-seats, .room-board.big .room-gains { justify-content: center; font-size: 1.2rem; }
+
+/* ---- Offline games: choosing what is kept on this device ------------------------------------- */
+.offline-games { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; justify-content: center; background: rgba(0, 0, 0, 0.55); padding: 12px; overflow-y: auto; }
+.offline-games-sheet {
+  --card: #fffdf7; --border: #d6cfba; --input: #fffdf7; --background: #fffdf7; --foreground: var(--ink); --muted-foreground: #646b60;
+  --primary: var(--felt); --primary-foreground: #fffdf7; --accent: #efe8d4; --accent-foreground: var(--ink); --ring: var(--gold);
+  --muted: #ebe4cf; --secondary: #ebe4cf; --secondary-foreground: var(--ink); --card-foreground: var(--ink);
+  display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 520px; max-height: 100%; overflow-y: auto; margin: auto; padding: 18px; border-radius: 18px; background: var(--cream); color: var(--ink); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+.offline-games-sheet h2 { margin: 0; font-size: 1.4rem; }
+.offline-games-sheet p { margin: 0; color: #4c5249; }
+.offline-games-core { padding: 10px 12px; border-radius: 12px; background: #efe8d4; font-size: 0.95rem; }
+.offline-games-core strong { display: block; color: var(--ink); }
+.offline-games-list { display: flex; flex-direction: column; gap: 6px; }
+.offline-games-total strong { color: var(--ink); }
+.offline-games-note { font-size: 0.85rem; }
+.offline-games-sheet > button.primary { align-self: stretch; }
+.table.lazy-wait { min-height: 100dvh; }
+.table.lazy-missing { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.table.lazy-missing .sheet { position: static; transform: none; width: auto; display: flex; flex-direction: column; gap: 12px; max-width: 460px; }

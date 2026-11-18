@@ -3,11 +3,15 @@
 // tables and practice games both come through here, so neither needs to know which kind of game it
 // is running.
 import { isBoardGame, isSportGame, isWordGame, type BoardView, type KitView, type SportView, type WordView } from "@journey-to-code/games";
-import { BoardTable } from "../board/BoardTable";
-import { SportTable } from "../sport/SportTable";
-import { WordTable } from "../word/WordTable";
-import { KitTable, type KitTableProps } from "./KitTable";
 import { HowToPlay, useHowToPlay } from "../HowToPlay";
+import { lazyScreen } from "../offline/lazy";
+import type { KitTableProps } from "./KitTable";
+
+// Each kind of table is fetched when a game of that kind is first opened (offline/lazy.tsx).
+const BoardTable = lazyScreen(() => import("../board/BoardTable").then((m) => m.BoardTable));
+const SportTable = lazyScreen(() => import("../sport/SportTable").then((m) => m.SportTable));
+const WordTable = lazyScreen(() => import("../word/WordTable").then((m) => m.WordTable));
+const KitTable = lazyScreen(() => import("./KitTable").then((m) => m.KitTable));
 
 /**
  * `rules`: what this table is played by, where it is known (practice and same-device tables), so
