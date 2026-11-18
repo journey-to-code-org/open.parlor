@@ -3,6 +3,7 @@ import { ARCADE_LIST } from "./GamePicker";
 import { validatePreset, type RulePreset } from "@journey-to-code/rules";
 import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { HouseAiBlock } from "./HouseAi";
+import { HouseChatBlock } from "./HouseChat";
 import { HouseDeckPicker } from "./TableDeck";
 import { useCallback, useEffect, useState } from "react";
 import { validatePalaceRules, type PalaceRules } from "@journey-to-code/palace";
@@ -253,8 +254,10 @@ function MemberView(props: {
             </li>
           ))}
         </ul>
-        <NotifyButton what="someone opens a table here" />
+        <NotifyButton what="someone opens a table or says something here" />
       </section>
+
+      <HouseChatBlock slug={house.slug} />
 
       <section className="house-block" aria-label="Tournaments">
         <h2>Tournaments</h2>
