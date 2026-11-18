@@ -11,14 +11,17 @@ const page = (name: string) => local(`./${name}/index.html`);
 
 // One build, a page per framework, and the results page at the root (index.html, src/report/). Zubra decides what a .zb import is by the file that imports it:
 // a React component in .tsx, a Vue component in .vue, the custom element anywhere else. Solid's
-// .tsx files ask for the element by name (`?element`), since their JSX isn't React's.
+// and Preact's .tsx files ask for the element by name (`?element`), since their JSX isn't
+// React's. Preact and Lit need no plugin: each Preact file names its JSX with a
+// `@jsxImportSource preact` comment (Preact's own preset would set that for every file, the
+// React components Zubra generates included), and Lit's pages are plain .ts.
 export default defineConfig({
   // Relative, so the build works wherever it is put: at / for the tests, under
   // /open.parlor/conformance/ on GitHub Pages.
   base: "./",
   plugins: [zubra({ dts: false }), react({ include: /src\/react\/.*\.tsx$/ }), solid({ include: /src\/solid\/.*\.tsx$/ }), vue(), svelte()],
   resolve: { alias: { "@open-parlor/ui": local("../ui/src") } },
-  build: { rollupOptions: { input: { report: local("./index.html"), element: page("element"), react: page("react"), vue: page("vue"), svelte: page("svelte"), solid: page("solid") } } },
+  build: { rollupOptions: { input: { report: local("./index.html"), element: page("element"), react: page("react"), vue: page("vue"), svelte: page("svelte"), solid: page("solid"), preact: page("preact"), lit: page("lit") } } },
   server: { port: 4179 },
   preview: { port: 4179, strictPort: true },
 });

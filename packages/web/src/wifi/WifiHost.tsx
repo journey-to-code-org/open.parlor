@@ -18,8 +18,10 @@ interface Guest {
   link: PeerLink;
 }
 
-export function WifiHost({ game: id, name, rules, seats, seed, onLeave }: { game: KitGameId; name: string; rules: unknown; seats: number; seed: number; onLeave: () => void }) {
+export function WifiHost({ game: id, name, others, rules, seats, seed, onLeave }: { game: KitGameId; name: string; /** The other people at this device: they share its screen, in the seats after the host's. */ others?: string[]; rules: unknown; seats: number; seed: number; onLeave: () => void }) {
   const game = kitGame(id)!;
+  /** The people at this device, by name, the host first. Guests take the seats after them. */
+  const here = [personName(name === "You" ? "" : name, 0), ...(others ?? []).slice(0, Math.max(0, seats - 2)).map((n, i) => personName(n, i + 1))];
   const [guests, setGuests] = useState<Guest[]>([]);
   const [playing, setPlaying] = useState(false);
   /** The seat on offer: a code to show, and what to do with the one shown back. */
@@ -30,7 +32,7 @@ export function WifiHost({ game: id, name, rules, seats, seed, onLeave }: { game
   const [problem, setProblem] = useState<string | null>(canLink() ? null : "This browser can't connect to other devices directly.");
   const all = useRef<Guest[]>([]);
   all.current = guests;
-  const full = guests.length >= seats - 1;
+  const full = guests.length >= seats - here.length;
 
   // One seat on offer at a time, until the table is full or the game starts.
   useEffect(() => {
@@ -72,10 +74,10 @@ export function WifiHost({ game: id, name, rules, seats, seed, onLeave }: { game
           done(String(message.name ?? ""));
         });
       });
-      const joined = [...all.current, { name: personName(said, all.current.length + 1), link }];
+      const joined = [...all.current, { name: personName(said, all.current.length + here.length), link }];
       link.closed(() => setGuests((now) => (playingNow.current ? now : now.filter((g) => g.link !== link))));
       setGuests(joined);
-      for (const guest of joined) guest.link.send({ t: "seated", names: [personName(name === "You" ? "" : name, 0), ...joined.map((g) => g.name)] });
+      for (const guest of joined) guest.link.send({ t: "seated", names: [...here, ...joined.map((g) => g.name)] });
       setSeat(null);
       setScanning(false);
       setTyped("");
@@ -95,9 +97,9 @@ export function WifiHost({ game: id, name, rules, seats, seed, onLeave }: { game
   const playingNow = useRef(playing);
   playingNow.current = playing;
 
-  if (playing) return <LocalKit game={id} name={name} guests={guests} rules={rules} seats={seats} seed={seed} onLeave={onLeave} />;
+  if (playing) return <LocalKit game={id} name={name} others={here.slice(1)} guests={guests} rules={rules} seats={seats} seed={seed} onLeave={onLeave} />;
 
-  const left = seats - 1 - guests.length;
+  const left = seats - here.length - guests.length;
   return (
     <main className="setup wifi">
       <header className="setup-head">
@@ -111,11 +113,14 @@ export function WifiHost({ game: id, name, rules, seats, seed, onLeave }: { game
         ← Back
       </button>
 
-      {guests.length > 0 && (
+      {(guests.length > 0 || here.length > 1) && (
         <section className="wifi-step" aria-label="At the table">
           <h2>At the table</h2>
           <ul className="wifi-seats">
-            <li>{personName(name === "You" ? "" : name, 0)} (you)</li>
+            <li>{here[0]} (you)</li>
+            {here.slice(1).map((person) => (
+              <li key={person}>{person} (at this device)</li>
+            ))}
             {guests.map((guest) => (
               <li key={guest.name}>{guest.name}</li>
             ))}

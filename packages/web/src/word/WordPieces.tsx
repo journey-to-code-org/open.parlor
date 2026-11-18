@@ -1,23 +1,58 @@
 // The parts of the word table for the games whose moves can't be typed on a keyboard:
 //
 // - TraceGrid: a square of letters a word is traced on (Word Hunt). Drag across touching tiles, or
-//   tap them one by one; a drag of two tiles or more sends the word when the finger lifts.
+//   tap them one by one; a drag of two tiles or more sends the word when the finger lifts. The
+//   trace is drawn: a line through the letters in the order they were taken, out to the finger.
 // - PlaceBoard: a board tiles are put on from your own hand (Criss-Crosswords). Tap a tile in your
 //   hand, then a square; tap a tile you put down to take it back.
 // - Canvas: a picture drawn a stroke at a time (Draw & Guess), with pens to draw it with.
 import { CANVAS_COLORS, CANVAS_SIZES, STROKE_POINTS, type PlacedTile, type WordBoard, type WordCanvas, type WordStroke } from "@journey-to-code/games";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 // ---- A square to trace words on ------------------------------------------------------------------
 
 const touching = (n: number, a: number, b: number) => a !== b && Math.abs(Math.floor(a / n) - Math.floor(b / n)) <= 1 && Math.abs((a % n) - (b % n)) <= 1;
 
-export function TraceGrid({ board, path, onPath, onSend, disabled }: { board: WordBoard; path: number[]; onPath: (path: number[]) => void; onSend: (path: number[]) => void; disabled: boolean }) {
+/** A word that has just been sent, shown on the square for a moment: the tiles it took, and whether it counted. */
+export interface TraceFlash {
+  path: number[];
+  kind: "good" | "bad";
+  word: string;
+}
+
+/** The trace as the points of a line: the middles of its tiles, in order. */
+export const tracePoints = (path: number[], middles: readonly (readonly [number, number])[]) =>
+  path
+    .map((tile) => middles[tile])
+    .filter((at): at is readonly [number, number] => !!at)
+    .map(([x, y]) => `${Math.round(x * 10) / 10},${Math.round(y * 10) / 10}`)
+    .join(" ");
+
+export function TraceGrid({ board, path, flash, onPath, onSend, disabled }: { board: WordBoard; path: number[]; /** A word just sent, shown in place of the trace until it fades. */ flash?: TraceFlash | null; onPath: (path: number[]) => void; onSend: (path: number[]) => void; disabled: boolean }) {
   const n = board.cols;
   const letters = board.rows.flat().map((t) => t.letter);
   const drag = useRef<{ start: number[]; moved: boolean } | null>(null);
   const now = useRef(path);
   now.current = path;
+  // Where the tiles are, to draw the trace through the middle of each: measured, since the square
+  // is as wide as the screen lets it be.
+  const grid = useRef<HTMLDivElement>(null);
+  const [room, setRoom] = useState<{ w: number; h: number; middles: [number, number][] }>({ w: 0, h: 0, middles: [] });
+  useLayoutEffect(() => {
+    const el = grid.current;
+    if (!el) return;
+    const measure = () => {
+      const box = el.getBoundingClientRect();
+      const middles = [...el.querySelectorAll<HTMLElement>("[data-tile]")].map((tile): [number, number] => [tile.offsetLeft + tile.offsetWidth / 2, tile.offsetTop + tile.offsetHeight / 2]);
+      setRoom({ w: box.width, h: box.height, middles });
+    };
+    measure();
+    const watch = typeof ResizeObserver === "function" ? new ResizeObserver(measure) : null;
+    watch?.observe(el);
+    return () => watch?.disconnect();
+  }, [n, letters.length]);
+  /** Where the finger is on the square while it drags, for the end of the line that follows it. */
+  const [finger, setFinger] = useState<[number, number] | null>(null);
 
   /** The tile under a point, if it's one of this grid's. Touch keeps sending events to the first tile, so look it up. */
   const tileAt = (x: number, y: number): number | null => {
@@ -56,6 +91,8 @@ export function TraceGrid({ board, path, onPath, onSend, disabled }: { board: Wo
   useEffect(() => {
     const move = (e: PointerEvent) => {
       if (!drag.current) return;
+      const box = grid.current?.getBoundingClientRect();
+      if (box) setFinger([e.clientX - box.left, e.clientY - box.top]);
       const tile = tileAt(e.clientX, e.clientY);
       if (tile === null) return;
       const p = now.current;
@@ -63,11 +100,14 @@ export function TraceGrid({ board, path, onPath, onSend, disabled }: { board: Wo
       const grown = extend(p, tile);
       if (!grown) return;
       drag.current.moved = true;
+      // A tick under the finger for each letter taken, where the device has one.
+      if (grown.length > p.length) navigator.vibrate?.(8);
       onPath(grown);
     };
     const up = () => {
       const d = drag.current;
       drag.current = null;
+      setFinger(null);
       // A drag across two tiles or more is a word, sent as the finger lifts.
       if (d?.moved && now.current.length >= 2) onSend(now.current);
     };
@@ -81,17 +121,30 @@ export function TraceGrid({ board, path, onPath, onSend, disabled }: { board: Wo
     };
   }, [n, onPath, onSend]);
 
+  // What is drawn: the word just sent, while it shows, or the trace being made.
+  const shown = flash ? flash.path : path;
+  const last = room.middles[shown[shown.length - 1] ?? -1];
+  const first = room.middles[shown[0] ?? -1];
+  const cell = room.w / n;
   return (
-    <div className={`trace-grid cols-${n}`} style={{ "--cols": n } as React.CSSProperties} role="group" aria-label={`${board.label}: drag across touching letters, or tap them in turn`}>
+    <div ref={grid} className={`trace-grid cols-${n}${shown.length && !flash ? " tracing" : ""}${flash ? ` is-${flash.kind}` : ""}`} style={{ "--cols": n } as React.CSSProperties} role="group" aria-label={`${board.label}: drag across touching letters, or tap them in turn`}>
+      {first && room.w > 0 && (
+        <svg className="trace-line" viewBox={`0 0 ${room.w} ${room.h}`} aria-hidden>
+          <polyline className="trace-line-path" points={tracePoints(shown, room.middles)} style={{ strokeWidth: cell * 0.26 }} />
+          {!flash && finger && last && <line className="trace-line-tail" x1={last[0]} y1={last[1]} x2={finger[0]} y2={finger[1]} style={{ strokeWidth: cell * 0.12 }} />}
+          <circle className="trace-line-start" cx={first[0]} cy={first[1]} r={cell * 0.2} />
+        </svg>
+      )}
       {letters.map((letter, i) => {
-        const at = path.indexOf(i);
-        const next = path.length ? !path.includes(i) && touching(n, path[path.length - 1]!, i) : true;
+        const at = shown.indexOf(i);
+        const next = !flash && path.length ? !path.includes(i) && touching(n, path[path.length - 1]!, i) : true;
         return (
           <button
             key={i}
             type="button"
             data-tile={i}
-            className={`word-tile trace-tile${at >= 0 ? " on" : ""}${at === path.length - 1 && at >= 0 ? " last" : ""}${path.length && next ? " next" : ""}`}
+            className={`word-tile trace-tile${at >= 0 ? " on" : ""}${at === shown.length - 1 && at >= 0 ? " last" : ""}${path.length && next ? " next" : ""}`}
+            style={at >= 0 ? ({ "--i": at } as React.CSSProperties) : undefined}
             disabled={disabled}
             aria-pressed={at >= 0}
             aria-label={`${letter.toUpperCase()}, row ${Math.floor(i / n) + 1}, column ${(i % n) + 1}${at >= 0 ? `, letter ${at + 1} of your word` : ""}`}
@@ -105,7 +158,6 @@ export function TraceGrid({ board, path, onPath, onSend, disabled }: { board: Wo
             }}
           >
             {letter}
-            {at >= 0 && <small aria-hidden>{at + 1}</small>}
           </button>
         );
       })}
