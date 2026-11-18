@@ -469,6 +469,15 @@ fields as they change, and the button goes. It is made of the same zubra-ui comp
 served to the browser from `/_zubra/`. The front page links to it where there is a server to draw
 it; a parlor published as plain files (GitHub Pages) has none.
 
+Where the parlor takes requests, the page ends with "Ask for a game"
+([`game-request.zb`](packages/server/pages/game-request.zb)), a form that posts to a function the
+component marks `'use server'` ([`@zubra/actions`](https://github.com/journey-to-code-org/zubra/blob/main/docs/actions.md),
+at `/_zb/action/…`). The function runs on the server and is never sent to the browser. With
+JavaScript off the browser posts the form, the server sends it back to the page, and the page is
+drawn with the answer once; with it on the post is a fetch and the page doesn't reload. A game the
+parlor already has is pointed to; anything else goes to the same relay as the app's own sheet, with
+its limits and its block list.
+
 One set of Zubra components serves five frameworks: React and Vue in the parlor, Svelte in the
 designer, Solid on the watch page and Angular in the admin app.
 

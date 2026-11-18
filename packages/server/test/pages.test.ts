@@ -79,3 +79,112 @@ describe("the games page", () => {
     expect((await pages.fetch(new Request("http://parlor.test/games", { method: "POST" })))!.status).toBe(404);
   });
 });
+
+describe("asking for a game", () => {
+  /** A parlor that takes requests, with the relay's route faked: what it was sent, and what it says. */
+  function asking(reply: () => Response = () => Response.json({ ok: true, number: 7, url: "https://github.com/o/r/issues/7", again: false }, { status: 201 })) {
+    const sent: { url: string; cookie: string | null; body: { name: string; note: string } }[] = [];
+    const pages = createPages(
+      { state: async () => ({ games: GAMES as never, watching: true }) },
+      {
+        asking: () => true,
+        ask: async (request) => {
+          sent.push({ url: new URL(request.url).pathname, cookie: request.headers.get("cookie"), body: (await request.json()) as { name: string; note: string } });
+          return reply();
+        },
+      },
+    );
+    const ACTION = "http://parlor.test/_zb/action/game-request/ask";
+    /** A form's post: as the page's script sends it (`json`), or as a browser without JavaScript does. */
+    const post = (fields: Record<string, string>, { json = true, headers = {} as Record<string, string> } = {}) =>
+      pages.fetch(new Request(ACTION, { method: "POST", headers: { ...(json ? { accept: "application/json" } : { referer: "http://parlor.test/games?kind=table" }), cookie: "player=abc", ...headers }, body: new URLSearchParams(fields) }));
+    return { pages, sent, post };
+  }
+
+  it("is a form that posts to a function on the server, only where the parlor takes requests", async () => {
+    const html = await (await asking().pages.fetch(new Request("http://parlor.test/games")))!.text();
+    expect(html).toMatch(/<form[^>]*action="\/_zb\/action\/game-request\/ask"[^>]*method="post"|<form[^>]*method="post"[^>]*action="\/_zb\/action\/game-request\/ask"/);
+    expect(html).toMatch(/<input[^>]*name="name"/);
+    expect(html).toMatch(/<textarea[^>]*name="note"/);
+    expect(html).toContain("/_zb/actions.js");
+    // The function itself never reaches the browser: neither the page nor the component's module has it.
+    const module = await (await asking().pages.fetch(new Request("http://parlor.test/_zubra/components/game-request.js")))!.text();
+    expect(module).toContain("/_zb/action/game-request/ask");
+    expect(module).not.toContain("askFor");
+    expect(module).not.toContain("use server");
+    // The parlor at the top of this file takes no requests.
+    const without = await (await get("/games")).text();
+    expect(without).not.toContain("game-request");
+    expect(without).not.toContain("/_zb/actions.js");
+  });
+
+  it("sends a request on to the relay with the visitor's own cookie, and answers the page's script", async () => {
+    const { post, sent } = asking();
+    const reply = (await post({ name: "Mah-Jongg", note: "The way Grammi plays it" }))!;
+    expect(reply.status).toBe(200);
+    expect(await reply.json()).toEqual({ ok: true, again: false, url: "https://github.com/o/r/issues/7" });
+    expect(sent).toEqual([{ url: "/bugs/request", cookie: "player=abc", body: { name: "Mah-Jongg", note: "The way Grammi plays it" } }]);
+  });
+
+  it("says so, and files nothing, for a game the parlor already has", async () => {
+    const { post, sent } = asking();
+    expect(await (await post({ name: "  palace " }))!.json()).toEqual({ have: { name: "Palace", emoji: "🏰", href: "/?game=palace" } });
+    expect(await (await post({ name: "x" }))!.json()).toEqual({ error: "Which game would you like?" });
+    // Chess is switched off here, so it can be asked for.
+    expect(await (await post({ name: "Chess" }))!.json()).toMatchObject({ ok: true });
+    expect(sent.map((s) => s.body.name)).toEqual(["Chess"]);
+  });
+
+  it("passes on what the relay says when it won't take the request", async () => {
+    const { post } = asking(() => Response.json({ error: "That's a lot of requests. Try again tomorrow." }, { status: 429 }));
+    expect(await (await post({ name: "Skat" }))!.json()).toEqual({ error: "That's a lot of requests. Try again tomorrow." });
+  });
+
+  it("works without JavaScript: the post goes back to the page, which is drawn with the answer once", async () => {
+    const { post, pages } = asking();
+    const reply = (await post({ name: "Skat", note: "" }, { json: false }))!;
+    expect(reply.status).toBe(303);
+    expect(reply.headers.get("location")).toBe("/games?kind=table");
+    const cookie = reply.headers.get("set-cookie")!.split(";")[0]!;
+    const page = (await pages.fetch(new Request("http://parlor.test/games?kind=table", { headers: { cookie } })))!;
+    const html = await page.text();
+    expect(html).toContain("Your request is in.");
+    expect(html).toContain('href="https://github.com/o/r/issues/7"');
+    // The answer is shown once: the page clears it, and the next visit has none.
+    expect(page.headers.get("set-cookie")).toMatch(/zb_result=;|Max-Age=0|Expires=/i);
+    expect(await (await pages.fetch(new Request("http://parlor.test/games")))!.text()).not.toContain("Your request is in.");
+  });
+
+  it("refuses a post from another site", async () => {
+    const { post, sent } = asking();
+    const reply = (await post({ name: "Skat" }, { headers: { "sec-fetch-site": "cross-site" } }))!;
+    expect(reply.status).toBeGreaterThanOrEqual(400);
+    expect(sent).toEqual([]);
+  });
+});
+
+describe("asking for a game, through the whole server", () => {
+  it("files the request on GitHub the way the app's sheet does", async () => {
+    const { createCardRoom } = await import("../src/app.js");
+    const { memoryLog } = await import("@zubra/sync/server");
+    const asked: { url: string; method: string; body: { title?: string; labels?: string[] } | null }[] = [];
+    const fetch = (async (url: string, init: RequestInit) => {
+      asked.push({ url, method: String(init.method), body: init.body ? JSON.parse(String(init.body)) : null });
+      if (init.method === "GET") return new Response("[]");
+      return new Response(JSON.stringify({ number: 41, html_url: "https://github.com/o/r/issues/41" }), { status: 201 });
+    }) as unknown as typeof globalThis.fetch;
+    const app = createCardRoom({ log: memoryLog({ keep: "latest" }), botDelay: 5, talk: false, bugs: { token: "ghp_secret", repo: "o/r", fetch } });
+    try {
+      const page = await (await app.fetch(new Request("https://cards.test/games")))!.text();
+      expect(page).toContain('action="/_zb/action/game-request/ask"');
+      const reply = (await app.fetch(new Request("https://cards.test/_zb/action/game-request/ask", { method: "POST", headers: { accept: "application/json" }, body: new URLSearchParams({ name: "Skat", note: "Three players" }) })))!;
+      expect(await reply.json()).toEqual({ ok: true, again: false, url: "https://github.com/o/r/issues/41" });
+      const filed = asked.find((a) => a.method === "POST")!;
+      expect(filed.body).toMatchObject({ title: "Game request: Skat", labels: ["enhancement", "game request"] });
+      // Sync's own routes under /_zb are still the rooms kit's.
+      expect((await app.fetch(new Request("https://cards.test/_zb/action/nothing/here", { method: "POST" })))!.status).toBe(404);
+    } finally {
+      app.close();
+    }
+  });
+});
