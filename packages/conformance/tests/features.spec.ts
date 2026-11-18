@@ -10,13 +10,28 @@
 // A listed check is expected to fail; when Zubra fixes it the run says so and the entry goes.
 import { expect, test, type Page } from "@playwright/test";
 
-const FRAMEWORKS = ["react", "vue", "svelte", "solid", "angular"] as const;
+const FRAMEWORKS = ["react", "vue", "svelte", "solid", "angular", "preact", "lit"] as const;
 type Framework = (typeof FRAMEWORKS)[number];
 
-// Nothing differs today. The one found when these were written (a disabled reactive form left
-// toggle-switch, color-swatches and segmented-control usable: zubra-ui#20 and #22) is fixed in the
-// parlor's copies of the components.
-const KNOWN: Partial<Record<Framework, Record<string, string>>> = {};
+/** A difference already reported upstream. `when` narrows it to the browsers that show it. */
+interface Known {
+  issue: string;
+  when?: (page: Page) => Promise<boolean>;
+}
+
+const REORDER = "a keyed list reordered in a slot keeps its elements";
+
+const KNOWN: Partial<Record<Framework, Record<string, Known>>> = {
+  // Preact 11 reorders with moveBefore() where the browser has it, and a Zubra host routes
+  // insertBefore to its slots but not moveBefore: the move throws and the list keeps its order.
+  // A browser without moveBefore takes Preact's insertBefore path, which works.
+  preact: {
+    [REORDER]: {
+      issue: "https://github.com/journey-to-code-org/zubra/issues/370",
+      when: (page) => page.evaluate(() => "moveBefore" in Element.prototype),
+    },
+  },
+};
 
 const t = (page: Page, name: string) => page.locator(`[data-t="${name}"]`);
 
@@ -29,8 +44,8 @@ interface Feature {
 
 const FEATURES: Feature[] = [
   {
-    title: "a keyed list reordered in a slot keeps its elements",
-    in: { react: "key", vue: "TransitionGroup", svelte: "keyed each with animate:flip", solid: "For", angular: "@for with track" },
+    title: REORDER,
+    in: { react: "key", vue: "TransitionGroup", svelte: "keyed each with animate:flip", solid: "For", angular: "@for with track", preact: "key", lit: "repeat" },
     body: async (page) => {
       const items = t(page, "f-order").locator(".stack").locator("[data-f-item]");
       await expect(items).toHaveText(["ace", "king", "queen"]);
@@ -44,7 +59,7 @@ const FEATURES: Feature[] = [
   },
   {
     title: "the page's own component in a slot still gets the page's context",
-    in: { react: "context", vue: "provide / inject", svelte: "setContext", solid: "context", angular: "dependency injection" },
+    in: { react: "context", vue: "provide / inject", svelte: "setContext", solid: "context", angular: "dependency injection", preact: "context", lit: "@lit/context" },
     body: async (page) => {
       const word = t(page, "f-ctx-home").locator(".empty-text").locator('[data-t="f-ctx"]');
       await expect(word).toHaveText("hello");
@@ -54,7 +69,7 @@ const FEATURES: Feature[] = [
   },
   {
     title: "class and style bindings land on the component and leave its own alone",
-    in: { react: "className and style", vue: ":class and :style", svelte: "class: and style:", solid: "classList and style", angular: "[class.x] and [style.x]" },
+    in: { react: "className and style", vue: ":class and :style", svelte: "class: and style:", solid: "classList and style", angular: "[class.x] and [style.x]", preact: "class and style", lit: "classMap and styleMap" },
     body: async (page) => {
       const badge = t(page, "f-styled");
       await expect(badge).not.toHaveClass(/f-hot/);
@@ -70,7 +85,7 @@ const FEATURES: Feature[] = [
   },
   {
     title: "a component drawn somewhere else on the page is still bound both ways",
-    in: { react: "createPortal", vue: "Teleport", solid: "Portal" },
+    in: { react: "createPortal", vue: "Teleport", solid: "Portal", preact: "createPortal" },
     body: async (page) => {
       await expect(t(page, "f-portal")).toHaveCount(1);
       await expect(t(page, "f-features").locator('[data-t="f-portal"]')).toHaveCount(0);
@@ -83,7 +98,7 @@ const FEATURES: Feature[] = [
   },
   {
     title: "a component that is loaded later arrives and works",
-    in: { react: "lazy and Suspense", vue: "defineAsyncComponent", svelte: "#await import()", solid: "lazy and Suspense", angular: "@defer" },
+    in: { react: "lazy and Suspense", vue: "defineAsyncComponent", svelte: "#await import()", solid: "lazy and Suspense", angular: "@defer", preact: "lazy and Suspense", lit: "until" },
     body: async (page) => {
       await expect(t(page, "f-lazy-wait")).toBeVisible();
       await expect(t(page, "f-lazy")).toHaveCount(0);
@@ -98,7 +113,7 @@ const FEATURES: Feature[] = [
   },
   {
     title: "a component kept while it is off the page keeps what was typed",
-    in: { react: "Activity", vue: "KeepAlive" },
+    in: { react: "Activity", vue: "KeepAlive", lit: "cache" },
     body: async (page) => {
       const input = t(page, "f-kept").locator("input");
       await input.fill("still here");
@@ -131,7 +146,7 @@ const FEATURES: Feature[] = [
   },
   {
     title: "props handed over as one object reach the component",
-    in: { react: "spread", vue: "v-bind with an object", svelte: "spread", solid: "spread" },
+    in: { react: "spread", vue: "v-bind with an object", svelte: "spread", solid: "spread", preact: "spread" },
     body: async (page) => {
       const badge = t(page, "f-spread").locator("span").first();
       await expect(badge).toHaveClass(/badge-neutral/);
@@ -310,7 +325,7 @@ const FEATURES: Feature[] = [
   },
   {
     title: "a keyed block makes the component afresh",
-    in: { svelte: "#key" },
+    in: { svelte: "#key", lit: "keyed" },
     body: async (page) => {
       const button = t(page, "f-keyed").getByRole("switch");
       await button.click();
@@ -370,7 +385,7 @@ for (const framework of FRAMEWORKS) {
       ];
       test(`${feature.title} (${name})`, { annotation }, async ({ page }) => {
         const known = KNOWN[framework]?.[feature.title];
-        test.fail(!!known, known);
+        if (known) test.fail(known.when ? await known.when(page) : true, known.issue);
         await feature.body(page, framework);
         expect(errors, "errors on the page").toEqual([]);
       });

@@ -187,9 +187,10 @@ const FRAME = 0.34;
 /**
  * Drop Four's rack, in squares: the two grilles are `wall` thick, the front one's face `front` out
  * from the squares, with the discs in the gap between; a hole is a little smaller than a disc, so
- * the disc stays in; and the rack goes on past the squares this far at the sides, top and bottom.
+ * the disc stays in; and the rack goes on past the squares this far at the sides and top, and at the bottom far enough
+ * to hide a disc on its way out.
  */
-const RACK = { wall: 0.09, front: 0.28, hole: 0.36, side: 0.22, top: 0.16, bottom: 0.3 };
+const RACK = { wall: 0.09, front: 0.28, hole: 0.36, side: 0.22, top: 0.16, bottom: 0.62 };
 const THICK = 0.2;
 /** What each game's board is made of: the frame, and how its playing surface is painted. */
 interface Surface {
@@ -561,6 +562,12 @@ export function build(canvas: HTMLCanvasElement): Board3d | null {
   function place(p: Piece3d, frame: BoardFrame3d) {
     let s = standing.get(p.id);
     const to = spot(p.at);
+    // A disc put where one is still falling out of the rack is a new disc, not that one come back.
+    if (s && s.gone !== undefined && frame.gravity) {
+      pieces.remove(s.mesh);
+      standing.delete(p.id);
+      s = undefined;
+    }
     if (!s || s.kind !== p.kind || s.light !== p.light || s.tone !== p.tone) {
       // New to the board, a pawn that has become something else, or a disc turned to the other side.
       const from = s ? s.to : to;
@@ -590,6 +597,19 @@ export function build(canvas: HTMLCanvasElement): Board3d | null {
   function moveAll(frame: BoardFrame3d): boolean {
     let busy = false;
     for (const [id, s] of standing) {
+      if (s.gone !== undefined && frame.gravity) {
+        // Out of a rack that stands: the bar at the bottom is let go and it falls out, as every
+        // disc does when the rack is emptied for the next round, each from where it was.
+        const t = Math.max(0, frame.time - s.gone) / 1000;
+        const z = s.to[1] + 14 * t * t;
+        s.mesh.position.set(s.to[0], 0, z);
+        // (Gone once it is wholly inside the base, which is deep enough to hide a disc.)
+        if (z > rows / 2 + RACK.bottom - 0.4) {
+          pieces.remove(s.mesh);
+          standing.delete(id);
+        } else busy = true;
+        continue;
+      }
       if (s.gone !== undefined) {
         // Taken: it sinks out of the way of what took it.
         const t = Math.min(1, (frame.time - s.gone) / 200);
@@ -604,7 +624,8 @@ export function build(canvas: HTMLCanvasElement): Board3d | null {
       const k = ease(t);
       const far = Math.hypot(s.to[0] - s.from[0], s.to[1] - s.from[1]);
       // It is lifted over the board as it goes; a knight goes over the top of things.
-      const hop = t < 1 ? Math.sin(t * Math.PI) * (s.kind === "knight" ? 0.55 : Math.min(0.22, far * 0.08)) : 0;
+      // (Not in a rack: there it stays between the grilles and slides down.)
+      const hop = t < 1 && !frame.gravity ? Math.sin(t * Math.PI) * (s.kind === "knight" ? 0.55 : Math.min(0.22, far * 0.08)) : 0;
       s.mesh.position.set(s.from[0] + (s.to[0] - s.from[0]) * k, hop, s.from[1] + (s.to[1] - s.from[1]) * k);
       s.mesh.scale.setScalar(1);
       s.mesh.rotation.x = 0;
@@ -694,7 +715,7 @@ export function build(canvas: HTMLCanvasElement): Board3d | null {
           if (frame.still) {
             pieces.remove(s.mesh);
             standing.delete(id);
-          } else s.gone = frame.time + 120;
+          } else s.gone = frame.time + (frame.gravity ? 0 : 120);
         }
         let busy = moveAll(frame);
         begun = true;
