@@ -326,7 +326,7 @@ describe("the game", () => {
     };
     // A picture for each moment of standing and walking, so it is there to be seen whichever it is in.
     const sprite: Change = { kind: "sprite", name: "RATXA0", data: encodePatch(body) };
-    const sprites: Change[] = [sprite, ...[..."BCD"].map((frame) => ({ kind: "sprite", name: `RATX${frame}0`, data: encodePatch(body) }))];
+    const sprites: Change[] = [sprite, ...[..."BCD"].map((frame) => ({ kind: "sprite" as const, name: `RATX${frame}0`, data: encodePatch(body) }))];
     const voice: Change = { kind: "sound", name: "DSMINE", data: tone };
     const ruled: Change = { kind: "rules", name: RULES, data: writeRules(rules) };
     const song: Change = { kind: "other", name: "D_E1M1", data: tune };
