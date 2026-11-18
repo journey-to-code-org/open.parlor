@@ -1,5 +1,5 @@
 <!--
-  The editor for the game's pictures and sounds: everything the game is drawn and heard with, by
+  The editor for the game: everything the game is drawn and heard with, and every other lump of its data, by
   kind, each of which can be swapped for a file of your own. What is changed is kept in this
   browser, and is what the game is played with, alone.
 
@@ -14,12 +14,12 @@
   import nodesWasm from "../../games/shooter/nodes/nodes.wasm?url";
   import wasm from "../../games/shooter/shooter.wasm?url";
   import { asset as fetched } from "../../host/assets.ts";
-  import { type Asset, catalogue, isDrawn, key, type Kind, KINDS } from "../../wad/catalogue.ts";
+  import { type Asset, canAdd, catalogue, isDrawn, isNewName, key, type Kind, KINDS } from "../../wad/catalogue.ts";
   import { WORDS } from "../../wad/words.ts";
   import { wallNames } from "../../wad/level.ts";
   import { composeWall, wallPictures as readWallPictures } from "../../wad/texture.ts";
-  import { applyMod, type Change, modFromWad, modToWad } from "../../wad/mod.ts";
-  import { type Palette, paletteOf } from "../../wad/picture.ts";
+  import { applyMod, type Change, isAddition, modFromWad, modToWad } from "../../wad/mod.ts";
+  import { decodePatch, type Palette, paletteOf } from "../../wad/picture.ts";
   import { loadMod, removeChange, saveChange } from "../../wad/saved.ts";
   import { readWad, type Wad } from "../../wad/wad.ts";
   import { withDelbies } from "../shooter/delbies.ts";
@@ -32,13 +32,18 @@
   type News<T> = CustomEvent<T>;
   type Tab = Kind | "level" | "said" | "changed" | "play";
 
-  const LABELS: Record<string, string> = { sprite: "Sprites", wall: "Walls", floor: "Floors", screen: "Screens", sound: "Sounds" };
+  const LABELS: Record<string, string> = { sprite: "Sprites", wall: "Walls", floor: "Floors", screen: "Screens", sound: "Sounds", other: "Everything else" };
+  /** The kinds with a tab of tiles each. */
+  const TILED: Kind[] = [...KINDS, "other"];
+  /** What one of a kind is called, where something new of it can be added. */
+  const ONE: Partial<Record<Kind, string>> = { wall: "wall", floor: "floor", other: "lump" };
   const HINTS: Record<string, string> = {
     sprite: "Everything that stands in a level: monsters, the weapon in your hand, things to pick up. A name is four letters for the thing, a letter for the moment, and a number for the side it is seen from.",
-    wall: "The pieces walls are built from. A new picture is made the size of the piece it replaces.",
-    floor: "Floors and ceilings. Each is 64 by 64 pixels and repeats.",
+    wall: "The pieces walls are built from. A new picture is made the size of the piece it replaces. One you add under a new name becomes a wall picture of that name, to put on walls in the Levels tab.",
+    floor: "Floors and ceilings. Each is 64 by 64 pixels and repeats. One you add under a new name can be put on floors and ceilings in the Levels tab.",
     screen: "The title, the menus, the status bar, the scores and the letters. A new picture is made the size of the one it replaces.",
     sound: "Sound effects. Any sound file this browser can play will do; it is made one channel, at the game's rate.",
+    other: "The rest of what is in the game's data: its colours, the lists that say which pieces make which wall, its songs, the recordings played behind the title. A file given here goes in as it is, byte for byte, so it has to be in the engine's own form already. Get one wrong and the game may not start: put it back and it will.",
   };
   /** How many of a tab are shown before "Show more". */
   const PAGE = 60;
@@ -62,6 +67,9 @@
   let over = $state(false);
   let busy = $state(false);
   let resetting = $state(false);
+  /** Something new being added: its kind, the name being typed for it, and what is wrong with the name. */
+  let adding = $state<{ kind: Kind; name: string } | null>(null);
+  let adder = $state<HTMLInputElement>();
   let chooser = $state<HTMLInputElement>();
   let importer = $state<HTMLInputElement>();
   let stageElement = $state<HTMLElement>();
@@ -69,20 +77,32 @@
   let level = $state("");
   let tryLevel = $state("");
 
-  const tabs = $derived([...KINDS.map((kind) => ({ value: kind, label: LABELS[kind]! })), { value: "level", label: "Levels" }, { value: "said", label: "Words" }, { value: "changed", label: `Changed (${changes.size})` }, { value: "play", label: "Try it" }]);
-  const wallPictures = $derived(wallNames(wad));
+  const tabs = $derived([...KINDS.map((kind) => ({ value: kind, label: LABELS[kind]! })), { value: "level", label: "Levels" }, { value: "said", label: "Words" }, { value: "other", label: LABELS.other! }, { value: "changed", label: `Changed (${changes.size})` }, { value: "play", label: "Try it" }]);
+  /** What the game came with. */
+  const own = $derived(new Set(assets.map((asset) => key(asset.kind, asset.name))));
+  /** What has been added to it: a floor, a wall or a lump under a name the game had nothing by. */
+  const added = $derived([...changes.values()].filter((change) => !own.has(key(change.kind, change.name)) && isAddition(change)).map((change): Asset => ({ kind: change.kind, name: change.name, index: -1, note: "Added by you" })));
+  /** Everything there is to change: the game's own and what has been added, by name. */
+  const all = $derived(added.length ? [...assets, ...added].sort((a, b) => a.name.localeCompare(b.name)) : assets);
   const recipes = $derived(readWallPictures(wad));
+  /** A wall that was added is a wall picture of its own name, unless the game has one by that name already. */
+  const newWalls = $derived(added.filter((asset) => asset.kind === "wall" && !recipes.has(asset.name)));
+  const wallPictures = $derived(newWalls.length ? [...wallNames(wad), ...newWalls.map((asset) => asset.name)].sort() : wallNames(wad));
   /** The pieces wall pictures are put together from, by name. */
-  const pieces = $derived(new Map(assets.filter((asset) => asset.kind === "wall").map((asset) => [asset.name, asset])));
+  const pieces = $derived(new Map(all.filter((asset) => asset.kind === "wall").map((asset) => [asset.name, asset])));
   /** What a wall picture looks like, from its patches as they now are: one that has been changed shows changed. */
   const wallPicture = (name: string) => {
     const recipe = recipes.get(name);
-    return recipe ? composeWall(recipe, (patch) => (pieces.has(patch) ? now(pieces.get(patch)!) : undefined)) : null;
+    if (!recipe) return newWalls.some((asset) => asset.name === name) ? decodePatch(now(pieces.get(name)!)) : null;
+    return composeWall(recipe, (patch) => (pieces.has(patch) ? now(pieces.get(patch)!) : undefined));
   };
   /** The node builder, fetched and compiled the first time a level's walls are changed. */
   let nodes: Promise<WebAssembly.Module> | null = null;
   const builder = () => (nodes ??= WebAssembly.compileStreaming(fetch(nodesWasm)).catch((error) => ((nodes = null), Promise.reject(error))));
-  const original = (asset: Asset) => wad.lumps[asset.index]!.data;
+  /** As the game has it: nothing, for something that was added. */
+  const original = (asset: Asset) => wad.lumps[asset.index]?.data ?? new Uint8Array(0);
+  const isNew = (asset: Asset) => asset.index < 0;
+  const bytes = (count: number) => (count < 1024 ? `${count} bytes` : count < 1048576 ? `${(count / 1024).toFixed(1)} KB` : `${(count / 1048576).toFixed(1)} MB`);
   const now = (asset: Asset) => changes.get(key(asset.kind, asset.name))?.data ?? original(asset);
   const isChanged = (asset: Asset) => changes.has(key(asset.kind, asset.name));
   const size = (asset: Asset, data: Uint8Array) => {
@@ -92,7 +112,7 @@
 
   const listed = $derived.by(() => {
     const words = search.trim().toLowerCase();
-    return assets.filter((asset) => (tab === "changed" ? isChanged(asset) : asset.kind === tab) && (!words || asset.name.toLowerCase().includes(words) || asset.note.toLowerCase().includes(words)));
+    return all.filter((asset) => (tab === "changed" ? isChanged(asset) : asset.kind === tab) && (!words || asset.name.toLowerCase().includes(words) || asset.note.toLowerCase().includes(words)));
   });
 
   /** zubra-ui's <toast-region> listens on the document: any code shows a toast with an event. */
@@ -109,7 +129,7 @@
       palette = paletteOf(wad.lumps.find((lump) => lump.name === "PLAYPAL")?.data ?? new Uint8Array(0));
       assets = catalogue(wad).sort((a, b) => a.name.localeCompare(b.name));
       const known = new Set(assets.map((asset) => key(asset.kind, asset.name)));
-      for (const change of await loadMod()) if (known.has(key(change.kind, change.name))) changes.set(key(change.kind, change.name), change);
+      for (const change of await loadMod()) if (known.has(key(change.kind, change.name)) || isAddition(change)) changes.set(key(change.kind, change.name), change);
       stage = "ready";
     } catch (error) {
       failure = navigator.onLine ? (error as Error).message : "There is no connection, and the game hasn't been downloaded to this device yet.";
@@ -131,7 +151,9 @@
   /** Puts a file in an asset's place. True if it took. */
   async function replace(asset: Asset, file: Blob): Promise<boolean> {
     try {
-      const data = isSound(asset.kind) ? await soundLump(file) : await pictureLump(file, asset.kind, pictureOf(asset.kind, original(asset))!, palette, fit);
+      // A lump of no other kind goes in as it is. Something added has no original to be made the size of.
+      const data = asset.kind === "other" ? new Uint8Array(await file.arrayBuffer()) : isSound(asset.kind) ? await soundLump(file) : await pictureLump(file, asset.kind, isNew(asset) ? null : pictureOf(asset.kind, original(asset))!, palette, fit);
+      if (!data.length) throw new Error("That file is empty.");
       keep({ kind: asset.kind, name: asset.name, data });
       return true;
     } catch (error) {
@@ -153,18 +175,22 @@
         if (await replace(picked, files[0]!)) toast(`${picked.name} changed.`, "success");
         return;
       }
-      let took = 0;
+      let [took, made] = [0, 0];
       const lost: string[] = [];
       for (const file of files) {
         const name = file.name.replace(/\.[^.]*$/, "").toUpperCase();
-        const named = assets.filter((asset) => asset.name === name && isDrawn(asset.kind));
-        // A name two kinds share (a floor and a wall piece) goes to the kind whose tab is open.
-        const target = named.find((asset) => asset.kind === tab) ?? named[0];
-        if (target && (await replace(target, file))) took++;
+        const named = all.filter((asset) => asset.name === name && (isDrawn(asset.kind) || asset.kind === "other"));
+        // A name two kinds share (a floor and a wall piece) goes to the kind whose tab is open; a picture never goes to a lump of no kind unless that tab is open.
+        let target = named.find((asset) => asset.kind === tab) ?? named.find((asset) => asset.kind !== "other");
+        // A name the game has nothing by, on a tab that can take something new, is something new.
+        const fresh = !target && canAdd(tab as Kind) && isNewName(name) && !all.some((asset) => asset.name === name && tab === "other");
+        if (fresh) target = { kind: tab as Kind, name, index: -1, note: "" };
+        if (target && (await replace(target, file))) fresh ? made++ : took++;
         else if (!target) lost.push(file.name);
       }
       if (took) toast(took === 1 ? "One thing changed." : `${took} things changed.`, "success");
-      if (lost.length) toast(`Nothing in the game is named ${lost.slice(0, 3).join(", ")}${lost.length > 3 ? ` (and ${lost.length - 3} more)` : ""}. Open the thing to change and drop the file on it.`, "danger");
+      if (made) toast(made === 1 ? "One thing added." : `${made} things added.`, "success");
+      if (lost.length) toast(`Nothing in the game is named ${lost.slice(0, 3).join(", ")}${lost.length > 3 ? ` (and ${lost.length - 3} more)` : ""}. Open the thing to change and drop the file on it, or add it as something new from the Walls, Floors or Everything else tab.`, "danger");
     } finally {
       busy = false;
     }
@@ -182,6 +208,37 @@
     input.value = "";
   }
 
+  /** What is wrong with the name being typed for something new, or "". */
+  const nameTrouble = $derived.by(() => {
+    if (!adding) return "";
+    const name = adding.name.trim().toUpperCase();
+    if (!name) return "";
+    if (!isNewName(name)) return "Up to eight capitals, figures or underscores, and not a name the game keeps for itself.";
+    if (all.some((asset) => asset.name === name && (asset.kind === adding!.kind || adding!.kind === "other"))) return "The game has one by that name: open it to change it.";
+    return "";
+  });
+
+  /** A file chosen for something new: it goes in under the name typed. */
+  async function addChosen(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file || !adding || nameTrouble) return;
+    const asset: Asset = { kind: adding.kind, name: adding.name.trim().toUpperCase(), index: -1, note: "" };
+    busy = true;
+    try {
+      if (await replace(asset, file)) {
+        toast(`${asset.name} added.`, "success");
+        adding = null;
+      }
+    } finally {
+      busy = false;
+    }
+  }
+
+  /** A lump as the file it is. */
+  const saveRaw = (asset: Asset) => download(`${asset.name}.lmp`, new Blob([now(asset) as BlobPart], { type: "application/octet-stream" }));
+
   async function savePng(asset: Asset) {
     const picture = pictureOf(asset.kind, now(asset));
     if (picture) download(`${asset.name}.png`, await png(picture, palette));
@@ -195,7 +252,7 @@
     input.value = "";
     if (!file) return;
     try {
-      const { changes: found, skipped } = modFromWad(new Uint8Array(await file.arrayBuffer()), assets, wad);
+      const { changes: found, skipped } = modFromWad(new Uint8Array(await file.arrayBuffer()), all, wad);
       found.forEach(keep);
       toast(found.length ? `${found.length} ${found.length === 1 ? "change" : "changes"} taken from ${file.name}.` : `Nothing in ${file.name} is something this game has.`, found.length ? "success" : "danger");
       if (found.length && skipped.length) toast(`${skipped.length} of its lumps were left out: this game has no place for them.`);
@@ -222,7 +279,7 @@
   /** Opens something from the list: a picture or a sound in the dialog, a level in the Levels tab. */
   function open(asset: Asset) {
     if (asset.kind === "words") return choose("said");
-    if (isDrawn(asset.kind)) return void (picked = asset);
+    if (isDrawn(asset.kind) || asset.kind === "other") return void (picked = asset);
     level = asset.name;
     choose("level");
   }
@@ -256,7 +313,8 @@
 <svelte:window ondragover={(event) => event.preventDefault()} ondrop={dropped} />
 
 <toast-region position="bottom-end" label="Notifications"></toast-region>
-<input bind:this={chooser} class="hidden" type="file" accept={picked && isSound(picked.kind) ? "audio/*" : "image/*"} onchange={chosen} />
+<input bind:this={chooser} class="hidden" type="file" accept={picked?.kind === "other" ? "" : picked && isSound(picked.kind) ? "audio/*" : "image/*"} onchange={chosen} />
+<input bind:this={adder} class="hidden" type="file" accept={adding?.kind === "other" ? "" : "image/*"} onchange={addChosen} />
 <input bind:this={importer} class="hidden" type="file" accept=".wad" onchange={importMod} />
 
 <div class="page">
@@ -278,13 +336,16 @@
     </cluster-layout>
 
     <tab-list {tabs} value={tab} label="What to change" onvaluechange={(event: News<string>) => choose(event.detail as Tab)}>
-      {#each [...KINDS, "changed"] as panel (panel)}
+      {#each [...TILED, "changed"] as panel (panel)}
         <section data-tab={panel}>
           {#if tab === panel}
             <p class="quiet hint">
               {panel === "changed" ? "Everything you have changed." : HINTS[panel as Kind]}
-              {#if panel !== "changed"}Drop a file on the page and it goes to the thing it is named after.{/if}
+              {#if panel !== "changed"}Drop a file on the page and it goes to the thing it is named after{ONE[panel as Kind] ? `; one named for nothing the game has is added as a new ${ONE[panel as Kind]}` : ""}.{/if}
             </p>
+            {#if ONE[panel as Kind]}
+              <action-button class="add" variant="outline" size="sm" onclick={() => (adding = { kind: panel as Kind, name: "" })}>Add a new {ONE[panel as Kind]}</action-button>
+            {/if}
             {#if panel !== "changed" || changes.size > 0}
               <text-field class="search" label="Find" placeholder="A name, or what it is" value={search} onvaluechange={(event: News<string>) => ((search = event.detail), (shown = PAGE))}></text-field>
             {/if}
@@ -294,7 +355,9 @@
                   <li>
                     <button type="button" class="tile" class:changed={isChanged(asset)} onclick={() => open(asset)}>
                       <span class="thumb">
-                        {#if !isDrawn(asset.kind)}
+                        {#if asset.kind === "other"}
+                          <span class="sound" aria-hidden="true">▤</span>
+                        {:else if !isDrawn(asset.kind)}
                           <span class="sound" aria-hidden="true">▦</span>
                         {:else if isSound(asset.kind)}
                           <span class="sound" aria-hidden="true">♪</span>
@@ -304,7 +367,7 @@
                       </span>
                       <span class="name">{asset.name}</span>
                       {#if asset.note}<span class="what">{asset.note}</span>{/if}
-                      {#if isChanged(asset)}<status-badge variant="primary">Changed</status-badge>{/if}
+                      {#if isNew(asset)}<status-badge variant="success">Added</status-badge>{:else if isChanged(asset)}<status-badge variant="primary">Changed</status-badge>{/if}
                     </button>
                   </li>
                 {/each}
@@ -327,7 +390,7 @@
       </section>
       <section data-tab="level">
         {#if tab === "level"}
-          <Levels {wad} {assets} {palette} bind:level wallPictures={wallPictures} {wallPicture} {builder} saved={(kind, name) => changes.get(key(kind, name))?.data} {keep} {restore} {toast} ontry={tryIn} />
+          <Levels {wad} assets={all} {palette} bind:level wallPictures={wallPictures} {wallPicture} {builder} saved={(kind, name) => changes.get(key(kind, name))?.data} {keep} {restore} {toast} ontry={tryIn} />
         {/if}
       </section>
       <section data-tab="play">
@@ -343,7 +406,10 @@
     {@const changed = isChanged(asset)}
     <div class="detail">
       {#if asset.note}<p>{asset.note}</p>{/if}
-      {#if isSound(asset.kind)}
+      {#if asset.kind === "other"}
+        <p class="quiet">{isNew(asset) ? "Yours" : changed ? "Yours" : "As it came"}: {bytes(now(asset).length)}{#if changed && !isNew(asset)}. As it came: {bytes(original(asset).length)}{/if}.</p>
+        <p class="quiet">A file given here goes in as it is, so it has to be in the engine's own form already. Save this one as a file to see what that is, or to change it in a tool that knows it.</p>
+      {:else if isSound(asset.kind)}
         <cluster-layout gap="0.6rem">
           <action-button variant="outline" onclick={() => play(now(asset))}>▶ Play it</action-button>
           {#if changed}<action-button variant="ghost" onclick={() => play(original(asset))}>▶ Play the original</action-button>{/if}
@@ -354,7 +420,7 @@
             <span class="view"><Thumb kind={asset.kind} data={now(asset)} {palette} label="{asset.name} as it is now" /></span>
             <figcaption>{changed ? "Yours" : "As it came"} · {size(asset, now(asset))}</figcaption>
           </figure>
-          {#if changed}
+          {#if changed && !isNew(asset)}
             <figure>
               <span class="view"><Thumb kind={asset.kind} data={original(asset)} {palette} label="{asset.name} as it came" /></span>
               <figcaption>As it came · {size(asset, original(asset))}</figcaption>
@@ -365,11 +431,11 @@
 
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div class="drop" class:over ondragenter={() => (over = true)} ondragleave={() => (over = false)}>
-        <span>Drop a {isSound(asset.kind) ? "sound" : "picture"} here, or</span>
-        <action-button loading={busy} onclick={() => chooser?.click()}><span>Choose a {isSound(asset.kind) ? "sound" : "picture"}</span></action-button>
+        <span>Drop a {asset.kind === "other" ? "file" : isSound(asset.kind) ? "sound" : "picture"} here, or</span>
+        <action-button loading={busy} onclick={() => chooser?.click()}><span>Choose a {asset.kind === "other" ? "file" : isSound(asset.kind) ? "sound" : "picture"}</span></action-button>
       </div>
 
-      {#if !isSound(asset.kind)}
+      {#if !isSound(asset.kind) && asset.kind !== "other"}
         {#if asset.kind === "sprite"}
           <toggle-switch label="Keep the new picture's own size" description="Off, it is made the size of the one it replaces. On, it is drawn in the game as big as it is." checked={fit.ownSize} oncheckedchange={(event: News<boolean>) => (fit.ownSize = event.detail)}></toggle-switch>
         {/if}
@@ -377,9 +443,31 @@
       {/if}
     </div>
     <cluster-layout slot="actions" gap="0.6rem">
-      {#if !isSound(asset.kind)}<action-button variant="outline" size="sm" onclick={() => savePng(asset)}>Save as a PNG</action-button>{/if}
-      {#if changed}<action-button variant="outline" size="sm" onclick={() => restore(asset.kind, asset.name)}>Put the original back</action-button>{/if}
+      {#if asset.kind === "other"}<action-button variant="outline" size="sm" onclick={() => saveRaw(asset)}>Save it as a file</action-button>
+      {:else if !isSound(asset.kind)}<action-button variant="outline" size="sm" onclick={() => savePng(asset)}>Save as a PNG</action-button>{/if}
+      {#if isNew(asset)}<action-button variant="outline" size="sm" onclick={() => (restore(asset.kind, asset.name), (picked = null))}>Take it out</action-button>
+      {:else if changed}<action-button variant="outline" size="sm" onclick={() => restore(asset.kind, asset.name)}>Put the original back</action-button>{/if}
       <action-button size="sm" data-close>Done</action-button>
+    </cluster-layout>
+  {/if}
+</modal-dialog>
+
+<modal-dialog open={adding !== null} label={adding ? `Add a new ${ONE[adding.kind]}` : ""} onopenchange={(event: News<boolean>) => !event.detail && (adding = null)}>
+  {#if adding}
+    {@const one = adding}
+    <div class="detail">
+      <p>
+        {one.kind === "floor"
+          ? "A picture of your own, as a floor or ceiling the game never had. It is made 64 by 64 and repeats."
+          : one.kind === "wall"
+            ? "A picture of your own, as a wall the game never had. It keeps its shape, at a size the engine repeats properly: no taller than 128, and 8 to 256 wide."
+            : "Any file, as a lump of the game's data under a name of your own. This engine reads only the names it knows, so this is for a WAD you mean to save and use elsewhere."}
+      </p>
+      <text-field class="new-name" label="Its name" description="Up to eight capitals, figures or underscores." value={one.name} error={nameTrouble} onvaluechange={(event: News<string>) => (one.name = event.detail)}></text-field>
+    </div>
+    <cluster-layout slot="actions" gap="0.6rem">
+      <action-button variant="outline" size="sm" data-close>Not now</action-button>
+      <action-button size="sm" loading={busy} disabled={!one.name.trim() || !!nameTrouble} onclick={() => adder?.click()}>Choose a {one.kind === "other" ? "file" : "picture"}</action-button>
     </cluster-layout>
   {/if}
 </modal-dialog>

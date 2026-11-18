@@ -54,7 +54,7 @@
     /** The node builder, compiled: fetched the first time it is wanted. */
     builder: () => Promise<WebAssembly.Module>;
     /** A level's things, or its walls, as they were last kept, if they have been changed. */
-    saved: (kind: "things" | "walls", level: string) => Uint8Array | undefined;
+    saved: (kind: "things" | "walls" | "floor", name: string) => Uint8Array | undefined;
     keep: (change: Change) => void;
     restore: (kind: Kind, name: string) => void;
     toast: (message: string, variant?: "danger" | "info" | "success") => void;
@@ -153,7 +153,8 @@
   /** A floor or ceiling's picture, by name. */
   const flatPicture = (name: string): Picture | null => {
     const asset = assets.find((one) => one.kind === "floor" && one.name === name);
-    const data = asset && wad.lumps[asset.index]!.data;
+    // One someone added has no lump in the game: what they gave is all there is of it.
+    const data = asset && (saved("floor", name) ?? wad.lumps[asset.index]?.data);
     return data && data.length >= 4096 ? { width: 64, height: 64, left: 0, top: 0, pixels: data.subarray(0, 4096), solid: new Uint8Array(4096).fill(1) } : null;
   };
   const built = $derived.by(() => {

@@ -34,6 +34,23 @@
   });
 
   const groups = [...new Set(TEXTS.map((text) => text.group))];
+  /** The engine's words that are replaced and aren't in the lists above: anything else it says can be, word for word. */
+  const listed = new Set<string>(TEXTS.map((text) => text.from));
+  const others = $derived([...words.keys()].filter((from) => !from.startsWith("!") && !listed.has(from)));
+  let [from, to] = $state(["", ""]);
+  function addOther() {
+    const [theirs, ours] = [from.trim(), plain(to).trim()];
+    if (!theirs || !ours || theirs.startsWith("!") || theirs.includes("=")) return;
+    changed((next) => next.set(theirs, ours));
+    [from, to] = ["", ""];
+  }
+  /** The ending is kept on one line, its line breaks written as \n. */
+  const ending = $derived((words.get("!ending") ?? "").split("\\n").join("\n"));
+  const setEnding = (text: string) => changed((next) => (text.trim() ? next.set("!ending", text.split("\n").map((line) => plain(line).trimEnd()).join("\\n")) : next.delete("!ending")));
+  const setLevels = (text: string) => {
+    const count = Math.round(Number(text));
+    changed((next) => (count >= 1 && count <= 36 ? next.set("!levels", String(count)) : next.delete("!levels")));
+  };
   let timer = 0;
   function changed(act: (words: Map<string, string>) => void) {
     const next = new Map(words);
@@ -78,6 +95,24 @@
       {/each}
     </div>
   {/each}
+
+  <h2>The end of the game</h2>
+  <text-field data-key="levels" type="number" inputmode="numeric" label="How many levels the game has" description="The ending comes after this one. Nine to an episode, so the tenth is the second episode's first. Empty, the game ends after the eighth of each episode, as the engine always did." value={words.get("!levels") ?? ""} onvaluechange={(event: News<string>) => setLevels(event.detail)}></text-field>
+  <label class="moment">
+    <span>What it says when they are done</span>
+    <textarea data-key="ending" rows={Math.max(4, ending.split("\n").length + 1)} value={ending} oninput={(event) => setEnding(event.currentTarget.value)}></textarea>
+  </label>
+
+  <h2>Anything else the game says</h2>
+  <p class="quiet">Any words of the engine's can be replaced: give them exactly as the game shows them, capitals, spaces and full stops and all, and what to say in their place.</p>
+  <div class="texts">
+    {#each others as theirs (theirs)}
+      <text-field data-from={theirs} label={theirs} description="Empty it to have the engine's own words back." value={words.get(theirs) ?? ""} onvaluechange={(event: News<string>) => changed((next) => (plain(event.detail).trim() ? next.set(theirs, plain(event.detail)) : next.delete(theirs)))}></text-field>
+    {/each}
+    <text-field class="other-from" label="The engine's own words" placeholder="Picked up a rocket." value={from} onvaluechange={(event: News<string>) => (from = event.detail)}></text-field>
+    <text-field class="other-to" label="What to say instead" value={to} onvaluechange={(event: News<string>) => (to = event.detail)}></text-field>
+    <action-button class="other-add" variant="outline" size="sm" disabled={!from.trim() || !plain(to).trim()} onclick={addOther}>Replace those words</action-button>
+  </div>
 </div>
 
 <style>

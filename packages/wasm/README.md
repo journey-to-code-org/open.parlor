@@ -38,7 +38,7 @@ its own.
 | Controller | Left stick to move, right stick to turn, right trigger or X to fire, A to use, the bumpers for weapons, Start for the menu |
 | Together | Up to four, each on a device of their own, against the monsters or each other. One starts a game and sends the others its link or its four-letter code |
 | Watching | Anyone with the link can watch, through any player's eyes, and is run through the game so far if they come late. A game its host lists also shows on the parlor's watch page |
-| Changing it | An editor at `/wasm/editor/` swaps any of the game's pictures and sounds for a file of your own, and changes its levels, what is placed in them and what they are built of; the game is played with the changes, alone |
+| Changing it | An editor at `/wasm/editor/` swaps any of the game's pictures and sounds for a file of your own, adds walls and floors it never had, changes its words, its levels, what is placed in them and what they are built of, and puts a file in place of any other lump of its data; the game is played with the changes, alone |
 | Sound | Effects, through Web Audio. No music yet |
 | Saved games and settings | Kept in the browser (IndexedDB), under the engine's own menus |
 | Offline | After the first visit the page, the engine and the game's data are kept on the device |
@@ -62,13 +62,32 @@ letters) and the sound effects. Any of them can be swapped for a file:
 - **Try it** runs the game on the page with the changes as they stand.
 - **Save my changes as a file** writes them as a small WAD of the kind other Doom engines load on
   top of a game; **Load changes from a file** reads one back.
+- **Add a new wall** and **Add a new floor** take a picture under a name the game never had. A
+  floor is made 64 by 64. A wall keeps its shape, no taller than 128 and 8 to 256 wide (the
+  widths the engine repeats properly), and a wall picture of its name is made for it, on the end
+  of `PNAMES` and `TEXTURE1`. Both are then there to choose in the Levels tab. A file dropped on
+  the Walls or Floors tab that is named for nothing the game has is added the same way.
+- **Everything else** is every lump that is none of the above: the colours (`PLAYPAL`,
+  `COLORMAP`), the lists of wall pictures, the songs, the recordings played behind the title.
+  Each can be saved as a file and have a file put in its place, byte for byte: it has to be in
+  the engine's own form already, and nothing checks that it is. **Add a new lump** puts any file
+  in under a name of your own, for a WAD meant for use elsewhere: this engine reads only the
+  names it knows.
+
+So everything in the game's data can be changed, and a WAD made elsewhere is taken whole but for
+what the game has no place for: sprites under names the engine doesn't know (it has its own
+list, in C) and levels beyond the 36 it has places for. Pictures and sounds under names it
+doesn't know are carried along as lumps. What is not data can't be changed
+here: how much health a rat has, how fast a gun fires and what a thing does are in the engine's
+code.
 
 ### Levels
 
 The **Words** tab changes what the game says: the lines for when a level starts, a rat notices
-you, one bites, you get one and you die (a line each; the game picks one), and the engine's own
-words for level names, things picked up and locked doors. They are kept as one change, a lump
-called `WORDS`, which the engine reads (`games/shooter/engine/words.c`).
+you, one bites, you get one and you die (a line each; the game picks one), the engine's own
+words for level names, things picked up and locked doors, any other words of the engine's given
+exactly, how many levels the game has, and what it says when they are done. They are kept as one
+change, a lump called `WORDS`, which the engine reads (`games/shooter/engine/words.c`).
 
 The **Levels** tab draws a level from above and changes it: what is placed in it (where the
 players start, the monsters, what can be picked up, the scenery) and what it is built of (its

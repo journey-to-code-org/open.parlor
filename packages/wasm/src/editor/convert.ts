@@ -20,13 +20,26 @@ export interface Fit {
 /** A sprite wider than this is a mistake; the engine's screen is 320. */
 const WIDEST = 1024;
 
-/** A picture file, as a lump to take the place of `original`. */
-export async function pictureLump(file: Blob, kind: Kind, original: Picture, palette: Palette, fit: Fit): Promise<Uint8Array> {
+/** The widths a wall picture repeats properly at: the engine wraps one at a power of two. */
+const WALL_WIDTHS = [8, 16, 32, 64, 128, 256];
+/** As tall as a wall picture may be and still repeat up a wall. */
+const WALL_HEIGHT = 128;
+
+/**
+ * A picture file, as a lump to take the place of `original`; or, with no original, as something
+ * new: a floor the size floors are, a wall its own shape at a size the engine repeats properly.
+ */
+export async function pictureLump(file: Blob, kind: Kind, original: Picture | null, palette: Palette, fit: Fit): Promise<Uint8Array> {
   const bitmap = await createImageBitmap(file).catch(() => {
     throw new Error("That file isn't a picture this browser can open.");
   });
-  let { width, height } = original;
-  if (kind === "sprite" && fit.ownSize) {
+  let { width, height } = original ?? { width: FLAT, height: FLAT };
+  if (!original && kind !== "floor") {
+    const scale = Math.min(1, WALL_HEIGHT / bitmap.height);
+    const wide = bitmap.width * scale;
+    width = WALL_WIDTHS.reduce((best, one) => (Math.abs(one - wide) < Math.abs(best - wide) ? one : best));
+    height = Math.max(1, Math.round(bitmap.height * scale));
+  } else if (kind === "sprite" && fit.ownSize) {
     // Its own size, brought down if it is bigger than the engine can draw.
     const scale = Math.min(1, TALLEST / bitmap.height, WIDEST / bitmap.width);
     width = Math.max(1, Math.round(bitmap.width * scale));
@@ -41,7 +54,7 @@ export async function pictureLump(file: Blob, kind: Kind, original: Picture, pal
   context.drawImage(bitmap, 0, 0, width, height);
   bitmap.close();
   // Where it stands is kept: a sprite's feet stay on the floor, at whatever size.
-  const origin = { left: Math.round((original.left * width) / original.width), top: Math.round((original.top * height) / original.height) };
+  const origin = original ? { left: Math.round((original.left * width) / original.width), top: Math.round((original.top * height) / original.height) } : { left: 0, top: 0 };
   const picture = fromRgba(context.getImageData(0, 0, width, height).data, width, height, palette, origin);
   if (kind === "floor") {
     // A floor has no see-through: what would be is the palette's first colour, usually black.

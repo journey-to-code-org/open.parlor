@@ -8,11 +8,12 @@ import { describe, expect, test } from "vitest";
 import data from "../games/shooter/data.json";
 import { startEngine } from "../src/shooter/engine.ts";
 import { KEY } from "../src/shooter/keys.ts";
-import { catalogue, isLevelKind, key } from "../wad/catalogue.ts";
+import { catalogue, isDrawn, isLevelKind, isNewName, key } from "../wad/catalogue.ts";
 import { decodeThings, encodeThings, FLAG_EASY, FLAG_HARD, FLAG_MEDIUM, levelLumps, levelNames, readLevel, THING_KINDS, thingKind } from "../wad/level.ts";
 import { applyMod, type Change, fits, modFromWad, modToWad } from "../wad/mod.ts";
 import { decodeFlat, decodePatch, encodeFlat, encodePatch, fromRgba, paletteOf, type Picture, toRgba } from "../wad/picture.ts";
 import { decodeDmx, encodeDmx, mixDown, resample } from "../wad/sound.ts";
+import { wallPictures } from "../wad/texture.ts";
 import { readWad, writeWad } from "../wad/wad.ts";
 
 /** A picture with a hole in it: a 5 by 6 frame of colour 4 round nothing, with one column split in two. */
@@ -120,7 +121,14 @@ describe.skipIf(!existsSync(file))("the real game", () => {
     expect(assets.filter((asset) => asset.kind !== "walls" && !fits(asset.kind, wad.lumps[asset.index]!.data)).map((asset) => asset.name)).toEqual([]);
     expect(new Set(assets.map((asset) => key(asset.kind, asset.name))).size).toBe(assets.length);
     // Nothing of a level, and none of the game's own tables, is offered as a picture.
-    expect(assets.filter((asset) => !isLevelKind(asset.kind) && /^(THINGS|PLAYPAL|COLORMAP|E1M1|TEXTURE1|D_E1M1|DEMO1)$/.test(asset.name))).toEqual([]);
+    expect(assets.filter((asset) => isDrawn(asset.kind) && /^(THINGS|PLAYPAL|COLORMAP|E1M1|TEXTURE1|D_E1M1|DEMO1)$/.test(asset.name))).toEqual([]);
+    // The tables, the songs and the recordings are there all the same, as lumps of no other kind; a level's own lumps are the level's.
+    expect(["PLAYPAL", "COLORMAP", "PNAMES", "TEXTURE1", "D_E1M1", "DEMO1", "GENMIDI"].filter((name) => !find("other", name))).toEqual([]);
+    expect(assets.filter((asset) => asset.kind === "other" && /^(THINGS|SECTORS|E1M1|F_START|S_END)$/.test(asset.name))).toEqual([]);
+    expect(find("other", "TEXTURE1").note).toMatch(/which wall picture/);
+    // Every lump of the game with anything in it is something that can be changed, one way or another.
+    const reached = new Set(assets.map((asset) => asset.name));
+    expect(wad.lumps.filter((lump) => lump.data.length && !reached.has(lump.name) && !/^(THINGS|LINEDEFS|SIDEDEFS|VERTEXES|SEGS|SSECTORS|NODES|SECTORS|REJECT|BLOCKMAP)$/.test(lump.name)).map((lump) => lump.name)).toEqual([]);
     // Each level is there once for what is placed in it, and once for what it is built of.
     expect(assets.filter((asset) => asset.kind === "things").map((asset) => asset.name)).toEqual(levelNames(wad));
     expect(assets.filter((asset) => asset.kind === "walls").map((asset) => asset.name)).toEqual(levelNames(wad));
@@ -191,6 +199,81 @@ describe.skipIf(!existsSync(file))("the real game", () => {
     expect(sounds.some((sound) => sound.length === tone.length && sound.every((byte, i) => byte === tone[i]))).toBe(true);
   });
 
+  test("a floor, a wall and a lump the game never had are added, and the engine draws a level in them", async () => {
+    // The palette's nearest to pure green, for both: easy to tell on the screen.
+    const green = fromRgba(new Uint8ClampedArray([0, 255, 0, 255]), 1, 1, palette).pixels[0]!;
+    const wall: Picture = { width: 64, height: 128, left: 0, top: 0, pixels: new Uint8Array(64 * 128).fill(green), solid: new Uint8Array(64 * 128).fill(1) };
+    const added: Change[] = [
+      { kind: "floor", name: "MYFLOOR", data: new Uint8Array(4096).fill(green) },
+      { kind: "wall", name: "MYWALL", data: encodePatch(wall) },
+      { kind: "other", name: "MYNOTES", data: new TextEncoder().encode("anything at all") },
+      // Not these: a sprite and a sound the engine has no use for, a name a WAD can't hold, a lump under a name the game uses, and names with a meaning.
+      { kind: "sprite", name: "ZZZZA0", data: encodePatch(frame()) },
+      { kind: "sound", name: "DSMINE", data: lump("sound", "DSPISTOL").slice() },
+      { kind: "floor", name: "far too long", data: new Uint8Array(4096) },
+      { kind: "other", name: "TITLEPIC", data: new Uint8Array(50) },
+      { kind: "other", name: "THINGS", data: new Uint8Array(10) },
+      { kind: "floor", name: "F_END", data: new Uint8Array(4096) },
+    ];
+    expect([isNewName("MYFLOOR"), isNewName("far too long"), isNewName("E1M1"), isNewName("PP_START"), isNewName("")]).toEqual([true, false, false, false, false]);
+    const made = readWad(applyMod(game, added));
+    expect(made.lumps.length).toBe(wad.lumps.length + 3);
+    const now = catalogue(made);
+    expect(["floor/MYFLOOR", "wall/MYWALL", "other/MYNOTES"].filter((one) => !now.some((asset) => key(asset.kind, asset.name) === one))).toEqual([]);
+    // The floor is among the floors and the piece among the pieces, where the engine looks for them.
+    const at = (name: string) => made.lumps.map((one) => one.name).lastIndexOf(name);
+    expect(at("MYFLOOR")).toBe(at("F_END") - 1);
+    expect(at("MYWALL")).toBe(at("P_END") - 1);
+    // A wall picture of the piece's name was made for it; every other wall picture is as it was.
+    const [before, after] = [wallPictures(wad), wallPictures(made)];
+    expect(after.get("MYWALL")).toEqual({ name: "MYWALL", width: 64, height: 128, patches: [{ x: 0, y: 0, patch: "MYWALL" }] });
+    expect(after.size).toBe(before.size + 1);
+    for (const [name, picture] of before) expect(after.get(name)).toEqual(picture);
+    // Added twice, it is there once.
+    expect(readWad(applyMod(game, [...added, ...added])).lumps.length).toBe(made.lumps.length);
+
+    // The first level with every floor and every wall in them.
+    const everywhere = (bytes: Uint8Array) => {
+      const from = readWad(bytes);
+      const level = levelLumps(from, "E1M1")!;
+      const name = (text: string) => Uint8Array.from({ length: 8 }, (_, i) => text.charCodeAt(i) || 0);
+      const rooms = level.get("SECTORS")!.lump.data.slice();
+      for (let i = 0; i + 26 <= rooms.length; i += 26) rooms.set(name("MYFLOOR"), i + 4);
+      const sides = level.get("SIDEDEFS")!.lump.data.slice();
+      for (let i = 0; i + 30 <= sides.length; i += 30) for (const part of [4, 12, 20]) if (sides[i + part] !== 45) sides.set(name("MYWALL"), i + part);
+      return writeWad({ kind: from.kind, lumps: from.lumps.map((one, index) => (index === level.get("SECTORS")!.index ? { name: one.name, data: rooms } : index === level.get("SIDEDEFS")!.index ? { name: one.name, data: sides } : one)) });
+    };
+    const play = async (bytes: Uint8Array) => {
+      let clock = 0;
+      let picture = new Uint8ClampedArray(0);
+      const engine = await startEngine(module, new Map([["freedoom1.wad", bytes]]), "freedoom1.wad", { now: () => clock, frame: (pixels) => (picture = pixels.slice()) }, ["-warp", "1", "1", "-nomonsters"]);
+      for (let i = 0; i < 50; i++) {
+        clock += 1000 / 35;
+        engine.frame();
+      }
+      // How much of the view (above the status bar) is green.
+      let count = 0;
+      for (let i = 0; i < 320 * 168 * 4; i += 4) if (picture[i + 1]! > picture[i]! + 40 && picture[i + 1]! > picture[i + 2]! + 40) count++;
+      return { stopped: engine.stopped, green: count / (320 * 168) };
+    };
+    const [plain, ours] = [await play(game), await play(everywhere(applyMod(game, added)))];
+    expect(ours.stopped).toBeNull();
+    expect(plain.green).toBeLessThan(0.2);
+    expect(ours.green).toBeGreaterThan(0.6);
+    // Without them added, the engine stops at the names it doesn't know: that is what adding is for.
+    expect((await play(everywhere(game))).stopped).not.toBeNull();
+
+    // Saved as a file, they come back as the same additions, the wall's place in the two lists with them; and a game given the file has the wall picture.
+    const kept = modToWad(added.slice(0, 3), wad);
+    const back = modFromWad(kept, assets, wad);
+    expect(back.changes.map((change) => key(change.kind, change.name)).sort()).toEqual(["floor/MYFLOOR", "other/MYNOTES", "other/PNAMES", "other/TEXTURE1", "wall/MYWALL"]);
+    expect(back.skipped).toEqual([]);
+    const again = readWad(applyMod(game, back.changes));
+    expect(wallPictures(again).get("MYWALL")).toEqual(after.get("MYWALL"));
+    expect(wallPictures(again).size).toBe(after.size);
+    expect((await play(everywhere(writeWad(again)))).green).toBeGreaterThan(0.6);
+  }, 60000);
+
   test("changes kept as a WAD of their own come back as the same changes", () => {
     const changes: Change[] = [
       { kind: "screen", name: "TITLEPIC", data: lump("screen", "TITLEPIC").slice() },
@@ -210,6 +293,11 @@ describe.skipIf(!existsSync(file))("the real game", () => {
     const other = writeWad({ kind: "PWAD", lumps: [{ name: "TITLEPIC", data: new Uint8Array(50) }, { name: "MAP01", data: new Uint8Array(0) }, { name: "THINGS", data: new Uint8Array(10) }, { name: "DSPISTOL", data: lump("sound", "DSPISTOL") }] });
     const partly = modFromWad(other, assets);
     expect(partly.changes.map((change) => change.name)).toEqual(["DSPISTOL"]);
+    // A picture and a sound under names the game has nothing by are carried along as lumps; a sprite isn't.
+    const strays = writeWad({ kind: "PWAD", lumps: [{ name: "MYPIC", data: encodePatch(frame()) }, { name: "DSMINE", data: lump("sound", "DSPISTOL").slice() }, { name: "SS_START", data: new Uint8Array(0) }, { name: "ZZZZA0", data: encodePatch(frame()) }, { name: "SS_END", data: new Uint8Array(0) }] });
+    const carried = modFromWad(strays, assets);
+    expect(carried.changes.map((change) => key(change.kind, change.name))).toEqual(["other/MYPIC", "other/DSMINE"]);
+    expect(carried.skipped).toEqual(["ZZZZA0"]);
     expect(partly.skipped.sort()).toEqual(["MAP01", "TITLEPIC"]);
   });
 
