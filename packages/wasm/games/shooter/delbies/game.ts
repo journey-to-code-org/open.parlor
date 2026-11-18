@@ -55,6 +55,8 @@ export interface Art {
   words: Uint8Array;
   /** The rats and what they spit: each a picture, under the name of the sprite it takes the place of. */
   sprites: (Picture & { name: string })[];
+  /** The status bar's pictures: Delbie's face in each of its moods, and the bar itself. */
+  screens: (Picture & { name: string })[];
 }
 
 /** The whole of it as a WAD. `nodes` is the node builder, compiled. */
@@ -63,7 +65,7 @@ export async function buildGame(nodes: WebAssembly.Module, art: Art): Promise<Ui
     { name: "TITLEPIC", data: encodePatch({ width: 320, height: 200, left: 0, top: 0, pixels: art.title, solid: new Uint8Array(64000).fill(1) }) },
     { name: "M_DOOM", data: encodePatch({ width: art.logo.width, height: art.logo.height, left: 0, top: 0, pixels: art.logo.pixels, solid: art.logo.solid }) },
   ];
-  lumps.push({ name: "WORDS", data: art.words });
+  lumps.push({ name: "WORDS", data: art.words }, ...art.screens.map((screen) => ({ name: screen.name, data: encodePatch(screen) })));
   // Sprites go between their markers, as the engine and other tools expect.
   lumps.push(...readWad(modToWad(art.sprites.map((sprite) => ({ kind: "sprite" as const, name: sprite.name, data: encodePatch(sprite) })))).lumps);
   for (const level of levels()) {

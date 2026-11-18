@@ -20,6 +20,9 @@ levels, the other monsters, the weapons, the sounds) is still Freedoom's.
 - `art/rats.py` draws the rats: each is a handful of rounded lumps, posed and looked at from the
   eight sides the engine wants, lit and edged like the engine's own sprites. It writes
   `sprites.bin.gz` and `sprites.json`: 175 pictures. It needs numpy and Pillow and is run by hand.
+- `art/hud.py` draws the status bar: Delbie's face (blond, blue-eyed, 42 moods) in place of the
+  engine's, and Freedoom's bar tinted steel blue with a yellow and black edge. It writes
+  `hud.bin.gz` and `hud.json`.
 - `words.txt` is what the game says: Delbie's lines for when a level starts, a rat notices you,
   one bites, you get one, and you die; and our words in place of the engine's for the first
   level's name, things picked up and the locked door. The engine reads them from the WAD

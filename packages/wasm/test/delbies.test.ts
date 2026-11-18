@@ -14,6 +14,7 @@ import { KEY } from "../src/shooter/keys.ts";
 import { catalogue } from "../wad/catalogue.ts";
 import { levelLumps, readLevel, wallNames, WALL_LOWER_UNPEGGED } from "../wad/level.ts";
 import { layer, modFromWad } from "../wad/mod.ts";
+import { decodePatch } from "../wad/picture.ts";
 import { fromPlan, type Look, wallNear } from "../wad/plan.ts";
 import { roomAt, trouble, wallsOf } from "../wad/shape.ts";
 import { linesFor, MOMENTS, plain, readWords, setLines, TEXTS, writeWords } from "../wad/words.ts";
@@ -90,9 +91,11 @@ describe("the game's own levels", () => {
     const built = await buildGame(nodes, art());
     expect(Buffer.from(built).equals(readFileSync(here("../games/shooter/delbies/delbies.wad")))).toBe(true);
     const names = readWad(built).lumps.map((lump) => lump.name);
-    expect(names.slice(0, 4)).toEqual(["TITLEPIC", "M_DOOM", "WORDS", "SS_START"]);
+    expect(names.slice(0, 4)).toEqual(["TITLEPIC", "M_DOOM", "WORDS", "STFST00"]);
+    // Delbie's face, 42 times, and the bar, its weapon panel and the four squares behind the face.
+    expect(names.indexOf("SS_START")).toBe(3 + 48);
     expect(names.slice(-12)).toEqual(["SS_END", "E1M1", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
-    expect(names).toHaveLength(16 + 175);
+    expect(names).toHaveLength(16 + 175 + 48);
   });
 });
 
@@ -142,7 +145,16 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
     const { changes, skipped } = modFromWad(over, catalogue(wad), wad);
     // But for its words, which Freedoom has no lump for: layer() makes them a place.
     expect(skipped).toEqual(["WORDS"]);
-    expect(changes.filter((change) => change.kind !== "sprite").map((change) => `${change.kind}/${change.name}`).sort()).toEqual(["screen/M_DOOM", "screen/TITLEPIC", "things/E1M1", "walls/E1M1"]);
+    const others = changes.filter((change) => change.kind !== "sprite").map((change) => `${change.kind}/${change.name}`).sort();
+    expect(others.filter((name) => !/^screen\/ST/.test(name))).toEqual(["screen/M_DOOM", "screen/TITLEPIC", "things/E1M1", "walls/E1M1"]);
+    // The status bar: every face the game has is Delbie's now, each the size of the one it replaces.
+    const faces = wad.lumps.map((lump) => lump.name).filter((name) => /^STF(ST|TL|TR|OUCH|EVL|KILL|GOD|DEAD)/.test(name));
+    expect(faces).toHaveLength(42);
+    expect(faces.filter((name) => !others.includes(`screen/${name}`))).toEqual([]);
+    for (const name of ["STFST00", "STFOUCH3", "STBAR"]) {
+      const [ours, theirs] = [decodePatch(changes.find((change) => change.name === name)!.data)!, decodePatch(wad.lumps.find((lump) => lump.name === name)!.data)!];
+      expect([ours.width, ours.height, ours.left, ours.top]).toEqual([theirs.width, theirs.height, theirs.left, theirs.top]);
+    }
     // The rats: every picture of the three monsters they take the place of, and of what the mutant spits; none left as it was.
     const drawn = new Set(changes.filter((change) => change.kind === "sprite").map((change) => change.name));
     const theirs = wad.lumps.map((lump) => lump.name).filter((name) => /^(SARG|TROO|BOSS)[A-Z][0-8]|^BAL1/.test(name));

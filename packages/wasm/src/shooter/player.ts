@@ -47,6 +47,8 @@ export interface ShooterOptions {
     /** A line for the start screen that says what is different about it, or "" if nothing is. */
     note(): Promise<string>;
   };
+  /** A picture for the game: behind the screens around it, and at the top of the first one. */
+  art?: string;
   /** Where the editor for the game's pictures and sounds is, for a link from the start screen. */
   editor?: string;
 }
@@ -89,6 +91,7 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
   bar.hidden = true;
   screen.append(canvas);
   root.classList.add("shooter");
+  if (options.art) root.style.setProperty("--shooter-art", `url("${options.art}")`);
   root.append(screen, pad, bar, card);
 
   const context = canvas.getContext("2d", { alpha: false })!;
@@ -137,6 +140,8 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
     const row = el("div", "lobby-actions");
     row.append(...buttons);
     card.replaceChildren(el("h1", "", heading), ...lines.map((line) => el("p", "", line)), ...more, row);
+    // Only the first screen wears the game's picture: home() says so after this.
+    delete card.dataset.home;
     card.hidden = false;
     if (more.length === 0) buttons[0]?.focus();
   }
@@ -490,6 +495,7 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
     );
     const start = (actions: Action[]) => {
       show(options.title, lines, actions);
+      card.dataset.home = "";
       card.append(...extras());
     };
     // With no server to be the room, one of the devices can be, for those on the same wifi.

@@ -1,6 +1,7 @@
 // The page: one game for now. As more games that compile to WebAssembly arrive, this becomes the
 // shelf they are picked from.
 import FREEDOOM from "../games/shooter/data.json";
+import art from "../games/shooter/delbies/art/title.webp?url";
 import wasm from "../games/shooter/shooter.wasm?url";
 import { forgetAssetsExcept } from "../host/assets.ts";
 import { applyMod } from "../wad/mod.ts";
@@ -21,6 +22,7 @@ mountShooter(document.getElementById("game")!, {
   wasm,
   wad: { url: wad, name: "freedoom1.wad", megabytes: FREEDOOM.megabytes },
   base: withDelbies,
+  art,
   title: "Delbie's Doomsday",
   blurb: "Delbie's Daycare & Geriatrics is overrun with rats. Clear it out, floor by floor. A first-person shooter on the open-source Doom engine, running in your browser.",
   // Freedoom: Phase 1 is four episodes of nine maps.

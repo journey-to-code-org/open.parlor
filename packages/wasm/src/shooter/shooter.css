@@ -418,3 +418,164 @@
 .nearby-status:empty {
   display: none;
 }
+
+/* The screens around the game as a panel on a backdrop: the game's picture, dimmed, where there is
+   one; a checkered edge along the top, as on the picture; and the heading in its lettering. */
+.shooter {
+  --panel: #131a20;
+  --panel-edge: #2c3944;
+  --red: #d8322a;
+}
+.shooter:has(> .shooter-card:not([hidden]))::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background:
+    radial-gradient(ellipse at center, rgb(8 11 14 / 0.72), rgb(8 11 14 / 0.96)),
+    var(--shooter-art, none) center / cover no-repeat,
+    var(--ground);
+}
+.shooter-card {
+  inset: 0;
+  margin: auto;
+  width: min(100% - 1.5rem, 34rem);
+  height: fit-content;
+  max-height: calc(100% - 1.5rem);
+  justify-content: flex-start;
+  gap: 0.7rem;
+  padding: 2rem 1.5rem 1.5rem;
+  border: 1px solid var(--panel-edge);
+  border-radius: 0.9rem;
+  background:
+    repeating-conic-gradient(#ece6d6 0% 25%, #14181b 0% 50%) top left / 14px 14px repeat-x,
+    linear-gradient(#18222a, var(--panel));
+  background-clip: padding-box;
+  box-shadow: 0 1.2rem 3rem rgb(0 0 0 / 0.55);
+}
+.shooter-card[data-home]::before {
+  content: "";
+  flex: none;
+  width: min(100%, 17rem);
+  aspect-ratio: 1;
+  margin-top: -0.25rem;
+  background: var(--shooter-art, none) center / contain no-repeat;
+}
+.shooter-card h1 {
+  font: italic 900 clamp(1.5rem, 6vw, 2.1rem) / 1.05 "Arial Black", Impact, system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  color: #ffd43b;
+  text-shadow:
+    0.06em 0.06em 0 var(--red),
+    0.12em 0.12em 0 rgb(0 0 0 / 0.55);
+}
+.shooter-card h1 .lobby-code {
+  display: inline-block;
+  margin-left: 0.2em;
+  padding: 0.1em 0.35em 0.1em 0.5em;
+  border-radius: 0.3rem;
+  background: #0b0f12;
+  color: #fff;
+  font-style: normal;
+  letter-spacing: 0.3em;
+  text-shadow: none;
+}
+.shooter-card p {
+  font-size: 0.95rem;
+}
+/* Buttons with some weight to them. */
+.shooter-go,
+.lobby-small {
+  border-radius: 0.55rem;
+  box-shadow: 0 0.2rem 0 rgb(0 0 0 / 0.45);
+  transition: transform 80ms;
+}
+.shooter-go {
+  background: linear-gradient(#ffd95a, var(--gold));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.lobby-small {
+  padding: 0.65rem 1.1rem;
+  border-color: #46535e;
+  background: #1c262e;
+  font-weight: 600;
+}
+.shooter-go:active:not(:disabled),
+.lobby-small:active {
+  transform: translateY(0.15rem);
+  box-shadow: none;
+}
+@media (hover: hover) {
+  .lobby-small:hover {
+    border-color: var(--gold);
+  }
+}
+/* The room: who is in it as name tags, and its settings as a grid, a label over each. */
+.lobby-people {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.lobby-people li {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--panel-edge);
+  border-radius: 99px;
+  background: #1d2831;
+}
+.lobby-setup {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.9rem;
+  border: 1px solid var(--panel-edge);
+  border-radius: 0.6rem;
+  background: rgb(0 0 0 / 0.22);
+  text-align: left;
+}
+.lobby-setup .lobby-field {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.lobby-setup .lobby-field select {
+  width: 100%;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* The kind of game has the longest choices: it gets the whole width. */
+.lobby-setup .lobby-field:first-child {
+  grid-column: 1 / -1;
+}
+.lobby-setup .lobby-tick {
+  align-self: end;
+  min-height: 2.6rem;
+}
+.lobby-share {
+  width: 100%;
+}
+/* On a phone the main button is the width of the panel, and the others share a row under it. */
+@media (max-width: 30rem) {
+  .shooter-card {
+    padding-inline: 1rem;
+  }
+  .lobby-actions {
+    width: 100%;
+  }
+  .lobby-actions .shooter-go {
+    width: 100%;
+  }
+  .lobby-actions .lobby-small {
+    flex: 1;
+  }
+}
