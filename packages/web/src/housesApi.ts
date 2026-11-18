@@ -58,9 +58,12 @@ export interface HouseMessage {
   /** The member who said it, and their name as it was then. */
   by: string;
   name: string;
+  /** What was said; for a poll, its question. */
   text: string;
   at: number;
   mine: boolean;
+  /** A question with a few answers: member id → the answer they chose. */
+  poll?: { options: string[]; votes: Record<string, number> };
 }
 export interface HouseChat {
   /** Goes up with every change: ask with the one you have and you're told only when there's news. */
@@ -70,6 +73,8 @@ export interface HouseChat {
   messages: HouseMessage[];
   /** Whether you may take down what others said (the owner and admins). */
   canRemove: boolean;
+  /** Whether crude words are covered in what's said from now on. */
+  filter: boolean;
   limit: number;
   others: number;
 }
@@ -188,6 +193,12 @@ export const houses = {
   say: (slug: string, text: string) => call<HouseChat>(at(slug, "chat"), { text }),
   /** Take a message down: your own, or anyone's for the owner and admins. */
   unsay: (slug: string, id: number) => call<HouseChat>(at(slug, "chat"), { remove: id }),
+  /** Ask the house a question with two to four answers. */
+  ask: (slug: string, question: string, options: string[]) => call<HouseChat>(at(slug, "chat"), { poll: { question, options } }),
+  /** Your vote on a poll, or null to take it back. */
+  vote: (slug: string, id: number, option: number | null) => call<HouseChat>(at(slug, "chat"), { vote: { id, option } }),
+  /** Cover crude words in what's said from now on, or stop (the owner and admins). */
+  setChatFilter: (slug: string, on: boolean) => call<HouseChat>(at(slug, "chat"), { filter: on }),
   tournament: (slug: string, id: string) => call<Tournament>(at(slug, `tournaments/${encodeURIComponent(id)}`)),
   newTournament: (slug: string, name: string, game: GameId, presetId: string, settings: TableSettings, format: "bracket" | "league" = "bracket") => call<Tournament>(at(slug, "tournaments"), { name, game, presetId, settings, format }),
   /** enter { partner? } · leave · add { players } · remove { entrant } · start · call { round, match, winner } · cancel */

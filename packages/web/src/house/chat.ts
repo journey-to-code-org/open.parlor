@@ -1,30 +1,70 @@
-// A house's chat as this browser has it: what was said, who is here, and the asking that keeps
-// both fresh. Plain TypeScript that knows nothing of the page's framework: the screen
-// (HouseChat.vue) subscribes to it, as Delbie's Counter does to its shift.
-import { houses, type HouseChat, type HouseMessage } from "../housesApi";
+// A house's chat on this page: the connection that brings it live, and the ways to change it.
+// Plain TypeScript that knows nothing of the page's framework.
+//
+// What was said, and who else is here, arrive through Zubra Sync: `connect()` follows the house's
+// document on the server's `/_zb/house`, and the `<house-chat-feed>` component (a
+// `'use collection housechat'` element) holds it and its presence. Nothing here asks the server
+// for the chat; it only sends what this person does, and pulls once after, so the change shows
+// even while the live stream is reconnecting.
+//
+// One connection serves the whole page, for every house, and stays open once made. Sync keeps one
+// peer id for a page while each connection keeps its own live-stream key, so a connection stopped
+// and another started at the same address is refused (409) until the server notices the first has
+// gone, and then the page takes a new peer id. Kept open, that never happens. The server's
+// `authorize` sends each member only their own houses' chats, whatever the scope says.
+import { connect } from "@zubra/sync/connect";
+import { houses, type HouseChat } from "../housesApi";
 
-/** How often the page asks whether anything was said, while it is being looked at. */
-const ASK_EVERY = 4000;
+/** Where the houses' chats are served (app.ts on the server). */
+export const HOUSE_SYNC = "/_zb/house";
 
-export interface ChatLook {
-  /** Null until the house has answered once. */
-  chat: HouseChat | null;
-  /** The members with the house's page open now, by id. */
-  here: string[];
-}
-
-export interface ChatStore {
-  look(): ChatLook;
-  /** Told whenever what was said or who is here changes. Returns how to stop being told. */
-  subscribe(listener: (look: ChatLook) => void): () => void;
-  /** Resolves to what went wrong, or null when it was said. */
+export interface HouseChatActions {
+  /** Each resolves to what went wrong, or null when it's done. */
   say(text: string): Promise<string | null>;
-  /** Take a message down. Resolves to what went wrong, or null. */
   unsay(id: number): Promise<string | null>;
+  ask(question: string, options: string[]): Promise<string | null>;
+  vote(id: number, option: number | null): Promise<string | null>;
+  setFilter(on: boolean): Promise<string | null>;
+  /** Done with this house: nothing more is sent. (The page's connection stays, for the next.) */
   stop(): void;
 }
 
-const same = (a: string[], b: string[]) => a.length === b.length && a.every((id, i) => id === b[i]);
+type Api = Pick<typeof houses, "say" | "unsay" | "ask" | "vote" | "setChatFilter">;
+type Connect = (options: { url: string; scope: Record<string, true | string> }) => { pull(): Promise<void>; stop(): void };
+
+// The page's one connection to the houses' chats, by the function that made it (tests make their own).
+const connections = new WeakMap<Connect, ReturnType<Connect>>();
+
+/**
+ * Open a house's chat. Call it before the `<house-chat-feed>` element starts, as Sync asks, so the
+ * element waits for the connection's first pull and never shows last visit's chat over this one.
+ */
+export function openHouseChat(slug: string, { api = houses, open = connect as Connect }: { api?: Api; open?: Connect } = {}): HouseChatActions {
+  let connection = connections.get(open);
+  if (!connection) connections.set(open, (connection = open({ url: HOUSE_SYNC, scope: { housechat: true } })));
+  const live = connection;
+  let stopped = false;
+  const attempt = async (work: () => Promise<HouseChat>) => {
+    if (stopped) return "The chat has closed.";
+    try {
+      await work();
+      void live.pull().catch(() => undefined);
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : String(e);
+    }
+  };
+  return {
+    say: (text) => attempt(() => api.say(slug, text)),
+    unsay: (id) => attempt(() => api.unsay(slug, id)),
+    ask: (question, options) => attempt(() => api.ask(slug, question, options)),
+    vote: (id, option) => attempt(() => api.vote(slug, id, option)),
+    setFilter: (on) => attempt(() => api.setChatFilter(slug, on)),
+    stop() {
+      stopped = true;
+    },
+  };
+}
 
 /** "3:42 PM" today, "Mon 3:42 PM" this week, "Nov 3" before that. */
 export function when(at: number, now = Date.now()): string {
@@ -35,64 +75,9 @@ export function when(at: number, now = Date.now()): string {
   return then.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-/**
- * Open a house's chat. `onHeard` is told of each message from someone else that arrives after the
- * first look (for a sound to be made of it).
- */
-export function openHouseChat(slug: string, onHeard?: (message: HouseMessage) => void, api: Pick<typeof houses, "chat" | "say" | "unsay"> = houses): ChatStore {
-  let now: ChatLook = { chat: null, here: [] };
-  let heard: number | null = null;
-  let stopped = false;
-  const listeners = new Set<(look: ChatLook) => void>();
-  const tell = (next: ChatLook) => {
-    now = next;
-    for (const listener of listeners) listener(now);
-  };
-  const take = (found: HouseChat | { rev: number; here: string[] }) => {
-    if (stopped) return;
-    if ("messages" in found) {
-      const newest = found.messages.at(-1);
-      if (heard !== null && newest && newest.id > heard) for (const m of found.messages) if (m.id > heard && !m.mine) onHeard?.(m);
-      heard = newest?.id ?? heard ?? 0;
-      tell({ chat: found, here: found.here });
-    } else if (!same(found.here, now.here)) tell({ chat: now.chat, here: found.here });
-  };
-  const ask = async () => {
-    if (stopped || document.visibilityState !== "visible" || !navigator.onLine) return;
-    try {
-      take(await api.chat(slug, now.chat?.rev));
-    } catch {
-      /* out of reach for now: the next ask will tell */
-    }
-  };
-  const attempt = async (work: () => Promise<HouseChat>) => {
-    try {
-      take(await work());
-      return null;
-    } catch (e) {
-      return e instanceof Error ? e.message : String(e);
-    }
-  };
-
-  void ask();
-  const tick = setInterval(ask, ASK_EVERY);
-  document.addEventListener("visibilitychange", ask);
-  window.addEventListener("online", ask);
-
-  return {
-    look: () => now,
-    subscribe(listener) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-    say: (text) => attempt(() => api.say(slug, text)),
-    unsay: (id) => attempt(() => api.unsay(slug, id)),
-    stop() {
-      stopped = true;
-      clearInterval(tick);
-      document.removeEventListener("visibilitychange", ask);
-      window.removeEventListener("online", ask);
-      listeners.clear();
-    },
-  };
+/** How a poll stands: the votes for each answer, and which this member chose (null for none). */
+export function tally(poll: { options: string[]; votes: Record<string, number> }, me: string) {
+  const counts = poll.options.map(() => 0);
+  for (const option of Object.values(poll.votes)) if (option >= 0 && option < counts.length) counts[option]! += 1;
+  return { counts, total: counts.reduce((a, b) => a + b, 0), mine: poll.votes[me] ?? null };
 }
