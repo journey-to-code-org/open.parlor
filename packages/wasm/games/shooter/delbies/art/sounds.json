@@ -293,5 +293,250 @@
   "name": "DSPLASMA",
   "at": 294998,
   "length": 2425
+ },
+ {
+  "name": "DSMNPAIN",
+  "at": 297423,
+  "length": 3307
+ },
+ {
+  "name": "DSSKLDTH",
+  "at": 300730,
+  "length": 4410
+ },
+ {
+  "name": "DSBDOPN",
+  "at": 305140,
+  "length": 2756
+ },
+ {
+  "name": "DSBDCLS",
+  "at": 307896,
+  "length": 2866
+ },
+ {
+  "name": "DSITMBK",
+  "at": 310762,
+  "length": 2645
+ },
+ {
+  "name": "DSRADIO",
+  "at": 313407,
+  "length": 1543
+ },
+ {
+  "name": "DSDSHTGN",
+  "at": 314950,
+  "length": 5512
+ },
+ {
+  "name": "DSCHGUN",
+  "at": 320462,
+  "length": 1212
+ },
+ {
+  "name": "DSDBOPN",
+  "at": 321674,
+  "length": 5402
+ },
+ {
+  "name": "DSDBCLS",
+  "at": 327076,
+  "length": 6284
+ },
+ {
+  "name": "DSDBLOAD",
+  "at": 333360,
+  "length": 2756
+ },
+ {
+  "name": "DSVIPAIN",
+  "at": 336116,
+  "length": 6284
+ },
+ {
+  "name": "DSPEPAIN",
+  "at": 342400,
+  "length": 6284
+ },
+ {
+  "name": "DSPOSIT1",
+  "at": 348684,
+  "length": 8048
+ },
+ {
+  "name": "DSPOSIT2",
+  "at": 356732,
+  "length": 7166
+ },
+ {
+  "name": "DSPOSIT3",
+  "at": 363898,
+  "length": 6284
+ },
+ {
+  "name": "DSSPISIT",
+  "at": 370182,
+  "length": 6284
+ },
+ {
+  "name": "DSBSPSIT",
+  "at": 376466,
+  "length": 2756
+ },
+ {
+  "name": "DSVILSIT",
+  "at": 379222,
+  "length": 4520
+ },
+ {
+  "name": "DSPESIT",
+  "at": 383742,
+  "length": 2756
+ },
+ {
+  "name": "DSSKEPCH",
+  "at": 386498,
+  "length": 3638
+ },
+ {
+  "name": "DSVILATK",
+  "at": 390136,
+  "length": 3638
+ },
+ {
+  "name": "DSSKESWG",
+  "at": 393774,
+  "length": 4520
+ },
+ {
+  "name": "DSPODTH1",
+  "at": 398294,
+  "length": 3638
+ },
+ {
+  "name": "DSPODTH2",
+  "at": 401932,
+  "length": 2756
+ },
+ {
+  "name": "DSPODTH3",
+  "at": 404688,
+  "length": 8048
+ },
+ {
+  "name": "DSSPIDTH",
+  "at": 412736,
+  "length": 6284
+ },
+ {
+  "name": "DSBSPDTH",
+  "at": 419020,
+  "length": 2756
+ },
+ {
+  "name": "DSVILDTH",
+  "at": 421776,
+  "length": 4520
+ },
+ {
+  "name": "DSPEDTH",
+  "at": 426296,
+  "length": 4520
+ },
+ {
+  "name": "DSSKEDTH",
+  "at": 430816,
+  "length": 5402
+ },
+ {
+  "name": "DSPOSACT",
+  "at": 436218,
+  "length": 6284
+ },
+ {
+  "name": "DSBSPACT",
+  "at": 442502,
+  "length": 5402
+ },
+ {
+  "name": "DSBSPWLK",
+  "at": 447904,
+  "length": 7166
+ },
+ {
+  "name": "DSVILACT",
+  "at": 455070,
+  "length": 7166
+ },
+ {
+  "name": "DSFLAME",
+  "at": 462236,
+  "length": 5402
+ },
+ {
+  "name": "DSFLAMST",
+  "at": 467638,
+  "length": 8048
+ },
+ {
+  "name": "DSBOSPIT",
+  "at": 475686,
+  "length": 5402
+ },
+ {
+  "name": "DSBOSCUB",
+  "at": 481088,
+  "length": 3638
+ },
+ {
+  "name": "DSBOSSIT",
+  "at": 484726,
+  "length": 3638
+ },
+ {
+  "name": "DSBOSPN",
+  "at": 488364,
+  "length": 6284
+ },
+ {
+  "name": "DSBOSDTH",
+  "at": 494648,
+  "length": 3638
+ },
+ {
+  "name": "DSSSSIT",
+  "at": 498286,
+  "length": 5402
+ },
+ {
+  "name": "DSSSDTH",
+  "at": 503688,
+  "length": 7166
+ },
+ {
+  "name": "DSKEENPN",
+  "at": 510854,
+  "length": 6284
+ },
+ {
+  "name": "DSKEENDT",
+  "at": 517138,
+  "length": 3638
+ },
+ {
+  "name": "DSSKEACT",
+  "at": 520776,
+  "length": 8048
+ },
+ {
+  "name": "DSSKESIT",
+  "at": 528824,
+  "length": 5402
+ },
+ {
+  "name": "DSSKEATK",
+  "at": 534226,
+  "length": 4520
  }
 ]

@@ -128,6 +128,27 @@ sounds = {
     "DSPLASMA": over(hiss(0.22, 0.05) * 1.2, tone(0.22, 3200, 900, 0.5, 0.9) * 0.8),
 }
 
+# The engine has a name for every sound the original game made, and plays some of them for things this game changed (a fast door, a
+# thing coming back in a game between players, the fat rat hurt, a swarm of plugs put out). So nothing it asks for is silence: a few
+# made on purpose, and for every other name a growl or a squeal of its own, worked out from the name so it is the same every time.
+sounds.update({
+    "DSMNPAIN": tone(0.3, 240, 150, 0.8, 0.8),
+    "DSSKLDTH": over(hiss(0.4, 0.05) * 1.4, tone(0.3, 3000, 600, 0.5, 0.9) * 0.6),
+    "DSBDOPN": over(hiss(0.25, 0.6), tone(0.25, 160, 320, 1.0, 0.5) * 0.8),
+    "DSBDCLS": join(over(hiss(0.2, 0.6), tone(0.2, 320, 140, 1.0, 0.5) * 0.8), over(hiss(0.06, 0.9) * 2, tone(0.06, 90, 60))),
+    "DSITMBK": join(tone(0.1, 1400, 900), tone(0.14, 900, 1600)),
+    "DSRADIO": join(tone(0.05, 1200, 1200), quiet(0.04), tone(0.05, 1500, 1500)),
+    "DSDSHTGN": over(hiss(0.5, 0.25) * 2.2, tone(0.25, 200, 60) * 1.3),
+    "DSCHGUN": join(hiss(0.03) * 2, over(hiss(0.08, 0.1), tone(0.05, 1500, 500) * 0.6)),
+})
+OTHERS = "dbopn dbcls dbload vipain pepain posit1 posit2 posit3 spisit bspsit vilsit pesit skepch vilatk skeswg podth1 podth2 podth3 spidth bspdth vildth pedth skedth posact bspact bspwlk vilact flame flamst bospit boscub bossit bospn bosdth sssit ssdth keenpn keendt skeact skesit skeatk"
+for name in OTHERS.split():
+    seed = sum((i + 1) * ord(c) for i, c in enumerate(name))
+    low = 140 + seed % 400
+    long = 0.25 + (seed % 7) * 0.08
+    dying = name.endswith(("dth", "dt")) or "dth" in name
+    sounds["DS" + name.upper()] = over(hiss(long, 0.3 + (seed % 5) * 0.1), tone(long, low * (2 if not dying else 1.5), low * (0.4 if dying else 1.4), 1.2, 0.5 + (seed % 4) * 0.1))
+
 blob = bytearray()
 manifest = []
 for name, wave in sounds.items():

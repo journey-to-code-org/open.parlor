@@ -89,7 +89,7 @@ have no pictures and are placed in no level.
   `rats.py`, whose pictures the pages show.
 - `art/sounds.py` makes everything heard, from sliding tones and noise: the rats' squeaks,
   chitters, hisses and growl, and the price gun, the lever-action, doors, the breaker on the wall,
-  things picked up, and you. It writes `sounds.bin.gz` and `sounds.json`: 47 sounds.
+  things picked up, and you. It writes `sounds.bin.gz` and `sounds.json`: 108 sounds, one for every name the engine has, so nothing it plays is silence.
 - `art/walls.py` draws the pieces three of the walls are put together from: the shop wall (cream
   over a navy wainscot), shelves of parts in orange and blue boxes, and the counter's front. It
   writes `walls.bin.gz` and `walls.json`: 10 pieces.

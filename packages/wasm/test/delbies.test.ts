@@ -121,15 +121,15 @@ describe("the game's own levels", () => {
     expect(readWad(built).kind).toBe("IWAD");
     expect(names.slice(0, 8)).toEqual(["PLAYPAL", "COLORMAP", "TEXTURE1", "PNAMES", "TITLEPIC", "M_DOOM", "RULES", "WORDS"]);
     const between = (start: string, end: string) => names.slice(names.indexOf(start) + 1, names.indexOf(end));
-    // Delbie's face, 42 times, and the rest of the bar: 108 pictures. What is around the game: 208. A lump for each of 16 places a song plays. Everything heard: 59 sounds. (And before them, the game's rules and its words.)
-    expect(names.indexOf("S_START")).toBe(8 + 108 + 208 + 16 + 59);
+    // Delbie's face, 42 times, and the rest of the bar: 108 pictures. What is around the game: 208. A lump for each of 16 places a song plays. Everything heard: 108 sounds, one for every name the engine has. (And before them, the game's rules and its words.)
+    expect(names.indexOf("S_START")).toBe(8 + 108 + 208 + 16 + 108);
     // 240 pictures of rats and 176 of tools, pickups, another player and what shots and drums do.
     expect(between("S_START", "S_END")).toHaveLength(240 + 176);
     // Every wall and sky is one picture of its own name; then the floors and ceilings.
     expect(between("P_START", "P_END")).toHaveLength(27);
     expect(between("F_START", "F_END")).toHaveLength(17);
     expect(names.slice(-11)).toEqual(["E2M3", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
-    expect(names).toHaveLength(8 + 108 + 208 + 16 + 59 + 2 + 416 + 2 + 27 + 2 + 17 + 12 * 11);
+    expect(names).toHaveLength(8 + 108 + 208 + 16 + 108 + 2 + 416 + 2 + 27 + 2 + 17 + 12 * 11);
   });
 });
 
@@ -183,7 +183,7 @@ describe("the game, whole", () => {
     expect([data("PLAYPAL").length, data("COLORMAP").length]).toEqual([14 * 768, 34 * 256]);
     // Everything heard is made here, and none of it silence.
     const voices = of("sound");
-    expect(voices).toHaveLength(59);
+    expect(voices).toHaveLength(108);
     for (const name of ["DSSGTSIT", "DSBRSDTH", "DSPISTOL", "DSSHOTGN", "DSDOROPN", "DSSWTCHN", "DSITEMUP", "DSPLPAIN", "DSBAREXP", "DSSAWFUL", "DSRLAUNC", "DSPLASMA", "DSBFG"]) expect(voices).toContain(name);
     for (const voice of voices) {
       const heard = decodeDmx(data(voice))!;
