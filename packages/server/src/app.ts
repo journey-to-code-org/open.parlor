@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Log } from "@zubra/sync/server";
 import { createRooms, type RoomDoc } from "@journey-to-code/rooms/server";
 import { createCatalogue } from "./catalogue.js";
+import { createTunables } from "./tunables.js";
 import { PAGE_MOUNTS, createPages, publicOrigin } from "./pages.js";
 import { createChallenges } from "./challenges.js";
 import { createDevices } from "./devices.js";
@@ -154,6 +155,7 @@ export function createCardRoom(
   const push = createPush(rooms.sync, options.push);
   const ai = createAi(options.ai);
   const catalogue = createCatalogue(rooms.sync);
+  const tunables = createTunables(rooms.sync);
   // "Ask for a game" on the server's own page goes the way the app's does: past the block list, to the relay.
   const pages = createPages(catalogue, { asking: () => bugs.enabled, ask: async (request) => (await refusal(request)) ?? (await bugs.fetch(request)) });
   const designs = createDesigns(rooms.sync, { tables: rooms });
@@ -163,7 +165,7 @@ export function createCardRoom(
   const devices = createDevices({ housesOf: async (player) => (await houses.all()).filter((h) => h.members.some((m) => m.player === player)).map((h) => ({ slug: h.slug, name: h.name })) });
   const lobby = createLobby(rooms, { push, gameOn: catalogue.isOn, ...options.lobby });
   const spectate = createSpectate(rooms, catalogue, options.spectate);
-  const moderation = createModeration(rooms, designs, { token: options.adminToken, houses, catalogue, backups: options.backups, packs: options.packs, bots: bots ? () => bots.stats() : undefined, courses });
+  const moderation = createModeration(rooms, designs, { token: options.adminToken, houses, catalogue, tunables, backups: options.backups, packs: options.packs, bots: bots ? () => bots.stats() : undefined, courses });
   // "Report a problem": a player's report becomes an issue on GitHub.
   // With the parlor's own AI key, a report or request can be tidied before it's sent.
   const bugs = createBugs(rooms, { ...(ai.shared ? { tidy: (input) => ai.tidy(input) } : {}), ...options.bugs });
@@ -201,7 +203,7 @@ export function createCardRoom(
   }
   /** The routes that aren't the rooms kit's own. */
   const ours = async (request: Request) =>
-    (await refusal(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await designs.fetch(request)) ?? (await courses.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await pages.fetch(request)) ?? (await spectate.fetch(request)) ?? (await challenges.fetch(request)) ?? (await devices.fetch(request)) ?? (await lobby.fetch(request)) ?? (await houses.fetch(request));
+    (await refusal(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await designs.fetch(request)) ?? (await courses.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await tunables.fetch(request)) ?? (await pages.fetch(request)) ?? (await spectate.fetch(request)) ?? (await challenges.fetch(request)) ?? (await devices.fetch(request)) ?? (await lobby.fetch(request)) ?? (await houses.fetch(request));
 
   return {
     rooms,
@@ -212,6 +214,7 @@ export function createCardRoom(
     courses,
     moderation,
     catalogue,
+    tunables,
     bugs,
     push,
     /** The computer players' thinking: its counters, and when its workers are up. Null when they think on the main thread. */
