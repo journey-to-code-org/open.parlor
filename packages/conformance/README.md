@@ -100,6 +100,24 @@ The GitHub Pages workflow builds the suite, runs it and publishes `dist` under `
 relative, so it works there and at `/` for the tests. To see it here, run the checks and then
 `npx vite preview`: <http://localhost:4179/>.
 
+## The server's own page
+
+`server-tests/` is a separate, small set of browser tests for `/games`, the page the parlor's
+server draws with Zubra's server rendering ([`packages/server/src/pages.ts`](../server/src/pages.ts)).
+They use it as a person does, first with JavaScript off (the filter and "Ask for a game" both go
+through the server and come back) and then with it on (the components take over the same HTML, the
+list filters in place, and the request is answered without loading the page again).
+
+They need the server and the web app built, which the pages above don't, so they have a config of
+their own (`playwright.server.config.ts`) and aren't part of the results page:
+
+```sh
+npm run build                                      # at the repository's root
+npm run server-page -w @open-parlor/conformance    # Chrome; server-page:engines for all three
+```
+
+CI runs them in all three browsers.
+
 ## Known differences
 
 One, on Zubra 5.22.0. Preact 11 can't reorder a keyed list inside a component

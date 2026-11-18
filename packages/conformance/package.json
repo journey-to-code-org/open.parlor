@@ -10,6 +10,8 @@
     "build:angular": "zubra build --lib ../ui/src --out angular/zubra --name @open-parlor/conformance-zubra && ng build --project conformance",
     "conformance": "playwright test --project=chrome",
     "conformance:engines": "playwright test",
+    "server-page": "playwright test -c playwright.server.config.ts --project=chrome",
+    "server-page:engines": "playwright test -c playwright.server.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
