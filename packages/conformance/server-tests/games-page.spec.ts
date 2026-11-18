@@ -30,7 +30,7 @@ test.describe("with JavaScript off", () => {
     await page.locator("games-page select[name=kind]").selectOption("table");
     await page.locator("games-page form button[type=submit]").click();
     await expect(page).toHaveURL(/\/games\?q=che&kind=table$/);
-    await expect(cards(page)).toHaveText(["Checkers", "Chess"]);
+    await expect(cards(page)).toHaveText(["Checkers", "Chess", "Chinese Checkers"]);
     // What was asked for is still in the fields.
     await expect(page.locator("games-page input[name=q]")).toHaveValue("che");
     await expect(page.locator("games-page select[name=kind]")).toHaveValue("table");
@@ -96,7 +96,7 @@ test.describe("with JavaScript on", () => {
   test("a page asked for with a filter starts from it", async ({ page }) => {
     await page.goto("/games?q=che&kind=table");
     await started(page, "games-page");
-    await expect(cards(page)).toHaveText(["Checkers", "Chess"]);
+    await expect(cards(page)).toHaveText(["Checkers", "Chess", "Chinese Checkers"]);
     await page.locator("games-page input[name=q]").fill("chess");
     await expect(cards(page)).toHaveText(["Chess"]);
   });

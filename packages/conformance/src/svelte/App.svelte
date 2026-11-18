@@ -16,6 +16,8 @@
   let rows = $state(ROWS);
   let selected = $state<string[]>([]);
   let tab = $state("one");
+  /** A panel the page adds later, and then moves to another tab (zubra-ui#23). */
+  let late = $state<string | null>(null);
   let card = $state(0);
   let picks = $state(0);
   let bid = $state("");
@@ -116,9 +118,12 @@
     <tab-list data-t="tabs" label="Tabs" tabs={TABS} value={tab} onvaluechange={(e: News<string>) => (tab = e.detail)}>
       <section data-tab="one">First panel <span data-t="tab-count">{count}</span></section>
       <section data-tab="two">Second panel</section>
+      {#if late}<section data-tab={late} data-t="tab-late">Late panel</section>{/if}
     </tab-list>
     <output data-t="tab-out">{tab}</output>
     <button data-t="tab-set" type="button" onclick={() => (tab = "one")}>Back to One</button>
+    <button data-t="tab-late-add" type="button" onclick={() => (late = "two")}>Add a panel for Two</button>
+    <button data-t="tab-late-move" type="button" onclick={() => (late = "one")}>Move it to One</button>
   </section>
 
   <section>

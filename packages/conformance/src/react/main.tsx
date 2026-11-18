@@ -34,6 +34,7 @@ function App() {
   const [rows, setRows] = useState(ROWS);
   const [selected, setSelected] = useState<string[]>([]);
   const [tab, setTab] = useState("one");
+  const [late, setLate] = useState<string | null>(null);
   const [card, setCard] = useState(0);
   const [picks, setPicks] = useState(0);
   const [bid, setBid] = useState("");
@@ -176,10 +177,22 @@ function App() {
             First panel <span data-t="tab-count">{count}</span>
           </section>
           <section data-tab="two">Second panel</section>
+          {late && (
+            <section data-tab={late} data-t="tab-late">
+              Late panel
+            </section>
+          )}
         </TabList>
         <output data-t="tab-out">{tab}</output>
         <button data-t="tab-set" type="button" onClick={() => setTab("one")}>
           Back to One
+        </button>
+        {/* A panel the page adds later, and then moves to another tab (zubra-ui#23). */}
+        <button data-t="tab-late-add" type="button" onClick={() => setLate("two")}>
+          Add a panel for Two
+        </button>
+        <button data-t="tab-late-move" type="button" onClick={() => setLate("one")}>
+          Move it to One
         </button>
       </section>
 

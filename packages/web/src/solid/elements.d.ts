@@ -9,6 +9,7 @@ declare module "solid-js" {
       "number-ticker": Record<string, unknown>;
       "status-badge": Record<string, unknown> & { children?: Element };
       "user-avatar": Record<string, unknown>;
+      "text-field": Record<string, unknown>;
     }
   }
 }

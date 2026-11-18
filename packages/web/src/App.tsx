@@ -1,5 +1,4 @@
 import { createRoom } from "@journey-to-code/rooms/client";
-import { Sketchbook } from "./word/Sketchbook";
 import type { PalaceRules } from "@journey-to-code/palace";
 import type { RulePreset } from "@journey-to-code/rules";
 import { lazy, Suspense, useEffect, useState } from "react";
@@ -10,24 +9,17 @@ import { houses } from "./housesApi";
 import { lobby } from "./lobbyApi";
 import { setBugContext } from "./bugReport";
 import { LobbyPage } from "./LobbyPage";
-import { LocalTable } from "./LocalTable";
 import { RoomTable } from "./RoomTable";
-import { LocalPalace } from "./palace/LocalPalace";
 import { PalaceSetup } from "./palace/PalaceSetup";
 import { Setup } from "./Setup";
 // The front page is a Vue island: loaded only when it's shown, so table links don't fetch Vue.
 const Home = lazy(() => import("./home/Home").then((m) => ({ default: m.Home })));
 import { isArcadeGame, isIdleGame, isKitGame, type ArcadeGameId, type KitGameId } from "@journey-to-code/games";
-import { IdleTable } from "./idle/IdleTable";
-import { Shootout } from "./drive/Shootout";
 import type { SoloGameId } from "./GamePicker";
 import { ArcadeSetup } from "./arcade/ArcadeSetup";
-import { ArcadeTable, isLiveArcade } from "./arcade/ArcadeTable";
-import { AirHockeyTable } from "./arcade/AirHockeyTable";
-import { QuestTable } from "./quest/QuestTable";
-import { CounterTable } from "./counter/CounterTable";
+import { isLiveArcade } from "./arcade/live";
+import { lazyScreen } from "./offline/lazy";
 import { KitSetup } from "./kit/KitSetup";
-import { CourseEditor, LaneEditor } from "./golf/editors";
 import { onCourse } from "./golf/CoursePicker";
 import { onLane } from "./golf/LanePicker";
 import { fiveFrames, nineHoles } from "@journey-to-code/games";
@@ -37,6 +29,20 @@ import { WifiJoin } from "./wifi/WifiJoin";
 import { MoveDevice } from "./MoveDevice";
 import { TournamentPage } from "./TournamentPage";
 import { loadGame, loadLastGame, loadName, loadSameRules, loadTableSettings, rememberHouse, saveGame, type ArcadeRules, type GameId } from "./storage";
+
+// The tables: each is fetched when a game of its kind is first opened, so a device need only keep
+// the kinds its owner wants for playing offline (offline/packs.ts).
+const LocalTable = lazyScreen(() => import("./LocalTable").then((m) => m.LocalTable));
+const LocalPalace = lazyScreen(() => import("./palace/LocalPalace").then((m) => m.LocalPalace));
+const Sketchbook = lazyScreen(() => import("./word/Sketchbook").then((m) => m.Sketchbook));
+const IdleTable = lazyScreen(() => import("./idle/IdleTable").then((m) => m.IdleTable));
+const Shootout = lazyScreen(() => import("./drive/Shootout").then((m) => m.Shootout));
+const ArcadeTable = lazyScreen(() => import("./arcade/ArcadeTable").then((m) => m.ArcadeTable));
+const AirHockeyTable = lazyScreen(() => import("./arcade/AirHockeyTable").then((m) => m.AirHockeyTable));
+const QuestTable = lazyScreen(() => import("./quest/QuestTable").then((m) => m.QuestTable));
+const CounterTable = lazyScreen(() => import("./counter/CounterTable").then((m) => m.CounterTable));
+const CourseEditor = lazyScreen(() => import("./golf/editors").then((m) => m.CourseEditor));
+const LaneEditor = lazyScreen(() => import("./golf/editors").then((m) => m.LaneEditor));
 
 type Screen =
   | { kind: "home" }

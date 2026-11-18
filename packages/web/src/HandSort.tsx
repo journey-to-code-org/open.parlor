@@ -23,6 +23,11 @@ export interface HandDrop<C> {
   /** Whether this card may go there at all (a card that can't be played still drags within the hand). */
   accepts?: (card: C) => boolean;
   onDrop: (card: C) => void;
+  /**
+   * Let go off the hand and off the target, at (x, y) on the screen. Return true if the table did
+   * something with it (a flip, a hint); the card then goes back where it was in the hand.
+   */
+  elsewhere?: (card: C, x: number, y: number) => boolean;
 }
 
 interface Options<C> {
@@ -215,6 +220,10 @@ export function useHandOrder<C>(game: string, cards: readonly C[], idOf: (card: 
         return;
       }
       all.forEach((c) => (c.style.translate = ""));
+      // Let go well away from the hand, and not on the target: the table may want to answer that.
+      const box = hand.getBoundingClientRect();
+      const away = lastY < box.top - DROP_MARGIN || lastY > box.bottom + DROP_MARGIN;
+      if (keep && away && picked !== undefined && dropping?.elsewhere?.(picked, lastX, lastY)) to = from;
       if (keep && to !== from) commit(moveCard(order.current, from, to), all);
       // The card settles from where it was let go into its place.
       const now = card.getBoundingClientRect();

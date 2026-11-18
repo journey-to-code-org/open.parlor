@@ -4,7 +4,7 @@ import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
 import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { useEffect, useState } from "react";
 import { ARCADE_LIST, GAME_LIST } from "./GamePicker";
-import { isLiveArcade } from "./arcade/ArcadeTable";
+import { isLiveArcade } from "./arcade/live";
 import { lobby, lobbyProblem, waited, whoIsThere, type OpenTable } from "./lobbyApi";
 import { NotifyButton } from "./NotifyButton";
 import { loadSavedName, saveName } from "./storage";

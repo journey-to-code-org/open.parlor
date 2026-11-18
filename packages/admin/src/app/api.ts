@@ -134,6 +134,11 @@ export interface Overview {
   bots?: { workers: number; queued: number; running: number; thinks: number; averageMs: number; worstMs: number; abandoned: number } | null;
 }
 
+/** Road to the Shootout's pack: the host's own, published from the workshop, or none (the one the game came with). */
+export interface ShootoutPack {
+  published: { name: string; size: number; at: number } | null;
+}
+
 export interface LogEntry {
   id: string;
   at: number;
@@ -198,6 +203,20 @@ export class Api {
     if (!response.ok) throw new ApiError(((await response.json().catch(() => null)) as { error?: string } | null)?.error ?? `The parlor answered ${response.status}.`, response.status);
     const name = /filename="([^"]+)"/.exec(response.headers.get("content-disposition") ?? "")?.[1] ?? "cardroom-backup.db";
     return { name, file: await response.blob() };
+  }
+  shootout = () => this.send<ShootoutPack>("/shootout");
+  resetShootout = () => this.send<ShootoutPack>("/shootout/reset", {});
+  /** Publish a pack file: what is sent is the file itself. */
+  async publishShootout(file: Blob): Promise<ShootoutPack> {
+    let response: Response;
+    try {
+      response = await fetch(`${BASE}/shootout/pack`, { method: "POST", headers: { authorization: `Bearer ${this.token()}`, "content-type": "application/octet-stream" }, body: file, credentials: "omit", cache: "no-store" });
+    } catch {
+      throw new ApiError("Couldn't reach the parlor. Check your connection and try again.", 0);
+    }
+    const answer = (await response.json().catch(() => null)) as (ShootoutPack & { error?: string }) | null;
+    if (!response.ok || !answer) throw new ApiError(answer?.error ?? `The parlor answered ${response.status}.`, response.status);
+    return answer;
   }
   tables = () => this.send<{ tables: Table[] }>("/tables").then((r) => r.tables);
   table = (id: string) => this.send<{ table: Table; chat: ChatLine[] }>(`/tables/${id}`);

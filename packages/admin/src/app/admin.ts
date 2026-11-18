@@ -3,7 +3,7 @@
 // signals and call its refresh after they change something.
 import { Injectable, effect, inject, signal } from "@angular/core";
 import { Router } from "@angular/router";
-import { Api, ApiError, type Catalogue, type House, type LogEntry, type Overview, type Player, type SharedCourse, type SharedDesign, type Table, type TableStatus } from "./api";
+import { Api, ApiError, type Catalogue, type House, type LogEntry, type Overview, type Player, type SharedCourse, type SharedDesign, type ShootoutPack, type Table, type TableStatus } from "./api";
 
 const TOKEN_KEY = "cardroom.admin.token";
 const REFRESH_MS = 20_000;
@@ -24,6 +24,8 @@ export class Admin {
   readonly players = signal<Player[]>([]);
   readonly designs = signal<SharedDesign[]>([]);
   readonly courses = signal<SharedCourse[]>([]);
+  /** Road to the Shootout's pack; null until the server has said, or if it keeps none. */
+  readonly shootout = signal<ShootoutPack | null>(null);
   readonly log = signal<LogEntry[]>([]);
   readonly houses = signal<House[]>([]);
   readonly catalogue = signal<Catalogue | null>(null);
@@ -81,6 +83,7 @@ export class Admin {
     this.players.set([]);
     this.designs.set([]);
     this.courses.set([]);
+    this.shootout.set(null);
     this.houses.set([]);
     this.log.set([]);
     this.catalogue.set(null);
@@ -100,8 +103,9 @@ export class Admin {
 
   async refresh(): Promise<void> {
     try {
-      const [overview, tables, players, designs, log, houses, catalogue, courses] = await Promise.all([this.api.overview(), this.api.tables(), this.api.players(), this.api.designs(), this.api.log(), this.api.houses(), this.api.games(), this.api.courses()]);
+      const [overview, tables, players, designs, log, houses, catalogue, courses, shootout] = await Promise.all([this.api.overview(), this.api.tables(), this.api.players(), this.api.designs(), this.api.log(), this.api.houses(), this.api.games(), this.api.courses(), this.api.shootout().catch(() => null)]);
       this.courses.set(courses);
+      this.shootout.set(shootout);
       this.houses.set(houses);
       if (!this.savingGames()) this.catalogue.set(catalogue);
       this.overview.set(overview);

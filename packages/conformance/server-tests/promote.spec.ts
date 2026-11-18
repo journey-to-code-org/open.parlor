@@ -38,7 +38,7 @@ test.beforeAll(async () => {
   await new Promise<void>((done) => github.listen(4181, "127.0.0.1", done));
 });
 test.afterAll(async () => {
-  await new Promise<void>((done) => github.close(() => done()));
+  if (github) await new Promise<void>((done) => github.close(() => done()));
 });
 
 async function open(page: Page) {

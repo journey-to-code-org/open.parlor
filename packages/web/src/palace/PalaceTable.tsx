@@ -155,6 +155,7 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
       target: () => (choosingUp ? myTableRef.current : myTurn && can?.source === "hand" ? pileRef.current : null),
       accepts: (card) => (choosingUp ? true : !!can?.ranks.includes(card.rank)),
       onDrop: (card) => dropped(card as PCard),
+      elsewhere: (_card, x, y) => droppedOnDown(x, y),
     },
   });
   const last = view.last;
@@ -229,6 +230,27 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
       return;
     }
     playPicked(card);
+  }
+
+  /**
+   * A card let go of on one of your face-down cards. It can't be played there: face-down cards come
+   * last, once your hand and face-up cards are gone. So it flips the card if a flip is what's on
+   * (as a tap would), and otherwise says why nothing happened.
+   */
+  function droppedOnDown(x: number, y: number): boolean {
+    const slot = document
+      .elementsFromPoint(x, y)
+      .map((el) => el.closest<HTMLElement>(".down-card[data-index]"))
+      .find((el) => el && myTableRef.current?.contains(el));
+    if (!slot || choosingUp) return false;
+    const index = Number(slot.dataset.index);
+    if (myTurn && can?.flip && index < mine.down) {
+      void send({ type: "flip", index });
+      return true;
+    }
+    setError(myTurn ? "Face-down cards come last. Play from your hand first." : "Face-down cards come last, once your hand and face-up cards are gone.");
+    play("nope");
+    return true;
   }
 
   /**
@@ -420,7 +442,7 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
               return (
                 <div key={i} className="table-slot">
                   {i < mine.down && (
-                    <div className="down-card">
+                    <div className="down-card" data-index={i}>
                       {flippable ? (
                         <button type="button" className="flip" aria-label={`Flip face-down card ${i + 1}`} onClick={() => void send({ type: "flip", index: i })}>
                           <PlayingCard back size="table" />
