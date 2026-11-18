@@ -284,7 +284,9 @@ export function createCardRoom(
           headers,
           body: req.method === "GET" || req.method === "HEAD" ? undefined : Buffer.concat(chunks),
         });
-        return answer((await ours(request))!);
+        const response = await ours(request);
+        // Only the server's own pages can pass: when they are off, /games is the app's address again.
+        return response ? answer(response) : false;
       }
       // The rooms kit reads the request itself; a blocked player is turned away before it does.
       const blocked = await refusal(new Request(url, { method: req.method === "GET" || req.method === "HEAD" ? "GET" : "POST", headers }));

@@ -52,6 +52,21 @@ describe("the games page", () => {
     expect(html).not.toContain("<script>alert(1)");
   });
 
+  it("is switched off, not broken, when its components can't be found", async () => {
+    const errors: unknown[][] = [];
+    const error = console.error;
+    console.error = (...said: unknown[]) => void errors.push(said);
+    try {
+      const off = createPages({ state: async () => ({ games: GAMES as never, watching: true }) }, { components: "/nowhere/at/all" });
+      // The address is left to the app, and the modules aren't there.
+      expect(await off.fetch(new Request("http://parlor.test/games"))).toBeNull();
+      expect((await off.fetch(new Request("http://parlor.test/_zubra/runtime/zubra.js")))!.status).toBe(404);
+      expect(errors.length).toBe(1);
+    } finally {
+      console.error = error;
+    }
+  });
+
   it("serves the components' modules, and nothing else", async () => {
     const html = await (await get("/games")).text();
     const module = html.match(/\/_zubra\/[^"' )]+\.js/)?.[0];

@@ -35,14 +35,25 @@ const STYLE = `
   .page > footer { margin-top: 2rem; color: var(--muted-foreground); font-size: 0.9rem; }
 `;
 
-export function createPages(catalogue: Pick<Catalogue, "state">, { mount = "/games" } = {}) {
+export function createPages(catalogue: Pick<Catalogue, "state">, { mount = "/games", components = fileURLToPath(new URL("../pages", import.meta.url)) } = {}) {
   // `packages` is in @zubra/server and its guide, and not yet in its types.
-  const options: ZubraOptions & { packages: string[] } = { components: fileURLToPath(new URL("../pages", import.meta.url)), packages: ["@open-parlor/ui/zubra-ui"] };
-  const zubra = createZubra(options);
-  const theme = readFileSync(createRequire(import.meta.url).resolve("@open-parlor/ui/zubra-ui/themes/system.css"), "utf8");
+  const options: ZubraOptions & { packages: string[] } = { components, packages: ["@open-parlor/ui/zubra-ui"] };
+  // Made at the first request, not at start-up, and never allowed to take the tables down with it:
+  // if the components can't be found or compiled, these pages are off and the parlor still plays.
+  let made: { zubra: ReturnType<typeof createZubra>; theme: string } | null | undefined;
+  const make = () => {
+    if (made !== undefined) return made;
+    try {
+      made = { zubra: createZubra(options), theme: readFileSync(createRequire(import.meta.url).resolve("@open-parlor/ui/zubra-ui/themes/system.css"), "utf8") };
+    } catch (error) {
+      console.error("pages: off, the server can't draw its own pages:", error);
+      made = null;
+    }
+    return made;
+  };
 
   /** The games page: every game the host has switched on, in the host's order. */
-  async function games(url: URL): Promise<string> {
+  async function games(url: URL, { zubra, theme }: NonNullable<typeof made>): Promise<string> {
     const offered = (await catalogue.state()).games.filter((game) => game.on);
     const asked = url.searchParams.get("kind") ?? "all";
     const page = zubra.page();
@@ -85,12 +96,19 @@ export function createPages(catalogue: Pick<Catalogue, "state">, { mount = "/gam
      */
     async fetch(request: Request): Promise<Response | null> {
       const url = new URL(request.url);
-      if (url.pathname === mount) {
-        if (request.method !== "GET" && request.method !== "HEAD") return new Response("Not found", { status: 404 });
-        return new Response(await games(url), { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", "x-parlor-page": "games" } });
+      const modules = url.pathname.startsWith("/_zubra/");
+      if (url.pathname !== mount && !modules) return null;
+      const drawn = make();
+      // Off: the address is the app's again, as it is for a parlor without this page.
+      if (!drawn) return modules ? new Response("Not found", { status: 404 }) : null;
+      if (modules) return (await drawn.zubra.fetch(request)) ?? new Response("Not found", { status: 404 });
+      if (request.method !== "GET" && request.method !== "HEAD") return new Response("Not found", { status: 404 });
+      try {
+        return new Response(await games(url, drawn), { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", "x-parlor-page": "games" } });
+      } catch (error) {
+        console.error("pages: /games didn't render:", error);
+        return new Response("This page isn't working just now.", { status: 500, headers: { "content-type": "text/plain; charset=utf-8" } });
       }
-      if (!url.pathname.startsWith("/_zubra/")) return null;
-      return (await zubra.fetch(request)) ?? new Response("Not found", { status: 404 });
     },
   };
 }
