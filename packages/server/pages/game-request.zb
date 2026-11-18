@@ -1,0 +1,50 @@
+<!--
+  "Ask for a game", on the page the server draws (src/pages.ts). The form posts to `ask`, a function
+  that runs on the server and never reaches the browser. With JavaScript off the browser posts the
+  form itself, the server sends it back to the page, and the page is drawn with the answer
+  (`result`). With it on the post is a fetch, and the answer arrives in the form's `action` event.
+  What `ask` does (is the game already here? otherwise file the request) is the server's:
+  `askFor` comes from the server's context.
+-->
+<script>
+  import { from } from '@zubra/runtime'
+  import '@open-parlor/ui/zubra-ui/action-button.zb'
+  import '@open-parlor/ui/zubra-ui/alert-banner.zb'
+  import '@open-parlor/ui/zubra-ui/text-field.zb'
+
+  // The answer to the last request: the one the server drew the page with, then each new one.
+  let answer = from(result)
+
+  export async function ask(formData, { askFor, request }) {
+    'use server'
+    return askFor(String(formData.get('name') ?? ''), String(formData.get('note') ?? ''), request)
+  }
+
+  function answered(event) {
+    answer = event.detail.value ?? { error: "The request couldn't be sent just now. Try again in a minute." }
+  }
+</script>
+
+<style>
+  :host { display: block; }
+  form { display: grid; gap: 0.75rem; max-width: 32rem; }
+  form[aria-busy="true"] action-button { opacity: 0.6; }
+  .fine { margin: 0; color: var(--muted-foreground, #5d6470); font-size: 0.85rem; }
+  alert-banner { display: block; max-width: 32rem; margin-bottom: 0.75rem; }
+</style>
+
+<game-request result={null}>
+  <alert-banner zb-if={answer?.ok} variant="success" heading={answer.again ? "Someone else asked for that too" : "Asked"}>
+    Your request is in. <a zb-if={answer.url} href={answer.url}>See it on GitHub</a>
+  </alert-banner>
+  <alert-banner zb-if={answer?.have} variant="info" heading="Good news">
+    {answer.have.emoji} {answer.have.name} is already here. <a href={answer.have.href}>Set up a table</a>
+  </alert-banner>
+  <alert-banner zb-if={answer?.error} variant="danger" heading="That didn't go through">{answer.error}</alert-banner>
+  <form action={ask} onaction={answered}>
+    <text-field name="name" label="Which game?" required maxlength={60} placeholder="Backgammon, Skat, Mexican Train…"></text-field>
+    <text-field name="note" label="Anything to add?" rows={3} maxlength={600} placeholder="How your family plays it, how many players, a rule you can't do without…"></text-field>
+    <p class="fine">Requests are posted where anyone can read them, so the people who work on open.parlor can see what to build next. Yours never includes your name.</p>
+    <action-button type="submit">Ask for it</action-button>
+  </form>
+</game-request>

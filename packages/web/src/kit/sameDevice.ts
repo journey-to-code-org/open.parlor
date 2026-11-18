@@ -56,3 +56,50 @@ export function seatAtScreen(game: TableGame<any, any, any, any>, state: unknown
   }
   return now;
 }
+
+/** What a seat's view says about whose move it is, in any kit game: all a table on the server has to go by. */
+export interface SeatSight {
+  me: number;
+  turn?: number | null;
+  over?: unknown;
+  result?: unknown;
+  shoot?: unknown;
+  choices?: unknown;
+}
+
+/**
+ * Whether a seat has something to do, going by its own view: it is its turn, or everyone may move
+ * and it still has a shot to make or a choice it is being asked for. A seat that has already
+ * agreed and is waiting for the others keeps a way back ("Play on" in Go), which is not being
+ * asked: what a seat is asked for is marked as the main choice, or is a prompt with nothing to
+ * press (Yacht's "Pick a box to score").
+ */
+function busy(view: SeatSight | undefined): boolean {
+  if (!view || view.over) return false;
+  if (typeof view.turn === "number") return view.turn === view.me;
+  if (view.shoot != null) return true;
+  const options = (view.choices as { options?: { primary?: boolean }[] } | null | undefined)?.options;
+  return !!view.choices && (!options?.length || options.some((option) => option.primary));
+}
+
+/**
+ * Whose table the screen shows at a table on the server, where this device has more than one seat
+ * (`seats`, the device's own first) and the rest of the table is elsewhere. It is `seatAtScreen`
+ * without the game's state, which only the server has: each seat's own view says whose turn it is.
+ * The screen goes to whichever of this device's seats has the move, and stays where it is (`now`)
+ * while someone on another device moves, when the game is over, and until a view has arrived.
+ */
+export function seatAtTable(views: Record<number, SeatSight | undefined>, seats: number[], now: number): number {
+  const here = seats.includes(now) ? now : (seats[0] ?? now);
+  if (seats.length <= 1) return here;
+  const view = views[here] ?? seats.map((seat) => views[seat]).find(Boolean);
+  if (!view || view.over) return here;
+  if (typeof view.turn === "number") return seats.includes(view.turn) ? view.turn : here;
+  if (busy(views[here])) return here;
+  const at = seats.indexOf(here);
+  for (let i = 1; i < seats.length; i++) {
+    const seat = seats[(at + i) % seats.length]!;
+    if (busy(views[seat])) return seat;
+  }
+  return here;
+}

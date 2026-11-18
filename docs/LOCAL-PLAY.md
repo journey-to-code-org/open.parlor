@@ -63,6 +63,39 @@ one person at a time, with the curtain between each.
 A device lying flat between two people facing each other would rather the board did not turn: a
 table setting for that would be small.
 
+## One device shared, and other people on their own
+
+Two people on one phone can play a third who is on a phone of their own. It is offered for the
+games in the first column above, where the people at one screen see the same table anyway: Mini
+Golf, Bowling, Billiards, Carrom, the board games, the dice games, Memory and Hangman.
+
+**At a family table, an open table or a house's table** (`packages/web/src/second.ts`,
+`RoomTable.tsx`). Once you have sat down, the seating screen has **Someone else at this device**:
+type their name and press **Seat them here**, up to three more people. Each takes a seat of their
+own, marked "at this device", and can stand up again before the game starts. Everyone else joins
+from the link as usual. In the game the screen shows the table of whichever of the people here is
+to move, by name ("Grammi: Pull back and let go"), stays put while someone elsewhere moves, and
+has a switch in the banner for the times everyone may move at once. After a hole or a frame, one
+press of "Next" moves everyone here on. A reload, or a phone that slept, comes back to all of its
+seats.
+
+How it works: a seat belongs to a browser, by its cookie, and a player holds one seat. The server
+(`packages/server/src/second.ts`) treats a request to `/second/<n>/…` as the same request made by
+somebody else, whose id is worked out from the browser's own and `n`. So the second person has a
+seat, a view and moves through the very same routes, and the page keeps one more room open for
+each of them. Only tables, their sync log and the lobby's "still here" are reached that way.
+
+**On the same wifi** (`wifi/WifiHost.tsx`). The people chosen under **On this device** come to the
+wifi table with the host: they share the host's screen, and the seats after theirs are for guests.
+
+Not done:
+
+- Games with hands to hide. Passed round with a curtain, they work on one device, but not yet with
+  other devices at the table.
+- A guest's device on the wifi seats one person. Only the host's can seat more.
+- Spades, Palace and the arcade games.
+- The chat is the device's own player's: the people beside them have no name of their own in it.
+
 ## Several devices on the same wifi, with the internet out
 
 ### What a browser will and won't do
