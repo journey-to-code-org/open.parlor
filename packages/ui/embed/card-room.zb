@@ -416,6 +416,11 @@
       "emoji": "🏈",
       "blurb": "One folded football, two ends of a table. Hang it over the far edge for a touchdown."
     },
+    "overthehill": {
+      "name": "Over the Hill",
+      "emoji": "💥",
+      "blurb": "Pick a shell, set the angle and the power, and fire. Most damage done wins."
+    },
     "skyfire": {
       "name": "Shitstorm",
       "emoji": "🚀",
