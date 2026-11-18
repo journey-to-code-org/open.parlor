@@ -111,8 +111,7 @@ function shell({ title, about, theme, body }: { title: string; about: string; th
 }
 
 export function createPages(catalogue: Pick<Catalogue, "state">, { mount = "/games", daily: dailyMount = "/daily", now = () => new Date(), components = fileURLToPath(new URL("../pages", import.meta.url)), asking = () => false, ask, tunables }: PagesOptions = {}) {
-  // `packages` is in @zubra/server and its guide, and not yet in its types.
-  const options: ZubraOptions & { packages: string[] } = { components, packages: ["@open-parlor/ui/zubra-ui"] };
+  const options: ZubraOptions = { components, packages: ["@open-parlor/ui/zubra-ui"] };
   // Made at the first request, not at start-up, and never allowed to take the tables down with it:
   // if the components can't be found or compiled, these pages are off and the parlor still plays.
   type Made = { zubra: ReturnType<typeof createZubra>; actions: Actions; theme: string };

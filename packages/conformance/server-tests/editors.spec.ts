@@ -13,6 +13,8 @@ async function tap(page: Page, col: number, row: number, cols: number, rows: num
   await page.mouse.click(box.x + ((col + 0.5) * box.width) / cols, box.y + ((row + 0.5) * box.height) / rows);
 }
 const verdict = (page: Page) => page.locator(".golf-verdict");
+/** The editors are fetched when first opened: on a cold server and a slow engine that can be slow. */
+const opening = { timeout: 15_000 };
 
 // Tall enough for the whole grid on the screen: a tap or a drag is a real pointer at a point.
 test.use({ viewport: { width: 1280, height: 1300 } });
@@ -21,7 +23,7 @@ test.describe("the course editor", () => {
   test("paint, undo, holes and size", async ({ page }) => {
     agree(page);
     await page.goto("/?golf=new");
-    await expect(page.getByRole("heading", { name: "Make a Mini Golf course" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Make a Mini Golf course" })).toBeVisible(opening);
     // The starter hole: 7 by 13, the computer plays it.
     await expect(squares(page)).toHaveCount(7 * 13);
     await expect(verdict(page)).toContainText("Putting like a decent player", { timeout: 20_000 });
@@ -135,7 +137,7 @@ test.describe("the lane editor", () => {
   test("paint, undo, verdict, save and find it", async ({ page }) => {
     agree(page);
     await page.goto("/?lane=new");
-    await expect(page.getByRole("heading", { name: "Make a bowling lane" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Make a bowling lane" })).toBeVisible(opening);
     const count = await squares(page).count();
     expect(count).toBeGreaterThan(20);
     const cols = await page.locator(".golf-grid").evaluate((el) => Number(getComputedStyle(el).getPropertyValue("--cols")));
@@ -176,7 +178,7 @@ test.describe("the lane editor", () => {
     await page.goto("/?lane=new");
     // The editor is fetched when it is opened: it is there once its heading is. Count once the grid
     // is drawn: before, it has no squares and the sums below divide by nothing.
-    await expect(page.getByRole("heading", { name: "Make a bowling lane" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Make a bowling lane" })).toBeVisible(opening);
     await expect(squares(page).first()).toBeVisible();
     const count = await squares(page).count();
     const cols = await page.locator(".golf-grid").evaluate((el) => Number(getComputedStyle(el).getPropertyValue("--cols")));
