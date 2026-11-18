@@ -4,7 +4,7 @@ import { memoryLog } from "@zubra/sync/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCardRoom } from "../src/app.js";
 import { playerRef } from "../src/moderation.js";
-import { createHouseChat, KEPT, MESSAGE_LIMIT } from "../src/housechat.js";
+import { createHouseChat, KEPT, LOOKING, MESSAGE_LIMIT } from "../src/housechat.js";
 
 const BASE = "http://test";
 let open: ReturnType<typeof createCardRoom>[] = [];
@@ -46,7 +46,7 @@ async function house() {
 describe("a house's chat", () => {
   it("is one conversation for everyone in the house", async () => {
     const { chat, owner, friend, third } = await house();
-    expect((await owner(chat)).body).toMatchObject({ rev: 0, messages: [], canRemove: true, limit: MESSAGE_LIMIT, others: 2 });
+    expect((await owner(chat)).body).toMatchObject({ rev: 0, here: [expect.any(String)], messages: [], canRemove: true, limit: MESSAGE_LIMIT, others: 2 });
     const said = await owner(chat, { text: "  Spades at\n eight?  " });
     expect(said.status).toBe(201);
     await friend(chat, { text: "I'm in" });
@@ -65,9 +65,27 @@ describe("a house's chat", () => {
     const { chat, owner, friend } = await house();
     await owner(chat, { text: "Anyone about?" });
     const { rev } = (await friend(chat)).body;
-    expect((await friend(`${chat}?rev=${rev}`)).body).toEqual({ rev });
+    expect(Object.keys((await friend(`${chat}?rev=${rev}`)).body).sort()).toEqual(["here", "rev"]);
     await owner(chat, { text: "Hello?" });
     expect((await friend(`${chat}?rev=${rev}`)).body.messages).toHaveLength(2);
+  });
+
+  it("says who has the house's page open, and stops saying so when they have gone", async () => {
+    let doc: Record<string, unknown> | undefined;
+    const chat = createHouseChat({ write: async (_c, _k, fields) => void (doc = fields), documents: async () => ({ get: () => doc }) });
+    const [mikey, dubs, grammi] = ["Mikey", "Dubs", "Grammi"].map((name, i) => ({ id: `m${i}`, player: `p${i}`, name, role: i ? ("member" as const) : ("owner" as const) }));
+    const place = { slug: "parts", name: "The Parts Store", members: [mikey!, dubs!, grammi!] };
+    const ask = async (who: typeof mikey, now: number, rev?: number) => ((await chat.handle(place, who!, "GET", {}, new URLSearchParams(rev === undefined ? "" : `rev=${rev}`), now)).body as { here: string[] }).here;
+    // Alone at first: the one asking is always here.
+    expect(await ask(mikey, 0)).toEqual(["m0"]);
+    expect(await ask(grammi, 1000)).toEqual(["m0", "m2"]);
+    // Told with "nothing new" too, in the house's order.
+    expect(await ask(dubs, 2000, 0)).toEqual(["m0", "m1", "m2"]);
+    // Mikey's page stopped asking; the others' didn't.
+    await ask(grammi, LOOKING + 500);
+    expect(await ask(dubs, LOOKING + 900, 0)).toEqual(["m1", "m2"]);
+    // Saying something counts as being here.
+    expect(((await chat.handle(place, mikey!, "POST", { text: "Back" }, new URLSearchParams(), LOOKING + 1000)).body as { here: string[] }).here).toEqual(["m0", "m1", "m2"]);
   });
 
   it("is for members only", async () => {

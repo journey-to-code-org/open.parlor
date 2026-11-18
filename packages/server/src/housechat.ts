@@ -3,7 +3,8 @@
 //
 // One server-only document per house (`housechat/<slug>`): the last messages said, and a `rev`
 // that goes up with every change, so a page that asks with the rev it has is told "nothing new" in
-// a few bytes. A house is people who were invited, so words aren't covered here, as they aren't at
+// a few bytes. Every answer also says who is here: the members whose pages asked in the last few
+// seconds. A house is people who were invited, so words aren't covered here, as they aren't at
 // a family table: the owner and admins can take any message down, and anyone their own.
 import type { Push } from "./push.js";
 
@@ -45,8 +46,8 @@ const BURST = 5;
 const BURST_MS = 10_000;
 /** A member's phone buzzes about the chat at most this often. */
 const BUZZ_EVERY = 5 * 60_000;
-/** Someone who asked for the chat this recently has it open, and needs no buzz. */
-const LOOKING = 20_000;
+/** Someone who asked for the chat this recently has it open: they are "here", and need no buzz. */
+export const LOOKING = 20_000;
 
 export function createHouseChat(sync: Sync, { push }: { push?: Push } = {}) {
   const read = async (slug: string) => {
@@ -62,8 +63,12 @@ export function createHouseChat(sync: Sync, { push }: { push?: Push } = {}) {
   const looked = new Map<string, number>();
   const buzzed = new Map<string, number>();
 
-  const shown = (house: House, me: Member, chat: { messages: HouseMessage[]; rev: number }) => ({
+  /** The members with the house's page open, by their public ids, in the house's own order. The one asking is always among them. */
+  const here = (house: House, me: Member, now: number) => house.members.filter((m) => m.id === me.id || now - (looked.get(`${house.slug}/${m.id}`) ?? -Infinity) < LOOKING).map((m) => m.id);
+
+  const shown = (house: House, me: Member, chat: { messages: HouseMessage[]; rev: number }, now: number) => ({
     rev: chat.rev,
+    here: here(house, me, now),
     messages: chat.messages.map((m) => ({ ...m, mine: m.by === me.id })),
     /** Whether this member may take down what others said. */
     canRemove: me.role !== "member",
@@ -81,7 +86,7 @@ export function createHouseChat(sync: Sync, { push }: { push?: Push } = {}) {
 
     /**
      * /houses/:slug/chat, for a member of the house.
-     *   GET  [?rev=]        → { rev, messages, canRemove, limit, others }, or just { rev } when that is the rev the page has
+     *   GET  [?rev=]        → { rev, here, messages, canRemove, limit, others }, or just { rev, here } when that is the rev the page has
      *   POST { text }       → the same, with the message said; 429 when they are saying too much at once
      *   POST { remove: id } → the same, without it: one's own, or anyone's for the owner and admins
      */
@@ -91,8 +96,8 @@ export function createHouseChat(sync: Sync, { push }: { push?: Push } = {}) {
 
       if (method === "GET") {
         looked.set(who, now);
-        if (query.has("rev") && Number(query.get("rev")) === chat.rev) return { status: 200, body: { rev: chat.rev } };
-        return { status: 200, body: shown(house, me, chat) };
+        if (query.has("rev") && Number(query.get("rev")) === chat.rev) return { status: 200, body: { rev: chat.rev, here: here(house, me, now) } };
+        return { status: 200, body: shown(house, me, chat, now) };
       }
       if (method !== "POST") return { status: 404, body: { error: "There's nothing there." } };
       looked.set(who, now);
@@ -106,7 +111,7 @@ export function createHouseChat(sync: Sync, { push }: { push?: Push } = {}) {
           chat.rev += 1;
           await keep(house.slug, chat);
         }
-        return { status: 200, body: shown(house, me, chat) };
+        return { status: 200, body: shown(house, me, chat, now) };
       }
 
       // One line: whatever was pasted, without its line breaks and the spaces around them.
@@ -130,7 +135,7 @@ export function createHouseChat(sync: Sync, { push }: { push?: Push } = {}) {
         buzzed.set(them, now);
         void push?.notify(m.player, { title: `${me.name} at ${house.name} 💬`, body: text.length > 120 ? `${text.slice(0, 117)}…` : text, url: `/?house=${house.slug}`, tag: `house-chat-${house.slug}` });
       }
-      return { status: 201, body: shown(house, me, chat) };
+      return { status: 201, body: shown(house, me, chat, now) };
     },
   };
 }
