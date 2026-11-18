@@ -185,24 +185,75 @@ const EMPTY_SCREEN: MiniScreen = { ship: [50, 82], foes: [], bullets: [] };
 /**
  * Games that are pages of their own beside the parlor, on the shelves with the rest: a tile each,
  * found by the search like any other, that goes to the page. They aren't the host's to arrange or
- * leave out, having no table in the parlor.
+ * leave out, having no table in the parlor. One with `needs` is a page the parlor's server draws,
+ * and is on the shelf only where there is a server that draws it.
  */
-const ELSEWHERE = [
+const ELSEWHERE: { id: string; name: string; emoji: string; blurb: string; category: "arcade" | "board" | "cards"; group: undefined; seats: [number, number]; teams: boolean; fan: object[]; screen: MiniScreen | undefined; dice: undefined; board: MiniBoard | undefined; table: undefined; href: string; needs?: "daily" }[] = [
   {
     id: "delbies-doomsday",
     name: "Delbie's Doomsday",
     emoji: "👾",
     blurb: "A first-person shooter on the Doom engine: twelve floors of an auto parts store, and rats. Alone, or up to four together.",
-    category: "arcade" as const,
+    category: "arcade",
     group: undefined,
-    seats: [1, 4] as [number, number],
+    seats: [1, 4],
     teams: false,
     fan: [],
-    screen: { ship: [50, 84], foes: [[24, 30], [50, 22], [76, 30]], bullets: [[50, 58]] } as MiniScreen,
+    screen: { ship: [50, 84], foes: [[24, 30], [50, 22], [76, 30]], bullets: [[50, 58]] },
     dice: undefined,
     board: undefined,
     table: undefined,
     href: "wasm/",
+  },
+  {
+    id: "delbies-stockroom",
+    name: "Delbie's Stockroom",
+    emoji: "📦",
+    blurb: "Run the parts store's stockroom for a month: buy at wholesale prices that never sit still, price the shelves, set the traps, make the rent.",
+    category: "arcade",
+    group: undefined,
+    seats: [1, 1],
+    teams: false,
+    fan: [],
+    screen: { ship: [0, 0], foes: [], bullets: [], shop: true },
+    dice: undefined,
+    board: undefined,
+    table: undefined,
+    href: "wasm/market/",
+  },
+  {
+    id: "delbies-back-room",
+    name: "Delbie's Back Room",
+    emoji: "🃏",
+    blurb: "A deck-building battler: five trouble spots in a parts store's back room, fought with a deck of tools and parts.",
+    category: "cards",
+    group: undefined,
+    seats: [1, 1],
+    teams: false,
+    fan: FANS.spades!,
+    screen: undefined,
+    dice: undefined,
+    board: undefined,
+    table: undefined,
+    href: "wasm/battler/",
+  },
+  {
+    id: "daily-sudoku",
+    name: "The daily sudoku",
+    emoji: "🔢",
+    blurb: "One sudoku a day, the same for everyone who plays here.",
+    category: "board",
+    group: undefined,
+    seats: [1, 1],
+    teams: false,
+    fan: [],
+    screen: undefined,
+    dice: undefined,
+    // A corner of the grid, part filled in.
+    board: { cols: 3, shade: "words", cells: [...tiles("5_3", "ppp"), ...tiles("_7_", "ppp"), ...tiles("6_1", "ppp")] },
+    table: undefined,
+    href: "daily",
+    needs: "daily",
   },
 ];
 
@@ -223,7 +274,9 @@ export function Home({ last, onPick, onOpenHouse, onLobby, onWifi, onMove }: { l
 
   useEffect(() => {
     // The games the parlor's host offers, in their order (every game, where there's no server).
-    const games = () => [...arranged(EVERY_GAME).map((g) => ({ ...g, category: categoryOf(g.id), group: cardGroupOf(g.id), screen: isArcadeGame(g.id) || isIdleGame(g.id) || isFieldGame(g.id) ? (SCREENS[g.id] ?? EMPTY_SCREEN) : undefined, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: (isBoardGame(g.id) && !DICE[g.id]) || isWordGame(g.id) ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined, href: undefined as string | undefined })), ...ELSEWHERE];
+    /** The pages of the server's that are there to go to. */
+    const has = { daily: false };
+    const games = () => [...arranged(EVERY_GAME).map((g) => ({ ...g, category: categoryOf(g.id), group: cardGroupOf(g.id), screen: isArcadeGame(g.id) || isIdleGame(g.id) || isFieldGame(g.id) ? (SCREENS[g.id] ?? EMPTY_SCREEN) : undefined, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: (isBoardGame(g.id) && !DICE[g.id]) || isWordGame(g.id) ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined, href: undefined as string | undefined })), ...ELSEWHERE.filter((game) => !game.needs || has[game.needs])];
     const props = reactive({
       games: games(),
       categories: GAME_CATEGORIES,
@@ -252,7 +305,11 @@ export function Home({ last, onPick, onOpenHouse, onLobby, onWifi, onMove }: { l
       .then((reply) => (props.canList = reply.ok && (reply.headers.get("x-parlor-page") ?? "") === "games"))
       .catch(() => {});
     void fetch("daily", { method: "HEAD" })
-      .then((reply) => (props.canDaily = reply.ok && (reply.headers.get("x-parlor-page") ?? "") === "daily"))
+      .then((reply) => {
+        props.canDaily = has.daily = reply.ok && (reply.headers.get("x-parlor-page") ?? "") === "daily";
+        // The daily sudoku goes on its shelf once the server is known to have it.
+        if (has.daily) props.games = games();
+      })
       .catch(() => {});
     // Rendered from the reactive props, so the chooser follows them when the open tables change.
     const app = createApp({ render: () => h(GameChooser, { ...props }) });

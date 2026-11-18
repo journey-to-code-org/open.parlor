@@ -181,7 +181,7 @@ function surprise() {
 }
 /** Where each face's pips sit in a die's three-by-three (0 is the top left). */
 const PIPS: Record<number, number[]> = { 1: [4], 2: [2, 6], 3: [2, 4, 6], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
-const seatsLabel = (g: ChooserGame) => (g.screen && g.seats[0] === 1 ? (g.seats[1] === 1 ? "1 player" : `1–${g.seats[1]} players`) : g.teams ? "4 players · partners" : g.seats[0] === g.seats[1] ? `${g.seats[0]} players` : `${g.seats[0]}–${g.seats[1]} players`);
+const seatsLabel = (g: ChooserGame) => (g.screen && g.seats[0] === 1 ? (g.seats[1] === 1 ? "1 player" : `1–${g.seats[1]} players`) : g.teams ? "4 players · partners" : g.seats[0] === g.seats[1] ? (g.seats[0] === 1 ? "1 player" : `${g.seats[0]} players`) : `${g.seats[0]}–${g.seats[1]} players`);
 const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : `${props.games.length} games to play with family and friends: cards, board games, words, table sports and arcade.`));
 /** Someone who has never played here: no name, no last game. They get the line about what it costs and a few games to start with. */
 const STARTED_KEY = "parlor.started";
@@ -442,10 +442,7 @@ async function toShelf(id: string) {
     <p class="fine links">
       <a class="design" href="watch/">👀 Watch a game</a>
       <a class="design" href="designer/">🎨 Design your own deck of cards</a>
-      <a class="design" href="wasm/market/">📦 Run Delbie's Stockroom, a parts-market sim</a>
-      <a class="design" href="wasm/battler/">🃏 Fight through Delbie's Back Room, a deck-building battler</a>
       <a v-if="canList" class="design" href="games">📋 Every game on one page</a>
-      <a v-if="canDaily" class="design" href="daily">🔢 The daily sudoku</a>
       <a class="design" :href="BUILT">🧪 How the parlor is built</a>
       <button type="button" class="design" @click="emit('move')">📱 Use the parlor on another device</button>
       <button type="button" class="design" @click="offlineGames">📴 Offline games: choose what's kept on this device</button>

@@ -168,9 +168,10 @@ test.describe("with JavaScript on", () => {
     await expect(cell(page, i)).toHaveValue("7");
   });
 
-  test("the front page links to it", async ({ page }) => {
+  test("the front page has it on a shelf, and its tile goes to it", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("link", { name: /The daily sudoku/ }).click();
+    // A tile like any other game's, there once the page has asked the server whether it draws one.
+    await page.getByRole("button", { name: /^The daily sudoku:/ }).click();
     await expect(page).toHaveURL(/\/daily$/);
     await started(page, "daily-sudoku");
     await expect(page.locator("daily-sudoku input")).toHaveCount(82);
