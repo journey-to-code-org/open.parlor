@@ -22,13 +22,14 @@ engine, standing in until the game has its own.
 | Controller | Left stick to move, right stick to turn, right trigger or X to fire, A to use, the bumpers for weapons, Start for the menu |
 | Together | Up to four, each on a device of their own, against the monsters or each other. One starts a game and sends the others its link or its four-letter code |
 | Watching | Anyone with the link can watch, through any player's eyes, and is run through the game so far if they come late. A game its host lists also shows on the parlor's watch page |
-| Changing it | An editor at `/wasm/editor/` swaps any of the game's pictures and sounds for a file of your own, and changes what is placed in its levels; the game is played with the changes, alone |
+| Changing it | An editor at `/wasm/editor/` swaps any of the game's pictures and sounds for a file of your own, and changes its levels, what is placed in them and what they are built of; the game is played with the changes, alone |
 | Sound | Effects, through Web Audio. No music yet |
 | Saved games and settings | Kept in the browser (IndexedDB), under the engine's own menus |
 | Offline | After the first visit the page, the engine and the game's data are kept on the device |
 
 Not there yet: music (the songs are MUS data, which wants an OPL or MIDI synthesiser), joining a
-game that has started as a player, replays of games that are over, and changing a level's walls.
+game that has started as a player, replays of games that are over, and drawing a level from
+nothing (the levels there are can be changed and added to).
 
 ## The editor
 
@@ -49,12 +50,14 @@ letters) and the sound effects. Any of them can be swapped for a file:
 
 ### Levels
 
-The **Levels** tab draws a level from above and changes what is placed in it: where the players
-start, the monsters, what can be picked up, the scenery.
+The **Levels** tab draws a level from above and changes it: what is placed in it (where the
+players start, the monsters, what can be picked up, the scenery) and what it is built of (its
+corners, walls and rooms). Drag the map to move about; pinch, or the wheel, to come closer.
 
-- **Choose and move**: tap a thing to choose it, drag it to move it. Drag the map to move about;
-  pinch, or the wheel, to come closer.
-- **Add**: pick what, and tap where.
+What is placed in it:
+
+- **Things**: tap a thing to choose it, drag it to move it.
+- **Add a thing**: pick what, and tap where.
 - **A chosen thing** can be made something else, turned to face any of eight ways, left out of
   easy, medium or hard games, made to wait in ambush (a monster), kept for games with other
   players, or taken away. A level keeps a place for the first player to start.
@@ -65,10 +68,35 @@ start, the monsters, what can be picked up, the scenery.
 What can be placed, and what each thing looks like and how wide it is, comes from the engine's own
 table (`engine/info.c`), read by `scripts/gen-things.mjs` into `wad/things.ts`.
 
-The walls can't be changed yet. A level's walls are stored with a tree the engine draws and
-collides by (the "nodes"), which has to be rebuilt whenever a wall moves; what is placed in a
-level needs nothing rebuilt. Saved as a file, a changed level goes in whole, walls and all, since
-other engines can only replace a level whole.
+What it is built of, under **Walls**. Tap a corner, a wall or the floor of a room:
+
+- **A corner** is dragged, or moved with the arrows, on a grid of 8. The walls that meet at it go
+  with it. It won't go where walls would cross.
+- **A wall** has a picture, or, where it is an opening between two rooms, one above and one below
+  the opening on each side. It can be made to do something (a door, a switch, a lift, the way
+  out), to the rooms that have its number; made to block players, monsters or sound; split in
+  two; and, if nothing is behind it, given **a room behind it**, which makes it an opening.
+- **A room** has a floor and a ceiling (a height and a picture each), a light, something it does
+  (hurts, flickers, counts as a secret) and a number for switches to find it by. **Add a room
+  inside it** puts a square room where it was tapped: a platform once its floor is raised, a pit
+  once lowered, a pillar with the ceiling brought down to the floor.
+- **Undo** takes back the last change to the walls, up to thirty of them; Ctrl+Z with the map in
+  focus does the same.
+
+Walls and rooms can't be taken away, and a room is added as a square or as a box behind a wall,
+not drawn freehand: move its corners and split its walls to shape it.
+
+A level's walls are stored with a tree the engine draws and collides by (the "nodes"), which has
+to be rebuilt whenever a wall moves. That is done by a node builder,
+[BSP 5.2](https://github.com/cph6/bsp), a C program compiled to WebAssembly as the engine is
+(`games/shooter/nodes`, 60 KB, fetched the first time a wall is changed). It is run a moment after
+each change (a few hundredths of a second for the game's first level), and what it makes is
+what is kept: a changed level is always one that can be played. If it can't build the level it
+says why, and the change isn't kept until it can.
+
+Saved as a file, a changed level goes in whole, since other engines can only replace a level
+whole. A level in a file is taken in as walls of its own if it is built, as other editors save
+them.
 
 The changes are kept in the browser (IndexedDB) and laid over the game's WAD each time it is
 played alone. A game with other devices is played on the data as it came. Pictures and sounds
@@ -128,7 +156,10 @@ wad/                  the Doom engine's data, read and written. No browser, no S
   picture.ts          the engine's pictures (columns of posts; 64 by 64 floors) and its palette
   sound.ts            its sound effects
   catalogue.ts        which lumps are sprites, walls, floors, other pictures, sounds and levels
-  level.ts            a level: its walls, to draw, and what is placed in it, to change
+  level.ts            a level: what is placed in it, and its shape (corners, walls, sides, rooms), in and out
+  shape.ts            changes to a shape: move a corner, split a wall, add a room; and what makes one unplayable
+  nodes.ts            the node builder, run on a shape to make a level the engine can play
+  does.ts             what a wall or a room can be made to do
   things.ts           what can be placed in a level; written from the engine's table by scripts/gen-things.mjs
   mod.ts              someone's changes: laid over a game, or as a WAD of their own
 net/                  for any lockstep game, and for a server: nothing here knows about Doom either
@@ -141,6 +172,7 @@ games/shooter/
   shooter.wasm        the engine, compiled. Committed, so building the site needs no C compiler
   shooter.wasm.json   a hash of the C it was compiled from
   data.json           which Freedoom release is the game's data
+  nodes/              the node builder: BSP 5.2's C (GPL-2.0) in bsp/, what calls it in glue/, and nodes.wasm, committed
 src/
   shooter/engine.ts   starts the engine and calls into it. No DOM: the tests run it in Node
   shooter/player.ts   the game on a page: mountShooter(element, options)
@@ -167,7 +199,8 @@ a browser only draws once the call has returned: that is what most of the change
 ```sh
 npm run dev -w @open-parlor/wasm      # http://localhost:5177/wasm/
 npm test -w @open-parlor/wasm         # boots the engine in Node on the real data, alone and in games of several
-npm run engine -w @open-parlor/wasm   # recompile the C
+npm run engine -w @open-parlor/wasm   # recompile the engine's C
+npm run nodes -w @open-parlor/wasm    # recompile the node builder's
 npm run typecheck -w @open-parlor/wasm   # after a build: Zubra writes its components' typings then
 ```
 
@@ -178,13 +211,15 @@ Recompiling the C needs `clang` and `wasm-ld` (on Debian or Ubuntu: `apt install
 clang 18 is what `shooter.wasm` was built with). The script fetches the WASI C library from the
 [wasi-sdk](https://github.com/WebAssembly/wasi-sdk) release into `.toolchain/`. Commit
 `shooter.wasm` and `shooter.wasm.json` along with the C: a test fails when the hash in the second
-doesn't match the sources.
+doesn't match the sources. The same goes for `nodes/nodes.wasm`.
 
 ## Licences
 
 - `games/shooter/engine/` and `games/shooter/platform/` are under the GNU General Public License,
   version 2 or later, and so is `shooter.wasm`, which is compiled from them. The source of the
   `.wasm` on the site is this folder.
+- `games/shooter/nodes/` is BSP 5.2, by Colin Reed, Lee Killough, Simon Howard and Colin Phipps,
+  under the same licence (`bsp/COPYING`, `bsp/AUTHORS`); so is `nodes.wasm`.
 - Freedoom is under a BSD 3-clause licence. Its licence and credits are served beside it and
   linked from the foot of the page.
 - "Doom" is a trademark of id Software. This is not Doom, and the game needs a name of its own.

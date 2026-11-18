@@ -11,9 +11,11 @@
 <script lang="ts">
   import { SvelteMap } from "svelte/reactivity";
   import game from "../../games/shooter/data.json";
+  import nodesWasm from "../../games/shooter/nodes/nodes.wasm?url";
   import wasm from "../../games/shooter/shooter.wasm?url";
   import { asset as fetched } from "../../host/assets.ts";
-  import { type Asset, catalogue, key, type Kind, KINDS } from "../../wad/catalogue.ts";
+  import { type Asset, catalogue, isLevelKind, key, type Kind, KINDS } from "../../wad/catalogue.ts";
+  import { wallNames } from "../../wad/level.ts";
   import { applyMod, type Change, modFromWad, modToWad } from "../../wad/mod.ts";
   import { type Palette, paletteOf } from "../../wad/picture.ts";
   import { loadMod, removeChange, saveChange } from "../../wad/saved.ts";
@@ -64,6 +66,10 @@
   let tryLevel = $state("");
 
   const tabs = $derived([...KINDS.map((kind) => ({ value: kind, label: LABELS[kind]! })), { value: "level", label: "Levels" }, { value: "changed", label: `Changed (${changes.size})` }, { value: "play", label: "Try it" }]);
+  const wallPictures = $derived(wallNames(wad));
+  /** The node builder, fetched and compiled the first time a level's walls are changed. */
+  let nodes: Promise<WebAssembly.Module> | null = null;
+  const builder = () => (nodes ??= WebAssembly.compileStreaming(fetch(nodesWasm)).catch((error) => ((nodes = null), Promise.reject(error))));
   const original = (asset: Asset) => wad.lumps[asset.index]!.data;
   const now = (asset: Asset) => changes.get(key(asset.kind, asset.name))?.data ?? original(asset);
   const isChanged = (asset: Asset) => changes.has(key(asset.kind, asset.name));
@@ -138,7 +144,7 @@
       const lost: string[] = [];
       for (const file of files) {
         const name = file.name.replace(/\.[^.]*$/, "").toUpperCase();
-        const named = assets.filter((asset) => asset.name === name && asset.kind !== "things");
+        const named = assets.filter((asset) => asset.name === name && !isLevelKind(asset.kind));
         // A name two kinds share (a floor and a wall piece) goes to the kind whose tab is open.
         const target = named.find((asset) => asset.kind === tab) ?? named[0];
         if (target && (await replace(target, file))) took++;
@@ -202,7 +208,7 @@
 
   /** Opens something from the list: a picture or a sound in the dialog, a level in the Levels tab. */
   function open(asset: Asset) {
-    if (asset.kind !== "things") return void (picked = asset);
+    if (!isLevelKind(asset.kind)) return void (picked = asset);
     level = asset.name;
     choose("level");
   }
@@ -273,7 +279,7 @@
                   <li>
                     <button type="button" class="tile" class:changed={isChanged(asset)} onclick={() => open(asset)}>
                       <span class="thumb">
-                        {#if asset.kind === "things"}
+                        {#if isLevelKind(asset.kind)}
                           <span class="sound" aria-hidden="true">▦</span>
                         {:else if isSound(asset.kind)}
                           <span class="sound" aria-hidden="true">♪</span>
@@ -301,7 +307,7 @@
       {/each}
       <section data-tab="level">
         {#if tab === "level"}
-          <Levels {wad} {assets} {palette} bind:level saved={(name) => changes.get(key("things", name))?.data} {keep} {restore} {toast} ontry={tryIn} />
+          <Levels {wad} {assets} {palette} bind:level wallPictures={wallPictures} {builder} saved={(kind, name) => changes.get(key(kind, name))?.data} {keep} {restore} {toast} ontry={tryIn} />
         {/if}
       </section>
       <section data-tab="play">

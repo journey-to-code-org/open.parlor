@@ -8,7 +8,7 @@ import { describe, expect, test } from "vitest";
 import data from "../games/shooter/data.json";
 import { startEngine } from "../src/shooter/engine.ts";
 import { KEY } from "../src/shooter/keys.ts";
-import { catalogue, key } from "../wad/catalogue.ts";
+import { catalogue, isLevelKind, key } from "../wad/catalogue.ts";
 import { decodeThings, encodeThings, FLAG_EASY, FLAG_HARD, FLAG_MEDIUM, levelLumps, levelNames, readLevel, THING_KINDS, thingKind } from "../wad/level.ts";
 import { applyMod, type Change, fits, modFromWad, modToWad } from "../wad/mod.ts";
 import { decodeFlat, decodePatch, encodeFlat, encodePatch, fromRgba, paletteOf, type Picture, toRgba } from "../wad/picture.ts";
@@ -116,12 +116,14 @@ describe.skipIf(!existsSync(file))("the real game", () => {
     expect(count("floor")).toBeGreaterThan(100);
     expect(count("screen")).toBeGreaterThan(200);
     expect(count("sound")).toBeGreaterThan(60);
-    expect(assets.filter((asset) => !fits(asset.kind, wad.lumps[asset.index]!.data)).map((asset) => asset.name)).toEqual([]);
+    // (A level's walls are several lumps, found from its marker: test/shape.test.ts.)
+    expect(assets.filter((asset) => asset.kind !== "walls" && !fits(asset.kind, wad.lumps[asset.index]!.data)).map((asset) => asset.name)).toEqual([]);
     expect(new Set(assets.map((asset) => key(asset.kind, asset.name))).size).toBe(assets.length);
     // Nothing of a level, and none of the game's own tables, is offered as a picture.
-    expect(assets.filter((asset) => asset.kind !== "things" && /^(THINGS|PLAYPAL|COLORMAP|E1M1|TEXTURE1|D_E1M1|DEMO1)$/.test(asset.name))).toEqual([]);
-    // Each level is there once, for what is placed in it.
+    expect(assets.filter((asset) => !isLevelKind(asset.kind) && /^(THINGS|PLAYPAL|COLORMAP|E1M1|TEXTURE1|D_E1M1|DEMO1)$/.test(asset.name))).toEqual([]);
+    // Each level is there once for what is placed in it, and once for what it is built of.
     expect(assets.filter((asset) => asset.kind === "things").map((asset) => asset.name)).toEqual(levelNames(wad));
+    expect(assets.filter((asset) => asset.kind === "walls").map((asset) => asset.name)).toEqual(levelNames(wad));
     expect(levelNames(wad)).toHaveLength(36);
     expect(find("screen", "TITLEPIC").note).toBe("Title screen");
     expect(find("sprite", "TROOA1").note).toBe("Fireball thrower");
@@ -285,8 +287,8 @@ describe.skipIf(!existsSync(file))("the real game", () => {
     expect(decodeThings(back.changes[0]!.data)).toEqual(things);
     // Without the game to copy the walls from, there is no whole level to save.
     expect(readWad(modToWad([change])).lumps).toEqual([]);
-    // Someone else's level under the same name has walls of its own: not something to lay things over.
-    const theirs = kept.lumps.map((one) => (one.name === "VERTEXES" ? { name: one.name, data: one.data.slice().fill(0) } : one));
+    // Someone else's level under the same name, with walls of its own but not built: nothing the engine could play.
+    const theirs = kept.lumps.map((one) => (one.name === "VERTEXES" ? { name: one.name, data: one.data.slice(0, 400) } : one.name === "NODES" ? { name: one.name, data: new Uint8Array(0) } : one));
     expect(modFromWad(writeWad({ kind: "PWAD", lumps: theirs }), assets, wad)).toEqual({ changes: [], skipped: ["E1M3"] });
   });
 });
