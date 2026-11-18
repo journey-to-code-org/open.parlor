@@ -25,6 +25,8 @@ export interface Table {
   /** Why it was closed, or "". */
   closed: string;
   status: TableStatus;
+  /** Set while the host is holding the game. */
+  paused: { at: number; reason: string } | null;
   messages: number;
   seats: Seat[];
 }
@@ -46,6 +48,8 @@ export interface ChatLine {
   text: string;
   at: number;
   bot: boolean;
+  /** A line from the host (paused, resumed, played a turn), not anyone's speech. */
+  notice?: boolean;
   removed?: boolean;
 }
 
@@ -247,6 +251,9 @@ export class Api {
   resetTunables = (game: string) => this.send<TunableGame["saved"]>(`/tunables/${game}/reset`, {});
 
   closeTable = (id: string, reason: string) => this.send(`/tables/${id}/close`, { reason });
+  pauseTable = (id: string, reason: string) => this.send(`/tables/${id}/pause`, { reason });
+  resumeTable = (id: string) => this.send(`/tables/${id}/resume`, {});
+  playFor = (id: string, seat: number) => this.send(`/tables/${id}/play-for`, { seat });
   unseat = (id: string, seat: number) => this.send(`/tables/${id}/unseat`, { seat });
   redact = (id: string, key: string) => this.send(`/tables/${id}/redact`, { key });
   block = (ref: string, reason: string) => this.send(`/players/${ref}/block`, { reason });

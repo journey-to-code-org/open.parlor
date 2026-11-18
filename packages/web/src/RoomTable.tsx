@@ -286,6 +286,11 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
     <OnlineTable.Provider value={true}>
       <TablePlayers.Provider value={players}>
         <TableTime.Provider value={time}>{table}</TableTime.Provider>
+        {doc.paused && (
+          <p className="paused-banner" role="status" data-testid="paused">
+            The host paused this game{doc.paused.reason ? `: ${doc.paused.reason}` : "."} Nobody can play until it is resumed.
+          </p>
+        )}
         <TurnClock deadline={doc.deadline} mySeat={(locals.length > 1 ? at : mySeat) as Seat | null} now={room.serverNow} />
       </TablePlayers.Provider>
     </OnlineTable.Provider>
