@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { bugs } from "../bugReport";
 import { openGameRequest } from "../GameRequest";
 import { arranged, refreshCatalogue } from "../catalogue";
-import { categoryOf, GAME_CATEGORIES } from "../categories";
+import { CARD_GROUPS, cardGroupOf, categoryOf, GAME_CATEGORIES } from "../categories";
 import { EVERY_GAME, type SoloGameId } from "../GamePicker";
 import { lobby, whoIsThere, type OpenTable } from "../lobbyApi";
 import { loadMyHouses, loadName, type GameId } from "../storage";
@@ -193,10 +193,11 @@ export function Home({ last, onPick, onOpenHouse, onLobby, onWifi, onMove }: { l
 
   useEffect(() => {
     // The games the parlor's host offers, in their order (every game, where there's no server).
-    const games = () => arranged(EVERY_GAME).map((g) => ({ ...g, category: categoryOf(g.id), screen: isArcadeGame(g.id) || isIdleGame(g.id) ? (SCREENS[g.id] ?? EMPTY_SCREEN) : undefined, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: (isBoardGame(g.id) && !DICE[g.id]) || isWordGame(g.id) ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
+    const games = () => arranged(EVERY_GAME).map((g) => ({ ...g, category: categoryOf(g.id), group: cardGroupOf(g.id), screen: isArcadeGame(g.id) || isIdleGame(g.id) ? (SCREENS[g.id] ?? EMPTY_SCREEN) : undefined, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: (isBoardGame(g.id) && !DICE[g.id]) || isWordGame(g.id) ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
     const props = reactive({
       games: games(),
       categories: GAME_CATEGORIES,
+      cardGroups: CARD_GROUPS.map(({ id, name, emoji }) => ({ id, name, emoji })),
       houses: loadMyHouses(),
       last,
       name: loadName(),
