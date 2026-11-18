@@ -321,3 +321,10 @@ wall("PIPE2", shop[0], (128, 128))
 wall("STONE2", shop[4], (128, 128))
 wall("CRATE2", shop[5], (64, 128), (0, 0, 0.5, 1))
 wall("FLOOR0_3", shop[3], (64, 64))
+
+# The strips that mark a door for its key, red, yellow and blue; and the sky: a strip mall's car park at night, the highway's glow beyond it.
+trim = load("doors-sky-sheet.webp")
+for name, left in (("DOORRED", 30), ("DOORYEL", 168), ("DOORBLU2", 306)):
+    Image.fromarray(trim[52:550, left:left + 94]).resize((32, 128), Image.LANCZOS).save(out / f"wall-{name}.png", optimize=True)
+for name in ("SKY1", "SKY2"):
+    Image.fromarray(trim[196:380, 436:1008]).resize((256, 128), Image.LANCZOS).save(out / f"wall-{name}.png", optimize=True)

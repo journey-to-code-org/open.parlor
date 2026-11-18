@@ -126,10 +126,10 @@ describe("the game's own levels", () => {
     // 240 pictures of rats and 161 of tools, pickups, another player and what shots and drums do.
     expect(between("S_START", "S_END")).toHaveLength(240 + 161);
     // Every wall and sky is one picture of its own name; then the floors and ceilings.
-    expect(between("P_START", "P_END")).toHaveLength(25);
+    expect(between("P_START", "P_END")).toHaveLength(27);
     expect(between("F_START", "F_END")).toHaveLength(17);
     expect(names.slice(-11)).toEqual(["E2M3", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
-    expect(names).toHaveLength(8 + 108 + 208 + 16 + 59 + 2 + 401 + 2 + 25 + 2 + 17 + 12 * 11);
+    expect(names).toHaveLength(8 + 108 + 208 + 16 + 59 + 2 + 401 + 2 + 27 + 2 + 17 + 12 * 11);
   });
 });
 
@@ -194,7 +194,7 @@ describe("the game, whole", () => {
     // Every wall is one picture of its own name and its own size, and the first of the list is the spare the engine can't show.
     const walls = wallPictures(wad);
     expect([...walls.keys()][0]).toBe("NOWALL");
-    expect(walls.size).toBe(26);
+    expect(walls.size).toBe(28);
     for (const [name, wall] of walls) {
       if (name === "NOWALL") continue;
       const picture = decodePatch(data(name))!;

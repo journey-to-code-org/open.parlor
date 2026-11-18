@@ -60,7 +60,8 @@ const [SPARK_PLUGS, COOLANT_RAT, TIRE_BRUTE, FAT_RAT, CYBORG_RAT] = [3006, 3005,
 const [TORCH, ROTORS, ROTOR_STACK, JUMP_STARTER, BATTERY_CASE] = [2005, 2003, 2046, 2004, 17];
 const [SHOTGUN, CHAINGUN, CLIP, SHELLS, SHELL_BOX, AMMO_BOX, STIMPACK, MEDIKIT, ARMOUR_BONUS, ARMOUR, DEATHMATCH] = [2001, 2002, 2007, 2008, 2049, 2048, 2011, 2012, 2015, 2018, 11];
 /** A locked door's action, and the key for it: blue, yellow, red. */
-const LOCKS = [{ opens: 26, key: 5 }, { opens: 27, key: 6 }, { opens: 28, key: 13 }];
+// Each lock: what its door does, its key, and the door's picture, which is the key's colour.
+const LOCKS = [{ opens: 26, key: 5, door: "DOORBLU2" }, { opens: 27, key: 6, door: "DOORYEL" }, { opens: 28, key: 13, door: "DOORRED" }];
 
 /** Numbers that look random and are the same every time for the same seed (mulberry32). */
 function dice(seed: number) {
@@ -178,7 +179,7 @@ export function generate(level: number): Floor {
       : [ax - HALL, Math.min(ay + from.h, by + cell.h), ax + HALL, Math.max(ay - from.h, by - cell.h)];
     const half = across ? (hall[0] + hall[2]) / 2 : (hall[1] + hall[3]) / 2;
     plan.rooms[`hall${index}`] = look({ ceiling: 96, light: Math.max(96, theme.light - 32) });
-    plan.rooms[`door${index}`] = look({ ceiling: 96, door: index === locked ? "DOOR1" : theme.door, ...(index === locked ? { opens: lock.opens } : {}) });
+    plan.rooms[`door${index}`] = look({ ceiling: 96, door: index === locked ? lock.door : theme.door, ...(index === locked ? { opens: lock.opens } : {}) });
     plan.spaces.push([`hall${index}`, ...hall]);
     plan.spaces.push([`door${index}`, ...(across ? [half - 8, hall[1], half + 8, hall[3]] : [hall[0], half - 8, hall[2], half + 8]) as Box]);
   });
