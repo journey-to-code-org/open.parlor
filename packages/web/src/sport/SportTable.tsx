@@ -141,7 +141,7 @@ function aimWords(v: SportView, aim: AimAt): { short: string; long: string } {
 }
 
 /** A game whose shot starts anywhere along a line, aimed any way: pool with the cue ball in hand, and Carrom's striker on its baseline. (Bowling's line is a throw: aimed up the lane.) */
-const onLine = (game: string) => game === "billiards" || game === "carrom";
+const onLine = (game: string) => game === "billiards" || game === "carrom" || game === "shuffleboard";
 
 export function SportTable({ view, names, act, onLeave, banner, chat, together, settings, onHelp, onAgain}: SportTableProps) {
   const game = kitGame(view.game)!;
@@ -562,6 +562,11 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
       // Pool, with the cue ball in hand: start in the middle of the line, aimed up the table. Carrom:
       // the striker where it lies on your baseline, aimed at the middle of the board.
       const pl = shown.shoot.place;
+      if (shown.game === "shuffleboard") {
+        // The puck in the middle of the line, aimed straight up the board, at about what reaches the far end.
+        setAim({ angle: 27000, power: Math.min(shown.shoot.maxPower, Math.max(shown.shoot.minPower, 760)), at: Math.round((pl.min + pl.max) / 2), call: null });
+        return;
+      }
       if (shown.game === "carrom") {
         const frame = shown.table.look.frame;
         const middle = { x: frame.x + frame.w / 2, y: frame.y + frame.h / 2 };
@@ -823,9 +828,9 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
   const status = error ? (
     <span className="error">{error}</span>
   ) : shooter !== null ? (
-    shooter === me && !together ? "There it goes…" : `${names[shooter] ?? "Someone"} ${shown.game === "bowling" ? "bowls" : shown.game === "billiards" ? "shoots" : shown.game === "carrom" ? "flicks" : "putts"}…`
+    shooter === me && !together ? "There it goes…" : `${names[shooter] ?? "Someone"} ${shown.game === "bowling" ? "bowls" : shown.game === "billiards" ? "shoots" : shown.game === "carrom" ? "flicks" : shown.game === "shuffleboard" ? "slides" : "putts"}…`
   ) : shown.over || shown.result ? null : canShoot ? (
-    <span className="mine">{together ? `${names[shown.me] ?? "Someone"}: ` : ""}{shown.game === "bowling" ? "Drag sideways to stand, swipe up to bowl" : shown.shoot?.place && shown.game === "billiards" ? "Place the cue ball, then pull back and let go" : shown.shoot?.place && shown.game === "carrom" ? "Slide the striker along your line, then pull back and flick" : shown.seats > 1 && !together ? "Your shot" : "Pull back and let go"}</span>
+    <span className="mine">{together ? `${names[shown.me] ?? "Someone"}: ` : ""}{shown.game === "bowling" ? "Drag sideways to stand, swipe up to bowl" : shown.shoot?.place && shown.game === "billiards" ? "Place the cue ball, then pull back and let go" : shown.shoot?.place && shown.game === "carrom" ? "Slide the striker along your line, then pull back and flick" : shown.game === "shuffleboard" ? "Put the puck on the line, then pull back and let go" : shown.seats > 1 && !together ? "Your shot" : "Pull back and let go"}</span>
   ) : sending ? (
     "…"
   ) : shown.turn !== null ? (
@@ -956,7 +961,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
                   +
                 </button>
                 <button type="button" className="primary sport-go" onClick={() => void shoot()}>
-                  {shown.game === "bowling" ? "Roll" : shown.game === "billiards" ? "Shoot" : shown.game === "carrom" ? "Flick" : "Putt"}
+                  {shown.game === "bowling" ? "Roll" : shown.game === "billiards" ? "Shoot" : shown.game === "carrom" ? "Flick" : shown.game === "shuffleboard" ? "Slide" : "Putt"}
                 </button>
               </div>
             </div>
@@ -1245,7 +1250,7 @@ function PoolControls({ view, aim, stand, call }: { view: SportView; aim: AimAt;
   const asks = view.shoot?.call ?? null;
   const labels = new Map(view.table.bodies.map((b) => [b.id, b.label]));
   const pick = (ball: string | undefined, pocket: string | undefined) => call(ball && pocket ? { ball, pocket } : null);
-  const what = view.game === "carrom" ? "striker" : "cue ball";
+  const what = view.game === "carrom" ? "striker" : view.game === "shuffleboard" ? "puck" : "cue ball";
   return (
     <div className="sport-row pool-controls">
       {place && (
@@ -1253,7 +1258,7 @@ function PoolControls({ view, aim, stand, call }: { view: SportView; aim: AimAt;
           <button type="button" aria-label={`Move the ${what} left`} onClick={() => stand(-300)}>
             ◀
           </button>
-          <output className="sport-aim">{view.game === "carrom" ? "Striker on your line" : "Cue ball in hand"}</output>
+          <output className="sport-aim">{view.game === "carrom" ? "Striker on your line" : view.game === "shuffleboard" ? "Puck on the line" : "Cue ball in hand"}</output>
           <button type="button" aria-label={`Move the ${what} right`} onClick={() => stand(300)}>
             ▶
           </button>

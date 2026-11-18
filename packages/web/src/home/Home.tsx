@@ -127,6 +127,8 @@ const TABLES: Record<string, MiniTable> = {
   bowling: { surface: "lane", balls: [...PINS, { x: 50, y: 80, tone: "red" }] },
   minigolf: { surface: "green", cup: [66, 32], balls: [{ x: 36, y: 72, tone: "white" }, { x: 70, y: 62, tone: "red" }] },
   // A cue ball lined up on a little rack.
+  // A long board seen from the near end: pucks lying in the far zones, and one on its way.
+  shuffleboard: { surface: "lane", balls: [{ x: 40, y: 20, tone: "red" }, { x: 60, y: 28, tone: "blue" }, { x: 46, y: 40, tone: "blue" }, { x: 54, y: 74, tone: "red" }] },
   // The queen in the middle of a ring of pieces, and the striker on its line.
   carrom: { surface: "wood", balls: [{ x: 50, y: 46, tone: "red" }, ...[0, 1, 2, 3, 4, 5].map((i) => ({ x: Math.round(50 + 13 * Math.cos((i * Math.PI) / 3)), y: Math.round(46 + 13 * Math.sin((i * Math.PI) / 3)), tone: i % 2 ? "black" : "cream" })), { x: 38, y: 80, tone: "gold" }] },
   billiards: { surface: "felt", balls: [{ x: 28, y: 74, tone: "white" }, { x: 62, y: 30, tone: "red" }, { x: 72, y: 36, tone: "red" }, { x: 52, y: 38, tone: "red" }] },
