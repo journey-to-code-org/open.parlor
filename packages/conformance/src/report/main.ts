@@ -64,7 +64,7 @@ const PAGES = [
 
 /** What the checks have found so far, newest first. */
 const FOUND = [
-  { what: "Preact 11 couldn't reorder a keyed list inside a component", where: "Preact, in browsers that have moveBefore(). A Zubra host passes insertBefore on to its slots but not moveBefore. Open, and listed as a known difference.", links: [["zubra#370", `${REPO}/zubra/issues/370`]] },
+  { what: "Preact 11 couldn't reorder a keyed list inside a component", where: "Preact, in browsers that have moveBefore(). A Zubra host passed insertBefore on to its slots but not moveBefore. Fixed in Zubra, not released yet; a known difference here until the parlor has the fix.", links: [["zubra#370", `${REPO}/zubra/issues/370`], ["zubra#372", `${REPO}/zubra/pull/372`]] },
   { what: "A disabled Angular form left three controls usable", where: "The switch, the colour swatches and the segmented control had no disabled state. Fixed in the parlor's copies; upstream the switch has a fix waiting and the rest are open.", links: [["zubra-ui#20", `${REPO}/zubra-ui/issues/20`], ["zubra-ui#22", `${REPO}/zubra-ui/issues/22`]] },
   { what: "Named-slot elements stayed after the framework removed them", where: "Vue, Svelte and Solid. Fixed in Zubra 5.15.0.", links: [["zubra#269", `${REPO}/zubra/issues/269`]] },
   { what: "Signal text as a component's direct child never updated", where: "Solid. Fixed in Zubra 5.15.0.", links: [["zubra#268", `${REPO}/zubra/issues/268`]] },
