@@ -32,5 +32,6 @@ Every change is marked `[open.wasm]` where it is made. First changed 17 November
 | `rules_actions.h` (new) | What a moment can run, by name, for the rules to name: written from `info.c` by `scripts/gen-rules.mjs`. |
 | `p_mobj.c` | Things are looked for among the spare kinds too. A level that places a thing of no kind no longer stops the game: the thing is left out. |
 | `r_things.c` | A sprite with a frame or a side missing, a picture misnamed, or one picture where there were eight no longer stops the game: a missing frame isn't drawn, a missing side is shown as one that is there, and the later picture is the one used. |
+| `m_menu.c` | A game that says how many levels it has has no episode to choose: New Game goes straight to how hard. What quitting asks is the game's own (`!quit` in `WORDS`), and the line under it is words that can be replaced like any other. |
 | `g_game.c`, `f_finale.c` | A WAD that says how many levels it has (`!levels` in `WORDS`) is played straight through that many: nine to an episode with the ninth an ordinary level, then on into the next episode's first, so twelve levels are E1M1 to E1M9 and E2M1 to E2M3. Its ending is the WAD's own words (`!ending`) if it has them. Without `!levels` an episode is as it always was. |
 | `p_pspr.c` | The shotgun scatters four times as wide (`A_FireShotgun`): Delbie's lever-action. |

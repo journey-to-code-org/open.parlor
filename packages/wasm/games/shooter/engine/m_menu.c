@@ -56,6 +56,7 @@
 // Data.
 #include "sounds.h"
 
+#include "words.h"
 #include "m_menu.h"
 
 
@@ -915,7 +916,14 @@ void M_NewGame(int choice)
 	
     // Chex Quest disabled the episode select screen, as did Doom II.
 
-    if (gamemode == commercial || gameversion == exe_chex)
+    // [open.wasm] So does a game that says how many levels it has: it is one run of them,
+    // from the first, whatever episodes the engine counts them in.
+    if (Words_Number("levels", 0) > 0)
+    {
+	NewDef.prevMenu = &MainDef;
+	M_SetupNextMenu(&NewDef);
+    }
+    else if (gamemode == commercial || gameversion == exe_chex)
 	M_SetupNextMenu(&NewDef);
     else
 	M_SetupNextMenu(&EpiDef);
@@ -1167,8 +1175,11 @@ static char *M_SelectEndMessage(void)
 
 void M_QuitDOOM(int choice)
 {
-    DEH_snprintf(endstring, sizeof(endstring), "%s\n\n" DOSY,
-                 DEH_String(M_SelectEndMessage()));
+    // [open.wasm] What it asks is the game's own to say ("!quit" in its WORDS), and the line
+    // under it is words like any other, where it was part of the format.
+    M_snprintf(endstring, sizeof(endstring), "%s\n\n%s",
+               Words_About("quit") ? Words_About("quit") : DEH_String(M_SelectEndMessage()),
+               DEH_String(DOSY));
 
     M_StartMessage(endstring,M_QuitResponse,true);
 }

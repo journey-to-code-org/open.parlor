@@ -37,8 +37,16 @@ reached) is still Freedoom's.
 - `art/tools.py` draws tools from the store in place of four weapons and what is picked up: the
   "hammer" (a tape measure, in place of the fist), a price gun (the pistol), Delbie's lever-action
   (the shotgun) and an impact wrench (the chaingun), each in the hand with its flash, the last two
-  on the floor as well; pasta and a pizza box for health, a shop apron for armour, a box of
-  ammunition and the three keys. It writes `tools.bin.gz` and `tools.json`: 33 pictures.
+  on the floor as well; cartridges loose and boxed; pasta, a pizza box and a coffee for health; a
+  shop apron and a hard hat for armour; a box of ammunition and the three keys. It writes
+  `tools.bin.gz` and `tools.json`: 43 pictures.
+- `art/menu.py` draws what is around the game, in the colours of the title picture (yellow
+  letters edged in navy, a chequered strip): every line of the menus and a hex nut where the
+  skull was; the small letters the game speaks in; the page between levels, with each floor's
+  name and the figures; "How to play", which is the menu's read-me page; and the credits, which
+  say whose engine and whose game this is laid over. It writes `menu.bin.gz` and `menu.json`:
+  185 pictures. It needs numpy, Pillow and the DejaVu Sans fonts, and is run after `tools.py` and
+  `rats.py`, whose pictures the pages show.
 - `art/sounds.py` makes the rats' voices: squeaks, chitters, hisses and a growl, built from sliding
   tones and noise, in place of the sounds of the monsters the rats replaced. It writes
   `sounds.bin.gz` and `sounds.json`: 15 sounds.

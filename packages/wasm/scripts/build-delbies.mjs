@@ -20,7 +20,8 @@ export function art() {
   };
   // The rats, and the status bar: Delbie's face, and the bar tinted.
   // And tools from the store, in place of the weapons and what is picked up: sprites too.
-  const [sprites, screens] = [[...pictures("sprites"), ...pictures("tools")], pictures("hud")];
+  // And what is around the game: the menus' lettering, the small letters, the page between levels, how to play, the credits.
+  const [sprites, screens] = [[...pictures("sprites"), ...pictures("tools")], [...pictures("hud"), ...pictures("menu")]];
   // What the game says, as the editor would write it: no comments, one ending for a line.
   const words = writeWords(readWords(new Uint8Array(readFileSync(join(root, "delbies", "words.txt")))));
   // The rats' voices: a byte a sample, at the engine's own rate.

@@ -119,12 +119,13 @@ describe("the game's own levels", () => {
     const names = readWad(built).lumps.map((lump) => lump.name);
     expect(names.slice(0, 4)).toEqual(["TITLEPIC", "M_DOOM", "WORDS", "STFST00"]);
     // Delbie's face, 42 times, and the bar, its weapon panel and the four squares behind the face.
+    // Then what is around the game (the menus' lettering, the small letters, the page between levels, how to play, the credits): 185 pictures.
     // Then the rats' fifteen voices.
-    expect(names.indexOf("SS_START")).toBe(3 + 48 + 15);
+    expect(names.indexOf("SS_START")).toBe(3 + 48 + 185 + 15);
     expect(names.slice(-11)).toEqual(["E2M3", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
-    // 175 pictures of rats and 33 of tools.
+    // 175 pictures of rats and 43 of tools.
     // And ten pieces of the store's walls, between markers of their own. Then nine more levels, eleven lumps each.
-    expect(names).toHaveLength(16 + 175 + 33 + 48 + 15 + 22 + 10 + 2 + 9 * 11);
+    expect(names).toHaveLength(16 + 175 + 43 + 48 + 185 + 15 + 22 + 10 + 2 + 9 * 11);
   });
 });
 
@@ -187,13 +188,30 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
       expect(Math.max(...heard.samples)).toBeGreaterThan(0.5);
     }
     // The store's walls: ten pieces, each the size of the piece it replaces, so every wall built from them still fits.
+    const size = (name: string) => {
+      const picture = decodePatch(changes.find((change) => change.name === name)!.data)!;
+      return [picture.width, picture.height];
+    };
     const pieces = changes.filter((change) => change.kind === "wall");
     expect(pieces.map((change) => change.name).sort()).toEqual(["BCRATEL1", "BCRATEM1", "BCRATER1", "GCRATEL1", "GCRATEM1", "GCRATER1", "W33_7", "W33_9", "WALL40_1", "WALL40_2"]);
     for (const piece of pieces) {
       const [ours, theirs] = [decodePatch(piece.data)!, decodePatch(wad.lumps.filter((lump) => lump.name === piece.name).at(-1)!.data)!];
       expect([piece.name, ours.width, ours.height]).toEqual([piece.name, theirs.width, theirs.height]);
     }
-    expect(others.filter((name) => !/^(screen\/ST|sound\/|wall\/|words\/)/.test(name))).toEqual(["screen/M_DOOM", "screen/TITLEPIC", ...FLOORS.map((name) => `things/${name}`), ...FLOORS.map((name) => `walls/${name}`)]);
+    // What is around the game is the game's own too: nothing of Freedoom's lettering is left in the menus, the messages or the page between levels.
+    const around = (start: RegExp) => wad.lumps.map((lump) => lump.name).filter((name) => start.test(name));
+    const ours = new Set(changes.map((change) => change.name));
+    expect(around(/^M_(NGAME|OPTION|LOADG|SAVEG|RDTHIS|QUITG|NEWG|SKILL|JKILL|ROUGH|HURT|ULTRA|NMARE|OPTTTL|ENDGAM|MESSG|MSGON|MSGOFF|DETAIL|GDHIGH|GDLOW|SCRNSZ|MSENS|SVOL|SFXVOL|MUSVOL|LGTTL|SGTTL|PAUSE|SKULL[12]|THERM[LMRO]|LS(LEFT|CNTR|RGHT))$/).filter((name) => !ours.has(name))).toEqual([]);
+    expect(around(/^(STCFN0(3[3-9]|[4-8]\d|9[0-5])|HELP[12]|CREDIT|WIMAP[01]|WIA[01]\d{4}|WINUM\d|WIF|WIENTER|WIOSTK|WIOSTI|WISCRT2|WITIME|WIPAR|WIPCNT|WICOLON|WIMINUS)$/).filter((name) => !ours.has(name))).toEqual([]);
+    // Every floor has its name for the page between levels, and the pages are whole screens.
+    expect(FLOORS.map((_, index) => `WILV${Math.floor(index / 9)}${index % 9}`).filter((name) => !ours.has(name))).toEqual([]);
+    for (const name of ["HELP1", "HELP2", "CREDIT", "WIMAP0", "WIMAP1"]) expect([name, ...size(name)]).toEqual([name, 320, 200]);
+    // The small letters are all one height, so a line of them sits level; and a line of a menu is no taller than the engine leaves room for.
+    expect(new Set(around(/^STCFN0(3[3-9]|[4-8]\d|9[0-5])$/).map((name) => size(name)[1])).size).toBe(1);
+    expect(around(/^M_(NGAME|OPTION|LOADG|SAVEG|RDTHIS|QUITG|JKILL|ROUGH|HURT|ULTRA|NMARE)$/).filter((name) => size(name)[1]! > 16)).toEqual([]);
+    // The things on the floor Freedoom drew that the levels use are the store's: cartridges, a coffee, a hard hat.
+    expect(["SHELA0", "SBOXA0", "BON1A0", "BON1D0", "BON2A0", "BON2D0", "MGUNA0", "SHOTA0"].filter((name) => !ours.has(name))).toEqual([]);
+    expect(others.filter((name) => !/^(screen\/(ST|M_(?!DOOM)|WI|HELP|CREDIT)|sound\/|wall\/|words\/)/.test(name))).toEqual(["screen/M_DOOM", "screen/TITLEPIC", ...FLOORS.map((name) => `things/${name}`), ...FLOORS.map((name) => `walls/${name}`)]);
     // The status bar: every face the game has is Delbie's now, each the size of the one it replaces.
     const faces = wad.lumps.map((lump) => lump.name).filter((name) => /^STF(ST|TL|TR|OUCH|EVL|KILL|GOD|DEAD)/.test(name));
     expect(faces).toHaveLength(42);
@@ -206,8 +224,8 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
     const drawn = new Set(changes.filter((change) => change.kind === "sprite").map((change) => change.name));
     const theirs = wad.lumps.map((lump) => lump.name).filter((name) => /^(SARG|TROO|BOSS)[A-Z][0-8]|^BAL1/.test(name));
     expect(theirs.filter((name) => !drawn.has(name))).toEqual([]);
-    // And 33 more: the tools in place of four weapons and what is picked up.
-    expect(drawn.size).toBe(theirs.length + 33);
+    // And 43 more: the tools in place of four weapons and what is picked up.
+    expect(drawn.size).toBe(theirs.length + 43);
     const laid = readWad(layer(game, over));
     // One lump more than the game came with: its words, which Freedoom has no place for.
     expect(laid.lumps).toHaveLength(wad.lumps.length + 1);

@@ -3,8 +3,9 @@
 In the hand: the "hammer" (a tape measure; the store's joke is that it is only ever called a
 hammer), which is what you hit with when you have nothing else; a price gun, which is the pistol;
 Delbie's lever-action, which is the shotgun; and an impact wrench, which is the chaingun. On the
-floor: the lever-action, the impact wrench, leftover pasta and a pizza box for health, a shop
-apron for armour, a box of ammunition, and the three keys on their tags.
+floor: the lever-action, the impact wrench, cartridges loose and boxed, leftover pasta, a pizza
+box and a coffee for health, a shop apron and a hard hat for armour, a box of ammunition, and
+the three keys on their tags.
 
 Each is drawn here with a few shapes and given a dark edge. What is held is drawn where it sits
 on the 320 by 200 screen; what lies on the floor is drawn from its feet.
@@ -234,14 +235,58 @@ draw.ellipse((14, 8, 21, 13), outline=STEEL_DARK)
 draw.rectangle((22, 7, 30, 9), fill=WOOD_DARK)
 keep("SHOTA0", image)
 
-# The impact wrench, side on: its socket to the right, its grip and battery below.
-image, draw = small(40, 24)
-draw.rectangle((30, 6, 39, 10), fill=STEEL_LIGHT)
-draw.rounded_rectangle((4, 2, 31, 14), 4, fill=YELLOW)
-draw.rectangle((14, 2, 18, 14), fill=BLACK)
-draw.polygon([(10, 13), (20, 13), (18, 21), (8, 21)], fill=BLACK)
-draw.rectangle((4, 20, 22, 24), fill=YELLOW_DARK)
+# The impact wrench, side on: its anvil and socket to the right, its grip and battery below.
+image, draw = small(46, 30)
+draw.rectangle((36, 7, 45, 12), fill=STEEL_LIGHT)
+draw.rectangle((42, 6, 45, 13), fill=STEEL)
+draw.rounded_rectangle((3, 2, 34, 17), 5, fill=YELLOW)
+draw.rounded_rectangle((29, 3, 37, 16), 3, fill=BLACK)
+draw.rectangle((3, 6, 6, 13), fill=BLACK)
+draw.rectangle((10, 5, 24, 7), fill=YELLOW_DARK)
+draw.polygon([(12, 16), (23, 16), (21, 25), (10, 25)], fill=BLACK)
+draw.rectangle((23, 17, 25, 21), fill=STEEL_DARK)
+draw.rounded_rectangle((5, 24, 27, 30), 2, fill=YELLOW)
+draw.rectangle((5, 27, 27, 30), fill=BLACK)
 keep("MGUNA0", image)
+
+# Cartridges for the lever-action: a handful stood up, and a box of them.
+BRASS, BRASS_DARK, COPPER = (214, 170, 62), (150, 112, 34), (196, 112, 62)
+image, draw = small(22, 14)
+for x in (1, 6, 11, 16):
+    draw.rectangle((x, 5, x + 3, 13), fill=BRASS)
+    draw.rectangle((x, 12, x + 3, 13), fill=BRASS_DARK)
+    draw.polygon([(x, 5), (x + 3, 5), (x + 2, 1), (x + 1, 1)], fill=COPPER)
+keep("SHELA0", image)
+
+image, draw = small(34, 20)
+draw.polygon([(2, 5), (31, 5), (33, 19), (0, 19)], fill=(150, 36, 30))
+draw.polygon([(5, 1), (28, 1), (31, 5), (2, 5)], fill=(190, 60, 48))
+draw.rectangle((6, 8, 27, 16), fill=WHITE)
+for x in (9, 14, 19, 24):
+    draw.rectangle((x, 10, x + 1, 14), fill=BRASS)
+    draw.point((x, 9), fill=COPPER)
+    draw.point((x + 1, 9), fill=COPPER)
+keep("SBOXA0", image)
+
+# A coffee, for a little health: the steam is what moves.
+for frame, steam in zip("ABCD", (((5, 3), (9, 1)), ((6, 2), (10, 3)), ((5, 1), (9, 3)), ((4, 3), (8, 2)))):
+    image, draw = small(16, 18)
+    draw.polygon([(2, 7), (13, 7), (11, 17), (4, 17)], fill=WHITE)
+    draw.rectangle((2, 6, 13, 8), fill=(120, 72, 40))
+    draw.rectangle((4, 11, 11, 13), fill=RED)
+    draw.arc((11, 9, 16, 15), 270, 90, fill=WHITE)
+    for x, y in steam:
+        draw.line((x, y + 2, x + 1, y), fill=(210, 214, 222))
+    keep(f"BON1{frame}0", image)
+
+# A hard hat, for a little armour: the light moves across it.
+for frame, glint in zip("ABCD", (4, 7, 10, 7)):
+    image, draw = small(22, 14)
+    draw.pieslice((2, 1, 19, 22), 180, 360, fill=YELLOW)
+    draw.rectangle((0, 11, 21, 13), fill=YELLOW_DARK)
+    draw.rectangle((10, 1, 11, 10), fill=YELLOW_DARK)
+    draw.line((glint, 5, glint + 2, 3), fill=WHITE)
+    keep(f"BON2{frame}0", image)
 
 # Leftover pasta, in its tub.
 image, draw = small(20, 12)

@@ -25,12 +25,20 @@ Picked up a red keycard.=The bay door key.
 You need a yellow key to open this door=Locked. It takes the attic key.
 You need a red key to open this door=Locked. It takes the bay door key.
 You got the chaingun!=An impact wrench! Ugga dugga.
+Picked up a health bonus.=Coffee. Still warm.
+Picked up an armor bonus.=A hard hat.
+Picked up 4 shotgun shells.=A handful of cartridges.
+Picked up a box of shotgun shells.=A box of cartridges.
+Picked up a box of bullets.=A case of ammo, off the shelf.
+(press y to quit to dos.)=(Y locks up. N gets back to work.)
 You need a blue key to open this door=Occupied. Find the bathroom key.
 !start=Delbie: Alright, let's get these rats out of my store.|Delbie: Six thousand a month, and I've got RATS.|Delbie: Living that dream.
 !see=Delbie: RATS!|Delbie: There's another one!|Delbie: I HATE rats.|Delbie: Not in my store!
 !hurt=Delbie: He BIT me!|Delbie: Get OFF!|Delbie: I hate these things!
 !kill=Delbie: Got him!|Delbie: That's one less.|Delbie: Out of my store!|Delbie: Living that dream.
 !die=Delbie: What are YOOOOOU doing?
+# What it asks when you go to quit.
+!quit=Closing up already? The rats will still be here.
 # The game is twelve levels long, and this is what it says when they are done.
 !levels=12
 !ending=The rats are gone.\n\nThe main floor, the attic, the basement,\nand nine more rooms nobody knew\nwere on the lease.\n\nDelbie looks the place over, smiling.\n\n"Living that dream," he says.\n\nThe rent is still six thousand a month.
