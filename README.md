@@ -497,7 +497,9 @@ harder techniques.
 
 One set of Zubra components serves five frameworks: React and Vue in the parlor, Svelte in the
 designer and in the Mini Golf course and bowling lane editors (Svelte inside the React app,
-`packages/web/src/golf/`), Solid on the watch page and Angular in the admin app.
+`packages/web/src/golf/`), Solid on the watch page and in the web app's islands (Read the Room's
+board, and the screens for hosting and joining a table on this wifi, `packages/web/src/solid/`),
+and Angular in the admin app.
 
 The server decides every move. Each player's browser only ever receives its own view of a table
 (its own hand), never the whole game; moves the rules don't allow are refused on the server.
