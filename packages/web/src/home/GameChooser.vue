@@ -52,6 +52,7 @@ const props = defineProps<{
   canAsk?: boolean;
   /** Whether this parlor has the page its server draws itself, with every game on it (`games`). */
   canList?: boolean;
+  canDaily?: boolean;
 }>();
 const emit = defineEmits<{ pick: [id: string]; house: [slug: string]; lobby: []; wifi: []; move: []; ask: [] }>();
 // The sheet for choosing what is kept for playing offline is the React app's (offline/OfflineGames.tsx): it listens for this.
@@ -439,6 +440,7 @@ async function toShelf(id: string) {
       <a class="design" href="wasm/">👾 Play Delbie's Doomsday, a first-person shooter</a>
       <a class="design" href="wasm/market/">📦 Run Delbie's Stockroom, a parts-market sim</a>
       <a v-if="canList" class="design" href="games">📋 Every game on one page</a>
+      <a v-if="canDaily" class="design" href="daily">🔢 The daily sudoku</a>
       <a class="design" :href="BUILT">🧪 How the parlor is built</a>
       <button type="button" class="design" @click="emit('move')">📱 Use the parlor on another device</button>
       <button type="button" class="design" @click="offlineGames">📴 Offline games: choose what's kept on this device</button>

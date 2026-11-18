@@ -1,6 +1,7 @@
 // The pages the server renders itself (src/pages.ts): what is in the HTML before any script runs.
 import { describe, expect, it } from "vitest";
 import { createPages } from "../src/pages.js";
+import { puzzleFor } from "../src/sudoku.js";
 
 const GAMES = [
   { id: "spades", name: "Spades", emoji: "♠️", seats: [4, 4] as [number, number], teams: true, on: true },
@@ -186,5 +187,95 @@ describe("asking for a game, through the whole server", () => {
     } finally {
       app.close();
     }
+  });
+});
+
+describe("the daily sudoku", () => {
+  const NOW = new Date("2026-11-20T15:00:00Z");
+  const daily = createPages({ state: async () => ({ games: GAMES as never, watching: true }) }, { now: () => NOW });
+  const fetchDaily = async (path: string, init?: RequestInit) => (await daily.fetch(new Request(`http://parlor.test${path}`, init)))!;
+  const ACTION = "http://parlor.test/_zb/action/daily-sudoku/check";
+  const post = (fields: Record<string, string>, headers: Record<string, string> = {}) =>
+    daily.fetch(new Request(ACTION, { method: "POST", headers: { accept: "application/json", cookie: "player=abc", ...headers }, body: new URLSearchParams(fields) }));
+
+  it("is drawn with the day's clues in a form of inputs, and never the answer", async () => {
+    const puzzle = puzzleFor("2026-11-20");
+    const response = await fetchDaily("/daily");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-parlor-page")).toBe("daily");
+    const html = await response.text();
+    expect(html).toContain(`givens="${puzzle.givens}"`);
+    expect(html).not.toContain(puzzle.solution);
+    expect((html.match(/name="c\d+"/g) ?? []).length).toBe([...puzzle.givens].filter((d) => d === "0").length);
+    expect(html).toMatch(/<form[^>]*method="post"/);
+    expect(html).toContain("Daily sudoku");
+  });
+
+  it("asks for the day it is told, as far back as the first, and no further on than today", async () => {
+    expect(await (await fetchDaily("/daily?d=2026-11-19")).text()).toContain(`givens="${puzzleFor("2026-11-19").givens}"`);
+    expect(await (await fetchDaily("/daily?d=2999-01-01")).text()).toContain(`date="2026-11-20"`);
+    expect(await (await fetchDaily("/daily?d=1999-01-01")).text()).toContain(`date="2026-11-18"`);
+    expect(await (await fetchDaily("/daily?d=<script>")).text()).toContain(`date="2026-11-20"`);
+  });
+
+  it("links to the day before and, except on today, the day after", async () => {
+    const today = await (await fetchDaily("/daily")).text();
+    expect(today).toContain('href="/daily?d=2026-11-19" rel="prev"');
+    expect(today).not.toContain('rel="next"');
+    const earlier = await (await fetchDaily("/daily?d=2026-11-19")).text();
+    expect(earlier).toContain('rel="prev"');
+    expect(earlier).toContain('href="/daily?d=2026-11-20" rel="next"');
+    expect(await (await fetchDaily("/daily?d=2026-11-18")).text()).not.toContain('rel="prev"');
+  });
+
+  it("checks a post against the answer and says how it stands, with what was typed", async () => {
+    const puzzle = puzzleFor("2026-11-20");
+    const blanks = [...puzzle.givens].flatMap((d, i) => (d === "0" ? [i] : []));
+    const fields = (change: (i: number, right: string) => string) => ({ date: "2026-11-20", ...Object.fromEntries(blanks.map((i) => [`c${i}`, change(i, puzzle.solution[i]!)])) });
+    const said = async (response: Response | null) => (await response!.json()) as { state: string; wrong: number; empty: number; entries: string };
+    expect(await said(await post(fields((_, right) => right)))).toMatchObject({ state: "solved", wrong: 0, empty: 0 });
+    expect(await said(await post(fields((i, right) => (i === blanks[0] ? String((Number(right) % 9) + 1) : i === blanks[1] ? "" : right))))).toMatchObject({ state: "wrong", wrong: 1, empty: 1 });
+    const half = await said(await post({ date: "2026-11-20", [`c${blanks[0]}`]: puzzle.solution[blanks[0]!]! }));
+    expect(half).toMatchObject({ state: "open", wrong: 0, empty: blanks.length - 1 });
+    expect(half.entries[blanks[0]!]).toBe(puzzle.solution[blanks[0]!]);
+  });
+
+  it("refuses a day that has no puzzle, and clues posted as answers change nothing", async () => {
+    for (const date of ["2999-01-01", "1999-01-01", "nonsense", ""]) {
+      const reply = (await (await post({ date, c0: "1" }))!.json()) as { error?: string };
+      expect(reply.error, date).toBe("There's no puzzle for that day.");
+    }
+    const puzzle = puzzleFor("2026-11-20");
+    const given = [...puzzle.givens].findIndex((d) => d !== "0");
+    const reply = (await (await post({ date: "2026-11-20", [`c${given}`]: "9" }))!.json()) as { entries: string };
+    expect(reply.entries[given]).toBe("0");
+  });
+
+  it("brings a post made without JavaScript back to the page, drawn with what was typed, once", async () => {
+    const puzzle = puzzleFor("2026-11-20");
+    const first = [...puzzle.givens].findIndex((d) => d === "0");
+    const wrong = String((Number(puzzle.solution[first]) % 9) + 1);
+    const sent = (await post({ date: "2026-11-20", [`c${first}`]: wrong }, { accept: "text/html", referer: "http://parlor.test/daily?d=2026-11-20" }))!;
+    expect(sent.status).toBe(303);
+    expect(sent.headers.get("location")).toBe("/daily?d=2026-11-20");
+    const cookie = sent.headers.getSetCookie().map((line) => line.split(";")[0]).join("; ");
+    const page = await (await fetchDaily("/daily?d=2026-11-20", { headers: { cookie } })).text();
+    expect(page).toContain("Not quite");
+    expect(page).toMatch(new RegExp(`name="c${first}"[^>]*value="${wrong}"|value="${wrong}"[^>]*name="c${first}"`));
+    // An answer to another day is not shown on this one.
+    expect(await (await fetchDaily("/daily?d=2026-11-19", { headers: { cookie } })).text()).not.toContain("Not quite");
+  });
+
+  it("keeps the checking on the server: the component's module knows where to post and nothing of the answer", async () => {
+    const module = await (await fetchDaily("/_zubra/components/daily-sudoku.js"))!.text();
+    expect(module).toContain("/_zb/action/daily-sudoku/check");
+    expect(module).not.toContain("use server");
+    expect(module).not.toContain("grade");
+    expect(module).not.toContain("solution");
+  });
+
+  it("is switched off with the rest when the components can't be found", async () => {
+    const off = createPages({ state: async () => ({ games: GAMES as never, watching: true }) }, { components: "/nowhere/at/all" });
+    expect(await off.fetch(new Request("http://parlor.test/daily"))).toBeNull();
   });
 });

@@ -4,6 +4,7 @@
 //
 //   /games            the games this parlor offers, with a form that filters them (pages/games-page.zb)
 //                     and, where the parlor takes requests, "Ask for a game" (pages/game-request.zb)
+//   /daily            the daily sudoku (pages/daily-sudoku.zb): a form of real inputs that checks on the server
 //   /_zubra/…         the components' browser modules and the runtime, served by @zubra/server
 //   /_zb/action/…     the functions the components mark 'use server', served by @zubra/actions:
 //                     a form posts to one, with or without JavaScript
@@ -17,6 +18,7 @@ import { ARCADE_GAMES, IDLE_GAMES } from "@journey-to-code/games";
 import { createActions, type Actions } from "@zubra/actions";
 import { createZubra, type ZubraOptions } from "@zubra/server";
 import type { Catalogue } from "./catalogue.js";
+import { FIRST_DAY, clampDate, entriesOf, grade, isDate, puzzleFor, shift, today, type Verdict } from "./sudoku.js";
 
 const KINDS = [
   { value: "all", label: "Every kind" },
@@ -40,8 +42,19 @@ export interface Asked {
   error?: string;
 }
 
+/** What checking the sudoku answers: how it stands, and what was typed, to draw the page with. */
+export interface Checked extends Verdict {
+  date: string;
+  entries: string;
+  error?: undefined;
+}
+
 export interface PagesOptions {
   mount?: string;
+  /** Where the daily sudoku is. */
+  daily?: string;
+  /** What the clock says. Only the tests set this. */
+  now?: () => Date;
   components?: string;
   /** Whether this parlor takes requests for games (the relay has a token). The form is left out without it. */
   asking?: () => boolean;
@@ -58,7 +71,7 @@ export function publicOrigin(headers: Record<string, string | string[] | undefin
 }
 
 /** The paths these pages answer, for the server's own router. */
-export const PAGE_MOUNTS = ["/games", "/_zubra", "/_zb/action", "/_zb/actions.js"];
+export const PAGE_MOUNTS = ["/games", "/daily", "/_zubra", "/_zb/action", "/_zb/actions.js"];
 
 const escape = (text: string) => text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
@@ -74,7 +87,27 @@ const STYLE = `
   .page > footer { margin-top: 2rem; color: var(--muted-foreground); font-size: 0.9rem; }
 `;
 
-export function createPages(catalogue: Pick<Catalogue, "state">, { mount = "/games", components = fileURLToPath(new URL("../pages", import.meta.url)), asking = () => false, ask }: PagesOptions = {}) {
+/** The page round what a component draws: its head, the theme and the parlor's way back. */
+function shell({ title, about, theme, body }: { title: string; about: string; theme: string; body: string }) {
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${escape(title)}</title>
+    <meta name="description" content="${escape(about)}">
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+    <style>${theme}${STYLE}</style>
+  </head>
+  <body>
+    <div class="page">
+      ${body}
+    </div>
+  </body>
+</html>`;
+}
+
+export function createPages(catalogue: Pick<Catalogue, "state">, { mount = "/games", daily: dailyMount = "/daily", now = () => new Date(), components = fileURLToPath(new URL("../pages", import.meta.url)), asking = () => false, ask }: PagesOptions = {}) {
   // `packages` is in @zubra/server and its guide, and not yet in its types.
   const options: ZubraOptions & { packages: string[] } = { components, packages: ["@open-parlor/ui/zubra-ui"] };
   // Made at the first request, not at start-up, and never allowed to take the tables down with it:
@@ -87,7 +120,7 @@ export function createPages(catalogue: Pick<Catalogue, "state">, { mount = "/gam
         return {
           zubra: createZubra(options),
           // The functions marked 'use server' in the components. `askFor` is what game-request.zb's calls.
-          actions: await createActions({ components, context: () => ({ askFor }), onError: (error) => console.error("pages: a form's function threw:", error) }),
+          actions: await createActions({ components, context: () => ({ askFor, grade: checkSudoku }), onError: (error) => console.error("pages: a form's function threw:", error) }),
           theme: readFileSync(createRequire(import.meta.url).resolve("@open-parlor/ui/zubra-ui/themes/system.css"), "utf8"),
         };
       } catch (error) {
@@ -113,6 +146,47 @@ export function createPages(catalogue: Pick<Catalogue, "state">, { mount = "/gam
     return { error: typeof said.error === "string" ? said.error : "The request couldn't be sent just now. Try again in a minute." };
   }
 
+  /** "Check", on the daily sudoku: what is typed, against the answer only this side has. */
+  function checkSudoku(date: string, form: FormData): Checked | { error: string } {
+    if (!isDate(date) || date !== clampDate(date, now())) return { error: "There's no puzzle for that day." };
+    const typed = Array.from({ length: 81 }, (_, i) => {
+      const value = form.get(`c${i}`);
+      return typeof value === "string" && /^[1-9]$/.test(value.trim()) ? value.trim() : "0";
+    }).join("");
+    const puzzle = puzzleFor(date);
+    return { date, entries: entriesOf(puzzle, typed), ...grade(puzzle, typed) };
+  }
+
+  /** The daily sudoku: the day's puzzle as a form of inputs, with the clues in it and not the answer. */
+  async function daily(request: Request, { zubra, actions, theme }: Made, headers: Headers): Promise<string> {
+    const url = new URL(request.url);
+    const date = clampDate(url.searchParams.get("d"), now());
+    const puzzle = puzzleFor(date);
+    const latest = today(now());
+    const sent = actions.result<Checked | { error: string }>(request, (name, value) => headers.append(name, value));
+    // A post made without JavaScript comes back once, with what was typed and how it stood.
+    const answer = sent?.value && "entries" in sent.value && sent.value.date === date ? sent.value : null;
+    const page = zubra.page();
+    const board = page.render("daily-sudoku", { date, level: puzzle.level, givens: puzzle.givens, entries: entriesOf(puzzle, answer?.entries), result: answer ?? (sent?.value && "error" in sent.value ? sent.value : null) });
+    const nice = new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+    const before = date > FIRST_DAY ? `<a href="${dailyMount}?d=${shift(date, -1)}" rel="prev">← The day before</a>` : "";
+    const after = date < latest ? `<a href="${dailyMount}?d=${shift(date, 1)}" rel="next">The next day →</a>` : "";
+    return page.finish(
+      shell({
+        title: `Daily sudoku, ${nice} · open.parlor`,
+        about: `Today's sudoku, ${puzzle.level.toLowerCase()}. A new one every day.`,
+        theme,
+        body: `<header>
+        <a href="/">open.parlor</a>
+        <h1>Daily sudoku</h1>
+        <p class="lede">${escape(nice)} · ${puzzle.level}. Fill every row, column and box with 1 to 9. Check as often as you like; the answer stays on the server.</p>
+      </header>
+      <main>${board}${actions.script()}<p class="days">${before} ${after}</p></main>
+      <footer>This page is drawn on the server and its grid is a plain form, so it plays with JavaScript switched off.</footer>`,
+      }),
+    );
+  }
+
   /** The games page: every game the host has switched on, in the host's order. */
   async function games(request: Request, { zubra, actions, theme }: Made, headers: Headers): Promise<string> {
     const url = new URL(request.url);
@@ -135,28 +209,20 @@ export function createPages(catalogue: Pick<Catalogue, "state">, { mount = "/gam
       </section>${actions.script()}`
       : "";
     const about = `The ${offered.length} games in this parlor: cards, boards and arcade games to play with family, friends or the computer.`;
-    return page.finish(`<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>The games · open.parlor</title>
-    <meta name="description" content="${escape(about)}">
-    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
-    <style>${theme}${STYLE}</style>
-  </head>
-  <body>
-    <div class="page">
-      <header>
+    return page.finish(
+      shell({
+        title: "The games · open.parlor",
+        about,
+        theme,
+        body: `<header>
         <a href="/">open.parlor</a>
         <h1>The games</h1>
         <p class="lede">${escape(about)} Pick one to set up a table.</p>
       </header>
       <main>${list}${asking_}</main>
-      <footer>This page is drawn on the server, so it reads and filters with JavaScript switched off.</footer>
-    </div>
-  </body>
-</html>`);
+      <footer>This page is drawn on the server, so it reads and filters with JavaScript switched off.</footer>`,
+      }),
+    );
   }
 
   return {
@@ -167,7 +233,9 @@ export function createPages(catalogue: Pick<Catalogue, "state">, { mount = "/gam
      */
     async fetch(request: Request): Promise<Response | null> {
       const { pathname } = new URL(request.url);
-      const page = pathname === mount;
+      const gamesPage = pathname === mount;
+      const dailyPage = pathname === dailyMount;
+      const page = gamesPage || dailyPage;
       const posted = pathname === "/_zb/actions.js" || pathname.startsWith("/_zb/action/");
       const modules = pathname.startsWith("/_zubra/");
       if (!page && !posted && !modules) return null;
@@ -178,10 +246,10 @@ export function createPages(catalogue: Pick<Catalogue, "state">, { mount = "/gam
       if (modules) return (await drawn.zubra.fetch(request)) ?? new Response("Not found", { status: 404 });
       if (request.method !== "GET" && request.method !== "HEAD") return new Response("Not found", { status: 404 });
       try {
-        const headers = new Headers({ "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", "x-parlor-page": "games" });
-        return new Response(await games(request, drawn, headers), { headers });
+        const headers = new Headers({ "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", "x-parlor-page": gamesPage ? "games" : "daily" });
+        return new Response(await (gamesPage ? games : daily)(request, drawn, headers), { headers });
       } catch (error) {
-        console.error("pages: /games didn't render:", error);
+        console.error(`pages: ${pathname} didn't render:`, error);
         return new Response("This page isn't working just now.", { status: 500, headers: { "content-type": "text/plain; charset=utf-8" } });
       }
     },
