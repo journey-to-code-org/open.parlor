@@ -65,6 +65,8 @@ export interface HouseMessage {
 export interface HouseChat {
   /** Goes up with every change: ask with the one you have and you're told only when there's news. */
   rev: number;
+  /** The members who have the house's page open now, by id. You are always one of them. */
+  here: string[];
   messages: HouseMessage[];
   /** Whether you may take down what others said (the owner and admins). */
   canRemove: boolean;
@@ -181,8 +183,8 @@ export const houses = {
   /** The models an account can use (with the pasted key, or the saved one), and one to start with. */
   aiModels: (slug: string, provider: AiProvider | "server", key?: string) => call<{ models: string[]; suggested: string }>(at(slug, "ai-models"), { provider, key }),
   testAi: (slug: string) => call<{ line: string }>(at(slug, "ai-test"), {}),
-  /** The house's chat. With the `rev` already shown, only `{ rev }` comes back when nothing has changed. */
-  chat: (slug: string, rev?: number) => call<HouseChat | { rev: number }>(rev === undefined ? at(slug, "chat") : `${at(slug, "chat")}?rev=${rev}`),
+  /** The house's chat. With the `rev` already shown, only `{ rev, here }` comes back when nothing has been said. */
+  chat: (slug: string, rev?: number) => call<HouseChat | { rev: number; here: string[] }>(rev === undefined ? at(slug, "chat") : `${at(slug, "chat")}?rev=${rev}`),
   say: (slug: string, text: string) => call<HouseChat>(at(slug, "chat"), { text }),
   /** Take a message down: your own, or anyone's for the owner and admins. */
   unsay: (slug: string, id: number) => call<HouseChat>(at(slug, "chat"), { remove: id }),

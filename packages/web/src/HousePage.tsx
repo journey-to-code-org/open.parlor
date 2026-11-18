@@ -257,7 +257,7 @@ function MemberView(props: {
         <NotifyButton what="someone opens a table or says something here" />
       </section>
 
-      <HouseChatBlock slug={house.slug} />
+      <HouseChatBlock slug={house.slug} members={house.members} me={house.me.id} />
 
       <section className="house-block" aria-label="Tournaments">
         <h2>Tournaments</h2>
