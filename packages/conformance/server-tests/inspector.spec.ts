@@ -108,7 +108,8 @@ test("a tab of its own, with an address", async ({ page }) => {
   await expect(page.getByLabel("Run code")).toBeVisible();
 });
 
-test("a run copied from the Back Room page plays back in the Inspector, move for move", async ({ page, context }) => {
+test("a run copied from the Back Room page plays back in the Inspector, move for move", async ({ page, context, browserName }) => {
+  test.skip(browserName !== "chromium", "reads the clipboard, which only Chromium lets a test grant");
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/wasm/battler/?seed=7");
   await expect(page.getByRole("group", { name: "Foes" })).toBeVisible();
