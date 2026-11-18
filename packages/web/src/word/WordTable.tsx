@@ -26,7 +26,7 @@ import { loadFeedbackSettings, play, saveFeedbackSettings } from "../feedback/so
 import { named, ResultTable, sideName } from "../kit/KitTable";
 import { SoundButton } from "../SoundButton";
 import { TableSettingsButton } from "../TableSettings";
-import { Canvas, PlaceBoard, TraceGrid } from "./WordPieces";
+import { Canvas, PlaceBoard, TraceGrid, type TraceFlash } from "./WordPieces";
 
 export interface WordTableProps {
   /** The same game again at once (a practice table): without it, "Play again" goes back to the game's page. */
@@ -71,6 +71,15 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
   const [order, setOrder] = useState<number[] | null>(null);
   /** A word being traced on the square: the tiles, in order. */
   const [path, setPath] = useState<number[]>([]);
+  /** The word just traced and sent, left on the square for a moment in green or red. */
+  const [flash, setFlash] = useState<TraceFlash | null>(null);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showFlash = (next: TraceFlash) => {
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    setFlash(next);
+    flashTimer.current = setTimeout(() => setFlash(null), next.kind === "good" ? 650 : 900);
+  };
+  useEffect(() => () => void (flashTimer.current && clearTimeout(flashTimer.current)), []);
   /** Tiles put on the board this turn, not yet played; and the hand tile chosen to put next. */
   const [pending, setPending] = useState<PlacedTile[]>([]);
   const [chosen, setChosen] = useState<number | null>(null);
@@ -179,18 +188,22 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
     setTyped(next.map((i) => traceLetters[i]).join(""));
     setError(null);
   };
+  /** What a word of this seat's scored, once the table says so. */
+  const foundPoints = (word: string) => view.words.find((w) => w.by === me && w.word === word)?.points;
   const sendPath = async (p: number[]) => {
     if (!entry) return;
     const word = p.map((i) => traceLetters[i]).join("");
     if (word.length < entry.min) {
+      onPath([]);
       setError(`At least ${entry.min} letters.`);
       play("nope");
-      onPath([]);
+      showFlash({ path: p, kind: "bad", word });
       return;
     }
     const ok = await send({ type: entry.type, word });
     setPath([]);
     setTyped("");
+    showFlash({ path: p, kind: ok ? "good" : "bad", word });
     if (ok) play("piece");
   };
 
@@ -311,14 +324,46 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
           {view.canvas && <Canvas canvas={watching ? { ...view.canvas, draw: null } : view.canvas} onStroke={sendStroke} />}
           {view.boards.map((board) =>
             board.trace ? (
-              <TraceGrid key={board.id} board={board} path={path} onPath={onPath} onSend={(p) => void sendPath(p)} disabled={!entry || busy} />
+              <div key={board.id} className="trace-area">
+                {/* The word as it is traced, over the square where a finger doesn't hide it; then whether it counted. */}
+                {entry && !flash && !typed && view.words.length > 0 ? (
+                  // Between words, the same place shows what has been found: one row, newest first, to slide along.
+                  <ul className="word-found" aria-label={`Words found: ${view.words.length}`}>
+                    <li className="count">{view.words.length} found</li>
+                    {view.words.map((w, i) => (
+                      <li key={`${w.word}-${i}`} className={w.by === me ? "mine" : ""}>
+                        {w.word}
+                        {w.points !== undefined && <strong>+{w.points}</strong>}
+                      </li>
+                    ))}
+                  </ul>
+                ) : entry && (
+                  <p className={`trace-word${flash ? ` is-${flash.kind}` : typed ? " is-typing" : ""}`} aria-live="polite" aria-label={flash ? `${flash.word}: ${flash.kind === "good" ? "found" : (error ?? "no")}` : typed ? `Your word: ${typed}` : "Your word: nothing yet"}>
+                    {flash ? (
+                      <>
+                        <b>{flash.word}</b>
+                        <span>{flash.kind === "good" ? (foundPoints(flash.word) !== undefined ? `+${foundPoints(flash.word)}` : "✓") : (error ?? "No")}</span>
+                      </>
+                    ) : typed ? (
+                      <>
+                        <b>{typed}</b>
+                        {typed.length < entry.min && <span>{entry.min - typed.length} more</span>}
+                      </>
+                    ) : (
+                      <span>Drag across the letters, or tap them in turn</span>
+                    )}
+                  </p>
+                )}
+                <TraceGrid board={board} path={path} flash={flash} onPath={onPath} onSend={(p) => void sendPath(p)} disabled={!entry || busy} />
+              </div>
             ) : view.place?.board === board.id || (view.hand && board.cols > 9) ? (
               <PlaceBoard key={board.id} board={board} pending={pending} values={view.values ?? {}} canPlace={!!placing && chosen !== null && !busy} onSquare={onSquare} />
             ) : (
               <Board key={board.id} board={board} label={view.boards.length > 1 || board.owner === undefined} typing={typingInto?.id === board.id ? typed : null} />
             ),
           )}
-          {view.words.length > 0 && (
+          {/* While hunting, the words found are shown over the square instead, small enough to take in at a glance. */}
+          {!(traceBoard && entry) && view.words.length > 0 && (
             <ul className="word-played" aria-label="Words">
               {view.words.map((w, i) => (
                 <li key={i} className={w.by === null ? "answer" : w.by === me ? "mine" : ""}>
@@ -391,13 +436,6 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
         {/* What has been traced, and the buttons to send it or start again. */}
         {traceBoard && entry && (
           <div className="word-rack-area">
-            <div role="group" className="word-tiles typed" aria-live="polite" aria-label={typed ? `Your word: ${typed}` : "Your word: nothing yet"}>
-              {typed ? [...typed].map((letter, i) => (
-                <span key={i} className="word-tile filled small-tile" aria-hidden>
-                  {letter}
-                </span>
-              )) : <span className="fine">Drag across the letters, or tap them in turn</span>}
-            </div>
             <div className="word-actions">
               <button type="button" className="secondary" disabled={!typed} onClick={() => onPath([])}>
                 Clear
@@ -406,6 +444,7 @@ export function WordTable({ view, names, act, onLeave, banner, chat, settings, w
                 Enter
               </button>
             </div>
+
           </div>
         )}
 
