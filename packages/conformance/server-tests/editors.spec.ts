@@ -108,6 +108,27 @@ test.describe("the course editor", () => {
     await expect(page.getByRole("heading", { name: "Make a Mini Golf course" })).toHaveCount(0);
     await expect(page.locator("canvas").filter({ visible: true }).first()).toBeVisible();
   });
+
+  test("watch the computer, play a practice round, and come back to the draft", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(String(e)));
+    agree(page);
+    await page.goto("/?golf=new");
+    await page.getByLabel("Course name").fill("Not saved yet");
+    const watch = page.locator(".golf-verdict button");
+    await expect(watch).toHaveText("Watch the computer play it", { timeout: 20_000 });
+    await watch.click();
+    await expect(watch).toHaveText("Watching…");
+    await expect(watch).toHaveText("Watch the computer play it", { timeout: 30_000 });
+
+    await page.getByRole("button", { name: "Play it against the computer" }).click();
+    await page.getByRole("button", { name: "Got it" }).click();
+    await page.getByRole("button", { name: "Leave game" }).click();
+    await expect(page.getByRole("heading", { name: "Make a Mini Golf course" })).toBeVisible();
+    await expect(page.getByLabel("Course name")).toHaveValue("Not saved yet");
+    await expect(page.getByRole("button", { name: "Save the course" })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
 });
 
 test.describe("the lane editor", () => {
