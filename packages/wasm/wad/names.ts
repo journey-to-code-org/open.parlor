@@ -190,7 +190,7 @@ const OTHERS: [RegExp, string][] = [
   [/^GENMIDI$/, "Instruments for the songs"],
   [/^DMXGUSC?$/, "Instruments for the songs, for one old sound card"],
   [/^DEMO\d$/, "A recorded game, played behind the title"],
-  [/^D_/, "A song. This engine plays no music yet"],
+  [/^D_/, "A song. Put an MP3, an Ogg or a WAV in its place and the game plays it. The game's own songs are in a form nothing here plays yet"],
   [/^DP/, "A sound for the old PC speaker. Not played here"],
   [/^DEHACKED$/, "Changes for other engines. Not read by this one"],
 ];

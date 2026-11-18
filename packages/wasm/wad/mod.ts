@@ -1,7 +1,7 @@
 // Someone's changes to a game: the lumps they have replaced, and nothing else. Laid over the
 // game's own WAD they make the WAD the engine is given; on their own they are a small WAD to keep
 // or to hand to someone.
-import { type Asset, canAdd, catalogue, isLevelKind, isNewName, key, type Kind } from "./catalogue.ts";
+import { type Asset, canAdd, catalogue, isLevelKind, isNewNameFor, key, type Kind } from "./catalogue.ts";
 import { decodePatch, FLAT } from "./picture.ts";
 import { decodeDmx } from "./sound.ts";
 import { isShape, LEVEL_LUMPS, levelLumps, SHAPE_LUMPS } from "./level.ts";
@@ -49,14 +49,16 @@ export function wallLumps(data: Uint8Array): Map<string, Uint8Array> | null {
 const BIGGEST = 32 * 1048576;
 
 /** Whether a change is something new: of a kind a game can be given more of, under a name it could go by, and the right bytes. */
-export const isAddition = (change: Change) => canAdd(change.kind) && isNewName(change.name) && fits(change.kind, change.data);
+export const isAddition = (change: Change) => canAdd(change.kind) && isNewNameFor(change.kind, change.name) && fits(change.kind, change.data);
+/** The rules and the words are lumps of our own: a game that hasn't one yet is given it. */
+const isOurs = (change: Change) => (change.kind === "rules" && change.name === "RULES") || (change.kind === "words" && change.name === "WORDS");
 
 /** Whether these bytes are what the engine expects of this kind of lump. */
 export function fits(kind: Kind, data: Uint8Array): boolean {
   // Ten bytes a thing, and a level with nothing in it has nowhere for the player to start.
   if (kind === "things") return data.length > 0 && data.length % 10 === 0;
   if (kind === "walls") return wallLumps(data) !== null;
-  if (kind === "words") return data.length > 0 && data.length < 65536;
+  if (kind === "words" || kind === "rules") return data.length > 0 && data.length < 65536;
   // Any bytes at all: what they must be is between whoever dropped them and the engine.
   if (kind === "other") return data.length > 0 && data.length <= BIGGEST;
   if (kind === "sound") return decodeDmx(data) !== null;
@@ -76,10 +78,15 @@ export function applyMod(game: Uint8Array, changes: Iterable<Change>): Uint8Arra
   let lumps = [...wad.lumps];
   let changed = 0;
   const added: Change[] = [];
+  const ours: Lump[] = [];
   const names = new Set(wad.lumps.map((lump) => lump.name));
   for (const change of changes) {
     const asset = assets.get(key(change.kind, change.name));
     // A lump of no kind mustn't take a name the game uses for something else: the engine would read it as that.
+    if (!asset && isOurs(change) && fits(change.kind, change.data) && !names.has(change.name)) {
+      ours.push({ name: change.name, data: change.data });
+      names.add(change.name);
+    }
     if (!asset && isAddition(change) && !(change.kind === "other" && names.has(change.name)) && !added.some((one) => one.kind === change.kind && one.name === change.name)) added.push(change);
     if (!asset || !fits(change.kind, change.data)) continue;
     if (change.kind === "walls") {
@@ -92,7 +99,7 @@ export function applyMod(game: Uint8Array, changes: Iterable<Change>): Uint8Arra
     changed++;
   }
   // What is new goes in after what is changed, so that none of the places above have moved.
-  for (const [kind, ends] of [["floor", /^FF?_END$/], ["wall", /^PP?_END$/]] as const) {
+  for (const [kind, ends] of [["floor", /^FF?_END$/], ["wall", /^PP?_END$/], ["sprite", /^SS?_END$/]] as const) {
     const fresh = added.filter((change) => change.kind === kind).map(({ name, data }) => ({ name, data }));
     const end = lumps.map((lump) => ends.test(lump.name)).lastIndexOf(true);
     if (!fresh.length) continue;
@@ -100,9 +107,9 @@ export function applyMod(game: Uint8Array, changes: Iterable<Change>): Uint8Arra
     if (end < 0) lumps.push(marker(MARKERS[kind]![0]), ...fresh, marker(MARKERS[kind]![1]));
     else lumps.splice(end, 0, ...fresh);
   }
-  lumps.push(...added.filter((change) => change.kind === "other").map(({ name, data }) => ({ name, data })));
+  lumps.push(...added.filter((change) => change.kind === "other" || change.kind === "sound").map(({ name, data }) => ({ name, data })), ...ours);
   lumps = addWallPictures(lumps, newWalls(added));
-  return changed || added.length ? writeWad({ kind: wad.kind, lumps }) : game;
+  return changed || added.length || ours.length ? writeWad({ kind: wad.kind, lumps }) : game;
 }
 
 /** The walls among what is new, with the size of each: what a wall picture is made for. */
@@ -199,11 +206,11 @@ export function modFromWad(bytes: Uint8Array, assets: Asset[], game?: Wad): { ch
       if (!same(data, own.get("THINGS")?.lump.data)) changes.push({ kind: "things", name: asset.name, data: data.slice() });
       continue;
     }
-    // A picture or a sound under a name the game has nothing by is no use to this engine, but it is carried along as a lump, for whoever it is for.
-    const stray = (asset.kind === "screen" || asset.kind === "sound") && !known.has(key(asset.kind, asset.name));
+    // A picture under a name the game has nothing by is no use to this engine, but it is carried along as a lump, for whoever it is for.
+    const stray = asset.kind === "screen" && !known.has(key(asset.kind, asset.name));
     const change: Change = { kind: stray ? "other" : asset.kind, name: asset.name, data: data.slice() };
     // Something the game hasn't, of a kind it can be given more of: a floor, a wall, a lump of no other kind.
-    if (ours || (!known.has(key(change.kind, asset.name)) && isAddition(change) && !(change.kind === "other" && named.has(asset.name)))) changes.push(change);
+    if (ours || (!known.has(key(change.kind, asset.name)) && (isOurs(change) ? fits(change.kind, change.data) : isAddition(change) && !(change.kind === "other" && named.has(asset.name))))) changes.push(change);
     else skipped.push(asset.name);
   }
   wad.lumps.forEach((lump, index) => {

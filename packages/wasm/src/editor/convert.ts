@@ -34,7 +34,12 @@ export async function pictureLump(file: Blob, kind: Kind, original: Picture | nu
     throw new Error("That file isn't a picture this browser can open.");
   });
   let { width, height } = original ?? { width: FLAT, height: FLAT };
-  if (!original && kind !== "floor") {
+  if (!original && kind === "sprite") {
+    // A new sprite keeps its own size, brought down if it is bigger than the engine can draw.
+    const scale = Math.min(1, TALLEST / bitmap.height, WIDEST / bitmap.width);
+    width = Math.max(1, Math.round(bitmap.width * scale));
+    height = Math.max(1, Math.round(bitmap.height * scale));
+  } else if (!original && kind !== "floor") {
     const scale = Math.min(1, WALL_HEIGHT / bitmap.height);
     const wide = bitmap.width * scale;
     width = WALL_WIDTHS.reduce((best, one) => (Math.abs(one - wide) < Math.abs(best - wide) ? one : best));
@@ -54,7 +59,8 @@ export async function pictureLump(file: Blob, kind: Kind, original: Picture | nu
   context.drawImage(bitmap, 0, 0, width, height);
   bitmap.close();
   // Where it stands is kept: a sprite's feet stay on the floor, at whatever size.
-  const origin = original ? { left: Math.round((original.left * width) / original.width), top: Math.round((original.top * height) / original.height) } : { left: 0, top: 0 };
+  // A new sprite stands on the middle of its bottom edge, its feet a little into the floor, as the game's own do.
+  const origin = original ? { left: Math.round((original.left * width) / original.width), top: Math.round((original.top * height) / original.height) } : kind === "sprite" ? { left: Math.round(width / 2), top: Math.max(0, height - 4) } : { left: 0, top: 0 };
   const picture = fromRgba(context.getImageData(0, 0, width, height).data, width, height, palette, origin);
   if (kind === "floor") {
     // A floor has no see-through: what would be is the palette's first colour, usually black.

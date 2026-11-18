@@ -28,6 +28,13 @@ export interface SoundHost {
   update(channel: number, volume: number, separation: number): void;
   stop(channel: number): void;
   playing(channel: number): boolean;
+  /** The song. `data` is its lump, whole: sound a browser can decode if someone put their own in, MUS data if it is the game's. */
+  music?: {
+    play(data: Uint8Array, looping: boolean): void;
+    stop(): void;
+    volume(volume: number): void;
+    pause(paused: boolean): void;
+  };
 }
 
 /** A menu is up. */
@@ -150,6 +157,10 @@ export async function startEngine(module: WebAssembly.Module, files: Map<string,
       sound_update: (channel: number, volume: number, separation: number) => host.sound?.update(channel, volume, separation),
       sound_stop: (channel: number) => host.sound?.stop(channel),
       sound_playing: (channel: number) => (host.sound?.playing(channel) ? 1 : 0),
+      music_play: (at: number, length: number, looping: number) => host.sound?.music?.play(new Uint8Array(memory().buffer, at, length).slice(), looping !== 0),
+      music_stop: () => host.sound?.music?.stop(),
+      music_volume: (volume: number) => host.sound?.music?.volume(volume),
+      music_pause: (paused: number) => host.sound?.music?.pause(paused !== 0),
     },
   });
   exports = instance.exports as unknown as Exports;

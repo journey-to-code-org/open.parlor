@@ -1154,6 +1154,8 @@ typedef struct
 } state_t;
 
 extern state_t	states[NUMSTATES];
+// [open.wasm] Places past the engine's own for sprites a WAD's rules name: see rules.c.
+#define SPARESPRITES 64
 extern char *sprnames[];
 
 typedef enum {

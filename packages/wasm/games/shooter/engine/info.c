@@ -29,7 +29,8 @@
 
 #include "p_mobj.h"
 
-char *sprnames[] = {
+// [open.wasm] With room at the end for sprites a WAD's rules name: see rules.c.
+char *sprnames[NUMSPRITES + SPARESPRITES + 1] = {
     "TROO","SHTG","PUNG","PISG","PISF","SHTF","SHT2","CHGG","CHGF","MISG",
     "MISF","SAWG","PLSG","PLSF","BFGG","BFGF","BLUD","PUFF","BAL1","BAL2",
     "PLSS","PLSE","MISL","BFS1","BFE1","BFE2","TFOG","IFOG","PLAY","POSS",

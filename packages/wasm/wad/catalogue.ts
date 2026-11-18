@@ -12,28 +12,38 @@ import type { Wad } from "./wad.ts";
  * bar), a sound effect; and two that are a level, named by the level: "things", everything
  * placed in it, and "walls", what it is built of. And "words": what the game says (words.ts).
  * And "other": every lump that is none of those (the colours, the lists of wall pictures, the
- * songs, the recordings), changed only by putting another in its place, byte for byte.
+ * songs, the recordings), changed only by putting another in its place, byte for byte. And
+ * "rules": what each thing is and the numbers the engine plays by (rules.ts).
  */
-export type Kind = "sprite" | "wall" | "floor" | "screen" | "sound" | "things" | "walls" | "words" | "other";
+export type Kind = "sprite" | "wall" | "floor" | "screen" | "sound" | "things" | "walls" | "words" | "rules" | "other";
 /** The kinds that are part of a level, not a picture or a sound. */
 export const isLevelKind = (kind: Kind) => kind === "things" || kind === "walls";
 
 /** The kinds that are a picture or a sound: one lump, swapped for a file. */
 export const KINDS: Kind[] = ["sprite", "wall", "floor", "screen", "sound"];
-export const EVERY_KIND: Kind[] = [...KINDS, "things", "walls", "words", "other"];
+export const EVERY_KIND: Kind[] = [...KINDS, "things", "walls", "words", "rules", "other"];
 /** The kinds that are a picture or a sound: what can be shown small, and dropped a file on. */
-export const isDrawn = (kind: Kind) => !isLevelKind(kind) && kind !== "words" && kind !== "other";
+export const isDrawn = (kind: Kind) => !isLevelKind(kind) && kind !== "words" && kind !== "rules" && kind !== "other";
 
 /**
  * The kinds a game can be given more of, under a name it hasn't got: a floor, a wall (a piece,
- * and with it a wall picture of that name made of the one piece: mod.ts), and any other lump.
- * A new sprite or sound would never be drawn or heard: the engine knows its own by name.
+ * and with it a wall picture of that name made of the one piece: mod.ts), any other lump, and a
+ * sprite or a sound. The engine draws and plays its own by name, so a new sprite or sound is
+ * seen or heard once the rules give it to a thing (rules.ts).
  */
-export const canAdd = (kind: Kind) => kind === "floor" || kind === "wall" || kind === "other";
+export const canAdd = (kind: Kind) => kind === "floor" || kind === "wall" || kind === "other" || kind === "sprite" || kind === "sound";
 /** The lumps of a level, and the markers: names nothing else may take. */
-const TAKEN = /^(THINGS|LINEDEFS|SIDEDEFS|VERTEXES|SEGS|SSECTORS|NODES|SECTORS|REJECT|BLOCKMAP|BEHAVIOR|E\dM\d|MAP\d\d|[SPF][SPF123]?_(START|END)|WORDS)$/;
+const TAKEN = /^(THINGS|LINEDEFS|SIDEDEFS|VERTEXES|SEGS|SSECTORS|NODES|SECTORS|REJECT|BLOCKMAP|BEHAVIOR|E\dM\d|MAP\d\d|[SPF][SPF123]?_(START|END)|WORDS|RULES)$/;
 /** Whether something new could go by this name: what a WAD can hold (eight of capitals, figures and a few marks) and not a name with a meaning of its own. */
 export const isNewName = (name: string) => /^[A-Z0-9_\-\[\]\\^]{1,8}$/.test(name) && !TAKEN.test(name);
+/**
+ * Whether something new of a kind could go by this name. A sprite's says what it is a picture
+ * of: four letters for the thing, a letter for the moment and a figure for the side it is seen
+ * from (0 for all of them), and perhaps the same again for the side that is its mirror. A
+ * sound's starts DS.
+ */
+export const isNewNameFor = (kind: Kind, name: string) =>
+  isNewName(name) && (kind === "sprite" ? /^[A-Z0-9_]{4}([A-Z\[\]\\][0-8]){1,2}$/.test(name) : kind === "sound" ? /^DS[A-Z0-9_]{1,6}$/.test(name) : true);
 
 export interface Asset {
   kind: Kind;
@@ -64,6 +74,7 @@ export function catalogue(wad: Wad): Asset[] {
   wad.lumps.forEach(({ name, data }, index) => {
     // A level: its marker, then its lumps, the first of them what is placed in it.
     if (name === "WORDS") found.set(key("words", name), { kind: "words", name, index, note: "What the game says" });
+    if (name === "RULES") found.set(key("rules", name), { kind: "rules", name, index, note: "What each thing is, and the numbers the game plays by" });
     if (isLevelName(name) && wad.lumps[index + 1]?.name === "THINGS") {
       found.set(key("things", name), { kind: "things", name, index: index + 1, note: "What is placed in this level" });
       found.set(key("walls", name), { kind: "walls", name, index, note: "The walls and rooms of this level" });
