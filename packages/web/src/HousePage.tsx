@@ -1,4 +1,4 @@
-import { isLiveArcade } from "./arcade/ArcadeTable";
+import { isLiveArcade } from "./arcade/live";
 import { ARCADE_LIST } from "./GamePicker";
 import { validatePreset, type RulePreset } from "@journey-to-code/rules";
 import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";

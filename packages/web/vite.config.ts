@@ -36,6 +36,9 @@ export default defineConfig({
       transformIndexHtml: (html) => html.replaceAll("__OG_BASE__", `${process.env.SITE_ORIGIN ?? "__ORIGIN__"}${base}`),
     },
   ],
+  // The manifest says which files each screen is made of: the last step of the build (scripts/precache.mjs)
+  // sorts them into what is always kept for playing offline and what goes with each kind of game.
+  build: { manifest: true },
   // The practice tables' bot worker (src/kit/bot.worker.ts) is a module, like the page.
   worker: { format: "es" },
   // `npm run dev -w @open-parlor/server` serves the rooms and the sync log on 8787.

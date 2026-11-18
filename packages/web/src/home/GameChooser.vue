@@ -54,6 +54,8 @@ const props = defineProps<{
   canList?: boolean;
 }>();
 const emit = defineEmits<{ pick: [id: string]; house: [slug: string]; lobby: []; wifi: []; move: []; ask: [] }>();
+// The sheet for choosing what is kept for playing offline is the React app's (offline/OfflineGames.tsx): it listens for this.
+const offlineGames = () => dispatchEvent(new CustomEvent("parlor:offline-games"));
 // The page about how the parlor is made: one set of Zubra components, checked in every framework
 // it uses. It is published with the GitHub Pages build, since its results come from a run there.
 const BUILT = "https://journey-to-code-org.github.io/open.parlor/conformance/";
@@ -428,6 +430,7 @@ async function toShelf(id: string) {
       <a v-if="canList" class="design" href="games">📋 Every game on one page</a>
       <a class="design" :href="BUILT">🧪 How the parlor is built</a>
       <button type="button" class="design" @click="emit('move')">📱 Use the parlor on another device</button>
+      <button type="button" class="design" @click="offlineGames">📴 Offline games: choose what's kept on this device</button>
       <button v-if="canAsk" type="button" class="design" @click="emit('ask')">💡 Don't see your game? Ask for it</button>
     </p>
   </div>
