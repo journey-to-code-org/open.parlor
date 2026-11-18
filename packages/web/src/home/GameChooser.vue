@@ -564,6 +564,7 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .mini-cell.tone-red { color: #b3261e; }
 .mini-cell.tone-blue { color: #1f5fbf; }
 .mini-cell.tone-gold { color: #d9a400; }
+.mini-cell.tone-green { color: #1f8a4c; }
 .mini-cell.tone-dark { color: #1d1a16; }
 .mini-cell.tone-light { color: #fffdf8; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5); }
 /* The dark squares of a checkered board. */

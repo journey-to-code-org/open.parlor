@@ -341,6 +341,16 @@
       "emoji": "⚅",
       "blurb": "Lay your tiles end to end, matching the numbers. Play your last tile to win the round and score the pips left in everyone else's hand."
     },
+    "ludo": {
+      "name": "Ludo",
+      "emoji": "🎯",
+      "blurb": "Roll a six to come out, race your tokens round the track and up your home column, and send anyone you land on back to their yard."
+    },
+    "chinesecheckers": {
+      "name": "Chinese Checkers",
+      "emoji": "✡️",
+      "blurb": "Move a peg one hole, or jump over a peg and keep jumping. First to get all ten into the point across the star wins."
+    },
     "secretword": {
       "name": "Secret Word",
       "emoji": "🟩",

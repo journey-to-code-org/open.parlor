@@ -39,6 +39,10 @@ export function controls(game: string): string[] {
       return ["After a roll, every die that scores is kept for you. Tap one to put it back and roll it again.", "Then bank the turn's points, or roll the dice that are left."];
     case "shutthebox":
       return ["Roll, then tap tiles that add up to the roll. Only tiles that can be part of it can be tapped.", "Tap a tile you have just shut to open it again. The roll is made when the tiles add up."];
+    case "ludo":
+      return ["Press Roll, then tap one of your tokens to move it that many squares. The ones that can move wear a gold ring.", "A token in your yard needs a six to come out."];
+    case "chinesecheckers":
+      return ["Tap one of your pegs, then the hole it should go to. The dots show where it can reach, jumps and all.", "Your pegs start nearest you and are heading for the point straight across."];
     case "mancala":
       return ["Tap one of your pits (the row nearest you) to pick up its seeds and sow them round the board.", "Your store is at your right: its count is under your name."];
     case "dominoes":
