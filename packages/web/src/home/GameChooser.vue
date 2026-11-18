@@ -349,6 +349,7 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
       <a class="design" href="watch/">👀 Watch a game</a>
       <a class="design" href="designer/">🎨 Design your own deck of cards</a>
       <a class="design" href="wasm/">👾 Play Delbie's Doomsday, a first-person shooter</a>
+      <a class="design" href="wasm/market/">📦 Run Delbie's Stockroom, a parts-market sim</a>
       <a v-if="canList" class="design" href="games">📋 Every game on one page</a>
       <a class="design" :href="BUILT">🧪 How the parlor is built</a>
       <button type="button" class="design" @click="emit('move')">📱 Use the parlor on another device</button>

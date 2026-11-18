@@ -26,7 +26,10 @@ const dir = join(root, "games", game);
 const config = JSON.parse(readFileSync(join(dir, "build.json"), "utf8"));
 const out = join(dir, config.output);
 
-await ensureToolchain();
+// A game with "freestanding": true is C that needs no C library (the market sim): compiled for plain
+// wasm32 with no WASI, so there is no toolchain to fetch and the module imports nothing.
+const freestanding = config.freestanding === true;
+if (!freestanding) await ensureToolchain();
 const clang = tool(["clang", "clang-20", "clang-19", "clang-18", "clang-17"], "clang");
 const linker = tool(["wasm-ld", "wasm-ld-20", "wasm-ld-19", "wasm-ld-18", "wasm-ld-17"], "wasm-ld (part of lld)");
 
@@ -38,8 +41,7 @@ const newestHeader = Math.max(statSync(join(dir, "build.json")).mtimeMs, ...file
 const objects = join(root, ".build", game);
 mkdirSync(objects, { recursive: true });
 const flags = [
-  "--target=wasm32-wasip1",
-  `--sysroot=${sysroot}`,
+  ...(freestanding ? ["--target=wasm32", "-ffreestanding", "-nostdlib"] : ["--target=wasm32-wasip1", `--sysroot=${sysroot}`]),
   "-O2",
   "-c",
   ...folders.map((folder) => `-I${folder}`),
@@ -64,21 +66,26 @@ await Promise.all(
   }),
 );
 
-await run(linker, [
-  join(libc, "crt1-reactor.o"),
-  ...jobs.map((job) => job.object),
-  `-L${libc}`,
-  "-lc",
-  builtins,
-  "--no-entry",
-  "--export=_initialize",
-  "--stack-first",
-  "-z",
-  `stack-size=${config.stack ?? 1048576}`,
-  "--strip-debug",
-  "-o",
-  out,
-]);
+await run(
+  linker,
+  freestanding
+    ? [...jobs.map((job) => job.object), "--no-entry", "--stack-first", "-z", `stack-size=${config.stack ?? 1048576}`, "--strip-debug", "-o", out]
+    : [
+        join(libc, "crt1-reactor.o"),
+        ...jobs.map((job) => job.object),
+        `-L${libc}`,
+        "-lc",
+        builtins,
+        "--no-entry",
+        "--export=_initialize",
+        "--stack-first",
+        "-z",
+        `stack-size=${config.stack ?? 1048576}`,
+        "--strip-debug",
+        "-o",
+        out,
+      ],
+);
 // What this .wasm was compiled from: test/built.test.ts checks it against the sources.
 writeFileSync(`${out}.json`, `${JSON.stringify({ sources: sourcesHash(dir) }, null, 2)}\n`);
 console.log(`${game}: ${stale.length} of ${jobs.length} files compiled, ${(statSync(out).size / 1024).toFixed(0)} KB at games/${game}/${config.output}`);

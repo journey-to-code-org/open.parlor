@@ -17,5 +17,7 @@
       "@open-parlor/ui/*": ["./.zubra/types/__/ui/src/*", "../ui/src/*"]
     }
   },
-  "include": ["src", "host", "net", "wad", "test", "vite.config.ts", "vitest.config.ts"]
+  "include": ["src", "host", "net", "wad", "test", "vite.config.ts", "vitest.config.ts"],
+  // The stockroom page is Solid, and is checked on its own (tsconfig.market.json).
+  "exclude": ["src/market/ui"]
 }
