@@ -2,7 +2,7 @@
 
 Run by hand when title.webp changes (it needs Pillow, which the site's build doesn't):
 
-    python3 games/shooter/delbies/art/convert.py public/data/freedoom1-0.13.0.wad.gz
+    python3 games/shooter/delbies/art/convert.py
 
 It writes title.raw (320x200) and logo.raw (the lettering, for over the menu): one byte a pixel,
 a colour of the game's palette, 255 where the logo is see-through... except that 255 is a colour
@@ -14,13 +14,7 @@ from pathlib import Path
 from PIL import Image
 
 here = Path(__file__).parent
-wad = gzip.open(sys.argv[1]).read()
-count, table = struct.unpack_from("<ii", wad, 4)
-palette = None
-for i in range(count):
-    at, size, name = struct.unpack_from("<ii8s", wad, table + i * 16)
-    if name.rstrip(b"\0") == b"PLAYPAL":
-        palette = wad[at:at + 768]
+palette = (here / "palette.bin").read_bytes()[:768]
 swatch = Image.new("P", (1, 1))
 swatch.putpalette(palette)
 

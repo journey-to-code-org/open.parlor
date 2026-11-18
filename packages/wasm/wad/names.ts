@@ -1,5 +1,5 @@
 // What the engine uses a lump for, where its name alone doesn't say. The engine's names are the
-// original game's, eight letters at most; the pictures under them here are Freedoom's own.
+// original game's, eight letters at most; the pictures under them here are the game's own.
 
 /** Sprites, by the four letters every picture of one thing begins with. */
 const SPRITES: Record<string, string> = {

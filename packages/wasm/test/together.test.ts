@@ -1,18 +1,16 @@
 // A game across devices, all in one process: real engines, the real room, and each device's
 // session, joined by a connection that is a function call. What is checked is the one thing the
 // whole design rests on: devices that are only told each other's commands end up with the same game.
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { gunzipSync } from "node:zlib";
 import { describe, expect, test } from "vitest";
-import data from "../games/shooter/data.json";
 import { DEFAULT_SETTINGS, type Settings } from "../net/protocol.ts";
 import { Room } from "../net/room.ts";
 import { type Engine, netArgs, screenOf, startEngine } from "../src/shooter/engine.ts";
 import { KEY } from "../src/shooter/keys.ts";
 import { type Game, type Lobby, openSession, type Session, type Transport } from "../src/shooter/session.ts";
 
-const wad = join(import.meta.dirname, "../public/data", data.file);
+const wad = join(import.meta.dirname, "../games/shooter/delbies/delbies.wad");
 const TIC = 1000 / 35;
 
 interface Device {
@@ -31,7 +29,7 @@ interface Device {
 function table(options: { dropAfter?: number } = {}) {
   const clock = { now: 0 };
   const room = new Room("TEST", { now: () => clock.now, ...options });
-  const bytes = new Uint8Array(gunzipSync(readFileSync(wad)));
+  const bytes = new Uint8Array(readFileSync(wad));
   const module = new WebAssembly.Module(readFileSync(join(import.meta.dirname, "../games/shooter/shooter.wasm")));
   const devices: Device[] = [];
   /** Engines being started: a device's engine starts when the room says the game is on. */
@@ -56,8 +54,8 @@ function table(options: { dropAfter?: number } = {}) {
         starting.push(
           startEngine(
             module,
-            new Map([["freedoom1.wad", bytes]]),
-            "freedoom1.wad",
+            new Map([["delbies.wad", bytes]]),
+            "delbies.wad",
             { now: () => clock.now, frame: (pixels) => (device.picture = pixels.slice()), command: (tic, command) => device.session.command(tic, command) },
             netArgs(game.settings, game.players.length, game.slot),
           ).then((engine) => {
@@ -120,7 +118,7 @@ function sameView(a: Uint8ClampedArray, b: Uint8ClampedArray): boolean {
 
 const settings = (change: Partial<Settings> = {}): Settings => ({ ...DEFAULT_SETTINGS, skill: 2, ...change });
 
-describe.skipIf(!existsSync(wad))("a game across devices", () => {
+describe("a game across devices", () => {
   test("two players and someone watching all have the same game, whatever the players do", async () => {
     const t = table();
     const ada = t.connect("Ada");

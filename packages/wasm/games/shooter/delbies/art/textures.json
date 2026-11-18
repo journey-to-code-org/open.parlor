@@ -1,0 +1,296 @@
+[
+ {
+  "name": "BIGDOOR1",
+  "kind": "wall",
+  "width": 128,
+  "height": 96,
+  "at": 0
+ },
+ {
+  "name": "BIGDOOR2",
+  "kind": "wall",
+  "width": 128,
+  "height": 128,
+  "at": 12288
+ },
+ {
+  "name": "BRICK1",
+  "kind": "wall",
+  "width": 64,
+  "height": 128,
+  "at": 28672
+ },
+ {
+  "name": "BROWN1",
+  "kind": "wall",
+  "width": 128,
+  "height": 128,
+  "at": 36864
+ },
+ {
+  "name": "BROWNGRN",
+  "kind": "wall",
+  "width": 64,
+  "height": 128,
+  "at": 53248
+ },
+ {
+  "name": "CRATE1",
+  "kind": "wall",
+  "width": 64,
+  "height": 128,
+  "at": 61440
+ },
+ {
+  "name": "CRATE2",
+  "kind": "wall",
+  "width": 64,
+  "height": 128,
+  "at": 69632
+ },
+ {
+  "name": "CRATWIDE",
+  "kind": "wall",
+  "width": 128,
+  "height": 128,
+  "at": 77824
+ },
+ {
+  "name": "DOOR1",
+  "kind": "wall",
+  "width": 64,
+  "height": 72,
+  "at": 94208
+ },
+ {
+  "name": "DOOR3",
+  "kind": "wall",
+  "width": 64,
+  "height": 72,
+  "at": 98816
+ },
+ {
+  "name": "DOORBLU2",
+  "kind": "wall",
+  "width": 16,
+  "height": 128,
+  "at": 103424
+ },
+ {
+  "name": "DOORTRAK",
+  "kind": "wall",
+  "width": 8,
+  "height": 128,
+  "at": 105472
+ },
+ {
+  "name": "GRAY1",
+  "kind": "wall",
+  "width": 64,
+  "height": 128,
+  "at": 106496
+ },
+ {
+  "name": "GRAY4",
+  "kind": "wall",
+  "width": 64,
+  "height": 128,
+  "at": 114688
+ },
+ {
+  "name": "METAL1",
+  "kind": "wall",
+  "width": 64,
+  "height": 128,
+  "at": 122880
+ },
+ {
+  "name": "PANEL1",
+  "kind": "wall",
+  "width": 64,
+  "height": 128,
+  "at": 131072
+ },
+ {
+  "name": "PIPE2",
+  "kind": "wall",
+  "width": 256,
+  "height": 128,
+  "at": 139264
+ },
+ {
+  "name": "STEP4",
+  "kind": "wall",
+  "width": 32,
+  "height": 16,
+  "at": 172032
+ },
+ {
+  "name": "STONE2",
+  "kind": "wall",
+  "width": 128,
+  "height": 128,
+  "at": 172544
+ },
+ {
+  "name": "SW1BRN2",
+  "kind": "wall",
+  "width": 64,
+  "height": 128,
+  "at": 188928
+ },
+ {
+  "name": "SW2BRN2",
+  "kind": "wall",
+  "width": 64,
+  "height": 128,
+  "at": 197120
+ },
+ {
+  "name": "WOOD1",
+  "kind": "wall",
+  "width": 256,
+  "height": 128,
+  "at": 205312
+ },
+ {
+  "name": "WOOD5",
+  "kind": "wall",
+  "width": 256,
+  "height": 128,
+  "at": 238080
+ },
+ {
+  "name": "SKY1",
+  "kind": "wall",
+  "width": 256,
+  "height": 128,
+  "at": 270848
+ },
+ {
+  "name": "SKY2",
+  "kind": "wall",
+  "width": 256,
+  "height": 128,
+  "at": 303616
+ },
+ {
+  "name": "CEIL1_1",
+  "kind": "floor",
+  "width": 64,
+  "height": 64,
+  "at": 336384
+ },
+ {
+  "name": "CEIL3_5",
+  "kind": "floor",
+  "width": 64,
+  "height": 64,
+  "at": 340480
+ },
+ {
+  "name": "CEIL5_1",
+  "kind": "floor",
+  "width": 64,
+  "height": 64,
+  "at": 344576
+ },
+ {
+  "name": "CRATOP1",
+  "kind": "floor",
+  "width": 64,
+  "height": 64,
+  "at": 348672
+ },
+ {
+  "name": "CRATOP2",
+  "kind": "floor",
+  "width": 64,
+  "height": 64,
+  "at": 352768
+ },
+ {
+  "name": "FLAT14",
+  "kind": "floor",
+  "width": 64,
+  "height": 64,
+  "at": 356864
+ },
+ {
+  "name": "FLAT23",
+  "kind": "floor",
+  "width": 64,
+  "height": 64,
+  "at": 360960
+ },
+ {
+  "name": "FLAT5_2",
+  "kind": "floor",
+  "width": 64,
+  "height": 64,
+  "at": 365056
+ },
+ {
+  "name": "FLOOR0_1",
+  "kind": "floor",
+  "width": 64,
+  "height": 64,
+  "at": 369152
+ },
+ {
+  "name": "FLOOR0_3",
+  "kind": "floor",
+  "width": 64,
+  "height": 64,
+  "at": 373248
+ },
+ {
+  "name": "FLOOR4_8",
+  "kind": "floor",
+  "width": 64,
+  "height": 64,
+  "at": 377344
+ },
+ {
+  "name": "FLOOR5_1",
+  "kind": "floor",
+  "width": 64,
+  "height": 64,
+  "at": 381440
+ },
+ {
+  "name": "FLOOR7_1",
+  "kind": "floor",
+  "width": 64,
+  "height": 64,
+  "at": 385536
+ },
+ {
+  "name": "FLOOR7_2",
+  "kind": "floor",
+  "width": 64,
+  "height": 64,
+  "at": 389632
+ },
+ {
+  "name": "F_SKY1",
+  "kind": "floor",
+  "width": 64,
+  "height": 64,
+  "at": 393728
+ },
+ {
+  "name": "STEP1",
+  "kind": "floor",
+  "width": 64,
+  "height": 64,
+  "at": 397824
+ },
+ {
+  "name": "SFLR6_1",
+  "kind": "floor",
+  "width": 64,
+  "height": 64,
+  "at": 401920
+ }
+]

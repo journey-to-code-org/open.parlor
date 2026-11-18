@@ -1,48 +1,30 @@
-"""The status bar: Delbie's face in place of the engine's, and the bar itself in the shop's steel blue.
+"""The status bar: Delbie's face, and the bar itself, its figures and its lights, in the shop's steel blue.
 
 The face is drawn here, a pixel at a time: dirty blond hair, a goatee, a full face, blue eyes, a smile that goes as his health
 does. There are 42 of them: five states of health, each looking ahead, left and right, turned to
-either side, shocked, grinning and furious; and one each for unhurtable and dead. Each is made
-the size of the face it takes the place of, so the engine puts it where it put that one.
+either side, shocked, grinning and furious; and one each for unhurtable and dead.
 
-The bar, its weapon panel and the squares behind the face are Freedoom's own, tinted: the layout
-and the labels the engine draws its numbers into are kept.
+The bar is a steel panel with a yellow and black edge along its top, as on a shop floor, and a
+dark window for each thing the engine writes into it: what is loaded, health, which tools are
+carried, the face, armour, the keys, and how much of each kind of ammunition. Its big figures
+are the menus' lettering; its small ones, and its labels, are a three-by-five letter made here.
 
 Run by hand (it needs numpy and Pillow):
 
-    python3 games/shooter/delbies/art/hud.py public/data/freedoom1-0.13.0.wad.gz
+    python3 games/shooter/delbies/art/hud.py
 
 It writes hud.bin.gz and hud.json, in the form rats.py writes the sprites.
 """
 import gzip, json, struct, sys
 from pathlib import Path
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
 here = Path(__file__).parent
-wad = gzip.open(sys.argv[1]).read()
-count, table = struct.unpack_from("<ii", wad, 4)
-lumps = {}
-for i in range(count):
-    at, size, name = struct.unpack_from("<ii8s", wad, table + i * 16)
-    lumps[name.rstrip(b"\0").decode()] = wad[at:at + size]
-palette = np.frombuffer(lumps["PLAYPAL"][:768], np.uint8).reshape(256, 3).astype(int)
+palette = np.frombuffer((here / "palette.bin").read_bytes()[:768], np.uint8).reshape(256, 3).astype(int)
 
 def nearest(rgb):
     return int(((palette - np.array(rgb)) ** 2).sum(1).argmin())
-
-def patch(data):
-    """An engine picture: its size, where it is drawn from, its pixels as colours and where it is solid."""
-    width, height, left, top = struct.unpack_from("<hhhh", data, 0)
-    pixels = np.zeros((height, width), np.uint8)
-    solid = np.zeros((height, width), np.uint8)
-    for x in range(width):
-        at = struct.unpack_from("<i", data, 8 + x * 4)[0]
-        while data[at] != 255:
-            row, length = data[at], data[at + 1]
-            pixels[row:row + length, x] = np.frombuffer(data[at + 3:at + 3 + length], np.uint8)
-            solid[row:row + length, x] = 1
-            at += length + 4
-    return width, height, left, top, pixels, solid
 
 SKIN, SHADE, DEEP = (236, 184, 150), (204, 148, 116), (160, 108, 84)
 # Dirty blond, and a goatee a shade darker.
@@ -151,8 +133,8 @@ def add(name, rgb, there, left, top):
     pictures.append((name, width, height, left, top, pixels, bytes(there.astype(np.uint8).tobytes())))
 
 def as_face(name, **how):
-    """A face in the box of the one it replaces: the same size, drawn from the same point."""
-    width, height, left, top, _, _ = patch(lumps[name])
+    """A face in its box: where the engine expects a face to be drawn from."""
+    width, height, left, top = 24, 29, -5, -2
     drawn, there = face(**how)
     rgb = np.zeros((height, width, 3), np.uint8)
     solid = np.zeros((height, width), bool)
@@ -172,22 +154,137 @@ for hurt in range(5):
 as_face("STFGOD0", gold=True, mood="grin")
 as_face("STFDEAD0", hurt=4, dead=True, mood="flat")
 
-def tinted(name):
-    """One of the game's own pictures, its greys turned steel blue; what has colour of its own is left."""
-    width, height, left, top, pixels, solid = patch(lumps[name])
-    rgb = palette[pixels].astype(float)
-    spread = rgb.max(-1) - rgb.min(-1)
-    grey = (spread < 28)[..., None]
-    rgb = np.where(grey, rgb * (0.62, 0.8, 1.08) + (0, 2, 10), rgb)
-    if name in ("STBAR", "STARMS"):
-        # A yellow and black edge along the top, as on a shop floor. The weapon panel is laid over the bar 104 along, and carries the edge on.
-        along = 104 if name == "STARMS" else 0
-        for x in range(width):
-            rgb[0:2, x] = (236, 190, 40) if ((x + along) // 6) % 2 == 0 else (24, 24, 24)
-    add(name, np.clip(rgb, 0, 255).astype(np.uint8), solid.astype(bool), left, top)
+# A letter three wide and five tall, for what is too small for any other: a row of each is a string of 1s and 0s.
+TINY = {
+    "0": "111 101 101 101 111", "1": "010 110 010 010 111", "2": "111 001 111 100 111", "3": "111 001 111 001 111", "4": "101 101 111 001 001",
+    "5": "111 100 111 001 111", "6": "111 100 111 101 111", "7": "111 001 001 001 001", "8": "111 101 111 101 111", "9": "111 101 111 001 111",
+    "A": "010 101 111 101 101", "B": "110 101 110 101 110", "C": "011 100 100 100 011", "D": "110 101 101 101 110", "E": "111 100 110 100 111",
+    "G": "011 100 101 101 011", "H": "101 101 111 101 101", "K": "101 101 110 101 101", "L": "100 100 100 100 111", "M": "10001 11011 10101 10001 10001",
+    "N": "110 101 101 101 101", "O": "111 101 101 101 111", "R": "110 101 110 101 101", "S": "011 100 010 001 110", "T": "111 010 010 010 010",
+    "U": "101 101 101 101 111", "Y": "101 101 010 010 010", "/": "001 001 010 100 100", " ": "00 00 00 00 00",
+}
+def tiny(text):
+    """A line of the tiny letter, as where it is."""
+    rows = [np.array([[c == "1" for c in row] for row in TINY[char].split()]) for char in text]
+    wide = sum(r.shape[1] + 1 for r in rows) - 1
+    there = np.zeros((5, wide), bool)
+    x = 0
+    for r in rows:
+        there[:, x:x + r.shape[1]] = r
+        x += r.shape[1] + 1
+    return there
 
-for name in ["STBAR", "STARMS", "STFB0", "STFB1", "STFB2", "STFB3"]:
-    tinted(name)
+STEEL, STEEL_LIGHT, STEEL_DARK, WINDOW = (64, 80, 116), (112, 130, 170), (34, 44, 72), (10, 14, 30)
+YELLOW, BLACK, CREAM, GREY, RED, BLUE = (246, 204, 44), (16, 16, 20), (255, 240, 170), (120, 128, 144), (220, 44, 40), (70, 120, 235)
+
+def panel(width, height, along=0):
+    """A stretch of the bar: steel, lighter along its top and darker along its bottom, with the yellow and black edge."""
+    rgb = np.zeros((height, width, 3), np.uint8)
+    rgb[:] = STEEL
+    rgb[2:3] = STEEL_LIGHT
+    rgb[-1:] = STEEL_DARK
+    for x in range(width):
+        rgb[0:2, x] = YELLOW if ((x + along) // 6) % 2 == 0 else BLACK
+    return rgb
+
+def window(rgb, x0, y0, x1, y1):
+    """A dark window in the bar, sunk: a shadow along its top and left, a light along its bottom and right."""
+    rgb[y0:y1, x0:x1] = WINDOW
+    rgb[y0 - 1, x0 - 1:x1] = STEEL_DARK
+    rgb[y0 - 1:y1, x0 - 1] = STEEL_DARK
+    rgb[y1, x0:x1 + 1] = STEEL_LIGHT
+    rgb[y0:y1 + 1, x1] = STEEL_LIGHT
+
+def label(rgb, text, x, y, colour=CREAM):
+    there = tiny(text)
+    rgb[y:y + 5, x:x + there.shape[1]][there] = colour
+
+# The bar. The engine writes: what is loaded, ending at 44; health, ending at 90 with its % after; the face from 143; armour, ending at 221;
+# the keys at 239; and the four kinds of ammunition, how much ending at 288 and the most ending at 314, 6 apart from 5 down.
+bar = panel(320, 32)
+window(bar, 2, 4, 47, 21);   label(bar, "AMMO", 15, 24)
+window(bar, 50, 4, 104, 21); label(bar, "HEALTH", 63, 24)
+window(bar, 108, 4, 141, 21); label(bar, "TOOLS", 115, 24)
+window(bar, 144, 3, 177, 31)
+window(bar, 180, 4, 234, 21); label(bar, "ARMOR", 197, 24)
+window(bar, 238, 3, 246, 30)
+window(bar, 250, 4, 317, 29)
+# Each kind of ammunition by what it is here: the price gun's tags, cartridges, and the two nothing uses yet.
+for row, name in enumerate(("TAGS", "CART", "ROTR", "CLNR")):
+    label(bar, name, 252, 5 + row * 6, GREY)
+    label(bar, "/", 291, 5 + row * 6, GREY)
+add("STBAR", bar, np.ones((32, 320), bool), 0, 0)
+# The panel of tools carried, which the engine lays over the bar from 104 when the game isn't a fight between players.
+add("STARMS", bar[:, 104:144].copy(), np.ones((32, 40), bool), 0, 0)
+
+# The big figures, in the menus' lettering: every one the same width, so a number doesn't shift as it changes.
+BIG = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansCondensed-Bold.ttf", 16)
+def big(char):
+    image = Image.new("L", (24, 24), 0)
+    ImageDraw.Draw(image).text((4, 0), char, 255, BIG)
+    fill = np.array(image) > 110
+    rows, cols = np.where(fill)
+    fill = fill[:, cols.min():cols.max() + 1]
+    cap = BIG.getbbox("0")
+    fill = fill[cap[1]:cap[1] + 14]
+    out = np.zeros((16, 13), bool)
+    at = max(0, (13 - fill.shape[1]) // 2)
+    out[1:15, at:at + min(13 - at, fill.shape[1])] = fill[:, :13 - at]
+    rgb = np.zeros((16, 13, 3), np.uint8)
+    for y in range(16):
+        t = min(1, max(0, (y - 1) / 13))
+        rgb[y] = [round(a + (b - a) * t) for a, b in zip((255, 238, 120), (242, 160, 30))]
+    edge = out.copy()
+    for dy, dx in ((0, 1), (1, 0), (0, -1), (-1, 0), (1, 1)):
+        edge |= np.roll(np.roll(out, dy, 0), dx, 1)
+    rgb[edge & ~out] = (12, 16, 44)
+    return rgb, edge
+for digit in "0123456789":
+    add(f"STTNUM{digit}", *big(digit), 0, 0)
+add("STTPRCNT", *big("%"), 0, 0)
+add("STTMINUS", *big("-"), 0, 0)
+
+# The small figures: yellow for what you have, grey for what you haven't, and plain ones for the map's marks.
+def small(digit, colour, pad=True):
+    there = tiny(digit)
+    out = np.zeros((6, 4), bool) if pad else there
+    if pad:
+        out[0:5, 0:3] = there
+    rgb = np.zeros(out.shape + (3,), np.uint8)
+    rgb[:] = colour
+    return rgb, out
+for digit in "0123456789":
+    add(f"STYSNUM{digit}", *small(digit, YELLOW), 0, 0)
+    add(f"STGNUM{digit}", *small(digit, GREY), 0, 0)
+    add(f"AMMNUM{digit}", *small(digit, CREAM, pad=False), -1, 0)
+
+# The keys' lights: a tag of each colour, and the same three again for the engine's other kind of key.
+for index, colour in enumerate((BLUE, YELLOW, RED) * 2):
+    rgb = np.zeros((5, 7, 3), np.uint8)
+    rgb[:] = colour
+    rgb[0, :] = [min(255, v + 50) for v in colour]
+    rgb[2, 1:2] = BLACK
+    there = np.ones((5, 7), bool)
+    there[0, 0] = there[4, 0] = False
+    add(f"STKEYS{index}", rgb, there, 0, 0)
+
+# What is behind the face, a colour for each of four players; and the same, a little taller, for the page between levels.
+for index, colour in enumerate(((40, 110, 60), (70, 76, 110), (120, 80, 44), (150, 40, 40))):
+    for name, tall in ((f"STFB{index}", 31), (f"STPB{index}", 33)):
+        rgb = np.zeros((tall, 35, 3), np.uint8)
+        rgb[:] = colour
+        rgb[0] = rgb[-1] = [v // 2 for v in colour]
+        add(name, rgb, np.ones((tall, 35), bool), 0, 0)
+
+# The edge around the view when it is made smaller than the screen: a steel rim, in eight pieces; what is outside it is a floor (textures.py).
+def rim(name, width, height, where):
+    rgb = np.zeros((height, width, 3), np.uint8)
+    rgb[:] = STEEL
+    there = np.zeros((height, width), bool)
+    there[where] = True
+    add(name, rgb, there, 0, 0)
+rim("BRDR_T", 8, 8, np.s_[5:, :]); rim("BRDR_B", 8, 8, np.s_[:3, :]); rim("BRDR_L", 8, 8, np.s_[:, 5:]); rim("BRDR_R", 8, 8, np.s_[:, :3])
+rim("BRDR_TL", 8, 8, np.s_[5:, 5:]); rim("BRDR_TR", 8, 8, np.s_[5:, :3]); rim("BRDR_BL", 8, 8, np.s_[:3, 5:]); rim("BRDR_BR", 8, 8, np.s_[:3, :3])
 
 blob = bytearray()
 manifest = []
@@ -198,7 +295,7 @@ for name, width, height, left, top, pixels, solid in pictures:
 (here / "hud.json").write_text(json.dumps(manifest, indent=1) + "\n")
 print(len(manifest), "pictures,", len(blob), "bytes")
 
-if len(sys.argv) > 2:
+if len(sys.argv) > 1:
     from PIL import Image
     sheet = Image.new("RGB", (330, 150), (40, 44, 60))
     x = y = 4
@@ -208,4 +305,4 @@ if len(sys.argv) > 2:
         im = Image.fromarray(np.dstack([palette[np.frombuffer(pixels, np.uint8).reshape(height, width)].astype(np.uint8), np.frombuffer(solid, np.uint8).reshape(height, width) * 255]), "RGBA")
         sheet.paste(im, (x, y), im)
         x += width + 3
-    sheet.resize((sheet.width * 4, sheet.height * 4), Image.NEAREST).save(sys.argv[2])
+    sheet.resize((sheet.width * 4, sheet.height * 4), Image.NEAREST).save(sys.argv[1])

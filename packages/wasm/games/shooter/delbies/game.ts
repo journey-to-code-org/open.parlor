@@ -1,12 +1,12 @@
-// Delbie's Doomsday: what is the game's own, laid over Freedoom. A WAD of the title
-// picture, the name over the menu, the rats, and the levels there are so far, built from their plans.
+// Delbie's Doomsday, whole: everything the engine needs to be a game, and all of it made here. Its
+// colours, its walls, floors and skies, its title, menus and status bar, the rats, the tools, every
+// sound, what it says, and its levels, built from their plans.
 //
 // scripts/build-delbies.mjs writes it to delbies.wad, which is committed; the page fetches that
-// and lays it over the game's data (wad/mod.ts: layer), for a game alone or with others.
+// and gives it to the engine as the game, for a game alone or with others.
 import { encodeThings, type Shape, type Thing } from "../../../wad/level.ts";
 import { buildLevel } from "../../../wad/nodes.ts";
-import { modToWad } from "../../../wad/mod.ts";
-import { encodePatch, type Picture } from "../../../wad/picture.ts";
+import { encodeFlat, encodePatch, type Picture } from "../../../wad/picture.ts";
 import { encodeDmx, RATE } from "../../../wad/sound.ts";
 import { fromPlan, wallNear } from "../../../wad/plan.ts";
 import { roomAt, trouble } from "../../../wad/shape.ts";
@@ -61,28 +61,71 @@ export interface Art {
   title: Uint8Array;
   /** The lettering for over the menu, its size, and where it is see-through. */
   logo: { pixels: Uint8Array; solid: Uint8Array; width: number; height: number };
-  /** The store's walls: pieces of wall, each under the name of the piece it takes the place of. */
-  walls: (Picture & { name: string })[];
-  /** The rats' voices: each a byte a sample at the engine's rate, under the name of the sound it takes the place of. */
+  /** The game's colours: 14 palettes of 256 (the plain one, and it tinted for being hurt and so on), then 34 tables of each colour darker. */
+  palette: Uint8Array;
+  /** Every wall and sky, and every floor and ceiling: a palette colour a pixel. */
+  textures: { name: string; kind: "wall" | "floor"; width: number; height: number; pixels: Uint8Array }[];
+  /** Everything heard: each a byte a sample at the engine's rate, under the name the engine knows the sound by. */
   sounds: { name: string; samples: Uint8Array }[];
   /** What the game says: words.txt. */
   words: Uint8Array;
-  /** The rats and what they spit: each a picture, under the name of the sprite it takes the place of. */
+  /** The rats, the tools and everything else that stands in a level: each a picture, under the name the engine knows the sprite by. */
   sprites: (Picture & { name: string })[];
   /** The status bar's pictures: Delbie's face in each of its moods, and the bar itself. */
   screens: (Picture & { name: string })[];
 }
 
-/** The whole of it as a WAD. `nodes` is the node builder, compiled. */
+const PALETTES = 14 * 768;
+const name8 = (name: string) => Uint8Array.from({ length: 8 }, (_, i) => name.charCodeAt(i) || 0);
+
+/**
+ * The engine's two lists of walls: the names of the pictures walls are made of, and each wall's
+ * recipe. Here every wall is one picture of its own name. The first wall of the list is one the
+ * engine can't show (it takes its number for "no wall"), so a spare goes there.
+ */
+export function wallLists(walls: { name: string; width: number; height: number }[]): Lump[] {
+  const all = [{ ...walls[0]!, name: "NOWALL", piece: 0 }, ...walls.map((wall, piece) => ({ ...wall, piece }))];
+  const names = new Uint8Array(4 + walls.length * 8);
+  new DataView(names.buffer).setInt32(0, walls.length, true);
+  walls.forEach((wall, i) => names.set(name8(wall.name), 4 + i * 8));
+  const table = new Uint8Array(4 + all.length * 4 + all.length * 32);
+  const view = new DataView(table.buffer);
+  view.setInt32(0, all.length, true);
+  all.forEach((wall, i) => {
+    const at = 4 + all.length * 4 + i * 32;
+    view.setInt32(4 + i * 4, at, true);
+    table.set(name8(wall.name), at);
+    view.setInt16(at + 12, wall.width, true);
+    view.setInt16(at + 14, wall.height, true);
+    // One piece, at the wall's top left corner.
+    view.setInt16(at + 20, 1, true);
+    view.setInt16(at + 26, wall.piece, true);
+    view.setInt16(at + 28, 1, true);
+  });
+  return [{ name: "TEXTURE1", data: table }, { name: "PNAMES", data: names }];
+}
+
+/** The whole of it as a WAD: a game of its own, needing no other. `nodes` is the node builder, compiled. */
 export async function buildGame(nodes: WebAssembly.Module, art: Art): Promise<Uint8Array> {
+  const marker = (name: string): Lump => ({ name, data: new Uint8Array(0) });
+  const [walls, floors] = [art.textures.filter((one) => one.kind === "wall"), art.textures.filter((one) => one.kind === "floor")];
   const lumps: Lump[] = [
+    { name: "PLAYPAL", data: art.palette.subarray(0, PALETTES) },
+    { name: "COLORMAP", data: art.palette.subarray(PALETTES) },
+    ...wallLists(walls),
     { name: "TITLEPIC", data: encodePatch({ width: 320, height: 200, left: 0, top: 0, pixels: art.title, solid: new Uint8Array(64000).fill(1) }) },
     { name: "M_DOOM", data: encodePatch({ width: art.logo.width, height: art.logo.height, left: 0, top: 0, pixels: art.logo.pixels, solid: art.logo.solid }) },
   ];
   lumps.push({ name: "WORDS", data: art.words }, ...art.screens.map((screen) => ({ name: screen.name, data: encodePatch(screen) })));
   lumps.push(...art.sounds.map((sound) => ({ name: sound.name, data: encodeDmx({ rate: RATE, samples: Float32Array.from(sound.samples, (byte) => (byte - 128) / 127) }) })));
-  // Sprites go between their markers, as the engine and other tools expect.
-  lumps.push(...readWad(modToWad([...art.sprites.map((sprite) => ({ kind: "sprite" as const, name: sprite.name, data: encodePatch(sprite) })), ...art.walls.map((wall) => ({ kind: "wall" as const, name: wall.name, data: encodePatch(wall) }))])).lumps);
+  // Sprites, the pictures walls are made of, and floors each go between their markers, as the engine and other tools expect.
+  lumps.push(marker("S_START"), ...art.sprites.map((sprite) => ({ name: sprite.name, data: encodePatch(sprite) })), marker("S_END"));
+  lumps.push(marker("P_START"), ...walls.map((wall) => ({ name: wall.name, data: encodePatch({ ...wall, left: 0, top: 0, solid: new Uint8Array(wall.pixels.length).fill(1) }) })), marker("P_END"));
+  lumps.push(marker("F_START"), ...floors.map((floor) => ({ name: floor.name, data: encodeFlat({ ...floor, left: 0, top: 0, solid: new Uint8Array(floor.pixels.length).fill(1) }) })), marker("F_END"));
+  const have = { walls: new Set(walls.map((wall) => wall.name)), flats: new Set(floors.map((floor) => floor.name)) };
+  const used = picturesUsed();
+  const missing = [...used.walls.filter((name) => !have.walls.has(name)), ...used.flats.filter((name) => !have.flats.has(name))];
+  if (missing.length) throw new Error(`The levels use pictures nobody has drawn: ${missing.join(", ")}.`);
   for (const level of levels()) {
     const wrong = faults(level);
     if (wrong.length) throw new Error(`${level.name} (${level.title}) can't be built: ${wrong.join(" ")}`);
@@ -90,5 +133,5 @@ export async function buildGame(nodes: WebAssembly.Module, art: Art): Promise<Ui
     const built = readWad(await buildLevel(nodes, level.name, level.shape, placed));
     lumps.push({ name: level.name, data: new Uint8Array(0) }, { name: "THINGS", data: placed }, ...built.lumps);
   }
-  return writeWad({ kind: "PWAD", lumps });
+  return writeWad({ kind: "IWAD", lumps });
 }

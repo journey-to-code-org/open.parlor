@@ -7,7 +7,7 @@ tones of that lump's colour, with a dark edge: the look of the engine's own spri
 
 Run by hand when a rat changes (it needs numpy and Pillow, which the site's build doesn't):
 
-    python3 games/shooter/delbies/art/rats.py public/data/freedoom1-0.13.0.wad.gz
+    python3 games/shooter/delbies/art/rats.py
 
 It writes sprites.bin.gz (zipped: for each picture, a palette colour a pixel and then a byte a pixel that is
 1 where there is something) and sprites.json (each picture's lump name, size, where its feet are,
@@ -198,12 +198,7 @@ for letter, splash in (("A", 0), ("B", 0.08), ("C", 0.4), ("D", 0.7), ("E", 1.0)
     pictures["BAL1" + letter + "0"] = render(glob(5 if splash < 0.2 else 6, splash), 1)
 
 # Into the game's colours.
-wad = gzip.open(sys.argv[1]).read()
-count, table = struct.unpack_from("<ii", wad, 4)
-for i in range(count):
-    at, size, name = struct.unpack_from("<ii8s", wad, table + i * 16)
-    if name.rstrip(b"\0") == b"PLAYPAL":
-        palette = np.frombuffer(wad[at:at + 768], np.uint8).reshape(256, 3).astype(int)
+palette = np.frombuffer((here / "palette.bin").read_bytes()[:768], np.uint8).reshape(256, 3).astype(int)
 nearest = {}
 def colour(rgb):
     key = tuple(int(v) for v in rgb)
@@ -224,7 +219,7 @@ for name in sorted(pictures):
 (here / "sprites.json").write_text(json.dumps(manifest, indent=1) + "\n")
 print(len(manifest), "pictures,", len(blob), "bytes")
 
-if len(sys.argv) > 2:
+if len(sys.argv) > 1:
     # A sheet to look at.
     from PIL import Image
     show = ["SARGA1", "SARGA2A8", "SARGA3A7", "SARGA4A6", "SARGA5", "SARGB3B7", "SARGF3F7", "SARGF1", "SARGH3H7", "SARGK0", "SARGN0", "TROOA1", "TROOA2A8", "TROOA3A7", "TROOA5", "TROOF3F7", "TROOF1", "TROOM0", "BAL1A0", "BAL1D0", "BOSSA1", "BOSSA2", "BOSSA3", "BOSSA5", "BOSSF3", "BOSSF1", "BOSSO0"]
@@ -233,4 +228,4 @@ if len(sys.argv) > 2:
         p = pictures[name]
         im = Image.fromarray(np.dstack([p["rgb"], p["there"].astype(np.uint8) * 255]), "RGBA")
         sheet.paste(im, ((i % 9) * 150 + 75 - p["left"], (i // 9) * 170 + 160 - p["top"]), im)
-    sheet.resize((sheet.width * 2, sheet.height * 2), Image.NEAREST).save(sys.argv[2])
+    sheet.resize((sheet.width * 2, sheet.height * 2), Image.NEAREST).save(sys.argv[1])

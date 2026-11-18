@@ -1,5 +1,5 @@
-"""The rats' voices, made here: squeaks, chitters, hisses and a growl, in place of the sounds of the
-monsters the rats took the place of.
+"""Everything that is heard, made here: the rats' squeaks, chitters, hisses and growl, and after them
+the tools, the doors, the breaker on the wall and you.
 
 Each is built from a few sliding tones and some hiss, shaped to rise and die away: a rat's squeak
 is a short whistle that slides up or down. The grease rat is high and quick, the brake-fluid
@@ -71,6 +71,36 @@ sounds = {
     # The King Rat: a squeal with a growl under it, and a long way down when he goes.
     "DSBRSSIT": over(tone(0.9, 260, 180, 1.0, 0.8), join(quiet(0.1), tone(0.6, 1100, 1700, 0.8, 0.3))),
     "DSBRSDTH": over(tone(1.5, 300, 90, 1.2, 0.9), join(tone(0.5, 1600, 1100, 1.0, 0.3), tone(0.8, 1100, 300, 1.4, 0.5))),
+    # The rest of what is heard. The price gun: a click and a snap. The lever-action: a crack, and its lever worked.
+    "DSPISTOL": join(hiss(0.03) * 2, over(hiss(0.09, 0.1), tone(0.06, 1800, 600) * 0.7)),
+    "DSSHOTGN": over(hiss(0.45, 0.25) * 2, tone(0.2, 220, 70) * 1.2),
+    "DSSGCOCK": join(hiss(0.05, 0.1), quiet(0.06), hiss(0.07, 0.3) * 1.3),
+    # The tape measure's blade going out and back, and its hitting something.
+    "DSPUNCH": over(hiss(0.1, 0.6) * 1.5, tone(0.07, 240, 120)),
+    "DSCLAW": over(hiss(0.16, 0.2), tone(0.12, 2600, 1200) * 0.5),
+    # You: hurt, gone, and landing from a height or leaning on a wall that isn't a door.
+    "DSPLPAIN": tone(0.22, 420, 300, 0.8, 0.3),
+    "DSPLDETH": join(tone(0.3, 420, 260, 1.0, 0.4), tone(0.5, 260, 110, 1.4, 0.6)),
+    "DSPDIEHI": join(tone(0.2, 620, 420, 1.0, 0.3), tone(0.6, 420, 120, 1.4, 0.6)),
+    "DSOOF": tone(0.12, 300, 190, 1.0, 0.2),
+    "DSNOWAY": join(tone(0.08, 260, 220, 1.0, 0.2), quiet(0.03), tone(0.1, 220, 170, 1.0, 0.2)),
+    # Picking things up: a chirp, a longer one for a tool, and a rising one for something good.
+    "DSITEMUP": tone(0.1, 900, 1500),
+    "DSWPNUP": join(hiss(0.05, 0.2), tone(0.14, 500, 1100)),
+    "DSGETPOW": join(tone(0.12, 700, 1100), tone(0.12, 1100, 1700), tone(0.2, 1700, 2400)),
+    # The building: a breaker thrown and thrown back, doors, a floor that moves, and its stopping.
+    "DSSWTCHN": join(hiss(0.03) * 2, tone(0.05, 500, 300)),
+    "DSSWTCHX": join(hiss(0.03) * 2, tone(0.05, 300, 500)),
+    "DSDOROPN": over(hiss(0.5, 0.7), tone(0.5, 120, 220, 1.0, 0.5) * 0.8),
+    "DSDORCLS": join(over(hiss(0.4, 0.7), tone(0.4, 220, 110, 1.0, 0.5) * 0.8), over(hiss(0.08, 0.9) * 2, tone(0.08, 90, 60))),
+    "DSPSTART": over(hiss(0.3, 0.8), tone(0.3, 80, 140, 1.0, 0.6)),
+    "DSPSTOP": over(hiss(0.12, 0.9) * 2, tone(0.12, 110, 60)),
+    "DSSTNMOV": over(hiss(0.25, 0.9), tone(0.25, 70, 70, 1.0, 0.8)),
+    "DSTELEPT": join(tone(0.25, 300, 2400, 2.0), tone(0.35, 2400, 500, 0.6)),
+    # What is left of a rat underfoot; the waste-oil drum going up; and a tag off a wall.
+    "DSSLOP": over(hiss(0.3, 0.9) * 1.5, tone(0.2, 200, 90, 1.0, 0.5)),
+    "DSBAREXP": over(hiss(0.8, 0.6) * 2, tone(0.5, 140, 40, 1.0, 0.5) * 1.4),
+    "DSTINK": tone(0.05, 2400, 2000),
 }
 
 blob = bytearray()

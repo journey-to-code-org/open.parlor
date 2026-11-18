@@ -636,6 +636,11 @@ void S_ChangeMusic(int musicnum, int looping)
     if (!music->lumpnum)
     {
         M_snprintf(namebuf, sizeof(namebuf), "d_%s", DEH_String(music->name));
+        // [open.wasm] A game needn't have music for everything: where it has none, there is none.
+        if (W_CheckNumForName(namebuf) < 0)
+        {
+            return;
+        }
         music->lumpnum = W_GetNumForName(namebuf);
     }
 

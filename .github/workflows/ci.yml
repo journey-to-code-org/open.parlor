@@ -38,7 +38,7 @@ jobs:
           curl -fs localhost:8790/admin/ | grep -q "open.parlor admin"
           curl -fs localhost:8790/watch/ | grep -q "Watch a game"
           # The WebAssembly games: the page, and the engine served as WebAssembly.
-          curl -fs localhost:8790/wasm/ | grep -q "Freedoom"
+          curl -fs localhost:8790/wasm/ | grep -q "doomgeneric"
           curl -fsI "localhost:8790/wasm/assets/$(basename packages/wasm/dist/assets/shooter-*.wasm)" | grep -qi "content-type: application/wasm"
           # The editor for a game's pictures and sounds is a page of its own under the game's.
           curl -fs localhost:8790/wasm/editor/ | grep -q "Change the game"

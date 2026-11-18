@@ -1,4 +1,4 @@
-"""The game's own lettering and pages, in place of Freedoom's: what is around the game, in the
+"""The game's own lettering and pages, what is around the game, in the
 colours of its title picture (yellow letters edged in navy, a chequered strip).
 
 - The menus: every line of them, the title over each, and a hex nut where the skull was.
@@ -13,7 +13,7 @@ hard pixels. Everything is made the size of what it replaces, or near it, and pl
 Run by hand, after tools.py and rats.py, whose pictures the read-me page shows (it needs numpy
 and Pillow):
 
-    python3 games/shooter/delbies/art/menu.py public/data/freedoom1-0.13.0.wad.gz
+    python3 games/shooter/delbies/art/menu.py
 
 It writes menu.bin.gz and menu.json, in the form rats.py writes the rats.
 """
@@ -23,14 +23,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 here = Path(__file__).parent
-wad = gzip.open(sys.argv[1]).read()
-count, table = struct.unpack_from("<ii", wad, 4)
-lumps = {}
-for i in range(count):
-    at, size, name = struct.unpack_from("<ii8s", wad, table + i * 16)
-    lumps[name.rstrip(b"\0").decode()] = (at, size)
-at, size = lumps["PLAYPAL"]
-palette = np.frombuffer(wad[at:at + 768], np.uint8).reshape(256, 3).astype(int)
+palette = np.frombuffer((here / "palette.bin").read_bytes()[:768], np.uint8).reshape(256, 3).astype(int)
 cache = {}
 def nearest(rgb):
     key = tuple(int(v) for v in rgb)
@@ -38,24 +31,15 @@ def nearest(rgb):
         cache[key] = int(((palette - np.array(key)) ** 2).sum(1).argmin())
     return cache[key]
 
+# Where the engine draws some of its pictures from, other than their top left corner: it places a menu's lines by these.
+FROM = {
+    "M_DETAIL": (0, 1), "M_ENDGAM": (0, 1), "M_GDHIGH": (26, 1), "M_GDLOW": (26, 1), "M_MESSG": (0, 1), "M_MSENS": (0, 1), "M_MSGOFF": (20, 1), "M_MSGON": (20, 1),
+    "M_MUSVOL": (0, 1), "M_SCRNSZ": (0, 1), "M_SFXVOL": (0, 1), "M_SKULL1": (0, -1), "M_SKULL2": (0, -1), "M_THERML": (-2, 0), "M_THERMO": (-2, -1),
+    "M_LSLEFT": (3, 11), "M_LSCNTR": (3, 11), "M_LSRGHT": (3, 11),
+}
 def was(name):
-    """What Freedoom's picture of that name is: its size and where it is drawn from."""
-    at, size = lumps[name]
-    return struct.unpack_from("<hhhh", wad, at)
-
-def patch(data):
-    """An engine picture: its size, where it is drawn from, its colours as red, green and blue, and where it is solid."""
-    width, height, left, top = struct.unpack_from("<hhhh", data, 0)
-    pixels = np.zeros((height, width), np.uint8)
-    solid = np.zeros((height, width), bool)
-    for x in range(width):
-        at = struct.unpack_from("<i", data, 8 + x * 4)[0]
-        while data[at] != 255:
-            row, length = data[at], data[at + 1]
-            pixels[row:row + length, x] = np.frombuffer(data[at + 3:at + 3 + length], np.uint8)
-            solid[row:row + length, x] = True
-            at += length + 4
-    return width, height, left, top, palette[pixels], solid
+    """Where a picture is drawn from, in the form (width, height, left, top) with the size left for the picture to say."""
+    return (0, 0) + FROM.get(name, (0, 0))
 
 NAVY, NAVY_LIGHT, NAVY_DEEP = (16, 26, 76), (36, 56, 128), (8, 12, 40)
 YELLOW, ORANGE = (255, 222, 56), (242, 148, 22)
@@ -121,7 +105,7 @@ def keep(name, rgb, there, left=0, top=0):
     pictures.append((name, width, height, left, top, pixels, there.astype(np.uint8).tobytes()))
 
 def line(name, text, **how):
-    """A line of lettering in the place of one of Freedoom's, drawn from where that was."""
+    """A line of lettering under the name the engine asks for it by, drawn from where the engine expects."""
     _, _, left, top = was(name)
     rgb, there = sign(text, **how)
     keep(name, rgb, there, left, top)
@@ -152,15 +136,29 @@ for name, turn in (("M_SKULL1", 0), ("M_SKULL2", 30)):
     _, _, left, top = was(name)
     keep(name, small[..., :3], small[..., 3] > 120, left, top)
 
-# The sliders and the box a saved game's name is in: Freedoom's shapes, in navy and steel, and a yellow knob.
-def tinted(name, low, high):
-    width, height, left, top, rgb, there = patch(wad[lumps[name][0]:lumps[name][0] + lumps[name][1]])
-    light = (rgb * np.array([0.3, 0.59, 0.11])).sum(2, keepdims=True) / 255
-    light = np.clip((light - light[there].min()) / max(0.01, light[there].max() - light[there].min()), 0, 1)
-    keep(name, (np.array(low) + (np.array(high) - np.array(low)) * light).astype(np.uint8), there, left, top)
-for name in ("M_THERML", "M_THERMM", "M_THERMR", "M_LSLEFT", "M_LSCNTR", "M_LSRGHT"):
-    tinted(name, NAVY_DEEP, STEEL)
-tinted("M_THERMO", ORANGE, YELLOW)
+# The sliders, and the box a saved game's name is in: a dark window edged in steel, in three pieces (an end, a middle to repeat, an end), and a yellow knob.
+WINDOW = (10, 14, 30)
+def piece(name, width, height, left_edge=False, right_edge=False):
+    rgb = np.zeros((height, width, 3), np.uint8)
+    rgb[:] = WINDOW
+    rgb[0] = STEEL_DARK
+    rgb[-1] = STEEL
+    if left_edge:
+        rgb[:, 0] = STEEL_DARK
+    if right_edge:
+        rgb[:, -1] = STEEL
+    keep(name, rgb, np.ones((height, width), bool), *FROM.get(name, (0, 0)))
+piece("M_THERML", 6, 13, left_edge=True)
+piece("M_THERMM", 9, 13)
+piece("M_THERMR", 6, 13, right_edge=True)
+piece("M_LSLEFT", 8, 14, left_edge=True)
+piece("M_LSCNTR", 8, 14)
+piece("M_LSRGHT", 8, 14, right_edge=True)
+knob = np.zeros((11, 5, 3), np.uint8)
+knob[:] = YELLOW
+knob[:, 3:] = ORANGE
+knob[0] = knob[-1] = NAVY
+keep("M_THERMO", knob, np.ones((11, 5), bool), *FROM["M_THERMO"])
 
 # The small letters the game speaks in: capitals, figures and marks, each the same height so a line of them sits level.
 SMALL, SMALL_TALL = font(PLAIN, 9), 10
@@ -177,11 +175,9 @@ def glyph(char):
     if not len(cols):
         return None
     return fill[:, max(0, cols.min() - 1):cols.max() + 2]
-for name in sorted(lumps):
-    code = re.fullmatch(r"STCFN(\d{3})", name)
-    if not code or not 33 <= int(code[1]) <= 95:
-        continue
-    fill = glyph(chr(int(code[1])))
+for code in range(33, 96):
+    name = f"STCFN{code:03d}"
+    fill = glyph(chr(code))
     if fill is None:
         continue
     edged = grown(fill)
@@ -257,19 +253,41 @@ def show(onto, picture, x, y, most=22):
     h, w = there.shape
     stamp(onto, rgb, there, x - w // 2, y - h)
 
-# The between-levels page, for both of the game's episodes, and nothing marked on it: the engine marks Freedoom's map.
+# The between-levels page, for both of the game's episodes, and nothing marked on it: the engine would mark places on a map of its own.
 for name in ("WIMAP0", "WIMAP1"):
     # The floor's name is written across the top of it, so the strip is along the bottom only.
     keep(name, page(top=False), np.ones((200, 320), bool))
-for name in lumps:
-    if re.fullmatch(r"WIA[01]\d{4}", name):
-        keep(name, np.zeros((1, 1, 3), np.uint8), np.zeros((1, 1), bool))
+# The engine has little things that move on its own maps of an episode: ten places three pictures each on the first, and these on the second.
+MOVING = [f"WIA0{place:02d}{step:02d}" for place in range(10) for step in range(3)] + [f"WIA1{place:02d}00" for place in range(7)] + ["WIA10700", "WIA10701", "WIA10702"]
+for name in MOVING + ["WISPLAT", "WIURH0", "WIURH1"]:
+    keep(name, np.zeros((1, 1, 3), np.uint8), np.zeros((1, 1), bool))
 # Its words, each floor's name, and its figures, which are all one width so a count doesn't shift as it runs up.
 FLOORS = ["The main floor", "The attic", "The basement", "The stock room", "Receiving", "The overflow racks", "The battery room", "The tire loft", "The paint room", "The boiler room", "The crawl space", "The nest"]
 for index, floor in enumerate(FLOORS):
     line(f"WILV{index // 9}{index % 9}", floor)
 for name, text in {"WIF": "is clear", "WIENTER": "Next:", "WIOSTK": "Rats", "WIOSTI": "Items", "WISCRT2": "Secrets", "WIOSTS": "Scrt", "WITIME": "Time", "WIPAR": "Par", "WISUCKS": "ages", "WIMSTT": "Total", "WIFRGS": "Frags", "WIPCNT": "%", "WICOLON": ":", "WIMINUS": "-"}.items():
     line(name, text, top=WHITE, bottom=CREAM)
+# The engine keeps a name for every level an episode could have: the second's last six are never reached.
+for spare in range(3, 9):
+    line(f"WILV1{spare}", "Closed")
+# What it shows of each player when several play: who they are, a mark for which is you, and the words of a fight.
+for player in range(1, 5):
+    line(f"WIP{player}", f"P{player}", top=WHITE, bottom=CREAM)
+    line(f"WIBP{player}", f"P{player}")
+line("WIMSTAR", "you", top=WHITE, bottom=CREAM)
+line("WIOSTF", "F", top=WHITE, bottom=CREAM)
+def small_line(name, text, down=False):
+    rows = [glyph(char) for char in text]
+    if down:
+        wide = max(r.shape[1] for r in rows)
+        fill = np.vstack([np.pad(r[1:8], ((0, 0), (0, wide - r.shape[1]))) for r in rows])
+    else:
+        fill = np.hstack(rows)
+    rgb = np.zeros(fill.shape + (3,), np.uint8)
+    rgb[:] = CREAM
+    keep(name, rgb, fill)
+small_line("WIKILRS", "KILLERS", down=True)
+small_line("WIVCTMS", "VICTIMS")
 for digit in range(10):
     rgb, there = sign(str(digit), top=WHITE, bottom=CREAM)
     wide = np.zeros((15, 12, 3), np.uint8), np.zeros((15, 12), bool)
@@ -298,7 +316,7 @@ write(help, "On a phone: left thumb moves, right thumb turns.", 10, 177, WHITE)
 keep("HELP1", help, np.ones((200, 320), bool))
 keep("HELP2", help, np.ones((200, 320), bool))
 
-# The credits, which come round behind the title: whose game this is laid over, and whose engine runs it.
+# The credits, which come round behind the title: whose engine runs it, and that the rest is made here.
 credit = page()
 title(credit, "DELBIE'S DOOMSDAY", 14)
 write(credit, "A shooter set in an auto parts store, with rats.", 0, 36, centre=True)
@@ -307,11 +325,19 @@ for x, picture in ((70, rats["SARGA1"]), (160, rats["BOSSA1"]), (250, rats["TROO
 write(credit, "MADE WITH", 0, 106, YELLOW, centre=True)
 write(credit, "The Doom engine, from id Software's source,", 0, 118, centre=True)
 write(credit, "by way of Chocolate Doom and doomgeneric (GPL).", 0, 128, centre=True)
-write(credit, "Freedoom: Phase 1, whose levels, pictures and sounds", 0, 142, centre=True)
-write(credit, "are everything here that isn't the store's own.", 0, 152, centre=True)
-write(credit, "(c) the Freedoom project, freedoom.github.io", 0, 162, centre=True)
+write(credit, "Every level, picture and sound is the store's own,", 0, 146, centre=True)
+write(credit, "made for this game.", 0, 156, centre=True)
 write(credit, "No rats were consulted.", 0, 177, WHITE, centre=True)
 keep("CREDIT", credit, np.ones((200, 320), bool))
+
+# What is shown when the words at the end are done; and a plain page for the engine's fourth episode, which is never reached.
+end = page()
+title(end, "CLOSED FOR THE DAY", 60, size=18, tall=19)
+for x, picture in ((110, rats["SARGA1"]), (210, rats["TROOA1"])):
+    show(end, picture, x, 140, 44)
+write(end, "Thanks for clearing the store.", 0, 150, centre=True)
+keep("VICTORY2", end, np.ones((200, 320), bool))
+keep("INTERPIC", page(), np.ones((200, 320), bool))
 
 blob, manifest = bytearray(), []
 for name, width, height, left, top, pixels, solid in pictures:
@@ -321,7 +347,7 @@ for name, width, height, left, top, pixels, solid in pictures:
 (here / "menu.json").write_text(json.dumps(manifest, indent=1) + "\n")
 print(f"{len(pictures)} pictures, {len(blob)} bytes")
 
-if len(sys.argv) > 2:
+if len(sys.argv) > 1:
     # A sheet to look at.
     def seen(name):
         for n, width, height, left, top, pixels, solid in pictures:
@@ -339,4 +365,4 @@ if len(sys.argv) > 2:
             x, y = 4 if y > 400 else 324, y + 17
         sheet.paste(im, (x, y), im)
         x += im.width + 3
-    sheet.resize((1280, 1400), Image.NEAREST).save(sys.argv[2])
+    sheet.resize((1280, 1400), Image.NEAREST).save(sys.argv[1])

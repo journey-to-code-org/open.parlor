@@ -848,7 +848,7 @@
   "at": 218388
  },
  {
-  "name": "WIA00900",
+  "name": "WIA00000",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -856,7 +856,7 @@
   "at": 346388
  },
  {
-  "name": "WIA00901",
+  "name": "WIA00001",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -864,7 +864,7 @@
   "at": 346390
  },
  {
-  "name": "WIA00902",
+  "name": "WIA00002",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -872,7 +872,7 @@
   "at": 346392
  },
  {
-  "name": "WIA00800",
+  "name": "WIA00100",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -880,7 +880,7 @@
   "at": 346394
  },
  {
-  "name": "WIA00801",
+  "name": "WIA00101",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -888,7 +888,7 @@
   "at": 346396
  },
  {
-  "name": "WIA00802",
+  "name": "WIA00102",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -896,7 +896,7 @@
   "at": 346398
  },
  {
-  "name": "WIA00700",
+  "name": "WIA00200",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -904,7 +904,7 @@
   "at": 346400
  },
  {
-  "name": "WIA00701",
+  "name": "WIA00201",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -912,7 +912,7 @@
   "at": 346402
  },
  {
-  "name": "WIA00702",
+  "name": "WIA00202",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -920,7 +920,7 @@
   "at": 346404
  },
  {
-  "name": "WIA00600",
+  "name": "WIA00300",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -928,7 +928,7 @@
   "at": 346406
  },
  {
-  "name": "WIA00601",
+  "name": "WIA00301",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -936,7 +936,7 @@
   "at": 346408
  },
  {
-  "name": "WIA00602",
+  "name": "WIA00302",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -944,7 +944,7 @@
   "at": 346410
  },
  {
-  "name": "WIA00500",
+  "name": "WIA00400",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -952,7 +952,7 @@
   "at": 346412
  },
  {
-  "name": "WIA00501",
+  "name": "WIA00401",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -960,7 +960,7 @@
   "at": 346414
  },
  {
-  "name": "WIA00502",
+  "name": "WIA00402",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -968,7 +968,7 @@
   "at": 346416
  },
  {
-  "name": "WIA00400",
+  "name": "WIA00500",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -976,7 +976,7 @@
   "at": 346418
  },
  {
-  "name": "WIA00401",
+  "name": "WIA00501",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -984,7 +984,7 @@
   "at": 346420
  },
  {
-  "name": "WIA00402",
+  "name": "WIA00502",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -992,7 +992,7 @@
   "at": 346422
  },
  {
-  "name": "WIA00300",
+  "name": "WIA00600",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -1000,7 +1000,7 @@
   "at": 346424
  },
  {
-  "name": "WIA00301",
+  "name": "WIA00601",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -1008,7 +1008,7 @@
   "at": 346426
  },
  {
-  "name": "WIA00302",
+  "name": "WIA00602",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -1016,7 +1016,7 @@
   "at": 346428
  },
  {
-  "name": "WIA00200",
+  "name": "WIA00700",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -1024,7 +1024,7 @@
   "at": 346430
  },
  {
-  "name": "WIA00201",
+  "name": "WIA00701",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -1032,7 +1032,7 @@
   "at": 346432
  },
  {
-  "name": "WIA00202",
+  "name": "WIA00702",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -1040,7 +1040,7 @@
   "at": 346434
  },
  {
-  "name": "WIA00100",
+  "name": "WIA00800",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -1048,7 +1048,7 @@
   "at": 346436
  },
  {
-  "name": "WIA00101",
+  "name": "WIA00801",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -1056,7 +1056,7 @@
   "at": 346438
  },
  {
-  "name": "WIA00102",
+  "name": "WIA00802",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -1064,7 +1064,7 @@
   "at": 346440
  },
  {
-  "name": "WIA00000",
+  "name": "WIA00900",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -1072,7 +1072,7 @@
   "at": 346442
  },
  {
-  "name": "WIA00001",
+  "name": "WIA00901",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -1080,7 +1080,7 @@
   "at": 346444
  },
  {
-  "name": "WIA00002",
+  "name": "WIA00902",
   "width": 1,
   "height": 1,
   "left": 0,
@@ -1168,12 +1168,36 @@
   "at": 346466
  },
  {
+  "name": "WISPLAT",
+  "width": 1,
+  "height": 1,
+  "left": 0,
+  "top": 0,
+  "at": 346468
+ },
+ {
+  "name": "WIURH0",
+  "width": 1,
+  "height": 1,
+  "left": 0,
+  "top": 0,
+  "at": 346470
+ },
+ {
+  "name": "WIURH1",
+  "width": 1,
+  "height": 1,
+  "left": 0,
+  "top": 0,
+  "at": 346472
+ },
+ {
   "name": "WILV00",
   "width": 106,
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 346468
+  "at": 346474
  },
  {
   "name": "WILV01",
@@ -1181,7 +1205,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 349648
+  "at": 349654
  },
  {
   "name": "WILV02",
@@ -1189,7 +1213,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 351568
+  "at": 351574
  },
  {
   "name": "WILV03",
@@ -1197,7 +1221,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 354658
+  "at": 354664
  },
  {
   "name": "WILV04",
@@ -1205,7 +1229,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 357958
+  "at": 357964
  },
  {
   "name": "WILV05",
@@ -1213,7 +1237,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 360058
+  "at": 360064
  },
  {
   "name": "WILV06",
@@ -1221,7 +1245,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 364138
+  "at": 364144
  },
  {
   "name": "WILV07",
@@ -1229,7 +1253,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 367888
+  "at": 367894
  },
  {
   "name": "WILV08",
@@ -1237,7 +1261,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 370468
+  "at": 370474
  },
  {
   "name": "WILV10",
@@ -1245,7 +1269,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 373738
+  "at": 373744
  },
  {
   "name": "WILV11",
@@ -1253,7 +1277,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 377128
+  "at": 377134
  },
  {
   "name": "WILV12",
@@ -1261,7 +1285,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 380578
+  "at": 380584
  },
  {
   "name": "WIF",
@@ -1269,7 +1293,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 382498
+  "at": 382504
  },
  {
   "name": "WIENTER",
@@ -1277,7 +1301,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 384148
+  "at": 384154
  },
  {
   "name": "WIOSTK",
@@ -1285,7 +1309,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 385348
+  "at": 385354
  },
  {
   "name": "WIOSTI",
@@ -1293,7 +1317,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 386368
+  "at": 386374
  },
  {
   "name": "WISCRT2",
@@ -1301,7 +1325,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 387628
+  "at": 387634
  },
  {
   "name": "WIOSTS",
@@ -1309,7 +1333,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 389308
+  "at": 389314
  },
  {
   "name": "WITIME",
@@ -1317,7 +1341,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 390268
+  "at": 390274
  },
  {
   "name": "WIPAR",
@@ -1325,7 +1349,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 391348
+  "at": 391354
  },
  {
   "name": "WISUCKS",
@@ -1333,7 +1357,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 392158
+  "at": 392164
  },
  {
   "name": "WIMSTT",
@@ -1341,7 +1365,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 393238
+  "at": 393244
  },
  {
   "name": "WIFRGS",
@@ -1349,7 +1373,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 394318
+  "at": 394324
  },
  {
   "name": "WIPCNT",
@@ -1357,7 +1381,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 395548
+  "at": 395554
  },
  {
   "name": "WICOLON",
@@ -1365,7 +1389,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 395968
+  "at": 395974
  },
  {
   "name": "WIMINUS",
@@ -1373,7 +1397,151 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 396148
+  "at": 396154
+ },
+ {
+  "name": "WILV13",
+  "width": 50,
+  "height": 15,
+  "left": 0,
+  "top": 0,
+  "at": 396394
+ },
+ {
+  "name": "WILV14",
+  "width": 50,
+  "height": 15,
+  "left": 0,
+  "top": 0,
+  "at": 397894
+ },
+ {
+  "name": "WILV15",
+  "width": 50,
+  "height": 15,
+  "left": 0,
+  "top": 0,
+  "at": 399394
+ },
+ {
+  "name": "WILV16",
+  "width": 50,
+  "height": 15,
+  "left": 0,
+  "top": 0,
+  "at": 400894
+ },
+ {
+  "name": "WILV17",
+  "width": 50,
+  "height": 15,
+  "left": 0,
+  "top": 0,
+  "at": 402394
+ },
+ {
+  "name": "WILV18",
+  "width": 50,
+  "height": 15,
+  "left": 0,
+  "top": 0,
+  "at": 403894
+ },
+ {
+  "name": "WIP1",
+  "width": 19,
+  "height": 15,
+  "left": 0,
+  "top": 0,
+  "at": 405394
+ },
+ {
+  "name": "WIBP1",
+  "width": 19,
+  "height": 15,
+  "left": 0,
+  "top": 0,
+  "at": 405964
+ },
+ {
+  "name": "WIP2",
+  "width": 20,
+  "height": 15,
+  "left": 0,
+  "top": 0,
+  "at": 406534
+ },
+ {
+  "name": "WIBP2",
+  "width": 20,
+  "height": 15,
+  "left": 0,
+  "top": 0,
+  "at": 407134
+ },
+ {
+  "name": "WIP3",
+  "width": 20,
+  "height": 15,
+  "left": 0,
+  "top": 0,
+  "at": 407734
+ },
+ {
+  "name": "WIBP3",
+  "width": 20,
+  "height": 15,
+  "left": 0,
+  "top": 0,
+  "at": 408334
+ },
+ {
+  "name": "WIP4",
+  "width": 20,
+  "height": 15,
+  "left": 0,
+  "top": 0,
+  "at": 408934
+ },
+ {
+  "name": "WIBP4",
+  "width": 20,
+  "height": 15,
+  "left": 0,
+  "top": 0,
+  "at": 409534
+ },
+ {
+  "name": "WIMSTAR",
+  "width": 28,
+  "height": 15,
+  "left": 0,
+  "top": 0,
+  "at": 410134
+ },
+ {
+  "name": "WIOSTF",
+  "width": 11,
+  "height": 15,
+  "left": 0,
+  "top": 0,
+  "at": 410974
+ },
+ {
+  "name": "WIKILRS",
+  "width": 7,
+  "height": 49,
+  "left": 0,
+  "top": 0,
+  "at": 411304
+ },
+ {
+  "name": "WIVCTMS",
+  "width": 43,
+  "height": 10,
+  "left": 0,
+  "top": 0,
+  "at": 411990
  },
  {
   "name": "WINUM0",
@@ -1381,7 +1549,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 396388
+  "at": 412850
  },
  {
   "name": "WINUM1",
@@ -1389,7 +1557,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 396748
+  "at": 413210
  },
  {
   "name": "WINUM2",
@@ -1397,7 +1565,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 397108
+  "at": 413570
  },
  {
   "name": "WINUM3",
@@ -1405,7 +1573,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 397468
+  "at": 413930
  },
  {
   "name": "WINUM4",
@@ -1413,7 +1581,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 397828
+  "at": 414290
  },
  {
   "name": "WINUM5",
@@ -1421,7 +1589,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 398188
+  "at": 414650
  },
  {
   "name": "WINUM6",
@@ -1429,7 +1597,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 398548
+  "at": 415010
  },
  {
   "name": "WINUM7",
@@ -1437,7 +1605,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 398908
+  "at": 415370
  },
  {
   "name": "WINUM8",
@@ -1445,7 +1613,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 399268
+  "at": 415730
  },
  {
   "name": "WINUM9",
@@ -1453,7 +1621,7 @@
   "height": 15,
   "left": 0,
   "top": 0,
-  "at": 399628
+  "at": 416090
  },
  {
   "name": "HELP1",
@@ -1461,7 +1629,7 @@
   "height": 200,
   "left": 0,
   "top": 0,
-  "at": 399988
+  "at": 416450
  },
  {
   "name": "HELP2",
@@ -1469,7 +1637,7 @@
   "height": 200,
   "left": 0,
   "top": 0,
-  "at": 527988
+  "at": 544450
  },
  {
   "name": "CREDIT",
@@ -1477,6 +1645,22 @@
   "height": 200,
   "left": 0,
   "top": 0,
-  "at": 655988
+  "at": 672450
+ },
+ {
+  "name": "VICTORY2",
+  "width": 320,
+  "height": 200,
+  "left": 0,
+  "top": 0,
+  "at": 800450
+ },
+ {
+  "name": "INTERPIC",
+  "width": 320,
+  "height": 200,
+  "left": 0,
+  "top": 0,
+  "at": 928450
  }
 ]

@@ -12,7 +12,7 @@ on the 320 by 200 screen; what lies on the floor is drawn from its feet.
 
 Run by hand (it needs numpy and Pillow):
 
-    python3 games/shooter/delbies/art/tools.py public/data/freedoom1-0.13.0.wad.gz
+    python3 games/shooter/delbies/art/tools.py
 
 It writes tools.bin.gz and tools.json, in the form rats.py writes the rats.
 """
@@ -22,12 +22,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 here = Path(__file__).parent
-wad = gzip.open(sys.argv[1]).read()
-count, table = struct.unpack_from("<ii", wad, 4)
-for i in range(count):
-    at, size, name = struct.unpack_from("<ii8s", wad, table + i * 16)
-    if name.rstrip(b"\0") == b"PLAYPAL":
-        palette = np.frombuffer(wad[at:at + 768], np.uint8).reshape(256, 3).astype(int)
+palette = np.frombuffer((here / "palette.bin").read_bytes()[:768], np.uint8).reshape(256, 3).astype(int)
 cache = {}
 def nearest(rgb):
     key = tuple(int(v) for v in rgb)
@@ -339,6 +334,107 @@ for prefix, colour in (("BKEY", (40, 90, 220)), ("YKEY", (240, 200, 40)), ("RKEY
         draw.polygon([(0, 6), (6, 4), (7, 13), (1, 15)], fill=tag)
         keep(prefix + letter + "0", image)
 
+# A box of tags for the price gun.
+image, draw = small(24, 16)
+draw.rectangle((0, 3, 23, 15), fill=(226, 222, 208))
+draw.rectangle((0, 3, 23, 6), fill=YELLOW)
+draw.rectangle((4, 9, 19, 12), fill=RED)
+draw.polygon([(0, 3), (4, 0), (27, 0), (23, 3)], fill=(190, 186, 172))
+keep("AMMOA0", image)
+
+# Someone else playing, as you see them: work shirt, cap, dark trousers, a price gun in hand. One picture a moment, the same from every side.
+def worker(step=0, arm=0, lean=0, flash=False, down=0.0):
+    image, draw = small(40, 58)
+    if down >= 1:
+        # On the floor.
+        draw.rounded_rectangle((2, 48, 38, 56), 3, fill=SLEEVE)
+        draw.ellipse((0, 46, 10, 56), fill=SKIN)
+        draw.rectangle((26, 50, 39, 56), fill=(40, 44, 60))
+        return image
+    drop = int(down * 16)
+    lx, rx = (-3, 3) if step == 1 else (3, -3) if step == 3 else (0, 0)
+    draw.rectangle((13 + lx, 38 + drop, 18 + lx, 55), fill=(40, 44, 60))
+    draw.rectangle((21 + rx, 38 + drop, 26 + rx, 55), fill=(40, 44, 60))
+    draw.rectangle((12 + lx, 54, 19 + lx, 57), fill=BLACK)
+    draw.rectangle((20 + rx, 54, 27 + rx, 57), fill=BLACK)
+    draw.rounded_rectangle((11 + lean, 18 + drop, 28 + lean, 40 + drop), 3, fill=SLEEVE)
+    draw.rectangle((11 + lean, 36 + drop, 28 + lean, 38 + drop), fill=BLACK)
+    draw.rectangle((7 + lean, 20 + drop, 11 + lean, 34 + drop), fill=SLEEVE_DARK)
+    draw.rectangle((28 + lean, 20 + drop, 32 + lean, 30 + drop - arm * 6), fill=SLEEVE_DARK)
+    draw.ellipse((13 + lean, 6 + drop, 26 + lean, 19 + drop), fill=SKIN)
+    draw.rectangle((13 + lean, 5 + drop, 26 + lean, 9 + drop), fill=(22, 34, 92))
+    draw.rectangle((13 + lean, 9 + drop, 29 + lean, 10 + drop), fill=(22, 34, 92))
+    if arm:
+        draw.rectangle((30 + lean, 22 + drop, 38 + lean, 26 + drop), fill=YELLOW)
+        if flash:
+            draw.ellipse((36 + lean, 20 + drop, 41 + lean, 28 + drop), fill=(255, 240, 160))
+    return image
+for letter, how in zip("ABCDEFG", (dict(step=0), dict(step=1), dict(step=2), dict(step=3), dict(arm=1), dict(arm=1, flash=True), dict(lean=-3))):
+    keep(f"PLAY{letter}0", worker(**how))
+for index, letter in enumerate("HIJKLMN"):
+    keep(f"PLAY{letter}0", worker(down=min(1, (index + 1) / 5)))
+for index, letter in enumerate("OPQRSTUVW"):
+    keep(f"PLAY{letter}0", worker(down=min(1, (index + 1) / 4)))
+
+# What a shot does to a wall (dust), and to a rat.
+def burst(size, colours, radius, spokes=0, name=None):
+    image, draw = small(size, size)
+    c = size // 2 + 1
+    for r, colour in zip(radius, colours):
+        if r > 0:
+            draw.ellipse((c - r, c - r, c + r, c + r), fill=colour)
+    for k in range(spokes):
+        import math
+        a = k * 2 * math.pi / spokes + 0.3
+        draw.line((c, c, c + math.cos(a) * size / 2, c + math.sin(a) * size / 2), fill=colours[0], width=1)
+    return image
+def flat(name, image, left=None, top=None):
+    """Kept as drawn: no rounding, no dark edge, for light and dust."""
+    rgba = np.array(image)
+    there = rgba[..., 3] > 127
+    rows, cols = np.where(there)
+    y0, y1, x0, x1 = rows.min(), rows.max() + 1, cols.min(), cols.max() + 1
+    rgba, there = rgba[y0:y1, x0:x1], there[y0:y1, x0:x1]
+    height, width = there.shape
+    pixels = bytes(nearest(rgba[y, x, :3]) if there[y, x] else 0 for y in range(height) for x in range(width))
+    pictures.append((name, width, height, width // 2 if left is None else left, height if top is None else top, pixels, bytes(there.astype(np.uint8).tobytes())))
+for letter, r in zip("ABCD", (2, 4, 5, 3)):
+    flat(f"PUFF{letter}0", burst(14, ((200, 200, 196), (240, 240, 232)), (r, r - 2)), top=r + 8)
+for letter, r in zip("ABC", (5, 4, 2)):
+    flat(f"BLUD{letter}0", burst(14, ((150, 20, 20), (210, 44, 40)), (r, r - 2)), top=r + 6)
+# Arriving (a player, or a thing coming back): a ring of light that opens and goes.
+for letter, r in zip("ABCDEFGHIJ", (6, 12, 18, 24, 28, 28, 24, 18, 12, 6)):
+    image, draw = small(60, 60)
+    draw.ellipse((30 - r, 30 - r, 30 + r, 30 + r), outline=(90, 200, 240), width=3)
+    draw.ellipse((30 - r // 2, 30 - r // 2, 30 + r // 2, 30 + r // 2), outline=(240, 250, 255), width=2)
+    flat(f"TFOG{letter}0", image, top=30 + r + 14)
+for letter, r in zip("ABCDE", (4, 8, 11, 8, 4)):
+    image, draw = small(26, 26)
+    draw.ellipse((13 - r, 13 - r, 13 + r, 13 + r), outline=(250, 220, 90), width=2)
+    flat(f"IFOG{letter}0", image, top=13 + r + 10)
+# What the King Rat throws: a ball of old grease, turning, and what it leaves where it lands.
+for letter, turn in (("A", 0), ("B", 1)):
+    image, draw = small(18, 18)
+    draw.ellipse((1, 1, 17, 17), fill=(52, 44, 30))
+    draw.ellipse((4 + turn * 5, 4, 8 + turn * 5, 8), fill=(120, 150, 60))
+    draw.ellipse((9 - turn * 4, 11, 12 - turn * 4, 14), fill=(90, 110, 40))
+    keep(f"BAL7{letter}0", image, top=14)
+for letter, r in zip("CDE", (9, 13, 16)):
+    flat(f"BAL7{letter}0", burst(36, ((52, 44, 30), (120, 150, 60), (190, 210, 110)), (r, r - 4, r - 9), spokes=7), top=r + 10)
+# A drum of something that shouldn't be near a flame: a waste-oil drum, its label catching the light; and what it does.
+for letter, lit in (("A", 0), ("B", 40)):
+    image, draw = small(24, 34)
+    draw.rounded_rectangle((1, 2, 23, 33), 3, fill=(40, 60, 130))
+    for y in (11, 22):
+        draw.rectangle((1, y, 23, y + 1), fill=(22, 34, 92))
+    draw.ellipse((1, 0, 23, 6), fill=(24, 22, 20))
+    draw.rectangle((5, 13, 19, 21), fill=(246, 200 + lit // 2, 40 + lit))
+    draw.polygon([(12, 14), (16, 20), (8, 20)], fill=BLACK)
+    keep(f"BAR1{letter}0", image)
+for letter, r in zip("ABCDE", (10, 18, 26, 30, 22)):
+    colours = ((200, 60, 20), (246, 150, 30), (255, 240, 160)) if letter < "D" else ((70, 66, 62), (120, 116, 110), (170, 166, 160))
+    flat(f"BEXP{letter}0", burst(64, colours, (r, r - 6, r - 13), spokes=9 if letter < "D" else 0), top=r + 6)
+
 blob = bytearray()
 manifest = []
 for name, width, height, left, top, pixels, solid in pictures:
@@ -348,7 +444,7 @@ for name, width, height, left, top, pixels, solid in pictures:
 (here / "tools.json").write_text(json.dumps(manifest, indent=1) + "\n")
 print(len(manifest), "pictures,", len(blob), "bytes")
 
-if len(sys.argv) > 2:
+if len(sys.argv) > 1:
     # A sheet to look at.
     sheet = Image.new("RGB", (640, 330), (58, 62, 84))
     x = y = 4
@@ -359,4 +455,4 @@ if len(sys.argv) > 2:
         im = Image.fromarray(np.dstack([palette[np.frombuffer(pixels, np.uint8).reshape(height, width)].astype(np.uint8), np.frombuffer(solid, np.uint8).reshape(height, width) * 255]), "RGBA")
         sheet.paste(im, (x, y), im)
         x, tall = x + width + 4, max(tall, height)
-    sheet.resize((sheet.width * 2, sheet.height * 2), Image.NEAREST).save(sys.argv[2])
+    sheet.resize((sheet.width * 2, sheet.height * 2), Image.NEAREST).save(sys.argv[1])

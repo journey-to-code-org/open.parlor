@@ -10,7 +10,6 @@
 -->
 <script lang="ts">
   import { SvelteMap } from "svelte/reactivity";
-  import game from "../../games/shooter/data.json";
   import nodesWasm from "../../games/shooter/nodes/nodes.wasm?url";
   import wasm from "../../games/shooter/shooter.wasm?url";
   import { asset as fetched } from "../../host/assets.ts";
@@ -23,7 +22,7 @@
   import { decodePatch, type Palette, paletteOf } from "../../wad/picture.ts";
   import { loadMod, removeChange, saveChange } from "../../wad/saved.ts";
   import { readWad, type Wad } from "../../wad/wad.ts";
-  import { withDelbies } from "../shooter/delbies.ts";
+  import { DELBIES } from "../shooter/delbies.ts";
   import { mountShooter, type Shooter } from "../shooter/player.ts";
   import { download, type Fit, isSound, pictureLump, pictureOf, play, png, soundLump } from "./convert.ts";
   import Levels from "./Levels.svelte";
@@ -49,7 +48,7 @@
   };
   /** How many of a tab are shown before "Show more". */
   const PAGE = 60;
-  const address = `${import.meta.env.BASE_URL}data/${game.file}`;
+  const address = DELBIES.url;
 
   let stage = $state<"loading" | "ready" | "failed">("loading");
   let progress = $state("Fetching the game");
@@ -135,8 +134,7 @@
         progress: (received, total) => (progress = total ? `Fetching the game: ${(received / 1048576).toFixed(0)} of ${(total / 1048576).toFixed(0)} MB` : "Fetching the game"),
         valid: (data) => /^[IP]WAD$/.test(String.fromCharCode(...data.subarray(0, 4))),
       });
-      // The game as it is played: its own title and levels over the data it is built on. "As it came" here means that.
-      wad = readWad(await withDelbies(bytes));
+      wad = readWad(bytes);
       palette = paletteOf(wad.lumps.find((lump) => lump.name === "PLAYPAL")?.data ?? new Uint8Array(0));
       assets = catalogue(wad).sort((a, b) => a.name.localeCompare(b.name));
       const known = new Set(assets.map((asset) => key(asset.kind, asset.name)));
@@ -312,12 +310,11 @@
     const where = tryLevel.match(/^E(\d)M(\d)$/)?.slice(1) ?? tryLevel.match(/^MAP(\d\d)$/)?.slice(1).map((map) => String(Number(map)));
     const mounted: Shooter = mountShooter(stageElement, {
       wasm,
-      wad: { url: address, name: "freedoom1.wad", megabytes: game.megabytes },
-      base: withDelbies,
+      wad: DELBIES,
       title: where ? `Try ${tryLevel}` : "Try it",
       blurb: changes.size ? "The game, with what you have changed." : "The game as it came: nothing is changed yet.",
       args: where ? ["-warp", ...where] : [],
-      levels: { episodes: 4, maps: 9 },
+      levels: { episodes: 2, maps: 9 },
       own: { apply: async (data) => applyMod(data, changes.values()), note: async () => "" },
     });
     return () => mounted.destroy();

@@ -210,7 +210,7 @@ export async function startEngine(module: WebAssembly.Module, files: Map<string,
   }
 
   // The command line, written into the engine's memory as main() would be given it.
-  // -mb: the engine's own heap, in megabytes. Its default of 6 is tight for Freedoom's larger maps.
+  // -mb: the engine's own heap, in megabytes. Its default of 6 is tight for a large map.
   const words = ["shooter", "-iwad", iwad, "-mb", "16", ...args];
   const encoder = new TextEncoder();
   guarded(() => {

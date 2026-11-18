@@ -342,5 +342,469 @@
   "left": 6,
   "top": 21,
   "at": 292678
+ },
+ {
+  "name": "AMMOA0",
+  "width": 26,
+  "height": 16,
+  "left": 13,
+  "top": 16,
+  "at": 293182
+ },
+ {
+  "name": "PLAYA0",
+  "width": 26,
+  "height": 53,
+  "left": 13,
+  "top": 53,
+  "at": 294014
+ },
+ {
+  "name": "PLAYB0",
+  "width": 26,
+  "height": 53,
+  "left": 13,
+  "top": 53,
+  "at": 296770
+ },
+ {
+  "name": "PLAYC0",
+  "width": 26,
+  "height": 53,
+  "left": 13,
+  "top": 53,
+  "at": 299526
+ },
+ {
+  "name": "PLAYD0",
+  "width": 26,
+  "height": 53,
+  "left": 13,
+  "top": 53,
+  "at": 302282
+ },
+ {
+  "name": "PLAYE0",
+  "width": 32,
+  "height": 53,
+  "left": 16,
+  "top": 53,
+  "at": 305038
+ },
+ {
+  "name": "PLAYF0",
+  "width": 35,
+  "height": 53,
+  "left": 17,
+  "top": 53,
+  "at": 308430
+ },
+ {
+  "name": "PLAYG0",
+  "width": 26,
+  "height": 53,
+  "left": 13,
+  "top": 53,
+  "at": 312140
+ },
+ {
+  "name": "PLAYH0",
+  "width": 26,
+  "height": 50,
+  "left": 13,
+  "top": 50,
+  "at": 314896
+ },
+ {
+  "name": "PLAYI0",
+  "width": 26,
+  "height": 47,
+  "left": 13,
+  "top": 47,
+  "at": 317496
+ },
+ {
+  "name": "PLAYJ0",
+  "width": 26,
+  "height": 44,
+  "left": 13,
+  "top": 44,
+  "at": 319940
+ },
+ {
+  "name": "PLAYK0",
+  "width": 26,
+  "height": 41,
+  "left": 13,
+  "top": 41,
+  "at": 322228
+ },
+ {
+  "name": "PLAYL0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 324360
+ },
+ {
+  "name": "PLAYM0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 325240
+ },
+ {
+  "name": "PLAYN0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 326120
+ },
+ {
+  "name": "PLAYO0",
+  "width": 26,
+  "height": 49,
+  "left": 13,
+  "top": 49,
+  "at": 327000
+ },
+ {
+  "name": "PLAYP0",
+  "width": 26,
+  "height": 45,
+  "left": 13,
+  "top": 45,
+  "at": 329548
+ },
+ {
+  "name": "PLAYQ0",
+  "width": 26,
+  "height": 41,
+  "left": 13,
+  "top": 41,
+  "at": 331888
+ },
+ {
+  "name": "PLAYR0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 334020
+ },
+ {
+  "name": "PLAYS0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 334900
+ },
+ {
+  "name": "PLAYT0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 335780
+ },
+ {
+  "name": "PLAYU0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 336660
+ },
+ {
+  "name": "PLAYV0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 337540
+ },
+ {
+  "name": "PLAYW0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 338420
+ },
+ {
+  "name": "PUFFA0",
+  "width": 5,
+  "height": 5,
+  "left": 2,
+  "top": 10,
+  "at": 339300
+ },
+ {
+  "name": "PUFFB0",
+  "width": 9,
+  "height": 9,
+  "left": 4,
+  "top": 12,
+  "at": 339350
+ },
+ {
+  "name": "PUFFC0",
+  "width": 11,
+  "height": 11,
+  "left": 5,
+  "top": 13,
+  "at": 339512
+ },
+ {
+  "name": "PUFFD0",
+  "width": 7,
+  "height": 7,
+  "left": 3,
+  "top": 11,
+  "at": 339754
+ },
+ {
+  "name": "BLUDA0",
+  "width": 11,
+  "height": 11,
+  "left": 5,
+  "top": 11,
+  "at": 339852
+ },
+ {
+  "name": "BLUDB0",
+  "width": 9,
+  "height": 9,
+  "left": 4,
+  "top": 10,
+  "at": 340094
+ },
+ {
+  "name": "BLUDC0",
+  "width": 5,
+  "height": 5,
+  "left": 2,
+  "top": 8,
+  "at": 340256
+ },
+ {
+  "name": "TFOGA0",
+  "width": 13,
+  "height": 13,
+  "left": 6,
+  "top": 50,
+  "at": 340306
+ },
+ {
+  "name": "TFOGB0",
+  "width": 25,
+  "height": 25,
+  "left": 12,
+  "top": 56,
+  "at": 340644
+ },
+ {
+  "name": "TFOGC0",
+  "width": 37,
+  "height": 37,
+  "left": 18,
+  "top": 62,
+  "at": 341894
+ },
+ {
+  "name": "TFOGD0",
+  "width": 49,
+  "height": 49,
+  "left": 24,
+  "top": 68,
+  "at": 344632
+ },
+ {
+  "name": "TFOGE0",
+  "width": 57,
+  "height": 57,
+  "left": 28,
+  "top": 72,
+  "at": 349434
+ },
+ {
+  "name": "TFOGF0",
+  "width": 57,
+  "height": 57,
+  "left": 28,
+  "top": 72,
+  "at": 355932
+ },
+ {
+  "name": "TFOGG0",
+  "width": 49,
+  "height": 49,
+  "left": 24,
+  "top": 68,
+  "at": 362430
+ },
+ {
+  "name": "TFOGH0",
+  "width": 37,
+  "height": 37,
+  "left": 18,
+  "top": 62,
+  "at": 367232
+ },
+ {
+  "name": "TFOGI0",
+  "width": 25,
+  "height": 25,
+  "left": 12,
+  "top": 56,
+  "at": 369970
+ },
+ {
+  "name": "TFOGJ0",
+  "width": 13,
+  "height": 13,
+  "left": 6,
+  "top": 50,
+  "at": 371220
+ },
+ {
+  "name": "IFOGA0",
+  "width": 9,
+  "height": 9,
+  "left": 4,
+  "top": 27,
+  "at": 371558
+ },
+ {
+  "name": "IFOGB0",
+  "width": 17,
+  "height": 17,
+  "left": 8,
+  "top": 31,
+  "at": 371720
+ },
+ {
+  "name": "IFOGC0",
+  "width": 23,
+  "height": 23,
+  "left": 11,
+  "top": 34,
+  "at": 372298
+ },
+ {
+  "name": "IFOGD0",
+  "width": 17,
+  "height": 17,
+  "left": 8,
+  "top": 31,
+  "at": 373356
+ },
+ {
+  "name": "IFOGE0",
+  "width": 9,
+  "height": 9,
+  "left": 4,
+  "top": 27,
+  "at": 373934
+ },
+ {
+  "name": "BAL7A0",
+  "width": 17,
+  "height": 17,
+  "left": 8,
+  "top": 17,
+  "at": 374096
+ },
+ {
+  "name": "BAL7B0",
+  "width": 17,
+  "height": 17,
+  "left": 8,
+  "top": 17,
+  "at": 374674
+ },
+ {
+  "name": "BAL7C0",
+  "width": 36,
+  "height": 35,
+  "left": 18,
+  "top": 19,
+  "at": 375252
+ },
+ {
+  "name": "BAL7D0",
+  "width": 36,
+  "height": 35,
+  "left": 18,
+  "top": 23,
+  "at": 377772
+ },
+ {
+  "name": "BAL7E0",
+  "width": 36,
+  "height": 35,
+  "left": 18,
+  "top": 26,
+  "at": 380292
+ },
+ {
+  "name": "BAR1A0",
+  "width": 23,
+  "height": 34,
+  "left": 11,
+  "top": 34,
+  "at": 382812
+ },
+ {
+  "name": "BAR1B0",
+  "width": 23,
+  "height": 34,
+  "left": 11,
+  "top": 34,
+  "at": 384376
+ },
+ {
+  "name": "BEXPA0",
+  "width": 63,
+  "height": 64,
+  "left": 31,
+  "top": 16,
+  "at": 385940
+ },
+ {
+  "name": "BEXPB0",
+  "width": 63,
+  "height": 64,
+  "left": 31,
+  "top": 24,
+  "at": 394004
+ },
+ {
+  "name": "BEXPC0",
+  "width": 63,
+  "height": 64,
+  "left": 31,
+  "top": 32,
+  "at": 402068
+ },
+ {
+  "name": "BEXPD0",
+  "width": 61,
+  "height": 61,
+  "left": 30,
+  "top": 36,
+  "at": 410132
+ },
+ {
+  "name": "BEXPE0",
+  "width": 45,
+  "height": 45,
+  "left": 22,
+  "top": 28,
+  "at": 417574
  }
 ]

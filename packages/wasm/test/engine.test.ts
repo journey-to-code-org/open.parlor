@@ -1,15 +1,13 @@
-// The engine itself, booted in Node on the real game data: it starts, draws, takes input, makes
-// sound, and stops when asked. Skipped when the data isn't here (npm run build fetches it).
-import { existsSync, readFileSync } from "node:fs";
+// The engine itself, booted in Node on the game's data: it starts, draws, takes input, makes
+// sound, and stops when asked.
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { gunzipSync } from "node:zlib";
 import { describe, expect, test } from "vitest";
-import data from "../games/shooter/data.json";
 import { decodeDmx } from "../wad/sound.ts";
 import { type Engine, STATE_LEVEL, STATE_MENU, STATE_QUESTION, screenOf, startEngine } from "../src/shooter/engine.ts";
 import { KEY } from "../src/shooter/keys.ts";
 
-const wad = join(import.meta.dirname, "../public/data", data.file);
+const wad = join(import.meta.dirname, "../games/shooter/delbies/delbies.wad");
 const wasm = join(import.meta.dirname, "../games/shooter/shooter.wasm");
 /** One game tic, in milliseconds: the engine runs 35 a second. */
 const TIC = 1000 / 35;
@@ -39,11 +37,11 @@ async function boot(args: string[] = [], kept: [string, Uint8Array][] = []) {
       game.run(2);
     },
   };
-  const files = new Map([["freedoom1.wad", new Uint8Array(gunzipSync(readFileSync(wad)))], ...kept]);
+  const files = new Map([["delbies.wad", new Uint8Array(readFileSync(wad))], ...kept]);
   game.engine = await startEngine(
     new WebAssembly.Module(readFileSync(wasm)),
     files,
-    "freedoom1.wad",
+    "delbies.wad",
     {
       now: () => game.clock,
       frame(pixels) {
@@ -63,11 +61,11 @@ async function boot(args: string[] = [], kept: [string, Uint8Array][] = []) {
 /** How many different colours a frame has: a blank or broken one has very few. */
 const colours = (picture: Uint8ClampedArray) => new Set(new Uint32Array(picture.buffer, 0, picture.length / 4)).size;
 
-describe.skipIf(!existsSync(wad))("the engine on Freedoom", () => {
+describe("the engine on the game", () => {
   test("starts on the title screen and draws it", async () => {
     const game = await boot();
     expect(game.engine.stopped).toBeNull();
-    expect(game.title).toBe("Freedoom: Phase 1");
+    expect(game.title).toBe("Delbie's Doomsday");
     // The title melts in from black, which takes about a second; until it has, input is held.
     for (let i = 0; i < 10; i++) {
       expect(screenOf(game.engine.state())).toBe("wipe");
@@ -188,7 +186,7 @@ describe.skipIf(!existsSync(wad))("the engine on Freedoom", () => {
   });
 
   test("a WAD that isn't one stops the engine with what it said", async () => {
-    const stopped = await startEngine(new WebAssembly.Module(readFileSync(wasm)), new Map([["freedoom1.wad", new Uint8Array(64)]]), "freedoom1.wad", { frame() {} });
+    const stopped = await startEngine(new WebAssembly.Module(readFileSync(wasm)), new Map([["delbies.wad", new Uint8Array(64)]]), "delbies.wad", { frame() {} });
     expect(stopped.stopped?.code).not.toBe(0);
     expect(stopped.stopped?.message).not.toBe("");
   });

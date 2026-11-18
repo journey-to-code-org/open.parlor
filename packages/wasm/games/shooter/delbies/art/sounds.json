@@ -73,5 +73,125 @@
   "name": "DSBRSDTH",
   "at": 58863,
   "length": 16537
+ },
+ {
+  "name": "DSPISTOL",
+  "at": 75400,
+  "length": 1322
+ },
+ {
+  "name": "DSSHOTGN",
+  "at": 76722,
+  "length": 4961
+ },
+ {
+  "name": "DSSGCOCK",
+  "at": 81683,
+  "length": 1983
+ },
+ {
+  "name": "DSPUNCH",
+  "at": 83666,
+  "length": 1102
+ },
+ {
+  "name": "DSCLAW",
+  "at": 84768,
+  "length": 1764
+ },
+ {
+  "name": "DSPLPAIN",
+  "at": 86532,
+  "length": 2425
+ },
+ {
+  "name": "DSPLDETH",
+  "at": 88957,
+  "length": 8819
+ },
+ {
+  "name": "DSPDIEHI",
+  "at": 97776,
+  "length": 8820
+ },
+ {
+  "name": "DSOOF",
+  "at": 106596,
+  "length": 1323
+ },
+ {
+  "name": "DSNOWAY",
+  "at": 107919,
+  "length": 2314
+ },
+ {
+  "name": "DSITEMUP",
+  "at": 110233,
+  "length": 1102
+ },
+ {
+  "name": "DSWPNUP",
+  "at": 111335,
+  "length": 2094
+ },
+ {
+  "name": "DSGETPOW",
+  "at": 113429,
+  "length": 4851
+ },
+ {
+  "name": "DSSWTCHN",
+  "at": 118280,
+  "length": 881
+ },
+ {
+  "name": "DSSWTCHX",
+  "at": 119161,
+  "length": 881
+ },
+ {
+  "name": "DSDOROPN",
+  "at": 120042,
+  "length": 5512
+ },
+ {
+  "name": "DSDORCLS",
+  "at": 125554,
+  "length": 5292
+ },
+ {
+  "name": "DSPSTART",
+  "at": 130846,
+  "length": 3307
+ },
+ {
+  "name": "DSPSTOP",
+  "at": 134153,
+  "length": 1323
+ },
+ {
+  "name": "DSSTNMOV",
+  "at": 135476,
+  "length": 2756
+ },
+ {
+  "name": "DSTELEPT",
+  "at": 138232,
+  "length": 6614
+ },
+ {
+  "name": "DSSLOP",
+  "at": 144846,
+  "length": 3307
+ },
+ {
+  "name": "DSBAREXP",
+  "at": 148153,
+  "length": 8820
+ },
+ {
+  "name": "DSTINK",
+  "at": 156973,
+  "length": 551
  }
 ]
