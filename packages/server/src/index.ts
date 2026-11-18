@@ -1,17 +1,20 @@
 // The open.parlor server: rooms (moves, seats, bots), the sync log, and the built apps: the parlor
-// itself at /, the card designer at /designer/, the watch page at /watch/ and the admin app at /admin/.
+// itself at /, the card designer at /designer/, the watch page at /watch/, the admin app at /admin/
+// and the WebAssembly games at /wasm/.
 //
 //   PORT=8787 CARDROOM_DB=cardroom.db node dist/index.js
 //
 // Settings are CARDROOM_*; the older SPADES_* names still work (CARDROOM_* wins if both are set).
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
+import { Meets, Rooms } from "@open-parlor/wasm/net";
 import { WebSocketServer } from "ws";
 import { playerOf } from "@journey-to-code/rooms/server";
 import { createServer } from "node:http";
-import { extname, join, normalize, resolve, sep } from "node:path";
+import { dirname, extname, join, normalize, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createCardRoom } from "./app.js";
 import { createBackups } from "./backup.js";
+import { createPacks } from "./packs.js";
 import { workersFrom } from "./bots.js";
 import { warmSports } from "./kit.js";
 import { lanNotice } from "./lan.js";
@@ -31,6 +34,7 @@ const apps = [
   { at: "/designer/", root: resolve(setting("DESIGNER") ?? fileURLToPath(new URL("../../designer/dist", import.meta.url))), build: "npm run build -w @open-parlor/designer" },
   { at: "/watch/", root: resolve(setting("WATCH") ?? fileURLToPath(new URL("../../watch/dist", import.meta.url))), build: "npm run build -w @open-parlor/watch" },
   { at: "/admin/", root: resolve(setting("ADMIN") ?? fileURLToPath(new URL("../../admin/dist/browser", import.meta.url))), build: "npm run build -w @open-parlor/admin" },
+  { at: "/wasm/", root: resolve(setting("WASM") ?? fileURLToPath(new URL("../../wasm/dist", import.meta.url))), build: "npm run build -w @open-parlor/wasm" },
 ];
 
 // A SQLite log keeps tables across restarts; without CARDROOM_DB, they live in memory.
@@ -41,11 +45,18 @@ const backupDir = setting("BACKUPS");
 const backups = db && db !== ":memory:" && backupDir !== "off" ? createBackups({ db, dir: backupDir || undefined, keep: Number(setting("BACKUP_KEEP")) || undefined, hours: Number(setting("BACKUP_HOURS")) || undefined }) : undefined;
 // Bots take humanlike time unless CARDROOM_BOT_DELAY fixes it (handy for testing).
 const botDelay = setting("BOT_DELAY");
+// The pack Road to the Shootout plays, once the host has published one from the admin app: kept
+// beside the database, or in memory when there is none.
+const packs = createPacks({ file: db && db !== ":memory:" ? join(dirname(resolve(db)), "shootout.pack") : undefined });
 const cardRoom = createCardRoom({
   log,
+  packs,
   botDelay: botDelay ? Number(botDelay) : undefined,
   // Moderation (the admin app) is on when the server has an admin token.
   adminToken: setting("ADMIN_TOKEN"),
+  // ...or its host signs in with GitHub: an OAuth app (no scopes) and the logins that may (see github-login.ts).
+  promote: { token: setting("PROMOTE_TOKEN"), repo: setting("GITHUB_REPO"), base: setting("PROMOTE_BASE"), api: setting("PROMOTE_API") },
+  github: { clientId: setting("GITHUB_CLIENT_ID"), clientSecret: setting("GITHUB_CLIENT_SECRET"), allow: (setting("ADMIN_GITHUB") ?? "").split(",").map((l) => l.trim()).filter(Boolean), signingKey: setting("SESSION_SECRET") },
   backups,
   // Push notifications are on when the server has VAPID keys (`npx web-push generate-vapid-keys`).
   push: {
@@ -66,7 +77,7 @@ const cardRoom = createCardRoom({
 });
 if (!setting("SECRET")) console.log("houses' AI keys are stored unsealed: set CARDROOM_SECRET to encrypt them");
 if (db && !backups) console.log("backups are off (CARDROOM_BACKUPS=off): nothing copies the database");
-if (!cardRoom.moderation.enabled) console.log("moderation is off: set CARDROOM_ADMIN_TOKEN to turn on the admin app at /admin/");
+if (!cardRoom.moderation.enabled) console.log("moderation is off: set CARDROOM_ADMIN_TOKEN (or CARDROOM_GITHUB_CLIENT_ID, CARDROOM_GITHUB_CLIENT_SECRET and CARDROOM_ADMIN_GITHUB) to turn on the admin app at /admin/");
 if (!cardRoom.bugs.enabled) console.log("players can't report problems: set CARDROOM_GITHUB_TOKEN (a token that may open issues) to turn that on");
 if (!cardRoom.push.enabled) console.log("push notifications are off: set CARDROOM_VAPID_PUBLIC_KEY and CARDROOM_VAPID_PRIVATE_KEY to turn them on");
 
@@ -81,6 +92,14 @@ function originOf(headers: Record<string, string | string[] | undefined>): strin
   return /^[a-z0-9.-]+(:\d{1,5})?$/i.test(host) ? `${proto}://${host}` : "";
 }
 
+// The WebAssembly games played across devices (/wasm/): a room takes each player's commands and
+// sends them on to everyone. It knows nothing of the game. See packages/wasm/net.
+const games = new Rooms({ now: () => performance.now() });
+setInterval(() => games.check(), 250).unref();
+// And the meets (/wasm/meet/<name>), for games where each device runs its own player and only
+// tells the others about it: Road to the Shootout's races. A meet passes on what its members say.
+const meets = new Meets({ now: () => performance.now() });
+
 const TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript",
@@ -91,6 +110,9 @@ const TYPES: Record<string, string> = {
   ".json": "application/json",
   ".webmanifest": "application/manifest+json",
   ".woff2": "font/woff2",
+  // A browser compiles a .wasm file as it downloads only when it is served as one.
+  ".wasm": "application/wasm",
+  ".txt": "text/plain; charset=utf-8",
 };
 
 const server = createServer(async (req, res) => {
@@ -101,6 +123,18 @@ const server = createServer(async (req, res) => {
     if (req.url === "/healthz/bots") return void res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(cardRoom.bots?.stats() ?? null));
     if (await cardRoom.handle(req, res)) return;
     const path = decodeURIComponent(new URL(req.url ?? "/", "http://x").pathname);
+    // The games' rooms: GET lists the games their hosts have opened to watching (none, in a parlor
+    // that keeps people's tables private), POST opens a room.
+    if (path === "/wasm/play") {
+      const room = req.method === "POST" ? games.open() : null;
+      const body = req.method === "POST" ? (room ? { code: room.code } : { error: "There are as many games going as this parlor can hold." }) : { games: (await cardRoom.catalogue.watching()) ? games.listed() : [] };
+      return void res.writeHead(req.method === "POST" && !room ? 503 : 200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(body));
+    }
+    // Road to the Shootout asks for its pack by this name: the host's own, if they have published one.
+    if (path === "/wasm/shootout/default.pack") {
+      const own = packs.get();
+      if (own) return void res.writeHead(200, { "content-type": "application/octet-stream", "content-length": String(own.bytes.length), "cache-control": "no-cache" }).end(Buffer.from(own.bytes));
+    }
     // /designer and /admin are their apps' front doors: with the slash, so their files resolve.
     const bare = apps.find((a) => `${path}/` === a.at);
     if (bare) return void res.writeHead(308, { location: bare.at }).end();
@@ -111,11 +145,19 @@ const server = createServer(async (req, res) => {
     // The embed's files are fetched by other sites' pages: a missing one is a 404, never the app.
     const embed = !app && path.startsWith("/embed/");
     if (embed && (!existsSync(file) || statSync(file).isDirectory())) return void res.writeHead(404).end();
+    // Nor is a game's data that isn't there: the page would take the app's HTML for the game.
+    if (app?.at === "/wasm/" && path.startsWith("/wasm/data/") && !existsSync(file)) return void res.writeHead(404).end();
+    // A folder of an app that has a page of its own (the WebAssembly games' editor) is that page.
+    if (app && existsSync(join(file, "index.html")) && file !== root) {
+      if (!path.endsWith("/")) return void res.writeHead(308, { location: `${path}/` }).end();
+      file = join(file, "index.html");
+    }
     if (!existsSync(file) || statSync(file).isDirectory()) file = join(root, "index.html"); // the app routes itself
     if (!existsSync(file)) return void res.writeHead(404).end(`Build the app first: ${app?.build ?? "npm run build -w @open-parlor/web"}`);
     // The page and the service worker must never be stale; the hashed assets can be cached for good.
-    const fresh = file.endsWith("index.html") || file.endsWith("sw.js") || file.endsWith(".webmanifest");
-    const hashed = /[.-][A-Za-z0-9_-]{8,}\.(js|css|woff2)$/.test(file);
+    // Nor the pack Road to the Shootout plays, which the host can change from one moment to the next.
+    const fresh = file.endsWith("index.html") || file.endsWith("sw.js") || file.endsWith(".webmanifest") || path === "/wasm/shootout/default.pack";
+    const hashed = /[.-][A-Za-z0-9_-]{8,}\.(js|css|woff2|wasm)$/.test(file);
     res.writeHead(200, {
       "content-type": TYPES[extname(file)] ?? "application/octet-stream",
       "cache-control": fresh ? "no-cache" : path.startsWith("/assets/") || (app && hashed) ? "public, max-age=31536000, immutable" : embed ? "public, max-age=300" : "public, max-age=3600",
@@ -137,7 +179,32 @@ const server = createServer(async (req, res) => {
 // and what every seat's controls did on each tick goes out.
 const sockets = new WebSocketServer({ noServer: true, maxPayload: 4096 });
 server.on("upgrade", (req, socket, head) => {
-  const match = /^\/live\/([A-Za-z0-9_-]{1,40})$/.exec(new URL(req.url ?? "/", "http://x").pathname);
+  const path = new URL(req.url ?? "/", "http://x").pathname;
+  // A device in one of the games' rooms holds a socket open at /wasm/play/<code>.
+  const game = /^\/wasm\/play\/([A-Za-z]{4})$/.exec(path);
+  if (game) {
+    return sockets.handleUpgrade(req, socket, head, (ws) => {
+      const room = games.find(game[1]!);
+      if (!room) return ws.close(4404, "There is no game with that code.");
+      const seat = room.join({ send: (data) => ws.readyState === ws.OPEN && ws.send(data), close: () => ws.close(1000) });
+      ws.on("message", (data, binary) => seat.receive(binary ? new Uint8Array(data as Buffer) : String(data)));
+      ws.on("close", () => seat.leave());
+      ws.on("error", () => seat.leave());
+    });
+  }
+  // A device at one of the meets holds a socket open at /wasm/meet/<name>.
+  const meeting = /^\/wasm\/meet\/([a-z0-9-]{1,24})$/.exec(path);
+  if (meeting) {
+    return sockets.handleUpgrade(req, socket, head, (ws) => {
+      const meet = meets.at(meeting[1]!);
+      if (!meet) return ws.close(4503, "There are as many meets going as this parlor can hold.");
+      const seat = meet.join({ send: (data) => ws.readyState === ws.OPEN && ws.send(data), close: () => ws.close(1000) });
+      ws.on("message", (data, binary) => !binary && seat.receive(String(data)));
+      ws.on("close", () => seat.leave());
+      ws.on("error", () => seat.leave());
+    });
+  }
+  const match = /^\/live\/([A-Za-z0-9_-]{1,40})$/.exec(path);
   if (!match) return socket.destroy();
   sockets.handleUpgrade(req, socket, head, (ws) => {
     const player = playerOf(new Request("http://x/", { headers: { cookie: req.headers.cookie ?? "" } }));

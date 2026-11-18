@@ -19,7 +19,7 @@ export default defineConfig({
   projects: conformance.projects,
   webServer: {
     command: "node ../server/dist/index.js",
-    env: { NODE_ENV: "production", PORT: "4180", SPADES_DB: join(tmpdir(), `parlor-server-page-${process.pid}.db`), CARDROOM_GITHUB_TOKEN: "not-a-real-token" },
+    env: { NODE_ENV: "production", PORT: "4180", SPADES_DB: join(tmpdir(), `parlor-server-page-${process.pid}.db`), CARDROOM_GITHUB_TOKEN: "not-a-real-token", CARDROOM_ADMIN_TOKEN: "let-the-host-in", CARDROOM_GITHUB_CLIENT_ID: "test-client", CARDROOM_GITHUB_CLIENT_SECRET: "test-secret", CARDROOM_ADMIN_GITHUB: "test-admin", CARDROOM_PROMOTE_TOKEN: "test-token", CARDROOM_PROMOTE_API: "http://127.0.0.1:4181" },
     url: "http://localhost:4180/healthz",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

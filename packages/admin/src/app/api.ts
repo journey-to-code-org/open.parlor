@@ -140,12 +140,27 @@ export interface Overview {
   bots?: { workers: number; queued: number; running: number; thinks: number; averageMs: number; worstMs: number; abandoned: number } | null;
 }
 
+/** Road to the Shootout's pack: the host's own, published from the workshop, or none (the one the game came with). */
+export interface ShootoutPack {
+  published: { name: string; size: number; at: number } | null;
+}
+
 export interface LogEntry {
   id: string;
   at: number;
   action: string;
   target: string;
   note: string;
+}
+
+/** A game whose numbers the host may change: what shape they take, and what has been saved. */
+export interface TunableGame {
+  id: string;
+  name: string;
+  shape: import("./tuning/shape").Shape;
+  saved: { version: number; values: Record<string, unknown>; at: number };
+  /** The pull request last opened for these numbers, if one has been. */
+  promoted?: { version: number; url: string; number: number; branch: string; at: number } | null;
 }
 
 export class ApiError extends Error {
@@ -195,6 +210,20 @@ export class Api {
     const name = /filename="([^"]+)"/.exec(response.headers.get("content-disposition") ?? "")?.[1] ?? "cardroom-backup.db";
     return { name, file: await response.blob() };
   }
+  shootout = () => this.send<ShootoutPack>("/shootout");
+  resetShootout = () => this.send<ShootoutPack>("/shootout/reset", {});
+  /** Publish a pack file: what is sent is the file itself. */
+  async publishShootout(file: Blob): Promise<ShootoutPack> {
+    let response: Response;
+    try {
+      response = await fetch(`${BASE}/shootout/pack`, { method: "POST", headers: { authorization: `Bearer ${this.token()}`, "content-type": "application/octet-stream" }, body: file, credentials: "omit", cache: "no-store" });
+    } catch {
+      throw new ApiError("Couldn't reach the parlor. Check your connection and try again.", 0);
+    }
+    const answer = (await response.json().catch(() => null)) as (ShootoutPack & { error?: string }) | null;
+    if (!response.ok || !answer) throw new ApiError(answer?.error ?? `The parlor answered ${response.status}.`, response.status);
+    return answer;
+  }
   tables = () => this.send<{ tables: Table[] }>("/tables").then((r) => r.tables);
   table = (id: string) => this.send<{ table: Table; chat: ChatLine[] }>(`/tables/${id}`);
   players = () => this.send<{ players: Player[] }>("/players").then((r) => r.players);
@@ -211,6 +240,11 @@ export class Api {
   deleteHouse = (slug: string) => this.send(`/houses/${slug}/delete`, {});
   games = () => this.send<Catalogue>("/games");
   setGames = (change: { order?: string[]; off?: string[]; watching?: boolean }) => this.send<Catalogue>("/games", change);
+
+  tunables = () => this.send<{ games: TunableGame[]; canPromote?: boolean }>("/tunables");
+  setTunables = (game: string, values: unknown) => this.send<TunableGame["saved"]>(`/tunables/${game}`, { values });
+  promoteTunables = (game: string) => this.send<NonNullable<TunableGame["promoted"]>>(`/tunables/${game}/promote`, {});
+  resetTunables = (game: string) => this.send<TunableGame["saved"]>(`/tunables/${game}/reset`, {});
 
   closeTable = (id: string, reason: string) => this.send(`/tables/${id}/close`, { reason });
   unseat = (id: string, seat: number) => this.send(`/tables/${id}/unseat`, { seat });

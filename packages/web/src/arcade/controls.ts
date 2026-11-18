@@ -195,7 +195,7 @@ export function controlsFor(game: ArcadeGameId, options: { autofire: () => boole
       throw new Error("Zubra Quest is played on its own screen");
     case "mountainroad":
     case "pinkslips":
-      // It has a screen of its own (drive/Strip.tsx), with a pedal and a shifter.
+      // It is a game of its own, compiled to WebAssembly (drive/Shootout.tsx), with its own controls.
       throw new Error("Pink Slips is driven from its own screen");
   }
 }

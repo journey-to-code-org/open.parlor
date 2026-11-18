@@ -54,18 +54,20 @@ const REPO = "https://github.com/journey-to-code-org";
 const PAGES = [
   { id: "element", name: "No framework", does: "The components as plain custom elements, driven by the DOM. The baseline the others are measured against." },
   { id: "react", name: "React", does: "In the parlor: every game table, the setup screens, houses and tournaments." },
-  { id: "vue", name: "Vue", does: "In the parlor: the front page, where you choose a game." },
-  { id: "svelte", name: "Svelte", does: "In the parlor: the card designer." },
-  { id: "solid", name: "Solid", does: "In the parlor: the page for watching a game." },
-  { id: "angular", name: "Angular", does: "In the parlor: the admin app." },
+  { id: "vue", name: "Vue", does: "In the parlor: the front page, where you choose a game, and Read the Room's answer form." },
+  { id: "svelte", name: "Svelte", does: "In the parlor: the card designer, and the Mini Golf course and bowling lane editors, inside the React app." },
+  { id: "solid", name: "Solid", does: "In the parlor: the page for watching a game, Read the Room's board and Delbie's Stockroom's screen." },
+  { id: "angular", name: "Angular", does: "In the parlor: the admin app, with Angular's router (a page per part, loaded when opened) and reactive forms over the components." },
   { id: "preact", name: "Preact", does: "Not in the parlor. Here because Zubra supports it, and it is the one page that found something in its first run." },
   { id: "lit", name: "Lit", does: "Not in the parlor. Here for what the others don't do: the whole fixture sits inside a shadow root." },
 ];
 
 /** What the checks have found so far, newest first. */
 const FOUND = [
+  { what: "A tab panel that arrived later, or changed its tab, was never set up", where: "Found by the admin app, whose router changes the tab and the panel in the same pass: every page after the first was blank. Fixed in zubra-ui; a check now adds and moves a panel in all eight pages.", links: [["zubra-ui#23", `${REPO}/zubra-ui/issues/23`], ["zubra-ui#24", `${REPO}/zubra-ui/pull/24`]] },
+  { what: "A Svelte file in a React app got React's wrapper", where: "Found by the Mini Golf and bowling editors, Svelte inside the React app. Fixed in Zubra, not released yet; the editors ask for the element until then.", links: [["zubra#377", `${REPO}/zubra/issues/377`], ["zubra#378", `${REPO}/zubra/pull/378`]] },
   { what: "Preact 11 couldn't reorder a keyed list inside a component", where: "Preact, in browsers that have moveBefore(). A Zubra host passed insertBefore on to its slots but not moveBefore. Fixed in Zubra, not released yet; a known difference here until the parlor has the fix.", links: [["zubra#370", `${REPO}/zubra/issues/370`], ["zubra#372", `${REPO}/zubra/pull/372`]] },
-  { what: "A disabled Angular form left three controls usable", where: "The switch, the colour swatches and the segmented control had no disabled state. Fixed in the parlor's copies; upstream the switch has a fix waiting and the rest are open.", links: [["zubra-ui#20", `${REPO}/zubra-ui/issues/20`], ["zubra-ui#22", `${REPO}/zubra-ui/issues/22`]] },
+  { what: "A disabled Angular form left controls usable", where: "Angular's forms put disabled on the element, and the switch, the colour swatches, the segmented control and six more controls had no disabled state. Fixed in zubra-ui and in the parlor's copies.", links: [["zubra-ui#20", `${REPO}/zubra-ui/issues/20`], ["zubra-ui#21", `${REPO}/zubra-ui/pull/21`], ["zubra-ui#22", `${REPO}/zubra-ui/issues/22`], ["zubra-ui#26", `${REPO}/zubra-ui/pull/26`]] },
   { what: "Named-slot elements stayed after the framework removed them", where: "Vue, Svelte and Solid. Fixed in Zubra 5.15.0.", links: [["zubra#269", `${REPO}/zubra/issues/269`]] },
   { what: "Signal text as a component's direct child never updated", where: "Solid. Fixed in Zubra 5.15.0.", links: [["zubra#268", `${REPO}/zubra/issues/268`]] },
   { what: "A child that looked like the component's own root was taken for its rendered markup", where: "Fixed in Zubra 5.15.0.", links: [["zubra#267", `${REPO}/zubra/issues/267`]] },
@@ -145,12 +147,14 @@ const how = () => [
   p("Nothing in a framework's page works around a difference. If Vue needs something React doesn't, that is a finding, and it goes to Zubra as an issue instead of into the page as a patch."),
   el("h2", {}, "When something differs"),
   p("The check is listed as a known difference with the issue it was reported in, so the run stays green and the gap stays visible. When Zubra fixes it, the check passes, the run says it expected a failure, and the entry and any workaround in the parlor come out."),
+  el("h2", {}, "Beyond the fixtures"),
+  p("A fixture misses what a real screen hits, so the parlor also gives each framework a real part of the app and tests it in the same three browsers against the parlor's own server: the Mini Golf and bowling editors (Svelte inside the React app), the admin app (Angular, routed, with reactive forms), and /games, every game on one page, which the parlor's server draws from the same components and which works with JavaScript off, a filter and a form to ask for a game included (it needs the server, so it isn't on this copy of the parlor). Those tests aren't counted here; they run beside these on every pull request."),
   el("h2", {}, "Where it lives"),
   p("The suite is ", link(`${REPO}/open.parlor/tree/main/packages/conformance`, "packages/conformance"), " in the parlor's repository. It runs on every pull request, and this page is rebuilt from the run each time the parlor is published. This page is itself made of the components it reports on."),
 ];
 
 const found = () => [
-  p("The suite earns its place by what it catches. Each of these was found by a check, reported, and fixed or tracked."),
+  p("The suite earns its place by what it catches, and so do the parts of the parlor written in each framework. Each of these was found by a check or by one of those parts, reported, and fixed or tracked."),
   el(
     "ul",
     { class: "found" },

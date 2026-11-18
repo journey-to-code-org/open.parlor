@@ -89,6 +89,10 @@ too), and one that draws any table sport on a canvas (Mini Golf is the first).
 | Shut the Box | 1 to 6 | A dice game: roll and shut the tiles that add up to it, until a roll can't be made; what's left open is your score. Nine tiles or twelve, one round or several, or alone for a score |
 | Liar's Dice | 2 to 6 | A dice game: everyone's dice are hidden. Bid how many of a number are under all the cups, or call the last bidder a liar; lose a call, lose a die. Ones wild or not, three to five dice each |
 | Backgammon | 2 | A board game: race your checkers home and hit theirs on the way. A friendly game, a money game with the doubling cube, a match to 3, 5 or 7 points, or Nackgammon |
+| Mancala | 2 | A board game (Kalah): sow a pit of seeds round the board, one a pit. End in your store to go again; end in your own empty pit to capture what is across. Three to six seeds a pit, one game or a match |
+| Dominoes | 2 to 4 | The double-six set: lay tiles end to end, matching numbers, and play out your hand. Draw, Block or All Fives (ends that add up to a multiple of five score), to 50, 100, 150 or 200 |
+| Ludo | 2 to 4 | A race round a cross-shaped board: roll a six to come out, move your tokens round the track and up your home column, and send anyone you land on back to their yard. Four tokens or two, with or without safe stars |
+| Chinese Checkers | 2 to 6 | A star of 121 holes: move a peg one hole, or jump over a peg and keep jumping, to get all ten into the point across. Played to 50, 100 or 200 turns each |
 | Mini Golf | 1 to 6 | A table sport: nine holes round a garden (a drainpipe, a pond, toadstools that kick, a mole's tunnels), in turn with balls that knock into each other, or everyone at once |
 
 Poker and Blackjack are for chips only: everyone starts with the same stack, and the chips are
@@ -124,9 +128,9 @@ connection to come back.
 
 A game with nothing hidden can also be **shared on one device**: on its setup screen, *On this
 device* seats two or more of you (computer players take any seats left), and the screen turns to
-whoever's move it is. That is Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon,
-Yacht, Pig, Ten Thousand, Ship, Captain, Crew, Shut the Box, Memory, Hangman, Mini Golf, Bowling, Billiards and Carrom. A game with a hand to hide (every
-turn-based card game, Combat, Liar's Dice, Criss-Crosswords, Secret Word, Anagrams) is **passed round** instead:
+whoever's move it is. That is Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon, Mancala, Ludo, Chinese Checkers,
+Yacht, Pig, Ten Thousand, Ship, Captain, Crew, Shut the Box, Memory, Hangman, Mini Golf, Bowling, Billiards, Carrom, Shuffleboard, Crokinole and Flick Football. A game with a hand to hide (every
+turn-based card game, Dominoes, Combat, Liar's Dice, Criss-Crosswords, Secret Word, Anagrams) is **passed round** instead:
 between people the screen is covered ("Pass to Grammi") until the next person taps. Games played at
 once (Speed, Slapjack, War, Word Hunt, the Mahjongs) can't be shared on one device.
 
@@ -450,12 +454,13 @@ The game engine and the rooms live in their own repositories and come in from np
 | [`@journey-to-code/games`](https://github.com/journey-to-code-org/open.games/tree/main/packages/games) | The game kit and the fifty-four games built on it: the `TableGame` engine contract, the card, board and table-sport kits, and the games |
 | [`@journey-to-code/rules`](https://github.com/journey-to-code-org/open.games/tree/main/packages/rules), [`palace`](https://github.com/journey-to-code-org/open.games/tree/main/packages/palace), [`physics`](https://github.com/journey-to-code-org/open.games/tree/main/packages/physics), [`decks`](https://github.com/journey-to-code-org/open.games/tree/main/packages/decks) | Spades and the computer players' personas, Palace, the deterministic physics for the table sports, and card designs |
 | [`@journey-to-code/rooms`](https://github.com/journey-to-code-org/open.rooms) | Turn-based rooms over `@zubra/sync`: seats, server-decided moves, private views, bots |
-| [`packages/server`](packages/server) | The server: every game's rooms, houses, challenges, tournaments, the lobby, the sync log and the web app. It also draws one page itself, `/games` (below) |
+| [`packages/server`](packages/server) | The server: every game's rooms, houses, challenges, tournaments, the lobby, the sync log and the web app. It also draws two pages itself, `/games` and `/daily` (below) |
 | [`packages/web`](packages/web) | The app (React, with the game chooser in Vue): the card table, the board table, the word table and the canvas table for table sports, setup screens, houses, practice |
 | [`packages/designer`](packages/designer) | The card designer (Svelte): draw a deck, keep it or share it, play with it |
 | [`packages/courses`](packages/courses) | Mini Golf courses and bowling lanes people make: painted on a grid, checked, and turned into a hole or a lane the game plays |
 | [`packages/watch`](packages/watch) | The watch page (Solid): the tables playing now, and tables of computer players to learn from |
-| [`packages/admin`](packages/admin) | The admin app (Angular): the host moderates tables, players, shared designs and shared golf courses |
+| [`packages/wasm`](packages/wasm) | Games compiled to WebAssembly, at `/wasm/`. The first is Delbie's Doomsday, a shooter on the open-source Doom engine with twelve levels of its own laid over Freedoom, alone or up to four together with others watching; the server only passes the players' commands along. Where there is no server, one device hosts for the others on the same wifi. With an editor (Svelte) that swaps the game's pictures and sounds for your own and changes its levels: what is placed in them, and their walls and rooms, rebuilt by a node builder that is also compiled to WebAssembly. Its engine is GPL-2.0: see the package's README |
+| [`packages/admin`](packages/admin) | The admin app (Angular): the host moderates tables, players, shared designs and shared golf courses. A page per part at its own address (`/admin/tables/<id>`, `/admin/tables?show=open`), loaded when opened; reactive forms over the Zubra fields and switches |
 | [`packages/conformance`](packages/conformance) | One fixture of the components in every framework, and one set of browser tests run against them all |
 | [`packages/ui`](packages/ui) | Components in Zubra: our own (cards, seats), the ones copied from zubra-ui, and the `<card-room>` embed |
 
@@ -478,8 +483,23 @@ drawn with the answer once; with it on the post is a fetch and the page doesn't 
 parlor already has is pointed to; anything else goes to the same relay as the app's own sheet, with
 its limits and its block list.
 
+**The daily sudoku** (`/daily`, [`sudoku.ts`](packages/server/src/sudoku.ts),
+[`daily-sudoku.zb`](packages/server/pages/daily-sudoku.zb)) is the same machinery with a grid of real
+inputs. A puzzle is its date (seeded, changing at midnight in New York), always has exactly one
+solution, and gets harder through the week by having fewer clues. The page is given the clues and
+never the answer: "Check" posts the 81 inputs to a server function that compares them with the
+answer and says solved, wrong (how many) or still open (how many), and nothing else. With JavaScript
+off the post comes back to the same day with what was typed and the verdict, once; with it on the
+grid follows the arrow keys, marks repeats in a row, column or box as they are typed, keeps the grid
+for the day in the browser, and checks without reloading. Past days are at `/daily?d=YYYY-MM-DD`.
+The clue count is the only dial for "hard", so a Saturday puzzle is fewer clues, not necessarily
+harder techniques.
+
 One set of Zubra components serves five frameworks: React and Vue in the parlor, Svelte in the
-designer, Solid on the watch page and Angular in the admin app.
+designer and in the Mini Golf course and bowling lane editors (Svelte inside the React app,
+`packages/web/src/golf/`), Solid on the watch page and in the web app's islands (Read the Room's
+board, and the screens for hosting and joining a table on this wifi, `packages/web/src/solid/`),
+and Angular in the admin app.
 
 The server decides every move. Each player's browser only ever receives its own view of a table
 (its own hand), never the whole game; moves the rules don't allow are refused on the server.
@@ -772,7 +792,7 @@ checks no card reaches a watcher that any seat can't see.
 ## Moderating the parlor
 
 Whoever runs the server can look after it from the admin app at `/admin/`. It's off until the
-server has an admin token (see **Settings**); sign in with that token.
+server has an admin token (see **Settings**); sign in with that token, or with GitHub if the server has an OAuth app (the *Sign in with GitHub* button on the door; the token still works beside it).
 
 | | |
 | --- | --- |
@@ -780,9 +800,24 @@ server has an admin token (see **Settings**); sign in with that token.
 | **Players** | Everyone who's sat down, joined a house or saved a design. Blocking someone stops them sitting, playing, chatting, opening houses and sharing designs; tables they're at carry on without them. Unblocking undoes it. |
 | **Houses** | Every house and its members. Rename a house (its invite link stays the same), remove a member, hand it to a new owner, or delete it. |
 | **Games** | Which games the parlor offers and in what order: the front page follows. Switching a game off stops new tables of it everywhere (tables already going carry on). Also the switch for whether tables with players can be watched (the table, never a hand). |
+| **Tuning** | The numbers a game lets its host change without a release: Delbie's Back Room's hit points, healing, each card's cost and effects and each foe's hit points and attacks, and the daily sudoku's clues for each weekday. The form is built from the game's own ranges (a mistake shows where it was made and Save waits), a number left empty is the game's own, and *Back to the game's own numbers* undoes it all. Each save is a new version in the activity log. |
 | **Card designs** | Every shared deck. Hiding one takes it out of the gallery; its maker keeps it and sees your reason. |
 | **Courses & lanes** | Every shared Mini Golf course (with a plan of its first hole) and bowling lane (with its plan). Hiding one takes it out of the game's list and stops new tables on it (tables already playing it finish); its maker keeps it and sees your reason. |
 | **Activity** | Everything done from the admin app, newest first. |
+
+**Tuning a game's numbers** (the **Tuning** page above). A game can let its host change some of its numbers without a release
+(Delbie's Back Room's cards and foes, the daily sudoku's clues for each weekday). What is kept is a
+sparse override with a version, replaced as a whole and checked against that game's ranges
+(`packages/server/src/tunables.ts`): a game reads `GET /tunables/<game>` when it starts and merges it
+over its own numbers; `GET /moderation/tunables` lists what can be tuned, `POST
+/moderation/tunables/<game> { values }` saves (a problem comes back as 422 and nothing changes) and
+`POST /moderation/tunables/<game>/reset` goes back to the game's own numbers. Every change is in the
+activity log. The version goes up on each, so a replay made on other numbers can say which it needs.
+
+**Inspector** (the **Inspector** tab). A Back Room run is its seed, the version of the numbers it was played on and every command given, and the engine is deterministic, so that is enough to play it again. The game page's *Copy run code* button gives the run as text (`bkr1.` and a URL-safe base64 of the JSON: `packages/wasm/src/battler/record.ts`). Pasting it into the Inspector plays it back in the browser tab with the game's own rules (the admin imports the very files the game is built from), a move at a time: what was dealt, what was played, patience, block, energy, the foes, and a **state hash** after each move (two runs with the same hash are in the same place with the same cards in the same order, so two people can compare). A run whose move the game wouldn't take (so the code was changed, or it was played on other numbers) stops there and says which. The parlor keeps only the latest version of the host's numbers: a run from another version is played on the current ones, with a warning. Nothing is sent to the server; the run code is read in the tab. Only Back Room has a run record so far; the server's own table games keep a summary, not a replayable log.
+
+**Promoting numbers into the code.** A live override is a trial. *Open a pull request* (on the Tuning page, when `CARDROOM_PROMOTE_TOKEN` is set) writes the saved numbers into the game's promoted file (`packages/wasm/src/battler/promoted.json`, `packages/server/src/promoted/sudoku.json`) on a new `tuning/...` branch and opens a **draft** pull request; CI checks the file against the game's ranges, and merging is a person's choice on GitHub. The game's own numbers are the card file with the promoted file laid over it, and a live override goes over those, so once it is merged and deployed, put the game's numbers back on the Tuning page. One pull request per saved version. The token is the server's: the browser never sees it, and the file written is always the game's own from a server-side table, never one the request names.
+The sudoku's clues apply from the day after they were saved (in New York time), so the puzzle somebody has open is never changed under them; only the latest change is kept, so changing it again also changes the days since the first change.
 
 Players are browsers, not accounts: a player is a cookie, and a name is whatever they typed when
 they sat down. The admin app never sees the cookies, only a reference that's enough to block
@@ -819,13 +854,14 @@ open.blog post, a WordPress HTML block, a Squarespace code block), with the parl
 | Attribute | |
 | --- | --- |
 | `server` | The parlor's address. Required. |
-| `game` | Any game that can be played against the computer, by its id (`hearts`, `chess`, `minigolf`, `secretword`…), or leave it out to offer Spades and Palace. |
+| `game` | Any game that can be played against the computer, or any arcade game, by its id (`hearts`, `chess`, `minigolf`, `secretword`, `airhockey`…), or leave it out to offer Spades and Palace. Draw & Guess is the one game it can't deal: computer players can't draw. |
 | `challenge` | Your challenge link's code (the end of `?challenge=…`), for a "Challenge Grammi" button. |
 | `who` | The name on that button. |
 
 **Play here** deals a practice game against the computer inside the page. **Challenge** and
 family tables open the parlor in a new tab: browsers don't let a game in a frame on someone
-else's site keep you signed in, and the parlor is where your houses and tables live.
+else's site keep you signed in, and the parlor is where your houses and tables live. An arcade
+game is played against the game itself, so it gets **Play here** and a link to the game in the parlor.
 
 The build also writes a WordPress plugin and a Shopify app block to `packages/web/dist/embed`
 (see its README).
@@ -837,11 +873,18 @@ section**, with a form and no code ([ADR 0408](https://github.com/journey-to-cod
 The web build writes `<card-room>` in that shape to `packages/web/dist/embed/openblog/` (also served at
 `/embed/openblog/`):
 
-1. Copy `card-room.js`, `card-room.zb` and `card-room.css` into the theme's `components/` folder.
+1. Copy `card-room.js`, `card-room.zb`, `card-room.css` and `card-room.games.json` into the theme's
+   `components/` folder.
 2. Add the `components` entry from `theme-components.json` to the theme's `theme.json`, and list
    `components/card-room.css` under its `stylesheets`. With seasons, put it on the theme they extend.
-3. In Admin: **Landing page → Add a section → Parlor**, then the parlor's address and, for a
+3. In Admin: **Landing page → Add a section → Parlor**, then the parlor's address, the game and, for a
    Challenge button, your challenge link code.
+
+The form's games come from `card-room.games.json` (the game setting's `choicesFrom`, open.blog
+[ADR 0433](https://github.com/journey-to-code-org/open.blog/blob/main/docs/adr/0433-a-choice-setting-may-read-more-choices-from-a-file-of-the-themes-own.md)):
+when the parlor gains a game, replace that one file. The widget itself asks the parlor for its
+list (`/embed/games.json`) when it starts, so the copied `card-room.js` plays a new game without
+being copied again.
 
 With the `zubra` command installed where the site builds, open.blog renders the widget ahead, so
 readers without JavaScript still see it and its link to the parlor.
@@ -877,6 +920,11 @@ docker run -p 8787:8787 -v spades:/data cardroom
 | `CARDROOM_GITHUB_REPO` | Where reports are filed, as `owner/name`. Default `journey-to-code-org/open.parlor`. |
 | `CARDROOM_BLOCKED_NAMES` | Optional: more words that names and chat at open tables may not contain, comma-separated |
 | `CARDROOM_ADMIN_TOKEN` | Turns on the admin app at `/admin/`: the token its host signs in with. Make it long and keep it secret (`openssl rand -hex 24`) |
+| `CARDROOM_GITHUB_CLIENT_ID`, `CARDROOM_GITHUB_CLIENT_SECRET` | Optional: sign in to the admin app with GitHub. An OAuth app (GitHub, Settings, Developer settings, OAuth Apps) with the callback `https://<your parlor>/moderation/github/callback`. No scopes: the parlor only asks who you are. Needs the next setting too |
+| `CARDROOM_ADMIN_GITHUB` | The GitHub logins that may sign in, comma-separated (`mnichols08`). Anyone else with a real GitHub account is turned away |
+| `CARDROOM_SESSION_SECRET` | Optional: signs the admin's GitHub sessions (twelve hours each). Without it the OAuth app's secret does, so changing that secret ends them all. Sessions are kept nowhere on the server, so a restart signs nobody out |
+| `CARDROOM_PROMOTE_TOKEN` | Optional: lets the Tuning page open a draft pull request with a game's saved numbers (*Open a pull request*). A fine-grained personal access token for the one repository, with Contents and Pull requests set to read and write, and nothing else. It stays on the server; the pull request is opened from a new branch and never pushes to the main branch. It is not the *Report a problem* token above: that one only needs to open issues, and this one is the more powerful, so they are kept apart |
+| `CARDROOM_PROMOTE_BASE` | The branch those pull requests are for. Default `main`. They go to the repository in `CARDROOM_GITHUB_REPO` above |
 | `CARDROOM_BOT_DELAY` | Fixed thinking time for computer players, in milliseconds (handy for testing) |
 | `CARDROOM_BOT_WORKERS` | Worker threads for the computer players' heavy thinking (see **How computer players think**). Default: one per processor but one, from 1 to 4. `0` for none: everything on the main thread. |
 | `CARDROOM_BOT_BUDGET` | How long, in milliseconds, a game that thinks by the clock is told it may take over a move. Default 2000. |
@@ -885,6 +933,7 @@ docker run -p 8787:8787 -v spades:/data cardroom
 | `CARDROOM_DESIGNER` | Where the built card designer is, if not `packages/designer/dist` |
 | `CARDROOM_WATCH` | Where the built watch page is, if not `packages/watch/dist` |
 | `CARDROOM_ADMIN` | Where the built admin app is, if not `packages/admin/dist/browser` |
+| `CARDROOM_WASM` | Where the built WebAssembly games are, if not `packages/wasm/dist` |
 | `PORT` | The port to listen on (8787; Railway sets its own) |
 
 The older `SPADES_*` names for these still work; `CARDROOM_*` wins if both are set. Keep the

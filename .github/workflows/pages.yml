@@ -35,6 +35,11 @@ jobs:
       - run: npm run build -w @open-parlor/watch && cp -r packages/watch/dist packages/web/dist/watch
         env:
           BASE_PATH: /${{ github.event.repository.name }}/watch/
+      # The WebAssembly games go along, under wasm/. The build fetches the game's data (Freedoom)
+      # from its release on GitHub; the page and the data are all it needs, so it plays without a server.
+      - run: npm run build -w @open-parlor/wasm && cp -r packages/wasm/dist packages/web/dist/wasm
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/wasm/
       # How the parlor is built, under conformance/: the same Zubra components in every framework,
       # the checks run against them here in the runner's Chrome, and a page of how they went. A
       # failing check doesn't stop the parlor being published; the page says what failed.
