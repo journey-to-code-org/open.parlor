@@ -11,7 +11,7 @@ and the Lit page puts the whole fixture inside a shadow root.
 
 ```sh
 npm run build -w @open-parlor/conformance        # the eight pages
-npm run conformance -w @open-parlor/conformance  # 18 checks × 8 frameworks, and each framework's own features, in Chrome
+npm run conformance -w @open-parlor/conformance  # 19 checks × 8 frameworks, and each framework's own features, in Chrome
 npm run conformance:engines -w @open-parlor/conformance  # the same in Chrome, Firefox and WebKit (CI runs this)
 npm run dev -w @open-parlor/conformance          # http://localhost:4179/react/ and friends (not Angular)
 ```
@@ -64,13 +64,16 @@ names that start `f-`. A check runs in the frameworks that have the feature:
 | Props handed over as one object | spread | `v-bind` | spread | spread | |
 | A component leaves with a transition | | `Transition` | `transition:fade` | | `animate.leave` |
 | A component kept off the page keeps what was typed | `Activity` | `KeepAlive` | | | |
-| Forms | | `v-model.trim` | | | reactive forms: values both ways, validity and touched, `disable()`, `reset()`, over the text field, switch, select, segmented control and swatches |
+| Forms | | `v-model.trim` | | | reactive forms: values both ways, validity and touched, `disable()`, `reset()`, over the text field, switch, select, segmented control and swatches; template-driven forms: `ngModel`, `ngForm`, `required`, `[disabled]` |
+| Waiting for data | | `Suspense` with an async setup | | `createResource` read in `Suspense` | |
+| Reaching the component | | a template ref (the component's `element`) | | a store's change reaches only the component it feeds (`createStore`) | |
 | Only there | | `v-show` | `use:` actions, `#key`, snippets | `Dynamic` | `ng-content` in the page's own wrapper |
 
-That is 45 checks: 7 in React, 10 in Vue, 9 in Svelte, 7 in Solid and 12 in Angular. Preact has 6
+That is 50 checks: 7 in React, 12 in Vue, 9 in Svelte, 9 in Solid and 13 in Angular. Preact has 6
 of them (keys, context, `class` and `style`, `createPortal`, `lazy` and `Suspense`, spread) and Lit
 has 6 (`repeat`, `@lit/context`, `classMap` and `styleMap`, `until`, `cache`, `keyed`), which makes
-57. With the 144 component checks the suite is 201, each run in three browsers.
+62. With the 152 component checks (19 on each of the eight pages) the suite is 214, each run in
+three browsers.
 
 ## Browsers
 
@@ -120,15 +123,14 @@ CI runs them in all three browsers.
 
 ## Known differences
 
-One, on Zubra 5.22.0. Preact 11 can't reorder a keyed list inside a component
+None, on Zubra 5.23.0: every check passes in all three browsers.
+
+The last was Preact 11 reordering a keyed list inside a component
 ([zubra#370](https://github.com/journey-to-code-org/zubra/issues/370)): it moves children with
-`moveBefore()` where the browser has it, and a Zubra host passes `insertBefore` on to its slots
-but not `moveBefore`, so the move throws and the list keeps its old order. The check is expected
-to fail only in browsers that have `moveBefore()`; elsewhere Preact uses `insertBefore`, which
-works. It is fixed upstream ([zubra#372](https://github.com/journey-to-code-org/zubra/pull/372)) but not
-in a release yet: when the parlor moves to a Zubra that has it, the check passes, the run says it
-expected a failure, and the entry comes out of `KNOWN`. Everything else passes: the 18 component checks in all eight frameworks, and the feature
-checks in the frameworks that have each feature.
+`moveBefore()` where the browser has it, and a Zubra host passed `insertBefore` on to its slots
+but not `moveBefore`, so the move threw and the list kept its old order. Fixed in
+[zubra#372](https://github.com/journey-to-code-org/zubra/pull/372), released in 5.23.0, and out of
+`KNOWN` since.
 
 `KNOWN` in each spec is where a difference goes when one turns up: the check's title and the
 Zubra issue it was reported in. A listed check is expected to fail, so the run stays
@@ -142,8 +144,8 @@ the admin app and the parlor.
 The first run of the feature checks found one, in the components rather than in Zubra: a
 disabled reactive form disabled `text-field` and `select-field` but left `toggle-switch`,
 `color-swatches` and `segmented-control` usable, because they had no disabled state. The parlor's
-copies have one now. Upstream it is zubra-ui#20 (the switch, fixed in zubra-ui#21) and zubra-ui#22
-(the rest).
+copies have one now. Upstream it was zubra-ui#20 (the switch, fixed in zubra-ui#21) and zubra-ui#22
+(the rest, fixed in zubra-ui#26).
 
 ## Adding a check
 

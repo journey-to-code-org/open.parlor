@@ -1,0 +1,169 @@
+{
+  "maxHp": 40,
+  "rest": 8,
+  "cards": {
+    "wrench": {
+      "name": "Wrench",
+      "cost": 1,
+      "damage": 6
+    },
+    "rag": {
+      "name": "Shop Rag",
+      "cost": 1,
+      "block": 5
+    },
+    "price-gun": {
+      "name": "Price Gun",
+      "cost": 1,
+      "vulnerable": 2
+    },
+    "screwdriver": {
+      "name": "Screwdriver",
+      "cost": 0,
+      "damage": 3
+    },
+    "hacksaw": {
+      "name": "Hacksaw",
+      "cost": 1,
+      "damage": 4,
+      "hits": 2
+    },
+    "mallet": {
+      "name": "Dead-Blow Mallet",
+      "cost": 2,
+      "damage": 14
+    },
+    "gasket": {
+      "name": "Gasket",
+      "cost": 1,
+      "block": 8
+    },
+    "gloves": {
+      "name": "Work Gloves",
+      "cost": 0,
+      "block": 3,
+      "draw": 1
+    },
+    "catalog": {
+      "name": "Parts Catalog",
+      "cost": 1,
+      "draw": 2
+    },
+    "toolbox": {
+      "name": "Toolbox",
+      "cost": 2,
+      "block": 14
+    },
+    "air-gun": {
+      "name": "Air Impact Gun",
+      "cost": 2,
+      "damage": 5
+    },
+    "torque": {
+      "name": "Torque Wrench",
+      "cost": 2,
+      "damage": 10,
+      "vulnerable": 1
+    },
+    "coffee": {
+      "name": "Break Room Coffee",
+      "cost": 0,
+      "energy": 2
+    },
+    "first-aid": {
+      "name": "First-Aid Kit",
+      "cost": 2,
+      "block": 4,
+      "heal": 7
+    }
+  },
+  "foes": {
+    "rat": {
+      "name": "Stockroom Rat",
+      "hp": 18,
+      "pattern": [
+        {
+          "kind": "attack",
+          "amount": 7
+        },
+        {
+          "kind": "attack",
+          "amount": 9
+        },
+        {
+          "kind": "block",
+          "amount": 6
+        }
+      ]
+    },
+    "customer": {
+      "name": "Impatient Customer",
+      "hp": 13,
+      "pattern": [
+        {
+          "kind": "attack",
+          "amount": 6
+        },
+        {
+          "kind": "attack",
+          "amount": 8
+        }
+      ]
+    },
+    "backorder": {
+      "name": "Backorder Slip",
+      "hp": 40,
+      "pattern": [
+        {
+          "kind": "block",
+          "amount": 10
+        },
+        {
+          "kind": "attack",
+          "amount": 15
+        },
+        {
+          "kind": "attack",
+          "amount": 9
+        }
+      ]
+    },
+    "pup": {
+      "name": "Rat Pup",
+      "hp": 9,
+      "pattern": [
+        {
+          "kind": "attack",
+          "amount": 5
+        },
+        {
+          "kind": "attack",
+          "amount": 6
+        }
+      ]
+    },
+    "king": {
+      "name": "The Rat King",
+      "hp": 78,
+      "pattern": [
+        {
+          "kind": "attack",
+          "amount": 12
+        },
+        {
+          "kind": "block",
+          "amount": 16
+        },
+        {
+          "kind": "attack",
+          "amount": 22
+        },
+        {
+          "kind": "attack",
+          "amount": 6,
+          "hits": 3
+        }
+      ]
+    }
+  }
+}

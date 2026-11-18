@@ -1,0 +1,50 @@
+/* This page: the game, filling what the footer leaves. The game's own styles are in shooter/shooter.css. */
+:root {
+  color-scheme: dark;
+  font: 16px/1.45 system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: #0b0d0c;
+  color: #e9e4d8;
+  overscroll-behavior: none;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: #e6b84a;
+  text-underline-offset: 3px;
+}
+
+.about {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  justify-content: space-between;
+  padding: 0.5rem max(0.9rem, env(safe-area-inset-left));
+  color: #9a968c;
+  font-size: 0.8rem;
+}
+
+/* A phone on its side has no height to spare for the footer. */
+@media (max-height: 480px) {
+  .about {
+    display: none;
+  }
+}
+
+.about a:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}

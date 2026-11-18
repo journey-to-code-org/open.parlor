@@ -1,23 +1,28 @@
-import { isLiveArcade } from "./arcade/ArcadeTable";
-import { ARCADE_LIST } from "./GamePicker";
+// A family's own corner. React keeps what's shared with table setup (the game picker, the rules
+// editors, starting a table) and the house's settings; the lists are Vue islands of the parlor's
+// parts (house/*.vue): the invite, the tables, the tournaments, the family and the standings.
+import { validatePalaceRules, type PalaceRules } from "@journey-to-code/palace";
 import { validatePreset, type RulePreset } from "@journey-to-code/rules";
+import { isKitGame } from "@journey-to-code/games";
 import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
+import { useCallback, useEffect, useState } from "react";
+import { GamePicker } from "./GamePicker";
 import { HouseAiBlock } from "./HouseAi";
 import { HouseChatBlock } from "./HouseChat";
-import { HouseDeckPicker } from "./TableDeck";
-import { useCallback, useEffect, useState } from "react";
-import { validatePalaceRules, type PalaceRules } from "@journey-to-code/palace";
-import { GamePicker } from "./GamePicker";
-import { HouseError, houses, inviteLink, type House, type HouseTable, type PalaceStandings, type Standings } from "./housesApi";
-import { PalaceRulesFields, palaceSummary } from "./palace/PalaceRules";
-import { NotifyButton } from "./NotifyButton";
-import { NewTournament } from "./TournamentPage";
-import { isKitGame } from "@journey-to-code/games";
-import { GAME_LIST } from "./GamePicker";
+import { HouseError, houses, type House } from "./housesApi";
+import HouseFamily from "./house/HouseFamily.vue";
+import HouseTables from "./house/HouseTables.vue";
+import HouseTournaments from "./house/HouseTournaments.vue";
+import Invited from "./house/Invited.vue";
+import Leaderboard from "./house/Leaderboard.vue";
+import PlacesLeaderboard from "./house/PlacesLeaderboard.vue";
 import { KitHouseRules, KitStartTable } from "./kit/KitHouse";
-import { describe, RulesFields } from "./RulesEditor";
-import { Choice } from "./RulesEditor";
-import { forgetHouse, loadGame, loadTableSettings, loadPalaceSeats, loadSavedName, rememberHouse, saveGame, saveName, savePalaceSeats, type GameId } from "./storage";
+import { PalaceRulesFields, palaceSummary } from "./palace/PalaceRules";
+import { Choice, describe, RulesFields } from "./RulesEditor";
+import { forgetHouse, loadGame, loadTableSettings, loadPalaceSeats, rememberHouse, saveGame, savePalaceSeats, type GameId } from "./storage";
+import { HouseDeckPicker } from "./TableDeck";
+import { NewTournament } from "./TournamentPage";
+import { VueIsland } from "./vue/island";
 
 interface Props {
   slug: string;
@@ -90,38 +95,10 @@ export function HousePage({ slug, code, onOpenTable, onOpenTournament, onLeave }
     );
   }
 
-  if (state.kind === "invited") return <Invited houseName={state.name} onJoin={(name) => attempt(() => houses.join(slug, code!, name))} problem={problem} />;
+  if (state.kind === "invited") return <VueIsland component={Invited} props={{ houseName: state.name, problem, onJoin: (name: string) => void attempt(() => houses.join(slug, code!, name)) }} />;
 
   const { house } = state;
   return <MemberView house={house} attempt={attempt} problem={problem} onOpenTable={onOpenTable} onOpenTournament={onOpenTournament} onLeave={onLeave} />;
-}
-
-function Invited({ houseName, onJoin, problem }: { houseName: string; onJoin: (name: string) => void; problem: string | null }) {
-  const [name, setName] = useState(loadSavedName);
-  return (
-    <main className="setup house">
-      <header className="setup-head">
-        <div className="suits" aria-hidden>
-          ♠ ♥ ♣ ♦
-        </div>
-        <p>You're invited to</p>
-        <h1>{houseName}</h1>
-      </header>
-      <TextField label="Your spades name" required value={name} maxlength={20} autocomplete="nickname" onValueChange={(e: CustomEvent<string>) => setName(e.detail)} />
-      <button
-        type="button"
-        className="primary deal"
-        disabled={!name.trim()}
-        onClick={() => {
-          saveName(name.trim());
-          onJoin(name.trim());
-        }}
-      >
-        Come on in
-      </button>
-      {problem && <p className="error">{problem}</p>}
-    </main>
-  );
 }
 
 function MemberView(props: {
@@ -148,22 +125,9 @@ function MemberView(props: {
   const [seats, setSeats] = useState(loadPalaceSeats);
   useEffect(() => setPalaceId(house.palaceDefault), [house.palaceDefault]);
   const palaceRules = house.palacePresets.find((p) => p.id === palaceId) ?? house.palacePresets[0]!;
-  const [copied, setCopied] = useState(false);
   const defaultRules = house.presets.find((p) => p.id === house.defaultPreset);
 
-  async function invite() {
-    const url = inviteLink(house);
-    try {
-      if (navigator.share) await navigator.share({ title: house.name, text: `Pull up a chair at ${house.name}.`, url });
-      else {
-        await navigator.clipboard.writeText(url);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }
-    } catch {
-      /* closed the share sheet */
-    }
-  }
+
 
   return (
     <main className="setup house">
@@ -236,93 +200,19 @@ function MemberView(props: {
       </section>
       )}
 
-      <section className="house-block" aria-label="Tables">
-        <h2>Tables</h2>
-        {house.tables.length === 0 && <p className="fine">No tables yet. Start one, then share it.</p>}
-        <ul className="house-list">
-          {house.tables.map((t) => (
-            <li key={t.id}>
-              <div>
-                <strong>{tableTitle(t)}</strong>
-                <small>
-                  {t.rules} · {t.seats.map((s) => s.name ?? "open").join(", ")}
-                </small>
-              </div>
-              <button type="button" className="secondary small" onClick={() => props.onOpenTable(t.id)}>
-                {t.summary?.phase === "finished" ? "See it" : t.seats.some((s) => s.name) && !t.started ? "Sit down" : "Open"}
-              </button>
-            </li>
-          ))}
-        </ul>
-        <NotifyButton what="someone opens a table or says something here" />
-      </section>
+      <VueIsland component={HouseTables} props={{ tables: house.tables, onOpenTable: props.onOpenTable }} />
 
       <HouseChatBlock slug={house.slug} members={house.members} me={house.me.id} manager={canManage} />
 
-      <section className="house-block" aria-label="Tournaments">
-        <h2>Tournaments</h2>
-        {house.tournaments.length === 0 && <p className="fine">{canManage ? "Run a bracket: everyone signs up, plays their match when they can, and one of you takes the crown." : "No tournaments yet."}</p>}
-        <ul className="house-list">
-          {house.tournaments.map((t) => (
-            <li key={t.id}>
-              <div>
-                <strong>
-                  {GAME_LIST.find((g) => g.id === t.game)?.emoji ?? "♠️"} {t.name}
-                </strong>
-                <small>
-                  {t.status === "signup"
-                    ? `Signing up · ${t.entrants} ${t.game === "spades" ? "team" : "player"}${t.entrants === 1 ? "" : "s"} so far`
-                    : t.status === "playing"
-                      ? `Playing · ${t.round}`
-                      : `🏆 ${t.champion}`}
-                </small>
-              </div>
-              <button type="button" className="secondary small" onClick={() => props.onOpenTournament(t.id)}>
-                {t.status === "signup" ? "Sign up" : "Bracket"}
-              </button>
-            </li>
-          ))}
-        </ul>
-        {canManage && (
-          <button type="button" className="secondary" onClick={() => setMakingTournament(true)}>
-            Start a {game === "spades" ? "spades" : (GAME_LIST.find((g) => g.id === game)?.name ?? "")} tournament
-          </button>
-        )}
-      </section>
+      <VueIsland component={HouseTournaments} props={{ tournaments: house.tournaments, canManage, game, onOpenTournament: props.onOpenTournament, onStart: () => setMakingTournament(true) }} />
 
-      {game === "spades" ? <LeaderboardBlock house={house} /> : <PalaceLeaderboardBlock house={house} game={game} />}
+      {game === "spades" ? (
+        <VueIsland key="spades" component={Leaderboard} props={{ slug: house.slug, me: house.me.id, finished: finishedOf(house, "spades") }} />
+      ) : (
+        <VueIsland key="places" component={PlacesLeaderboard} props={{ slug: house.slug, me: house.me.id, game, finished: finishedOf(house, game) }} />
+      )}
 
-      <section className="house-block" aria-label="Family">
-        <h2>Family</h2>
-        <ul className="house-list">
-          {house.members.map((m) => (
-            <li key={m.id}>
-              <div>
-                <strong>{m.name}</strong>
-                <small>{m.id === house.me.id ? `you · ${m.role}` : m.role}</small>
-              </div>
-              {house.me.role === "owner" && m.role !== "owner" && (
-                <span className="row-actions">
-                  <button type="button" className="link" onClick={() => attempt(() => houses.setRole(house.slug, m.id, m.role === "admin" ? "member" : "admin"))}>
-                    {m.role === "admin" ? "Make member" : "Make admin"}
-                  </button>
-                  <button type="button" className="link danger" onClick={() => confirm(`Remove ${m.name} from ${house.name}?`) && attempt(() => houses.remove(house.slug, m.id))}>
-                    Remove
-                  </button>
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-        <button type="button" className="secondary" onClick={invite}>
-          {copied ? "Link copied" : "Invite family"}
-        </button>
-        {canManage && (
-          <button type="button" className="link" onClick={() => confirm("Make a new invite link? The old one will stop working.") && attempt(() => houses.newLink(house.slug))}>
-            Make a new invite link
-          </button>
-        )}
-      </section>
+      <VueIsland component={HouseFamily} props={{ house, canManage, attempt }} />
 
       <HouseDeckPicker deck={house.deck ?? null} canChoose={canManage} save={(design) => houses.setDeck(house.slug, design).then((h) => attempt(async () => h))} />
 
@@ -540,177 +430,8 @@ function PalaceRulesEditor(props: {
   );
 }
 
-function tableTitle(t: HouseTable): string {
-  if (isLiveArcade(t.game)) {
-    const emoji = ARCADE_LIST.find((g) => g.id === (t.game as string))?.emoji ?? "🕹️";
-    const s = t.summary as { over?: boolean; score?: number; stage?: string } | null;
-    if (s?.over) return `${emoji} Finished · ${(s.score ?? 0).toLocaleString()} · ${s.stage ?? ""}`;
-    if (t.started) return `${emoji} Playing · ${s?.stage ?? ""}`;
-    const seated = t.seats.filter((x) => x.name).length;
-    return seated === 0 ? `${emoji} Waiting for players` : `${emoji} ${seated} of ${t.seats.length} seated`;
-  }
-  if (isKitGame(t.game)) {
-    const emoji = GAME_LIST.find((g) => g.id === t.game)?.emoji ?? "🃏";
-    const s = t.summary as { over?: boolean; scoreLine?: string; hand?: number } | null;
-    if (s?.over) return `${emoji} Finished · ${s.scoreLine}`;
-    if (t.started) return `${emoji} Hand ${s?.hand ?? 1} · ${s?.scoreLine ?? ""}`;
-    const seated = t.seats.filter((x) => x.name).length;
-    return seated === 0 ? `${emoji} Waiting for players` : `${emoji} ${seated} of ${t.seats.length} seated`;
-  }
-  if (t.game === "palace") {
-    const s = t.summary;
-    if (s?.phase === "finished") return `🏰 Finished · ${t.seats[s.finished?.[0] ?? 0]?.name ?? "Someone"} went out first`;
-    if (t.started) return `🏰 Playing · ${s?.finished?.length ?? 0} out so far`;
-    const seated = t.seats.filter((x) => x.name).length;
-    return seated === 0 ? "🏰 Waiting for players" : `🏰 ${seated} of ${t.seats.length} seated`;
-  }
-  if (t.summary?.phase === "finished" && t.summary.scores) {
-    const [a, b] = t.summary.scores;
-    return `Finished · ${a?.points} to ${b?.points}`;
-  }
-  if (t.started && t.summary?.scores) {
-    const [a, b] = t.summary.scores;
-    return `Hand ${t.summary.hand} · ${a?.points} to ${b?.points}`;
-  }
-  const seated = t.seats.filter((s) => s.name).length;
-  return seated === 0 ? "Waiting for players" : `${seated} of 4 seated`;
-}
-
-/** Palace standings: first out counts as a win, and being left holding the cards is remembered too. */
-function PalaceLeaderboardBlock({ house, game }: { house: House; game: GameId }) {
-  const [board, setBoard] = useState<PalaceStandings | null>(null);
-  const name = GAME_LIST.find((g) => g.id === game)?.name ?? "Palace";
-  const finished = house.tables.filter((t) => t.game === game && (t.summary?.phase === "finished" || (t.summary as { over?: boolean } | null)?.over)).length;
-  useEffect(() => {
-    houses.placesLeaderboard(house.slug, game).then(setBoard, () => setBoard(null));
-  }, [house.slug, finished, game]);
-  if (!board) return null;
-  const ranked = board.players.filter((p) => p.played > 0);
-  return (
-    <section className="house-block" aria-label={`${name} leaderboard`}>
-      <h2>{name} leaderboard</h2>
-      {board.games === 0 ? (
-        <p className="fine">Standings start after the first finished {name} game.</p>
-      ) : (
-        <>
-          <table className="standings">
-            <thead>
-              <tr>
-                <th scope="col">#</th>
-                <th scope="col">Player</th>
-                <th scope="col">Won</th>
-                {!board.teams && <th scope="col">Last</th>}
-                <th scope="col">Played</th>
-                <th scope="col">Avg place</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ranked.map((p, i) => (
-                <tr key={p.id} className={p.id === house.me.id ? "me" : ""}>
-                  <td>{i === 0 && p.won > 0 ? "👑" : i + 1}</td>
-                  <th scope="row">{p.name}</th>
-                  <td>{p.won}</td>
-                  {!board.teams && <td>{p.last}</td>}
-                  <td>{p.played}</td>
-                  <td>{p.avgPlace}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="fine">
-            {board.games} finished game{board.games === 1 ? "" : "s"}. {game === "palace" ? "Won is first out; Last is left holding the cards." : board.teams ? "Won counts your team's wins." : "Won is first place; Last is last place."}
-          </p>
-        </>
-      )}
-    </section>
-  );
-}
-
-/** Standings from the house's finished games. Refreshes when a game finishes. */
-function LeaderboardBlock({ house }: { house: House }) {
-  const [board, setBoard] = useState<Standings | null>(null);
-  const finished = house.tables.filter((t) => t.game !== "palace" && t.summary?.phase === "finished").length;
-  useEffect(() => {
-    houses.leaderboard(house.slug).then(setBoard, () => setBoard(null));
-  }, [house.slug, finished]);
-  if (!board) return null;
-  const ranked = board.players.filter((p) => p.played > 0);
-  const me = house.me.id;
-
-  return (
-    <section className="house-block" aria-label="Leaderboard">
-      <h2>Leaderboard</h2>
-      {board.games === 0 ? (
-        <p className="fine">Standings start after the first finished game.</p>
-      ) : (
-        <>
-          <table className="standings">
-            <thead>
-              <tr>
-                <th scope="col">#</th>
-                <th scope="col">Player</th>
-                <th scope="col">Won</th>
-                <th scope="col">Played</th>
-                <th scope="col">Win %</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ranked.map((p) => {
-                // Ties share a place: one more than the number of players strictly ahead.
-                const place = 1 + ranked.filter((q) => q.won > p.won || (q.won === p.won && (q.winPct ?? 0) > (p.winPct ?? 0))).length;
-                return (
-                <tr key={p.id} className={p.id === me ? "me" : ""}>
-                  <td>{place === 1 && p.won > 0 ? "♠" : place}</td>
-                  <th scope="row">{p.name}</th>
-                  <td>{p.won}</td>
-                  <td>{p.played}</td>
-                  <td>{p.winPct}%</td>
-                </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <p className="fine">
-            {board.games} finished game{board.games === 1 ? "" : "s"}. Games with bots count; bots don't rank.
-          </p>
-
-          {board.partners.length > 0 && (
-            <>
-              <h3>Best partners</h3>
-              <ul className="house-list">
-                {board.partners.slice(0, 3).map((p) => (
-                  <li key={p.ids.join("+")}>
-                    <div>
-                      <strong>
-                        {p.names[0]} &amp; {p.names[1]}
-                      </strong>
-                      <small>
-                        {p.won}–{p.played - p.won} together
-                      </small>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-
-          {(board.highlights.biggestComeback || board.highlights.mostNils) && (
-            <ul className="highlights">
-              {board.highlights.biggestComeback && (
-                <li>
-                  <strong>Biggest comeback:</strong> {board.highlights.biggestComeback.names.join(" & ")} came back from {board.highlights.biggestComeback.behindBy} behind to win{" "}
-                  {board.highlights.biggestComeback.final[0]}–{board.highlights.biggestComeback.final[1]}.
-                </li>
-              )}
-              {board.highlights.mostNils && (
-                <li>
-                  <strong>Nil queen or king:</strong> {board.highlights.mostNils.name}, with {board.highlights.mostNils.made} made.
-                </li>
-              )}
-            </ul>
-          )}
-        </>
-      )}
-    </section>
-  );
+/** How many of a game's tables have finished: the standings are fetched again when it changes. */
+function finishedOf(house: House, game: GameId): number {
+  if (game === "spades") return house.tables.filter((t) => t.game !== "palace" && t.summary?.phase === "finished").length;
+  return house.tables.filter((t) => t.game === game && (t.summary?.phase === "finished" || (t.summary as { over?: boolean } | null)?.over)).length;
 }

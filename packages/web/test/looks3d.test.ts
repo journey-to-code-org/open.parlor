@@ -10,7 +10,7 @@ import { cardKey } from "../src/handOrder";
 
 describe("which games have a scene", () => {
   it("every game played at the arcade table has one", () => {
-    // Road to the Shootout has a screen of its own, and its own strip in 3-D (drive/strip3d.ts).
+    // Road to the Shootout is a game of its own, compiled to WebAssembly (drive/Shootout.tsx).
     // Air hockey has a table of its own too (arcade/AirHockeyTable.tsx), seen from straight above.
     for (const g of ARCADE_GAMES.filter((a) => a.id !== "pinkslips" && a.id !== "airhockey" && a.id !== "zubraquest" && a.id !== "counter")) expect(hasArcade3d(g.id), g.id).toBe(true);
   });

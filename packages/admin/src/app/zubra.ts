@@ -14,6 +14,7 @@ import "../../zubra/zubra-ui/empty-state.js";
 import "../../zubra/zubra-ui/loading-spinner.js";
 import "../../zubra/zubra-ui/modal-dialog.js";
 import "../../zubra/zubra-ui/segmented-control.js";
+import "../../zubra/zubra-ui/select-field.js";
 import "../../zubra/zubra-ui/stack-layout.js";
 import "../../zubra/zubra-ui/stat-card.js";
 import "../../zubra/zubra-ui/status-badge.js";

@@ -1,11 +1,11 @@
 // The open.parlor's start page: the Vue game chooser, mounted inside the React app.
-import { ARCADE_GAMES, IDLE_GAMES, isArcadeGame, isBoardGame, isIdleGame, isSportGame, isWordGame, KIT_GAMES } from "@journey-to-code/games";
+import { ARCADE_GAMES, IDLE_GAMES, isArcadeGame, isBoardGame, isIdleGame, isFieldGame, isSportGame, isWordGame, KIT_GAMES } from "@journey-to-code/games";
 import { createApp, h, reactive } from "vue";
 import { useEffect, useRef, useState } from "react";
 import { bugs } from "../bugReport";
 import { openGameRequest } from "../GameRequest";
 import { arranged, refreshCatalogue } from "../catalogue";
-import { categoryOf, GAME_CATEGORIES } from "../categories";
+import { CARD_GROUPS, cardGroupOf, categoryOf, GAME_CATEGORIES } from "../categories";
 import { EVERY_GAME, type SoloGameId } from "../GamePicker";
 import { lobby, whoIsThere, type OpenTable } from "../lobbyApi";
 import { loadMyHouses, loadName, type GameId } from "../storage";
@@ -65,7 +65,7 @@ const FANS: Record<string, object[]> = {
 };
 
 /** A board game's tile shows a little board instead: a position that says what the game is about. */
-type MiniBoard = { cols: number; cells: ({ glyph: string; tone: string; shade?: "dark" | "point-down" | "point-up" } | null)[]; shade?: "green" | "wood" | "points" | "words" };
+type MiniBoard = { cols: number; cells: ({ glyph: string; tone: string; shade?: "dark" | "point-down" | "point-up" } | null)[]; shade?: "green" | "wood" | "points" | "words" | "pits"; sketch?: boolean };
 const X = { glyph: "✕", tone: "red" };
 const O = { glyph: "◯", tone: "blue" };
 const DARK = { glyph: "●", tone: "dark" };
@@ -101,9 +101,16 @@ const BOARDS: Record<string, MiniBoard> = {
   // Two words crossing.
   crisscross: { cols: 5, shade: "words", cells: [...tiles("__w__", "ppp"), ...tiles("crane", "pppnp"), ...tiles("__d__", "ppp"), ...tiles("__e__", "ppp")] },
   // The word, hidden, and one guessed.
-  drawguess: { cols: 5, shade: "words", cells: [...tiles("_____", "ppppp"), ...tiles("house", "hhhhh")] },
+  // Draw & Guess is a drawing game: a sheet of paper with a house on it, not letter tiles.
+  drawguess: { cols: 1, cells: [], sketch: true },
   hangman: { cols: 5, shade: "words", cells: [...tiles("_a__a", "phpph"), ...tiles("zqk__", "mmm")] },
   tictactoe: { cols: 3, cells: [X, O, null, null, X, O, O, null, X] },
+  // A token in each corner's colour, and the cross between them.
+  ludo: { cols: 3, cells: [on("●", "red", false), null, on("●", "green", false), null, null, null, on("●", "blue", false), null, on("●", "gold", false)] },
+  // Pegs at four of the star's points, hopping in.
+  chinesecheckers: { cols: 3, shade: "wood", cells: [null, on("●", "blue", false), null, on("●", "green", false), null, on("●", "gold", false), null, on("●", "red", false), null] },
+  // Two rows of pits and the seeds in them: one empty, its neighbour full.
+  mancala: { cols: 3, shade: "pits", cells: [on("4", "light", false), on("1", "light", false), on("6", "light", false), null, on("5", "gold", false), on("4", "gold", false)] },
   // The bottom of a rack: red about to make four on the slant.
   dropfour: { cols: 4, cells: [null, null, null, null, null, null, RED, YEL, null, RED, YEL, RED, RED, YEL, YEL, RED] },
   combat: { cols: 4, cells: [SHIP, SHIP, SHIP, null, null, null, MISS, null, MISS, null, HIT, null, null, null, HIT, null] },
@@ -126,6 +133,12 @@ const TABLES: Record<string, MiniTable> = {
   bowling: { surface: "lane", balls: [...PINS, { x: 50, y: 80, tone: "red" }] },
   minigolf: { surface: "green", cup: [66, 32], balls: [{ x: 36, y: 72, tone: "white" }, { x: 70, y: 62, tone: "red" }] },
   // A cue ball lined up on a little rack.
+  // A long board seen from the near end: pucks lying in the far zones, and one on its way.
+  shuffleboard: { surface: "lane", balls: [{ x: 40, y: 20, tone: "red" }, { x: 60, y: 28, tone: "blue" }, { x: 46, y: 40, tone: "blue" }, { x: 54, y: 74, tone: "red" }] },
+  // The hole in the middle of the board, and discs of both colours round it.
+  crokinole: { surface: "wood", cup: [50, 48], balls: [{ x: 38, y: 36, tone: "black" }, { x: 64, y: 44, tone: "gold" }, { x: 46, y: 66, tone: "gold" }, { x: 60, y: 74, tone: "black" }] },
+  // The football on its way up the table.
+  flickfootball: { surface: "wood", balls: [{ x: 50, y: 26, tone: "orange" }] },
   // The queen in the middle of a ring of pieces, and the striker on its line.
   carrom: { surface: "wood", balls: [{ x: 50, y: 46, tone: "red" }, ...[0, 1, 2, 3, 4, 5].map((i) => ({ x: Math.round(50 + 13 * Math.cos((i * Math.PI) / 3)), y: Math.round(46 + 13 * Math.sin((i * Math.PI) / 3)), tone: i % 2 ? "black" : "cream" })), { x: 38, y: 80, tone: "gold" }] },
   billiards: { surface: "felt", balls: [{ x: 28, y: 74, tone: "white" }, { x: 62, y: 30, tone: "red" }, { x: 72, y: 36, tone: "red" }, { x: 52, y: 38, tone: "red" }] },
@@ -146,10 +159,12 @@ const DICE: Record<string, number[]> = {
   shutthebox: [5, 4],
   // Three sixes, if you believe it.
   liarsdice: [6, 6, 6],
+  // The two halves of a tile: the six and four. (Pips are pips; a tile is two dice faces end to end.)
+  dominoes: [6, 4],
 };
 
 /** An arcade game's tile shows a little screen: a ship at the bottom, what it is up against, and what is coming at it. */
-type MiniScreen = { ship: [x: number, y: number]; foes: [x: number, y: number][]; bullets: [x: number, y: number][]; /** A game that builds: a road (an SVG path), and where towers stand beside it. */ road?: string; towers?: [x: number, y: number][]; /** A clicker: one big chip, and a few it has earned. */ chip?: boolean; /** A store: a shopfront with its sign. */ shop?: boolean; /** A drag strip: two lanes, the tree, and two cars leaving. */ strip?: boolean; /** An air hockey table from above: a mallet at each end and the puck between. */ rink?: boolean; /** An adventure: its hero, in his own pixels, on the grass. */ quest?: boolean };
+type MiniScreen = { ship: [x: number, y: number]; foes: [x: number, y: number][]; bullets: [x: number, y: number][]; /** A game that builds: a road (an SVG path), and where towers stand beside it. */ road?: string; towers?: [x: number, y: number][]; /** A clicker: one big chip, and a few it has earned. */ chip?: boolean; /** A store: a shopfront with its sign. */ shop?: boolean; /** A drag strip: two lanes, the tree, and two cars leaving. */ strip?: boolean; /** An air hockey table from above: a mallet at each end and the puck between. */ rink?: boolean; /** An adventure: its hero, in his own pixels, on the grass. */ quest?: boolean; /** Two tanks on hills, and a shell on its way over. */ hill?: boolean };
 const SCREENS: Record<string, MiniScreen> = {
   // A row of drones, a fan of bullets on its way down, and a gap to fly through.
   skyfire: { ship: [50, 82], foes: [[22, 18], [50, 12], [78, 18]], bullets: [[30, 44], [44, 52], [62, 40], [72, 58], [18, 64]] },
@@ -163,7 +178,84 @@ SCREENS.airhockey = { ship: [0, 0], foes: [], bullets: [], rink: true };
 SCREENS.zubraquest = { ship: [0, 0], foes: [], bullets: [], quest: true };
 // The counter is in Delbie's shop, so it has the shop's picture.
 SCREENS.counter = { ship: [0, 0], foes: [], bullets: [], shop: true };
+// A field game is on the kit, and has a screen all the same: the hills, the tanks and the shot.
+SCREENS.overthehill = { ship: [0, 0], foes: [], bullets: [], hill: true };
 const EMPTY_SCREEN: MiniScreen = { ship: [50, 82], foes: [], bullets: [] };
+
+/**
+ * Games that are pages of their own beside the parlor, on the shelves with the rest: a tile each,
+ * found by the search like any other, that goes to the page. They aren't the host's to arrange or
+ * leave out, having no table in the parlor. One with `needs` is a page the parlor's server draws,
+ * and is on the shelf only where there is a server that draws it.
+ */
+const ELSEWHERE: { id: string; name: string; emoji: string; blurb: string; category: "arcade" | "board" | "cards"; group: undefined; seats: [number, number]; teams: boolean; fan: object[]; screen: MiniScreen | undefined; dice: undefined; board: MiniBoard | undefined; table: undefined; href: string; needs?: "daily" }[] = [
+  {
+    id: "delbies-doomsday",
+    name: "Delbie's Doomsday",
+    emoji: "👾",
+    blurb: "A first-person shooter on the Doom engine: twelve floors of an auto parts store, and rats. Alone, or up to four together.",
+    category: "arcade",
+    group: undefined,
+    seats: [1, 4],
+    teams: false,
+    fan: [],
+    screen: { ship: [50, 84], foes: [[24, 30], [50, 22], [76, 30]], bullets: [[50, 58]] },
+    dice: undefined,
+    board: undefined,
+    table: undefined,
+    href: "wasm/",
+  },
+  {
+    id: "delbies-stockroom",
+    name: "Delbie's Stockroom",
+    emoji: "📦",
+    blurb: "Run the parts store's stockroom for a month: buy at wholesale prices that never sit still, price the shelves, set the traps, make the rent.",
+    category: "arcade",
+    group: undefined,
+    seats: [1, 1],
+    teams: false,
+    fan: [],
+    screen: { ship: [0, 0], foes: [], bullets: [], shop: true },
+    dice: undefined,
+    board: undefined,
+    table: undefined,
+    href: "wasm/market/",
+  },
+  {
+    id: "delbies-back-room",
+    name: "Delbie's Back Room",
+    emoji: "🃏",
+    blurb: "A deck-building battler: five trouble spots in a parts store's back room, fought with a deck of tools and parts.",
+    category: "cards",
+    group: undefined,
+    seats: [1, 1],
+    teams: false,
+    fan: FANS.spades!,
+    screen: undefined,
+    dice: undefined,
+    board: undefined,
+    table: undefined,
+    href: "wasm/battler/",
+  },
+  {
+    id: "daily-sudoku",
+    name: "The daily sudoku",
+    emoji: "🔢",
+    blurb: "One sudoku a day, the same for everyone who plays here.",
+    category: "board",
+    group: undefined,
+    seats: [1, 1],
+    teams: false,
+    fan: [],
+    screen: undefined,
+    dice: undefined,
+    // A corner of the grid, part filled in.
+    board: { cols: 3, shade: "words", cells: [...tiles("5_3", "ppp"), ...tiles("_7_", "ppp"), ...tiles("6_1", "ppp")] },
+    table: undefined,
+    href: "daily",
+    needs: "daily",
+  },
+];
 
 const SEATS: Record<string, { seats: [number, number]; teams: boolean }> = {
   spades: { seats: [4, 4], teams: true },
@@ -182,10 +274,13 @@ export function Home({ last, onPick, onOpenHouse, onLobby, onWifi, onMove }: { l
 
   useEffect(() => {
     // The games the parlor's host offers, in their order (every game, where there's no server).
-    const games = () => arranged(EVERY_GAME).map((g) => ({ ...g, category: categoryOf(g.id), screen: isArcadeGame(g.id) || isIdleGame(g.id) ? (SCREENS[g.id] ?? EMPTY_SCREEN) : undefined, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: (isBoardGame(g.id) && !DICE[g.id]) || isWordGame(g.id) ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined }));
+    /** The pages of the server's that are there to go to. */
+    const has = { daily: false };
+    const games = () => [...arranged(EVERY_GAME).map((g) => ({ ...g, category: categoryOf(g.id), group: cardGroupOf(g.id), screen: isArcadeGame(g.id) || isIdleGame(g.id) || isFieldGame(g.id) ? (SCREENS[g.id] ?? EMPTY_SCREEN) : undefined, ...(SEATS[g.id] ?? { seats: [2, 6], teams: false }), fan: FANS[g.id] ?? FANS.spades!, dice: DICE[g.id], board: (isBoardGame(g.id) && !DICE[g.id]) || isWordGame(g.id) ? (BOARDS[g.id] ?? EMPTY_BOARD) : undefined, table: isSportGame(g.id) ? (TABLES[g.id] ?? EMPTY_TABLE) : undefined, href: undefined as string | undefined })), ...ELSEWHERE.filter((game) => !game.needs || has[game.needs])];
     const props = reactive({
       games: games(),
       categories: GAME_CATEGORIES,
+      cardGroups: CARD_GROUPS.map(({ id, name, emoji }) => ({ id, name, emoji })),
       houses: loadMyHouses(),
       last,
       name: loadName(),
@@ -202,10 +297,19 @@ export function Home({ last, onPick, onOpenHouse, onLobby, onWifi, onMove }: { l
       // "Every game on one page": the page the parlor's server draws itself (the server's pages.ts).
       // A parlor published as plain files has no server to draw it.
       canList: false,
+      // "Daily sudoku": the same, another page of the server's.
+      canDaily: false,
     });
     void bugs.enabled().then((yes) => (props.canAsk = yes));
     void fetch("games", { method: "HEAD" })
       .then((reply) => (props.canList = reply.ok && (reply.headers.get("x-parlor-page") ?? "") === "games"))
+      .catch(() => {});
+    void fetch("daily", { method: "HEAD" })
+      .then((reply) => {
+        props.canDaily = has.daily = reply.ok && (reply.headers.get("x-parlor-page") ?? "") === "daily";
+        // The daily sudoku goes on its shelf once the server is known to have it.
+        if (has.daily) props.games = games();
+      })
       .catch(() => {});
     // Rendered from the reactive props, so the chooser follows them when the open tables change.
     const app = createApp({ render: () => h(GameChooser, { ...props }) });

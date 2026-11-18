@@ -105,8 +105,14 @@ function wrap(pc: RTCPeerConnection, channel: RTCDataChannel): PeerLink {
   };
 }
 
+/**
+ * The link, once its channel is open. It listens from the moment the channel exists: what the other
+ * side says the instant it opens (a guest's hello) is kept for the first listener, however the open
+ * and the first message fall against each other.
+ */
 const opened = (pc: RTCPeerConnection, channel: RTCDataChannel) =>
   new Promise<PeerLink>((yes, no) => {
+    const link = wrap(pc, channel);
     const fail = () => {
       clearTimeout(timer);
       no(new Error(UNREACHABLE));
@@ -115,7 +121,7 @@ const opened = (pc: RTCPeerConnection, channel: RTCDataChannel) =>
     pc.addEventListener("connectionstatechange", () => pc.connectionState === "failed" && fail());
     const ready = () => {
       clearTimeout(timer);
-      yes(wrap(pc, channel));
+      yes(link);
     };
     if (channel.readyState === "open") ready();
     else channel.addEventListener("open", ready, { once: true });

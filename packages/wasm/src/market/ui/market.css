@@ -1,0 +1,82 @@
+/* zubra-ui's default theme (shadcn/ui's variables), light or dark with the system; the components
+   read these. The page adds the parlor's felt green as the primary colour, as the editor does. */
+@import "../../../../ui/src/zubra-ui/themes/default.css";
+@import "../../../../ui/src/zubra-ui/themes/system.css";
+
+:root {
+  --felt: #1f4d3a;
+  --primary: var(--felt);
+  --primary-foreground: #fbf6ec;
+  --ring: color-mix(in oklab, var(--felt) 60%, white);
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --primary: #7fc8a4;
+    --primary-foreground: #0f2a1f;
+    --ring: #7fc8a4;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { background: var(--background); color: var(--foreground); }
+h1, h2 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; line-height: 1.2; margin: 0; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.1rem); }
+h2 { font-size: 1.35rem; }
+p { margin: 0; }
+[hidden] { display: none !important; }
+
+.page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; width: min(68rem, 100%); margin: 0 auto; padding: 1.25rem clamp(1rem, 3vw, 2rem) 5rem; }
+.quiet { color: var(--muted-foreground); font-size: 0.925rem; max-width: 46rem; }
+.top { display: grid; gap: 0.25rem; }
+.home { font-size: 0.9rem; color: var(--muted-foreground); text-decoration: none; justify-self: start; }
+.home:hover { color: var(--foreground); }
+.waiting { display: flex; align-items: center; justify-content: center; min-height: 30vh; }
+
+/* The board: cash, worth and the three things that fill up. Zubra's components draw in the page's own DOM, so the page can fit them. */
+.tile { display: grid; align-content: start; gap: 0.35rem; padding: 1rem 1.1rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); color: var(--card-foreground); }
+.tile .label { font-size: 0.85rem; font-weight: 600; color: var(--muted-foreground); }
+.tile .big { font-size: 1.75rem; font-weight: 750; letter-spacing: -0.02em; line-height: 1.15; }
+.tile .foot { font-size: 0.8rem; color: var(--muted-foreground); }
+.tile.cash { border-color: color-mix(in oklab, var(--primary) 45%, var(--border)); }
+.tile { min-width: 0; }
+.tile.rats { gap: 0.6rem; grid-column: 1 / -1; }
+
+.controls { display: flex; flex-wrap: wrap; align-items: end; gap: 0.75rem 1.25rem; }
+.controls .clock { font-size: 0.95rem; margin-inline-start: auto; font-variant-numeric: tabular-nums; }
+
+/* Tabs scroll sideways on a phone; the panels are ordinary blocks (a panel with a display of its own would stay on the page when hidden). */
+tab-list [role="tablist"] { overflow-x: auto; scrollbar-width: none; }
+tab-list [role="tab"] { white-space: nowrap; }
+tab-list [role="tabpanel"] { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; padding-top: 1rem; min-width: 0; }
+tab-list [role="tabpanel"][hidden] { display: none; }
+
+.hint { max-width: 52rem; }
+.bulk { display: flex; flex-wrap: wrap; align-items: end; gap: 0.6rem 1rem; padding: 0.75rem 0.9rem; border: 1px solid var(--border); border-radius: var(--radius); background: color-mix(in oklab, var(--primary) 6%, var(--card)); }
+
+.part { display: grid; gap: 1rem; min-width: 0; }
+.part .head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+.part .row { display: flex; flex-wrap: wrap; align-items: end; gap: 0.75rem 1.25rem; }
+.part .standing { align-items: center; }
+.part .wide { width: min(32rem, 100%); }
+
+.shelves { display: grid; gap: 1rem; min-width: 0; }
+.shelf { display: grid; gap: 0.5rem; }
+.shelf .line { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+
+.news { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; max-width: 52rem; }
+.news li { display: flex; align-items: baseline; gap: 0.6rem; padding: 0.45rem 0.7rem; border: 1px solid var(--border); border-radius: calc(var(--radius) * 0.8); background: var(--card); font-size: 0.925rem; }
+.news li status-badge { flex: none; }
+
+.hood { display: grid; gap: 1rem; max-width: 56rem; }
+.result { display: grid; gap: 0.75rem; justify-items: start; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
+
+.field { display: grid; gap: 0.2rem; }
+.field .cap { font-size: 0.85rem; font-weight: 600; color: var(--muted-foreground); }

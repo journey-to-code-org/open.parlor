@@ -9,7 +9,8 @@
 // the people here, played from their own device over a channel. This page is their server: it is
 // sent their moves and sends each of them their own seat's view, so a hand stays hidden from the
 // other guests exactly as it does at a family table.
-import { WifiRejoin } from "../wifi/WifiRejoin";
+import { mountRejoin } from "../solid/wifi/Rejoin";
+import { SolidIsland } from "../wifi/island";
 import { PassCurtain } from "./PassCurtain";
 import { addGame, harder, RecordShown, type GameRecord } from "../record";
 import { GameError, isBoardGame, kitGame, kitGreet, reactToKit, type KitGameId, type KitRemark } from "@journey-to-code/games";
@@ -256,7 +257,7 @@ export function LocalKit({ game: id, name, others, guests, rules, seats, seed, o
 
   // The guests on the wifi: each is sent their seat's view whenever the table changes, and their
   // moves are made here, with the game's answer (a refusal, in words, or nothing) sent back.
-  // A guest who dropped off can be let back in to the same seat (wifi/WifiRejoin.tsx): their link is
+  // A guest who dropped off can be let back in to the same seat (solid/wifi/Rejoin.tsx): their link is
   // swapped for the new one, and the table carries on.
   const [links, setLinks] = useState<PeerLink[]>(() => away.map((guest) => guest.link));
   const [gone, setGone] = useState<number[]>([]);
@@ -331,7 +332,7 @@ export function LocalKit({ game: id, name, others, guests, rules, seats, seed, o
         }}
       />
       <TurnClock deadline={deadline} mySeat={here} now={Date.now} />
-      {rejoining !== null && <WifiRejoin name={names[rejoining] ?? "them"} onLinked={(link) => letBackIn(rejoining, link)} onCancel={() => setRejoining(null)} />}
+      {rejoining !== null && <SolidIsland key={rejoining} mount={mountRejoin} props={{ name: names[rejoining] ?? "them", onLinked: (link: PeerLink) => letBackIn(rejoining, link), onCancel: () => setRejoining(null) }} />}
       {curtain !== null && <PassCurtain name={names[curtain] ?? "the next player"} onReady={() => setCurtain(null)} />}
     </TableTime.Provider>
     </RecordShown.Provider>

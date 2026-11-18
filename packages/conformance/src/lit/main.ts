@@ -26,6 +26,7 @@ class ConformanceApp extends LitElement {
     rows: { state: true },
     selected: { state: true },
     tab: { state: true },
+    late: { state: true },
     card: { state: true },
     picks: { state: true },
     bid: { state: true },
@@ -46,6 +47,8 @@ class ConformanceApp extends LitElement {
   declare rows: Row[];
   declare selected: string[];
   declare tab: string;
+  /** A panel the page adds later, and then moves to another tab (zubra-ui#23). */
+  declare late: string | null;
   declare card: number;
   declare picks: number;
   declare bid: string;
@@ -67,6 +70,7 @@ class ConformanceApp extends LitElement {
     this.rows = ROWS;
     this.selected = [];
     this.tab = "one";
+    this.late = null;
     this.card = 0;
     this.picks = 0;
     this.bid = "";
@@ -177,9 +181,12 @@ class ConformanceApp extends LitElement {
           <tab-list data-t="tabs" .label=${"Tabs"} .tabs=${TABS} .value=${this.tab} @valuechange=${(e: CustomEvent<string>) => (this.tab = e.detail)}>
             <section data-tab="one">First panel <span data-t="tab-count">${this.count}</span></section>
             <section data-tab="two">Second panel</section>
+            ${this.late ? html`<section data-tab=${this.late} data-t="tab-late">Late panel</section>` : nothing}
           </tab-list>
           <output data-t="tab-out">${this.tab}</output>
           <button data-t="tab-set" type="button" @click=${() => (this.tab = "one")}>Back to One</button>
+          <button data-t="tab-late-add" type="button" @click=${() => (this.late = "two")}>Add a panel for Two</button>
+          <button data-t="tab-late-move" type="button" @click=${() => (this.late = "one")}>Move it to One</button>
         </section>
 
         <section>

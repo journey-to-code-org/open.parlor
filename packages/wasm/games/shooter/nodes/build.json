@@ -1,0 +1,7 @@
+{
+  "sources": ["bsp", "glue"],
+  "output": "nodes.wasm",
+  "defines": ["main=bsp_main", "HAVE_CONFIG_H"],
+  "cflags": ["-w"],
+  "stack": 4194304
+}

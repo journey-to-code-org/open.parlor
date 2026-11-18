@@ -1,0 +1,171 @@
+<!--
+  The daily sudoku, on the page the server draws (src/pages.ts, src/sudoku.ts). The grid is 81 real
+  inputs in a form, so it works with JavaScript off: the browser posts the form to `check`, a
+  function that runs on the server (which alone knows the answer), and the page comes back drawn
+  with what was typed and the verdict. With JavaScript on, the same HTML is taken over: the grid
+  follows the arrow keys, repeats in a row, column or box are marked as they are typed, what was
+  typed is kept for the day, and checking is a fetch with no reload.
+  `givens` and `entries` are 81 characters each, 0 for a blank. The answer never reaches the browser.
+-->
+<script>
+  import { from, hydrated, onMount } from '@zubra/runtime'
+  import '@open-parlor/ui/zubra-ui/action-button.zb'
+  import '@open-parlor/ui/zubra-ui/alert-banner.zb'
+
+  const live = hydrated()
+  let mine = from(entries)
+  let answer = from(result)
+  let grid
+
+  const row = (i) => Math.floor(i / 9)
+  const col = (i) => i % 9
+  const box = (i) => Math.floor(row(i) / 3) * 3 + Math.floor(col(i) / 3)
+  const digitAt = (i, now) => (givens[i] !== '0' ? givens[i] : now[i])
+
+  // The cells whose digit is also in another cell of the same row, column or box.
+  function clashes(now) {
+    const bad = []
+    for (let i = 0; i < 81; i++) bad.push(false)
+    for (let i = 0; i < 81; i++) {
+      const d = digitAt(i, now)
+      if (d === '0') continue
+      for (let j = i + 1; j < 81; j++) {
+        if (digitAt(j, now) === d && (row(i) === row(j) || col(i) === col(j) || box(i) === box(j))) {
+          bad[i] = true
+          bad[j] = true
+        }
+      }
+    }
+    return bad
+  }
+
+  // Loops and plain functions, because the server draws this too and can't run callbacks.
+  function build(now) {
+    const bad = live ? clashes(now) : []
+    const out = []
+    for (let i = 0; i < 81; i++) {
+      const given = givens[i] !== '0'
+      const digit = digitAt(i, now)
+      let cls = 'cell'
+      if (given) cls += ' given'
+      if (col(i) % 3 === 2 && col(i) < 8) cls += ' right'
+      if (row(i) % 3 === 2 && row(i) < 8) cls += ' under'
+      if (bad[i]) cls += ' clash'
+      let label = `Row ${row(i) + 1}, column ${col(i) + 1}`
+      if (given) label += `, given ${digit}`
+      else if (digit === '0') label += ', empty'
+      out.push({ i, given, digit: digit === '0' ? '' : digit, name: `c${i}`, cls, label })
+    }
+    return out
+  }
+  // `mine` is passed in, not read inside: the compiler follows what an expression names.
+  function filledIn(now) {
+    let n = 0
+    for (let i = 0; i < 81; i++) if (givens[i] === '0' && now[i] !== '0') n++
+    return n
+  }
+  function blankCount() {
+    let n = 0
+    for (let i = 0; i < 81; i++) if (givens[i] === '0') n++
+    return n
+  }
+  const cells = build(mine)
+  const filled = filledIn(mine)
+  const blanks = blankCount()
+  const message = answer && answer.date === date ? answer : null
+
+  export async function check(formData, { grade }) {
+    'use server'
+    return grade(String(formData.get('date') ?? ''), formData)
+  }
+
+  const KEY = () => `open.parlor.daily-sudoku.${date}`
+  function remember() {
+    try {
+      localStorage.setItem(KEY(), mine)
+    } catch {
+      /* private browsing, or full: what was typed just isn't kept */
+    }
+  }
+
+  onMount(() => {
+    // The server's own entries (after a post) win; otherwise what this browser kept for the day.
+    if (mine !== '0'.repeat(81)) return
+    try {
+      const kept = localStorage.getItem(KEY())
+      if (kept && /^[0-9]{81}$/.test(kept)) mine = Array.from(kept, (d, i) => (givens[i] === '0' ? d : '0')).join('')
+    } catch {
+      /* nothing kept */
+    }
+  })
+
+  function typed(event, i) {
+    const digit = event.target.value.replace(/[^1-9]/g, '').slice(-1)
+    event.target.value = digit
+    mine = mine.slice(0, i) + (digit || '0') + mine.slice(i + 1)
+    answer = null
+    remember()
+  }
+
+  // Arrow keys move between cells; Backspace and Delete on a filled cell just empty it.
+  function move(event) {
+    const at = Number(event.target.dataset?.i)
+    const step = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] }[event.key]
+    if (!step || !Number.isInteger(at)) return
+    const r = row(at) + step[0]
+    const c = col(at) + step[1]
+    if (r < 0 || r > 8 || c < 0 || c > 8) return
+    event.preventDefault()
+    grid.querySelector(`[data-i="${r * 9 + c}"]`)?.focus()
+  }
+
+  function clear() {
+    mine = '0'.repeat(81)
+    answer = null
+    remember()
+    for (const input of grid.querySelectorAll('input[name]')) input.value = ''
+  }
+
+  function answered(event) {
+    answer = event.detail.value ?? { error: "That couldn't be checked just now. Try again in a minute." }
+  }
+</script>
+
+<style>
+  :host { display: block; }
+  form { display: grid; gap: 0.75rem; max-width: 28rem; }
+  .grid { display: grid; grid-template-columns: repeat(9, 1fr); border: 2px solid var(--foreground, #222); border-radius: 0.25rem; background: var(--card, #fff); }
+  .cell { box-sizing: border-box; width: 100%; aspect-ratio: 1; min-width: 0; margin: 0; padding: 0; border: 0; border-right: 1px solid var(--border, #ccd); border-bottom: 1px solid var(--border, #ccd); border-radius: 0; background: transparent; color: var(--primary, #2a4bd7); font: inherit; font-size: clamp(1rem, 5vw, 1.5rem); font-weight: 600; text-align: center; caret-color: transparent; }
+  .cell:nth-child(9n) { border-right: 0; }
+  .cell:nth-last-child(-n + 9) { border-bottom: 0; }
+  .cell.right { border-right: 2px solid var(--foreground, #222); }
+  .cell.under { border-bottom: 2px solid var(--foreground, #222); }
+  .cell.given { color: var(--foreground, #222); background: var(--muted, #eef0f4); font-weight: 800; }
+  .cell.clash { background: color-mix(in srgb, var(--destructive, #c62828) 22%, transparent); }
+  .cell:focus { outline: 3px solid var(--ring, #2a4bd7); outline-offset: -3px; position: relative; }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+  .count { margin: 0; color: var(--muted-foreground, #5d6470); font-size: 0.9rem; }
+  alert-banner { display: block; max-width: 28rem; margin-bottom: 0.75rem; }
+  form[aria-busy="true"] .actions { opacity: 0.6; }
+</style>
+
+<daily-sudoku date="" level="" givens="" entries="" result={null}>
+  <alert-banner zb-if={message?.state === 'solved'} variant="success" heading="Solved">Every cell is right. Come back tomorrow for the next one.</alert-banner>
+  <alert-banner zb-if={message?.state === 'wrong'} variant="danger" heading="Not quite">{message.wrong === 1 ? '1 digit is wrong' : message.wrong + ' digits are wrong'}{message.empty ? `, and ${message.empty} cell${message.empty === 1 ? ' is' : 's are'} still empty` : ''}.</alert-banner>
+  <alert-banner zb-if={message?.state === 'open'} variant="info" heading="So far so good">Nothing you've put in is wrong, and {message.empty === 1 ? '1 cell is' : message.empty + ' cells are'} still empty.</alert-banner>
+  <alert-banner zb-if={message?.error} variant="danger" heading="That didn't go through">{message.error}</alert-banner>
+  <form action={check} onaction={answered}>
+    <input type="hidden" name="date" value={date}>
+    <div class="grid" role="group" aria-label={`Sudoku for ${date}, ${level}`} ref={grid} onkeydown={move} onfocusin={(event) => event.target.select?.()}>
+      <zb-each items={cells} as="cell" key={cell.i}>
+        <input zb-if={cell.given} class={cell.cls} data-i={cell.i} value={cell.digit} readonly aria-label={cell.label}>
+        <input zb-else class={cell.cls} data-i={cell.i} name={cell.name} value={cell.digit} inputmode="numeric" maxlength={live ? 2 : 1} autocomplete="off" aria-label={cell.label} oninput={(event) => typed(event, cell.i)}>
+      </zb-each>
+    </div>
+    <p class="count" aria-live="polite">{filled} of {blanks} cells filled</p>
+    <div class="actions">
+      <action-button type="submit">Check</action-button>
+      <action-button zb-if={live} type="button" variant="outline" onclick={clear}>Clear</action-button>
+    </div>
+  </form>
+</daily-sudoku>

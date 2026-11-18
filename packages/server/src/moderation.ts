@@ -10,9 +10,13 @@
 //
 //   moderation/bans   server only: one field per blocked player's reference
 //   moderation/log    server only: what the admin did, one field per action
+import { MOST_BYTES, type Packs } from "./packs.js";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { playerOf, type ChatMessage, type RoomDoc } from "@journey-to-code/rooms/server";
 import type { Catalogue } from "./catalogue.js";
+import type { Tunables } from "./tunables.js";
+import { PromoteError, type Promote } from "./promote.js";
+import type { GithubLogin } from "./github-login.js";
 import type { Backups } from "./backup.js";
 import type { Courses } from "./courses.js";
 import type { Designs } from "./designs.js";
@@ -30,6 +34,11 @@ interface Rooms {
   closeTable(id: string, reason: string): Promise<boolean>;
   removePlayer(id: string, seat: number, bot?: string): Promise<string | null>;
   redact(id: string, key: string): Promise<boolean>;
+  /** Hold a game, let it go on, play a seat's turn at a held one, and tell the table (see @journey-to-code/rooms). */
+  pause(id: string, reason?: string): Promise<string | null>;
+  resume(id: string): Promise<string | null>;
+  botMoveFor(id: string, seat: number): Promise<string | null>;
+  announce(id: string, text: string, from?: string): Promise<unknown>;
 }
 
 /** The parts of the houses module moderation uses. */
@@ -73,7 +82,7 @@ const finished = (summary: unknown) => {
 /** How many wrong tokens a minute before everyone waits. */
 const WRONG_TOKENS_PER_MINUTE = 20;
 
-export function createModeration(rooms: Rooms, designs: Designs, { token, houses, catalogue, backups, bots, courses, mount = "/moderation", now = () => Date.now() }: { token?: string; houses?: Houses; catalogue?: Catalogue; /** Mini Golf courses people make, to take out of the gallery. */ courses?: Courses; /** Copies of the database, when the parlor keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
+export function createModeration(rooms: Rooms, designs: Designs, { token, github, houses, catalogue, tunables, promote, backups, bots, courses, packs, mount = "/moderation", now = () => Date.now() }: { token?: string; /** Who may sign in with GitHub instead of the token (see github-login.ts). */ github?: Pick<GithubLogin, "enabled" | "valid">; houses?: Houses; catalogue?: Catalogue; /** The numbers a game lets its host change (see tunables.ts). */ tunables?: Tunables; /** Opens a pull request for them (see promote.ts). */ promote?: Promote; /** The pack Road to the Shootout plays, when the host has published one (see packs.ts). */ packs?: Packs; /** Mini Golf courses people make, to take out of the gallery. */ courses?: Courses; /** Copies of the database, when the parlor keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
   const secret = token?.trim() ? digest(token.trim()) : null;
   const docs = rooms.sync.documents();
   let wrong: number[] = [];
@@ -113,6 +122,7 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
         started: !!room.started,
         finished: finished(room.summary),
         closed: room.closed ?? "",
+        paused: room.paused ? { at: room.paused.at, reason: room.paused.reason } : null,
         messages: Object.keys(chat).filter((k) => /^m\d+$/.test(k)).length,
         seats: (room.seats ?? []).map((seat, i) => {
           const holder = game?.holders?.[i] ?? null;
@@ -151,12 +161,12 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
   const personShown = ({ player: _secret, ...p }: Person) => ({ ...p, name: p.names[0] ?? p.ban?.name ?? "Unnamed player", seated: p.tables.filter((t) => t.status === "open" || t.status === "playing").length });
 
   function allowed(request: Request): Response | null {
-    if (!secret) return json({ error: "Moderation is off. Set CARDROOM_ADMIN_TOKEN on the server to turn it on." }, 503);
+    if (!secret && !github?.enabled) return json({ error: "Moderation is off. Set CARDROOM_ADMIN_TOKEN on the server to turn it on." }, 503);
     const at = now();
     wrong = wrong.filter((t) => at - t < 60_000);
     if (wrong.length >= WRONG_TOKENS_PER_MINUTE) return json({ error: "Too many wrong tokens. Wait a minute." }, 429);
     const given = request.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
-    if (given && timingSafeEqual(digest(given), secret)) return null;
+    if (given && ((secret && timingSafeEqual(digest(given), secret)) || github?.valid(given))) return null;
     wrong.push(at);
     return json({ error: given ? "That isn't this parlor's admin token." : "Sign in with the admin token." }, 401);
   }
@@ -167,6 +177,35 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
     const parts = path.split("/").filter(Boolean);
     const [area = "", id = "", action = ""] = parts;
     const method = request.method;
+
+    // Road to the Shootout's pack: the host makes one in the workshop and publishes it here.
+    // This comes before the rest because what is posted is the pack itself, not JSON.
+    if (area === "shootout") {
+      if (!packs) return json({ error: "This parlor has nowhere to keep a pack." }, 404);
+      const shown = () => {
+        const now = packs.get();
+        return { published: now ? { name: now.name, size: now.bytes.length, at: now.at } : null };
+      };
+      // GET /moderation/shootout → whether a pack of the host's own is being played
+      if (!id && method === "GET") return json(shown());
+      // POST /moderation/shootout/pack → publish the pack in the body
+      if (id === "pack" && method === "POST") {
+        if (Number(request.headers.get("content-length") ?? 0) > MOST_BYTES) return json({ error: `The most this parlor takes is ${MOST_BYTES / 1024 / 1024} MB.` }, 413);
+        const problem = packs.set(new Uint8Array(await request.arrayBuffer()));
+        if (problem) return json({ error: problem }, 400);
+        await record("Published a Road to the Shootout pack", packs.get()!.name);
+        return json(shown());
+      }
+      // POST /moderation/shootout/reset → back to the pack the game came with
+      if (id === "reset" && method === "POST") {
+        const was = packs.get();
+        packs.clear();
+        if (was) await record("Went back to the built-in Road to the Shootout", was.name);
+        return json(shown());
+      }
+      return json({ error: "Not found" }, 404);
+    }
+
     const input = method === "POST" ? (((await request.json().catch(() => ({}))) ?? {}) as Record<string, unknown>) : {};
     const view = await docs;
 
@@ -210,10 +249,13 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
 
     if (area === "tables") {
       const all = await tables();
-      // GET /moderation/tables → every table: the ones still going first
+      // GET /moderation/tables → every table: the ones still going first, and the newest first among them
       if (!id && method === "GET") {
         const order = ["playing", "open", "finished", "closed"];
-        return json({ tables: all.map(tableShown).sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status)) });
+        // Rooms are stored in the order they were made, so the later of two is the newer.
+        const shown = all.map((t, made) => ({ t: tableShown(t), made }));
+        shown.sort((a, b) => order.indexOf(a.t.status) - order.indexOf(b.t.status) || b.made - a.made);
+        return json({ tables: shown.map(({ t }) => t) });
       }
       const table = all.find((t) => t.id === id);
       if (!table) return json({ error: "There's no table with that code." }, 404);
@@ -227,6 +269,33 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
         return json({ table: tableShown(table), chat });
       }
       if (method !== "POST") return json({ error: "Not found" }, 404);
+      // POST /moderation/tables/:id/pause { reason } → nobody can move, no computer player plays and no clock runs; the table is told
+      if (action === "pause") {
+        const reason = clean(input.reason, 200);
+        const problem = await rooms.pause(id, reason);
+        if (problem) return json({ error: problem }, 409);
+        await rooms.announce(id, reason ? `The host paused the game: ${reason}` : "The host paused the game.");
+        await record("Paused a table", name, reason);
+        return json({ ok: true });
+      }
+      // POST /moderation/tables/:id/resume → play goes on, the clocks with the time they had
+      if (action === "resume") {
+        const problem = await rooms.resume(id);
+        if (problem) return json({ error: problem }, 409);
+        await rooms.announce(id, "The host resumed the game.");
+        await record("Resumed a table", name);
+        return json({ ok: true });
+      }
+      // POST /moderation/tables/:id/play-for { seat } → at a paused table, the computer's move for that seat, as the host's
+      if (action === "play-for") {
+        const seat = Number(input.seat);
+        const who = table.seats[seat]?.name ?? `Seat ${seat + 1}`;
+        const problem = await rooms.botMoveFor(id, seat);
+        if (problem) return json({ error: problem }, 409);
+        await rooms.announce(id, `The host played a turn for ${who}.`);
+        await record("Played a turn for a seat", `${who} at ${name}`);
+        return json({ ok: true });
+      }
       // POST /moderation/tables/:id/close { reason } → nobody can sit, move or talk there again
       if (action === "close") {
         if (table.closed) return json({ error: "That table is already closed." }, 409);
@@ -349,6 +418,38 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
       }
     }
 
+    if (area === "tunables" && tunables) {
+      // GET /moderation/tunables → every game that can be tuned, the shape of what it takes, and what is saved
+      if (!id && method === "GET") return json({ canPromote: promote?.enabled === true, games: await Promise.all(tunables.games().map(async (g) => ({ ...g, saved: await tunables.get(g.id), promoted: (await promote?.last(g.id)) ?? null }))) });
+      // POST /moderation/tunables/:game { values } → the game's overrides, replaced (what's wrong comes back as 422 and nothing changes)
+      if (id && !action && method === "POST") {
+        const result = await tunables.set(id, input.values);
+        if ("problems" in result) return json({ error: result.problems[0], problems: result.problems }, 422);
+        await record("Changed a game's numbers", id, `version ${result.saved.version}`);
+        return json(result.saved);
+      }
+      // POST /moderation/tunables/:game/promote → a draft pull request that writes the saved numbers into the code
+      if (id && action === "promote" && method === "POST") {
+        if (!promote) return json({ error: "Opening pull requests isn't set up on this parlor." }, 503);
+        const saved = await tunables.get(id);
+        try {
+          const made = await promote.open(id, saved);
+          await record("Opened a pull request for a game's numbers", id, `version ${made.version}: ${made.url}`);
+          return json(made);
+        } catch (error) {
+          if (error instanceof PromoteError) return json({ error: error.message }, error.status);
+          throw error;
+        }
+      }
+      // POST /moderation/tunables/:game/reset → back to the game's own numbers
+      if (id && action === "reset" && method === "POST") {
+        const saved = await tunables.reset(id);
+        if (!saved) return json({ error: "Not found" }, 404);
+        await record("Put a game's numbers back", id, `version ${saved.version}`);
+        return json(saved);
+      }
+    }
+
     if (area === "designs") {
       const made = await designs.all();
       const blocked = await bans();
@@ -409,7 +510,7 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, houses
 
   return {
     /** Whether the server has an admin token. */
-    enabled: secret !== null,
+    enabled: secret !== null || github?.enabled === true,
     /** Whether this request comes from a blocked player. */
     async blocked(request: Request): Promise<boolean> {
       const player = playerOf(request);

@@ -30,7 +30,7 @@ test.describe("with JavaScript off", () => {
     await page.locator("games-page select[name=kind]").selectOption("table");
     await page.locator("games-page form button[type=submit]").click();
     await expect(page).toHaveURL(/\/games\?q=che&kind=table$/);
-    await expect(cards(page)).toHaveText(["Checkers", "Chess"]);
+    await expect(cards(page)).toHaveText(["Checkers", "Chess", "Chinese Checkers"]);
     // What was asked for is still in the fields.
     await expect(page.locator("games-page input[name=q]")).toHaveValue("che");
     await expect(page.locator("games-page select[name=kind]")).toHaveValue("table");
@@ -64,7 +64,12 @@ test.describe("with JavaScript on", () => {
   test.beforeEach(({ page }) => {
     errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    page.on("console", (message) => (message.type() === "error" || message.type() === "warning") && errors.push(`${message.type()}: ${message.text()}`));
+    page.on("console", (message) => {
+      // Firefox reports what a page had in flight when it's left (a click to /games) as an error of
+      // the page left behind. That isn't a fault of either page.
+      if (message.text().includes("Navigated away from page")) return;
+      if (message.type() === "error" || message.type() === "warning") errors.push(`${message.type()}: ${message.text()}`);
+    });
   });
   test.afterEach(() => expect(errors, "errors and warnings on the page").toEqual([]));
 
@@ -96,7 +101,7 @@ test.describe("with JavaScript on", () => {
   test("a page asked for with a filter starts from it", async ({ page }) => {
     await page.goto("/games?q=che&kind=table");
     await started(page, "games-page");
-    await expect(cards(page)).toHaveText(["Checkers", "Chess"]);
+    await expect(cards(page)).toHaveText(["Checkers", "Chess", "Chinese Checkers"]);
     await page.locator("games-page input[name=q]").fill("chess");
     await expect(cards(page)).toHaveText(["Chess"]);
   });
