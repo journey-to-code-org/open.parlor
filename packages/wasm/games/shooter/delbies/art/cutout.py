@@ -194,3 +194,9 @@ view("tank-hands", tank, gear)
 view("tank-cloud", tank, biggest(there & ~cv2.dilate(gear.astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool), keep=4, least=300))
 stood = load("tank-floor.webp")
 lying("tank-floor", stood, grab(stood, (325, 185, 385, 440), sure=[(420, 290, 600, 560)]), 34)
+
+# The price gun (the pistol), on black; and a box of rolls of tags for it, on a floor.
+gun = load("pricegun-held.webp")
+view("pricegun-held", gun, filled(biggest(off(gun, (0, 0, 0), 16))))
+rolls = load("tags-floor.webp")
+lying("tags-floor", rolls, grab(rolls, (285, 250, 450, 320), sure=[(380, 330, 650, 500)]), 30)

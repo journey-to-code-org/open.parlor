@@ -130,30 +130,17 @@ for name, size in (("SHTFA0", 9), ("SHTFB0", 15)):
     draw.ellipse((cx - size // 2, cy - size // 2, cx + size // 2, cy + size // 2), fill=(255, 250, 210))
     keep(name, image, held=True)
 
-def price_gun(draw, dy=0):
-    """A price gun, in the pistol's place: red, a roll of labels on top, and a hand round its grip."""
-    cx, top = 160, 114 + dy
-    draw.ellipse((cx - 11, top, cx + 11, top + 18), fill=WHITE)
-    draw.ellipse((cx - 4, top + 5, cx + 4, top + 13), fill=STEEL)
-    draw.rounded_rectangle((cx - 17, top + 12, cx + 17, top + 54), 6, fill=RED)
-    draw.rectangle((cx + 11, top + 16, cx + 17, top + 52), fill=(140, 24, 20))
-    # Where the label comes out, and one on its way.
-    draw.rectangle((cx - 9, top + 8, cx + 9, top + 14), fill=BLACK)
-    draw.rectangle((cx - 7, top + 4, cx + 7, top + 10), fill=WHITE)
-    draw.line((cx - 4, top + 7, cx + 4, top + 7), fill=BLACK)
-    hand(draw, cx - 23, top + 46, 46, 30)
-
-for name, dy in {"PISGA0": 0, "PISGB0": -8, "PISGC0": -4, "PISGD0": 2, "PISGE0": 0}.items():
-    image, draw = screen()
-    price_gun(draw, dy)
-    keep(name, image, held=True)
+# The price gun, in the pistol's place: Mikey's picture (given/pricegun-held.png), kicking up as a tag leaves it.
+PRICE_GUN = np.array(Image.open(here / "given" / "pricegun-held.png").convert("RGBA"))
+for name, dy in {"PISGA0": 0, "PISGB0": -7, "PISGC0": -3, "PISGD0": 2, "PISGE0": 0}.items():
+    given(name, PRICE_GUN, held=True, dy=dy)
 
 # A label leaving it, with a snap.
 image, draw = screen()
-draw.polygon([(160, 84), (166, 100), (182, 104), (166, 108), (160, 122), (154, 108), (138, 104), (154, 100)], fill=(255, 210, 60))
-draw.rectangle((153, 97, 167, 109), fill=WHITE)
-draw.line((156, 101, 164, 101), fill=BLACK)
-draw.line((156, 105, 162, 105), fill=BLACK)
+draw.polygon([(171, 82), (177, 98), (193, 102), (177, 106), (171, 120), (165, 106), (149, 102), (165, 98)], fill=(255, 210, 60))
+draw.rectangle((164, 95, 178, 107), fill=(240, 110, 40))
+draw.line((167, 99, 175, 99), fill=BLACK)
+draw.line((167, 103, 173, 103), fill=BLACK)
 keep("PISFA0", image, held=True)
 
 def impact_wrench(draw, turned=False):
@@ -295,13 +282,8 @@ for prefix, colour in (("BKEY", (40, 90, 220)), ("YKEY", (240, 200, 40)), ("RKEY
         draw.polygon([(0, 6), (6, 4), (7, 13), (1, 15)], fill=tag)
         keep(prefix + letter + "0", image)
 
-# A box of tags for the price gun.
-image, draw = small(24, 16)
-draw.rectangle((0, 3, 23, 15), fill=(226, 222, 208))
-draw.rectangle((0, 3, 23, 6), fill=YELLOW)
-draw.rectangle((4, 9, 19, 12), fill=RED)
-draw.polygon([(0, 3), (4, 0), (27, 0), (23, 3)], fill=(190, 186, 172))
-keep("AMMOA0", image)
+# A box of rolls of tags for the price gun: Mikey's picture (given/tags-floor.png).
+given("AMMOA0", np.array(Image.open(here / "given" / "tags-floor.png").convert("RGBA")))
 
 # Someone else playing, as you see them: work shirt, cap, dark trousers, a price gun in hand. One picture a moment, the same from every side.
 def worker(step=0, arm=0, lean=0, flash=False, down=0.0):

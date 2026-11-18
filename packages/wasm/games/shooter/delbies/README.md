@@ -56,12 +56,13 @@ have no pictures and are placed in no level.
   behind them. It needs OpenCV and the pictures, which are not in the repository: some carry
   another game's status bar or a real brand's label, and nothing of those is in what is cut out
   but a label too small to read.
-- `art/tools.py` makes the sprites of everything held and picked up. Seven weapons are Mikey's
-  pictures, brought into the game's colours as they are:
+- `art/tools.py` makes the sprites of everything held and picked up. Eight weapons are Mikey's
+  pictures, brought into the game's colours as they are (and the box of tag rolls is his too):
 
   | In the engine's place of | Here |
   | --- | --- |
   | the fist | the "hammer": a tape measure, swung with its blade out |
+  | the pistol | a price gun |
   | the chainsaw | a torch and a can of brake cleaner |
   | the shotgun | Delbie's lever-action |
   | the rocket launcher | brake rotors, thrown |
@@ -69,9 +70,8 @@ have no pictures and are placed in no level.
   | the biggest gun | a tank of R-134a |
 
   Each is one picture or two, so what moves is the whole weapon (the lever isn't worked, the
-  rotor isn't seen leaving the hand). The price gun (the pistol) and the impact wrench (the
-  chaingun) are still drawn by the script, shape by shape, now in gloved hands like the rest:
-  there are no pictures of them yet. It also draws cartridges loose and boxed; pasta, a pizza
+  rotor isn't seen leaving the hand). The impact wrench (the chaingun) is still drawn by the script, shape by
+  shape, now in a gloved hand like the rest: there is no picture of it yet. It also draws cartridges loose and boxed; pasta, a pizza
   box and a coffee for health; a shop apron and a hard hat for armour; boxes of ammunition,
   batteries and the three keys; another player (work shirt, cap, price gun); dust and blood
   where a shot lands; the light things arrive in; what the King Rat throws; and a drum of waste
