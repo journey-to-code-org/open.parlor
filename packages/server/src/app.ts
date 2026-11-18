@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Log } from "@zubra/sync/server";
 import { createRooms, type RoomDoc } from "@journey-to-code/rooms/server";
 import { createCatalogue } from "./catalogue.js";
+import { createPages } from "./pages.js";
 import { createChallenges } from "./challenges.js";
 import { createDevices } from "./devices.js";
 import { createSpectate } from "./spectate.js";
@@ -152,6 +153,7 @@ export function createCardRoom(
   const push = createPush(rooms.sync, options.push);
   const ai = createAi(options.ai);
   const catalogue = createCatalogue(rooms.sync);
+  const pages = createPages(catalogue);
   const designs = createDesigns(rooms.sync, { tables: rooms });
   const houses = createHouses(rooms, { push, ai, gameOn: catalogue.isOn, deckFor: designs.deckFor });
   const challenges = createChallenges(rooms, push, { gameOn: catalogue.isOn });
@@ -197,7 +199,7 @@ export function createCardRoom(
   }
   /** The routes that aren't the rooms kit's own. */
   const ours = async (request: Request) =>
-    (await refusal(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await designs.fetch(request)) ?? (await courses.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await spectate.fetch(request)) ?? (await challenges.fetch(request)) ?? (await devices.fetch(request)) ?? (await lobby.fetch(request)) ?? (await houses.fetch(request));
+    (await refusal(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await designs.fetch(request)) ?? (await courses.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await pages.fetch(request)) ?? (await spectate.fetch(request)) ?? (await challenges.fetch(request)) ?? (await devices.fetch(request)) ?? (await lobby.fetch(request)) ?? (await houses.fetch(request));
 
   return {
     rooms,
@@ -265,7 +267,7 @@ export function createCardRoom(
         req.headers.cookie = as.cookie;
         return this.handle(req, res);
       }
-      if (under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/spectate", "/bugs", "/me"])) {
+      if (under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/spectate", "/bugs", "/me", "/games", "/_zubra"])) {
         const chunks: Buffer[] = [];
         let size = 0;
         for await (const chunk of req) {

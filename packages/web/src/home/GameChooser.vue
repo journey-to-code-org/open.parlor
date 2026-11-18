@@ -44,6 +44,8 @@ const props = defineProps<{
   open: { id: string; game: string; who: string; free: number }[];
   /** Whether this parlor takes requests for games it doesn't have. */
   canAsk?: boolean;
+  /** Whether this parlor has the page its server draws itself, with every game on it (`games`). */
+  canList?: boolean;
 }>();
 const emit = defineEmits<{ pick: [id: string]; house: [slug: string]; lobby: []; wifi: []; move: []; ask: [] }>();
 // The page about how the parlor is made: one set of Zubra components, checked in every framework
@@ -322,6 +324,7 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
     <p class="fine links">
       <a class="design" href="watch/">👀 Watch a game</a>
       <a class="design" href="designer/">🎨 Design your own deck of cards</a>
+      <a v-if="canList" class="design" href="games">📋 Every game on one page</a>
       <a class="design" :href="BUILT">🧪 How the parlor is built</a>
       <button type="button" class="design" @click="emit('move')">📱 Use the parlor on another device</button>
       <button v-if="canAsk" type="button" class="design" @click="emit('ask')">💡 Don't see your game? Ask for it</button>
