@@ -249,10 +249,13 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, github
 
     if (area === "tables") {
       const all = await tables();
-      // GET /moderation/tables → every table: the ones still going first
+      // GET /moderation/tables → every table: the ones still going first, and the newest first among them
       if (!id && method === "GET") {
         const order = ["playing", "open", "finished", "closed"];
-        return json({ tables: all.map(tableShown).sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status)) });
+        // Rooms are stored in the order they were made, so the later of two is the newer.
+        const shown = all.map((t, made) => ({ t: tableShown(t), made }));
+        shown.sort((a, b) => order.indexOf(a.t.status) - order.indexOf(b.t.status) || b.made - a.made);
+        return json({ tables: shown.map(({ t }) => t) });
       }
       const table = all.find((t) => t.id === id);
       if (!table) return json({ error: "There's no table with that code." }, 404);
