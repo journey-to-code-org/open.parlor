@@ -543,7 +543,7 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .mini-table .pole { stroke: #fbf6ec; stroke-width: 2.5; stroke-linecap: round; }
 .mini-table .flag { fill: #e0453a; }
 .mini-table .ball { fill: #fdfdf8; stroke: rgba(0, 0, 0, 0.45); stroke-width: 1.2; }
-.mini-table .ball.tone-red { fill: #e0453a; } .mini-table .ball.tone-blue { fill: #3d7fe6; } .mini-table .ball.tone-gold { fill: #f2c230; } .mini-table .ball.tone-black { fill: #2a2622; }
+.mini-table .ball.tone-red { fill: #e0453a; } .mini-table .ball.tone-blue { fill: #3d7fe6; } .mini-table .ball.tone-gold { fill: #f2c230; } .mini-table .ball.tone-black { fill: #2a2622; } .mini-table .ball.tone-orange { fill: #c8792b; }
 .tile:hover .mini-table, .tile:focus-visible .mini-table { rotate: 0deg; scale: 1.06; }
 /* An arcade game's tile: a little screen, dark against the felt, where the fan would be. */
 .mini-screen {

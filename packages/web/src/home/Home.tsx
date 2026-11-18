@@ -129,6 +129,10 @@ const TABLES: Record<string, MiniTable> = {
   // A cue ball lined up on a little rack.
   // A long board seen from the near end: pucks lying in the far zones, and one on its way.
   shuffleboard: { surface: "lane", balls: [{ x: 40, y: 20, tone: "red" }, { x: 60, y: 28, tone: "blue" }, { x: 46, y: 40, tone: "blue" }, { x: 54, y: 74, tone: "red" }] },
+  // The hole in the middle of the board, and discs of both colours round it.
+  crokinole: { surface: "wood", cup: [50, 48], balls: [{ x: 38, y: 36, tone: "black" }, { x: 64, y: 44, tone: "gold" }, { x: 46, y: 66, tone: "gold" }, { x: 60, y: 74, tone: "black" }] },
+  // The football on its way up the table.
+  flickfootball: { surface: "wood", balls: [{ x: 50, y: 26, tone: "orange" }] },
   // The queen in the middle of a ring of pieces, and the striker on its line.
   carrom: { surface: "wood", balls: [{ x: 50, y: 46, tone: "red" }, ...[0, 1, 2, 3, 4, 5].map((i) => ({ x: Math.round(50 + 13 * Math.cos((i * Math.PI) / 3)), y: Math.round(46 + 13 * Math.sin((i * Math.PI) / 3)), tone: i % 2 ? "black" : "cream" })), { x: 38, y: 80, tone: "gold" }] },
   billiards: { surface: "felt", balls: [{ x: 28, y: 74, tone: "white" }, { x: 62, y: 30, tone: "red" }, { x: 72, y: 36, tone: "red" }, { x: 52, y: 38, tone: "red" }] },

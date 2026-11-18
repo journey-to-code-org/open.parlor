@@ -122,7 +122,7 @@ function aimWords(v: SportView, aim: AimAt): { short: string; long: string } {
   const ball = strikable(v);
   const shoot = v.shoot;
   if (!ball || !shoot) return { short: "", long: "" };
-  const hole = v.table.look.pockets === "cup" ? "the cup" : "the nearest pocket";
+  const hole = v.table.look.pockets === "cup" ? "the cup" : v.game === "crokinole" ? "the hole" : "the nearest pocket";
   const pocket = nearestPocket(v, ball);
   const percent = Math.round((aim.power / 1000) * 100);
   // Pool: the ball the aim reaches first, by its number, since a ball on a small screen can't show it.
@@ -141,7 +141,7 @@ function aimWords(v: SportView, aim: AimAt): { short: string; long: string } {
 }
 
 /** A game whose shot starts anywhere along a line, aimed any way: pool with the cue ball in hand, and Carrom's striker on its baseline. (Bowling's line is a throw: aimed up the lane.) */
-const onLine = (game: string) => game === "billiards" || game === "carrom" || game === "shuffleboard";
+const onLine = (game: string) => game === "billiards" || game === "carrom" || game === "shuffleboard" || game === "crokinole" || game === "flickfootball";
 
 export function SportTable({ view, names, act, onLeave, banner, chat, together, settings, onHelp, onAgain}: SportTableProps) {
   const game = kitGame(view.game)!;
@@ -567,7 +567,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
         setAim({ angle: 27000, power: Math.min(shown.shoot.maxPower, Math.max(shown.shoot.minPower, 760)), at: Math.round((pl.min + pl.max) / 2), call: null });
         return;
       }
-      if (shown.game === "carrom") {
+      if (shown.game === "carrom" || shown.game === "crokinole" || shown.game === "flickfootball") {
         const frame = shown.table.look.frame;
         const middle = { x: frame.x + frame.w / 2, y: frame.y + frame.h / 2 };
         setAim({ angle: angleTo({ x: ball.x, y: pl.y }, middle), power: Math.min(shown.shoot.maxPower, Math.max(shown.shoot.minPower, 450)), at: Math.round(ball.x), call: null });
@@ -583,7 +583,8 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
       return;
     }
     const pocket = nearestPocket(shown, ball);
-    setAim({ angle: pocket ? angleTo(ball, pocket) : 27000, power: Math.min(shown.shoot.maxPower, Math.max(shown.shoot.minPower, 400)), call: null });
+    // A paper football is flicked at the far end: up the table from the bottom seat, down it from the top one.
+    setAim({ angle: pocket ? angleTo(ball, pocket) : shown.game === "flickfootball" && shown.turn === 1 ? 9000 : 27000, power: Math.min(shown.shoot.maxPower, Math.max(shown.shoot.minPower, 400)), call: null });
   }, [ballKey, shown.shoot?.place?.y]);
   // The guide follows the throw as it stands, whichever way it was set (a swipe, the buttons, the keys).
   useEffect(() => {
@@ -828,9 +829,9 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
   const status = error ? (
     <span className="error">{error}</span>
   ) : shooter !== null ? (
-    shooter === me && !together ? "There it goes…" : `${names[shooter] ?? "Someone"} ${shown.game === "bowling" ? "bowls" : shown.game === "billiards" ? "shoots" : shown.game === "carrom" ? "flicks" : shown.game === "shuffleboard" ? "slides" : "putts"}…`
+    shooter === me && !together ? "There it goes…" : `${names[shooter] ?? "Someone"} ${shown.game === "bowling" ? "bowls" : shown.game === "billiards" ? "shoots" : shown.game === "carrom" ? "flicks" : shown.game === "shuffleboard" ? "slides" : shown.game === "crokinole" || shown.game === "flickfootball" ? "flicks" : "putts"}…`
   ) : shown.over || shown.result ? null : canShoot ? (
-    <span className="mine">{together ? `${names[shown.me] ?? "Someone"}: ` : ""}{shown.game === "bowling" ? "Drag sideways to stand, swipe up to bowl" : shown.shoot?.place && shown.game === "billiards" ? "Place the cue ball, then pull back and let go" : shown.shoot?.place && shown.game === "carrom" ? "Slide the striker along your line, then pull back and flick" : shown.game === "shuffleboard" ? "Put the puck on the line, then pull back and let go" : shown.seats > 1 && !together ? "Your shot" : "Pull back and let go"}</span>
+    <span className="mine">{together ? `${names[shown.me] ?? "Someone"}: ` : ""}{shown.game === "bowling" ? "Drag sideways to stand, swipe up to bowl" : shown.shoot?.place && shown.game === "billiards" ? "Place the cue ball, then pull back and let go" : shown.shoot?.place && shown.game === "carrom" ? "Slide the striker along your line, then pull back and flick" : shown.game === "shuffleboard" ? "Put the puck on the line, then pull back and let go" : shown.game === "crokinole" ? "Put the disc on your line, then pull back and flick" : shown.game === "flickfootball" ? (shown.shoot?.place ? "Put the football down, then pull back and flick" : "Pull back and flick it from where it lies") : shown.seats > 1 && !together ? "Your shot" : "Pull back and let go"}</span>
   ) : sending ? (
     "…"
   ) : shown.turn !== null ? (
@@ -843,7 +844,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
 
   const mine = strikable(shown) ?? shown.table.world.bodies.find((b) => shown.table.bodies.some((look) => look.id === b.id && look.owner === me));
   const pocket = mine && mine.pocketed === undefined ? nearestPocket(shown, mine) : null;
-  const picture = `${shown.table.name}. ${shown.info.join(". ")}.${pocket ? ` Your ball is ${metres(pocket.far)} from ${shown.table.look.pockets === "cup" ? "the cup" : "the nearest pocket"}.` : ""}`;
+  const picture = `${shown.table.name}. ${shown.info.join(". ")}.${pocket ? ` Your ball is ${metres(pocket.far)} from ${shown.table.look.pockets === "cup" ? "the cup" : shown.game === "crokinole" ? "the hole" : "the nearest pocket"}.` : ""}`;
   const percent = Math.round(aim.power / 10);
   const throwing = (!!shown.shoot?.place && !onLine(shown.game)) || shown.game === "bowling";
 
@@ -961,7 +962,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
                   +
                 </button>
                 <button type="button" className="primary sport-go" onClick={() => void shoot()}>
-                  {shown.game === "bowling" ? "Roll" : shown.game === "billiards" ? "Shoot" : shown.game === "carrom" ? "Flick" : shown.game === "shuffleboard" ? "Slide" : "Putt"}
+                  {shown.game === "bowling" ? "Roll" : shown.game === "billiards" ? "Shoot" : shown.game === "carrom" ? "Flick" : shown.game === "shuffleboard" ? "Slide" : shown.game === "crokinole" || shown.game === "flickfootball" ? "Flick" : "Putt"}
                 </button>
               </div>
             </div>
@@ -1250,7 +1251,7 @@ function PoolControls({ view, aim, stand, call }: { view: SportView; aim: AimAt;
   const asks = view.shoot?.call ?? null;
   const labels = new Map(view.table.bodies.map((b) => [b.id, b.label]));
   const pick = (ball: string | undefined, pocket: string | undefined) => call(ball && pocket ? { ball, pocket } : null);
-  const what = view.game === "carrom" ? "striker" : view.game === "shuffleboard" ? "puck" : "cue ball";
+  const what = view.game === "carrom" ? "striker" : view.game === "shuffleboard" ? "puck" : view.game === "crokinole" ? "disc" : view.game === "flickfootball" ? "football" : "cue ball";
   return (
     <div className="sport-row pool-controls">
       {place && (
@@ -1258,7 +1259,7 @@ function PoolControls({ view, aim, stand, call }: { view: SportView; aim: AimAt;
           <button type="button" aria-label={`Move the ${what} left`} onClick={() => stand(-300)}>
             ◀
           </button>
-          <output className="sport-aim">{view.game === "carrom" ? "Striker on your line" : view.game === "shuffleboard" ? "Puck on the line" : "Cue ball in hand"}</output>
+          <output className="sport-aim">{view.game === "carrom" ? "Striker on your line" : view.game === "shuffleboard" ? "Puck on the line" : view.game === "crokinole" ? "Disc on your line" : view.game === "flickfootball" ? "Football on the line" : "Cue ball in hand"}</output>
           <button type="button" aria-label={`Move the ${what} right`} onClick={() => stand(300)}>
             ▶
           </button>

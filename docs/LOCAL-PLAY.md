@@ -52,7 +52,7 @@ person holding it:
 | --- | --- | --- |
 | Chess, Checkers, Go, Reversi, Tic-Tac-Toe, Drop Four, Backgammon | Every turn-based card game: Hearts, Gin, Crazy Eights, Euchre, Hold'em, … | Speed, Slapjack, War (played at once, or against each other's speed) |
 | Yacht, Pig, Ten Thousand, Ship Captain Crew, Shut the Box, Memory, Hangman | Combat (the fleets), Liar's Dice (the dice), Criss-Crosswords (the hands), Secret Word and Anagrams | Word Hunt (a race against the clock), Draw & Guess (needs guessers) |
-| Mini Golf, Bowling, Billiards, Carrom, Shuffleboard | | Both Mahjongs (a call can come from anyone); Spades and Palace; the arcade and idle games |
+| Mini Golf, Bowling, Billiards, Carrom, Shuffleboard, Crokinole, Flick Football | | Both Mahjongs (a call can come from anyone); Spades and Palace; the arcade and idle games |
 
 **Passed round** (`passesDevice`, `kit/PassCurtain.tsx`): a game with something to hide can still be
 played round one device. When the move passes from one person to the next, the whole screen is
@@ -67,7 +67,7 @@ table setting for that would be small.
 
 Two people on one phone can play a third who is on a phone of their own. It is offered for the
 games in the first column above, where the people at one screen see the same table anyway: Mini
-Golf, Bowling, Billiards, Carrom, Shuffleboard, the board games, the dice games, Memory and Hangman.
+Golf, Bowling, Billiards, Carrom, Shuffleboard, Crokinole, Flick Football, the board games, the dice games, Memory and Hangman.
 
 **At a family table, an open table or a house's table** (`packages/web/src/second.ts`,
 `RoomTable.tsx`). Once you have sat down, the seating screen has **Someone else at this device**:
