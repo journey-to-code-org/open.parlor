@@ -39,6 +39,10 @@ export function controls(game: string): string[] {
       return ["After a roll, every die that scores is kept for you. Tap one to put it back and roll it again.", "Then bank the turn's points, or roll the dice that are left."];
     case "shutthebox":
       return ["Roll, then tap tiles that add up to the roll. Only tiles that can be part of it can be tapped.", "Tap a tile you have just shut to open it again. The roll is made when the tiles add up."];
+    case "mancala":
+      return ["Tap one of your pits (the row nearest you) to pick up its seeds and sow them round the board.", "Your store is at your right: its count is under your name."];
+    case "dominoes":
+      return ["Your tiles are under the line. Tap one that matches an end of the line to lay it.", "If it could go at either end, buttons ask which. Tap the tile again to put it back.", "When nothing matches, a button draws from the boneyard, or passes."];
     case "liarsdice":
       return ["Your dice are yours alone: nobody else sees them.", "Tap a bid to make it, or Liar! to call the last one.", "After a call everyone's dice are shown. Press Next round when you've looked."];
     case "drawguess":

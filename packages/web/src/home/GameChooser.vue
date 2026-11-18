@@ -292,7 +292,7 @@ const toShelf = (id: string) => document.getElementById(`shelf-${id}`)?.scrollIn
                 <path class="craft" :d="`M${g.screen.ship[0]} ${g.screen.ship[1] - 13} l4 9 l9 9 l-8 0 l-2 4 h-6 l-2 -4 l-8 0 l9 -9 z`" />
               </svg>
             </span>
-            <span v-else-if="g.dice" class="mini-dice" aria-hidden="true">
+            <span v-else-if="g.dice" class="mini-dice" :class="{ 'as-domino': g.id === 'dominoes' }" aria-hidden="true">
               <span v-for="(face, i) in g.dice" :key="i" class="mini-die" :style="{ '--i': i }">
                 <i v-for="n in 9" :key="n" :class="{ pip: PIPS[face]?.includes(n - 1) }" />
               </span>
@@ -461,6 +461,10 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
   background: #6b6257; border-radius: 10%; overflow: hidden; box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
   transition: rotate 220ms var(--ease-back, ease-out), scale 220ms var(--ease-back, ease-out);
 }
+/* Mancala: a wooden board of round pits, two rows of them, with the seeds counted in each. */
+.mini-board.shade-pits { aspect-ratio: 3 / 2; grid-template: repeat(2, minmax(0, 1fr)) / repeat(3, minmax(0, 1fr)); gap: calc(var(--tile-card) * 0.09); padding: calc(var(--tile-card) * 0.1); box-sizing: border-box; background: linear-gradient(#9a6a3a, #7d5229); border-radius: calc(var(--tile-card) * 0.2); }
+.mini-board.shade-pits .mini-cell { border-radius: 50%; background: radial-gradient(circle at 50% 35%, #5b3817, #3f2610); color: #f3d77f; font-size: calc(var(--tile-card) * 0.26); box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.5); }
+.mini-board.shade-pits .mini-cell.tone-light { color: #b9d6f7; text-shadow: none; }
 /* The gaps between the cells are the board's lines. */
 .mini-cell {
   display: grid; place-items: center; font-weight: 800; line-height: 1; font-size: calc(var(--tile-card) * 1.5 / var(--cols) * 0.6);
@@ -514,6 +518,13 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .mini-die:nth-child(n + 4) { display: none; }
 .mini-die i.pip { width: 74%; aspect-ratio: 1; border-radius: 50%; background: #1d1a16; }
 .tile:hover .mini-die, .tile:focus-visible .mini-die { rotate: 0deg; translate: 0 -3px; }
+/* Dominoes: the two faces end to end are one tile, lying at a slant. */
+.mini-dice.as-domino { rotate: -12deg; transition: rotate 220ms var(--ease-back, ease-out); }
+.mini-dice.as-domino .mini-die { top: 25%; width: 50%; rotate: 0deg; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.14), 0 4px 8px rgba(0, 0, 0, 0.35); }
+.mini-dice.as-domino .mini-die:nth-child(1) { left: 0; border-radius: 16% 0 0 16%; border-right: 1px solid rgba(29, 26, 22, 0.4); }
+.mini-dice.as-domino .mini-die:nth-child(2) { left: 50%; right: auto; border-radius: 0 16% 16% 0; }
+.tile:hover .mini-dice.as-domino, .tile:focus-visible .mini-dice.as-domino { rotate: 0deg; }
+.tile:hover .mini-dice.as-domino .mini-die, .tile:focus-visible .mini-dice.as-domino .mini-die { translate: none; }
 /* A table sport's tile: a little table seen from above, where the fan would be. */
 .mini-table {
   position: absolute; right: calc(var(--tile-card) * 0.3); top: 50%; translate: 0 -50%; rotate: 5deg;
