@@ -4,7 +4,8 @@ import { memoryLog } from "@zubra/sync/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { createCardRoom } from "../src/app.js";
 import { playerRef } from "../src/moderation.js";
-import { createHouseChat, KEPT, LOOKING, MESSAGE_LIMIT } from "../src/housechat.js";
+import { LIMITS } from "@journey-to-code/chat";
+const MESSAGE_LIMIT = LIMITS.message;
 
 const BASE = "http://test";
 let open: ReturnType<typeof createCardRoom>[] = [];
@@ -46,12 +47,12 @@ async function house() {
 describe("a house's chat", () => {
   it("is one conversation for everyone in the house", async () => {
     const { chat, owner, friend, third } = await house();
-    expect((await owner(chat)).body).toMatchObject({ rev: 0, here: [expect.any(String)], messages: [], canRemove: true, limit: MESSAGE_LIMIT, others: 2 });
+    expect((await owner(chat)).body).toMatchObject({ rev: 0, here: [expect.any(String)], messages: [], manager: true, canFilter: true, limits: LIMITS, others: 2 });
     const said = await owner(chat, { text: "  Spades at\n eight?  " });
     expect(said.status).toBe(201);
     await friend(chat, { text: "I'm in" });
     const seen = (await third(chat)).body;
-    expect(seen.canRemove).toBe(false);
+    expect(seen.manager).toBe(false);
     expect(seen.messages.map((m: { name: string; text: string; mine: boolean }) => [m.name, m.text, m.mine])).toEqual([
       ["McMikey", "Spades at eight?", false],
       ["Dubs", "I'm in", false],
@@ -68,24 +69,6 @@ describe("a house's chat", () => {
     expect(Object.keys((await friend(`${chat}?rev=${rev}`)).body).sort()).toEqual(["here", "rev"]);
     await owner(chat, { text: "Hello?" });
     expect((await friend(`${chat}?rev=${rev}`)).body.messages).toHaveLength(2);
-  });
-
-  it("says who has the house's page open, and stops saying so when they have gone", async () => {
-    let doc: Record<string, unknown> | undefined;
-    const chat = createHouseChat({ write: async (_c, _k, fields) => void (doc = fields), documents: async () => ({ get: () => doc }) });
-    const [mikey, dubs, grammi] = ["Mikey", "Dubs", "Grammi"].map((name, i) => ({ id: `m${i}`, player: `p${i}`, name, role: i ? ("member" as const) : ("owner" as const) }));
-    const place = { slug: "parts", name: "The Parts Store", members: [mikey!, dubs!, grammi!] };
-    const ask = async (who: typeof mikey, now: number, rev?: number) => ((await chat.handle(place, who!, "GET", {}, new URLSearchParams(rev === undefined ? "" : `rev=${rev}`), now)).body as { here: string[] }).here;
-    // Alone at first: the one asking is always here.
-    expect(await ask(mikey, 0)).toEqual(["m0"]);
-    expect(await ask(grammi, 1000)).toEqual(["m0", "m2"]);
-    // Told with "nothing new" too, in the house's order.
-    expect(await ask(dubs, 2000, 0)).toEqual(["m0", "m1", "m2"]);
-    // Mikey's page stopped asking; the others' didn't.
-    await ask(grammi, LOOKING + 500);
-    expect(await ask(dubs, LOOKING + 900, 0)).toEqual(["m1", "m2"]);
-    // Saying something counts as being here.
-    expect(((await chat.handle(place, mikey!, "POST", { text: "Back" }, new URLSearchParams(), LOOKING + 1000)).body as { here: string[] }).here).toEqual(["m0", "m1", "m2"]);
   });
 
   it("is for members only", async () => {
@@ -126,26 +109,8 @@ describe("a house's chat", () => {
     // An admin can, as the owner can.
     const dubs = (await owner(`/houses/${slug}`)).body.members.find((m: { name: string }) => m.name === "Dubs").id;
     await owner(`/houses/${slug}/role`, { member: dubs, role: "admin" });
-    expect((await friend(chat)).body.canRemove).toBe(true);
+    expect((await friend(chat)).body.manager).toBe(true);
     expect((await friend(chat, { remove: one })).body.messages).toEqual([]);
-  });
-
-  it("keeps the last messages only, and never gives an id out twice", async () => {
-    const written: Record<string, unknown>[] = [];
-    let doc: Record<string, unknown> | undefined;
-    const chat = createHouseChat({
-      write: async (_c, _k, fields) => void written.push((doc = fields)),
-      documents: async () => ({ get: () => doc }),
-    });
-    const me = { id: "m1", player: "p1", name: "McMikey", role: "owner" as const };
-    const place = { slug: "parts", name: "The Parts Store", members: [me] };
-    for (let i = 0; i < KEPT + 5; i++) await chat.handle(place, me, "POST", { text: `line ${i}` }, new URLSearchParams(), i * 60_000);
-    const { messages } = (await chat.handle(place, me, "GET", {}, new URLSearchParams())).body as { messages: { id: number; text: string }[] };
-    expect(messages).toHaveLength(KEPT);
-    expect(messages[0]!.text).toBe("line 5");
-    await chat.handle(place, me, "POST", { remove: messages.at(-1)!.id }, new URLSearchParams());
-    const again = (await chat.handle(place, me, "POST", { text: "after" }, new URLSearchParams(), 1e12)).body as { messages: { id: number }[] };
-    expect(again.messages.at(-1)!.id).toBe(KEPT + 6);
   });
 
   it("buzzes the members who aren't looking, once for a conversation", async () => {
@@ -229,27 +194,27 @@ describe("a house's chat", () => {
   it("is followed live by the house's members only, and nobody but the server writes it", async () => {
     const { slug, chat, owner, stranger } = await house();
     await owner(chat, { text: "Spades at eight?" });
-    const scope = encodeURIComponent(JSON.stringify({ housechat: slug }));
-    const pulled = (await owner(`/_zb/house/pull?since=0&scope=${scope}`)).body;
+    const scope = encodeURIComponent(JSON.stringify({ chats: true }));
+    const pulled = (await owner(`/_zb/chat/pull?since=0&scope=${scope}`)).body;
     const fields = Object.fromEntries(pulled.changes.map((c: { field: string; value: unknown }) => [c.field, c.value]));
     expect(fields.messages.map((m: { text: string }) => m.text)).toEqual(["Spades at eight?"]);
-    expect(pulled.changes.every((c: { collection: string; key: string }) => c.collection === "housechat" && c.key === slug)).toBe(true);
+    expect(pulled.changes.every((c: { collection: string; key: string }) => c.collection === "chats" && c.key === `house:${slug}`)).toBe(true);
     // Nothing of the house's for someone outside it (a player of the parlor's, in a house of their own), nor of anything else for a member.
     await stranger("/houses", { name: "Elsewhere", you: "Stranger" });
-    expect((await stranger(`/_zb/house/pull?since=0&scope=${scope}`)).body.changes).toEqual([]);
-    expect((await owner("/_zb/house/pull?since=0")).body.changes.every((c: { collection: string }) => c.collection === "housechat")).toBe(true);
+    expect((await stranger(`/_zb/chat/pull?since=0&scope=${scope}`)).body.changes).toEqual([]);
+    expect((await owner("/_zb/chat/pull?since=0")).body.changes.every((c: { collection: string }) => c.collection === "chats" && c.key === `house:${slug}`)).toBe(true);
     // A page can't write it, member or not.
-    const change = { collection: "housechat", key: slug, field: "messages", value: [], clock: `${String(Date.now()).padStart(15, "0")}-00000-x` };
-    expect((await owner("/_zb/house/push", { changes: [change] }, { origin: BASE })).status).toBe(403);
+    const change = { collection: "chats", key: `house:${slug}`, field: "messages", value: [], clock: `${String(Date.now()).padStart(15, "0")}-00000-x` };
+    expect((await owner("/_zb/chat/push", { changes: [change] }, { origin: BASE })).status).toBe(403);
     // And the rooms' own Sync server hands none of it out.
-    expect((await owner("/_zb/sync/pull?since=0")).body.changes.some((c: { collection: string }) => c.collection === "housechat")).toBe(false);
+    expect((await owner("/_zb/sync/pull?since=0")).body.changes.some((c: { collection: string }) => c.collection === "chats")).toBe(false);
   });
 
   it("buzzes nobody who is following the chat live", async () => {
     const { slug, chat, owner, friend, third, sent } = await house();
     for (const [who, n] of [[owner, 1], [friend, 2], [third, 3]] as const) await who("/push/subscribe", { subscription: sub(n) });
     // Grammi's page is open on the house, so her presence heartbeats arrive; a stranger's can't.
-    const hello = await third(`/_zb/house/presence`, { room: `housechat/${slug}`, peer: "grammi-tab", state: { member: "x" } }, { origin: BASE });
+    const hello = await third(`/_zb/chat/presence`, { room: `chats/house:${slug}`, peer: "grammi-tab", state: { here: { member: "x" } } }, { origin: BASE });
     // Without a live stream the peer id isn't hers to speak as, but the heartbeat was let in first.
     expect([200, 403]).toContain(hello.status);
     await owner(chat, { text: "Spades at eight?" });

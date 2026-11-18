@@ -5,7 +5,7 @@
 // components, the Sync collection element and the dialogs teleported to the body are made and
 // taken away again. Before and after, it forces a garbage collection and reads Chrome's own
 // counters: the JavaScript heap, the DOM nodes still alive (on the page or held by something), and
-// the event listeners. It also counts the live streams opened to /_zb/house (the page keeps one).
+// the event listeners. It also counts the live streams opened to /_zb/chat (the page keeps one).
 //
 // A leak shows as nodes or listeners that grow with every trip. A heap a few hundred KB larger
 // after is the JIT and caches warming up; it should not grow with the number of trips.
@@ -37,7 +37,7 @@ const page = await context.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(String(e)));
 let streams = 0;
-page.on("request", (r) => r.url().includes("/_zb/house/live") && streams++);
+page.on("request", (r) => r.url().includes("/_zb/chat/live") && streams++);
 const cdp = await context.newCDPSession(page);
 
 async function measure() {
@@ -47,21 +47,21 @@ async function measure() {
   }
   const { usedSize } = await cdp.send("Runtime.getHeapUsage");
   const { nodes, jsEventListeners } = await cdp.send("Memory.getDOMCounters");
-  const onPage = await page.evaluate(() => ({ feeds: document.querySelectorAll("house-chat-feed").length, dialogs: document.querySelectorAll("body > .house-chat-theme").length }));
+  const onPage = await page.evaluate(() => ({ rooms: document.querySelectorAll("chat-room").length, dialogs: document.querySelectorAll("dialog").length }));
   return { heapKB: Math.round(usedSize / 1024), nodes, listeners: jsEventListeners, ...onPage };
 }
 
 async function trip() {
   await page.locator(".house-list li").first().getByRole("button").click();
-  await page.locator("house-chat-feed").waitFor({ state: "detached" });
+  await page.locator("chat-room").waitFor({ state: "detached" });
   await page.waitForTimeout(400);
   await page.goBack();
-  await page.locator(".hc-msg").first().waitFor();
+  await page.locator("chat-room .chat-msg").first().waitFor();
   await page.waitForTimeout(400);
 }
 
 await page.goto(`${base}/?house=${house.slug}`);
-await page.locator(".hc-msg.poll").waitFor({ timeout: 15_000 });
+await page.locator("chat-room .chat-msg[data-poll]").waitFor({ timeout: 15_000 });
 // Warm up: the first trips load the table's code and fill caches.
 for (let i = 0; i < 3; i++) await trip();
 const before = await measure();
@@ -73,6 +73,6 @@ console.log(`${trips} trips from the house page to a table and back`);
 console.log("before:", before);
 console.log("after: ", after);
 console.log(`per trip: ${per("nodes")} nodes, ${per("listeners")} listeners, ${per("heapKB")} KB of heap`);
-console.log(`live streams opened to /_zb/house: ${streams}`);
+console.log(`live streams opened to /_zb/chat: ${streams}`);
 console.log(`errors: ${errors.length ? errors.join("; ") : "none"}`);
 await browser.close();
