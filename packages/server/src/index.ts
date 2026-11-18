@@ -131,6 +131,11 @@ const server = createServer(async (req, res) => {
     if (embed && (!existsSync(file) || statSync(file).isDirectory())) return void res.writeHead(404).end();
     // Nor is a game's data that isn't there: the page would take the app's HTML for the game.
     if (app?.at === "/wasm/" && path.startsWith("/wasm/data/") && !existsSync(file)) return void res.writeHead(404).end();
+    // A folder of an app that has a page of its own (the WebAssembly games' editor) is that page.
+    if (app && existsSync(join(file, "index.html")) && file !== root) {
+      if (!path.endsWith("/")) return void res.writeHead(308, { location: `${path}/` }).end();
+      file = join(file, "index.html");
+    }
     if (!existsSync(file) || statSync(file).isDirectory()) file = join(root, "index.html"); // the app routes itself
     if (!existsSync(file)) return void res.writeHead(404).end(`Build the app first: ${app?.build ?? "npm run build -w @open-parlor/web"}`);
     // The page and the service worker must never be stale; the hashed assets can be cached for good.

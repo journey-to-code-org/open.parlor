@@ -8,9 +8,14 @@
     "declaration": false,
     "sourceMap": false,
     "isolatedModules": true,
+    "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true,
+    "allowArbitraryExtensions": true,
     "resolveJsonModule": true,
-    "types": ["vite/client", "node"]
+    "types": ["svelte", "vite/client", "@zubra/unplugin/client", "node"],
+    "paths": {
+      "@open-parlor/ui/*": ["./.zubra/types/__/ui/src/*", "../ui/src/*"]
+    }
   },
-  "include": ["src", "host", "net", "test", "vite.config.ts"]
+  "include": ["src", "host", "net", "wad", "test", "vite.config.ts", "vitest.config.ts"]
 }

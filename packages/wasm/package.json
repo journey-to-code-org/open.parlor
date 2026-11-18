@@ -2,7 +2,7 @@
   "name": "@open-parlor/wasm",
   "version": "0.1.0",
   "private": true,
-  "description": "Games compiled to WebAssembly, and the rooms that let devices play them together. The first is a shooter on the open-source Doom engine (GPL-2.0), playing Freedoom.",
+  "description": "Games compiled to WebAssembly, the rooms that let devices play them together, and an editor for a game's pictures and sounds (Svelte, on Zubra components). The first game is a shooter on the open-source Doom engine (GPL-2.0), playing Freedoom.",
   "license": "GPL-2.0-or-later",
   "type": "module",
   "scripts": {
@@ -10,12 +10,16 @@
     "build": "npm run build:net && node scripts/fetch-data.mjs && vite build",
     "preview": "vite preview",
     "engine": "node scripts/build-engine.mjs shooter",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "build:net": "tsc -p tsconfig.net.json"
   },
   "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@types/node": "^22.20.5",
+    "@zubra/compiler": "^5.15.0",
+    "@zubra/unplugin": "^5.15.0",
+    "svelte-check": "^4.7.0",
     "typescript": "^5.6.0",
     "vite": "^8.3.8",
     "vitest": "^2.1.0"
@@ -25,5 +29,9 @@
       "types": "./lib/net/index.d.ts",
       "default": "./lib/net/index.js"
     }
+  },
+  "dependencies": {
+    "@zubra/runtime": "^5.15.0",
+    "svelte": "^5.57.0"
   }
 }
