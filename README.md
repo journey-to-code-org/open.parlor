@@ -450,7 +450,7 @@ The game engine and the rooms live in their own repositories and come in from np
 | [`@journey-to-code/games`](https://github.com/journey-to-code-org/open.games/tree/main/packages/games) | The game kit and the fifty-four games built on it: the `TableGame` engine contract, the card, board and table-sport kits, and the games |
 | [`@journey-to-code/rules`](https://github.com/journey-to-code-org/open.games/tree/main/packages/rules), [`palace`](https://github.com/journey-to-code-org/open.games/tree/main/packages/palace), [`physics`](https://github.com/journey-to-code-org/open.games/tree/main/packages/physics), [`decks`](https://github.com/journey-to-code-org/open.games/tree/main/packages/decks) | Spades and the computer players' personas, Palace, the deterministic physics for the table sports, and card designs |
 | [`@journey-to-code/rooms`](https://github.com/journey-to-code-org/open.rooms) | Turn-based rooms over `@zubra/sync`: seats, server-decided moves, private views, bots |
-| [`packages/server`](packages/server) | The server: every game's rooms, houses, challenges, tournaments, the lobby, the sync log and the web app. It also draws one page itself, `/games` (below) |
+| [`packages/server`](packages/server) | The server: every game's rooms, houses, challenges, tournaments, the lobby, the sync log and the web app. It also draws two pages itself, `/games` and `/daily` (below) |
 | [`packages/web`](packages/web) | The app (React, with the game chooser in Vue): the card table, the board table, the word table and the canvas table for table sports, setup screens, houses, practice |
 | [`packages/designer`](packages/designer) | The card designer (Svelte): draw a deck, keep it or share it, play with it |
 | [`packages/courses`](packages/courses) | Mini Golf courses and bowling lanes people make: painted on a grid, checked, and turned into a hole or a lane the game plays |
@@ -478,6 +478,18 @@ JavaScript off the browser posts the form, the server sends it back to the page,
 drawn with the answer once; with it on the post is a fetch and the page doesn't reload. A game the
 parlor already has is pointed to; anything else goes to the same relay as the app's own sheet, with
 its limits and its block list.
+
+**The daily sudoku** (`/daily`, [`sudoku.ts`](packages/server/src/sudoku.ts),
+[`daily-sudoku.zb`](packages/server/pages/daily-sudoku.zb)) is the same machinery with a grid of real
+inputs. A puzzle is its date (seeded, changing at midnight in New York), always has exactly one
+solution, and gets harder through the week by having fewer clues. The page is given the clues and
+never the answer: "Check" posts the 81 inputs to a server function that compares them with the
+answer and says solved, wrong (how many) or still open (how many), and nothing else. With JavaScript
+off the post comes back to the same day with what was typed and the verdict, once; with it on the
+grid follows the arrow keys, marks repeats in a row, column or box as they are typed, keeps the grid
+for the day in the browser, and checks without reloading. Past days are at `/daily?d=YYYY-MM-DD`.
+The clue count is the only dial for "hard", so a Saturday puzzle is fewer clues, not necessarily
+harder techniques.
 
 One set of Zubra components serves five frameworks: React and Vue in the parlor, Svelte in the
 designer, Solid on the watch page and Angular in the admin app.

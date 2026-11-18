@@ -203,10 +203,15 @@ export function Home({ last, onPick, onOpenHouse, onLobby, onWifi, onMove }: { l
       // "Every game on one page": the page the parlor's server draws itself (the server's pages.ts).
       // A parlor published as plain files has no server to draw it.
       canList: false,
+      // "Daily sudoku": the same, another page of the server's.
+      canDaily: false,
     });
     void bugs.enabled().then((yes) => (props.canAsk = yes));
     void fetch("games", { method: "HEAD" })
       .then((reply) => (props.canList = reply.ok && (reply.headers.get("x-parlor-page") ?? "") === "games"))
+      .catch(() => {});
+    void fetch("daily", { method: "HEAD" })
+      .then((reply) => (props.canDaily = reply.ok && (reply.headers.get("x-parlor-page") ?? "") === "daily"))
       .catch(() => {});
     // Rendered from the reactive props, so the chooser follows them when the open tables change.
     const app = createApp({ render: () => h(GameChooser, { ...props }) });
