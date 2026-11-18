@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@journey-to-code/decks": "^0.1.0",
-    "@journey-to-code/games": "^0.1.33",
+    "@journey-to-code/games": "^0.1.34",
     "@journey-to-code/palace": "^0.1.0",
     "@journey-to-code/physics": "^0.1.2",
     "@journey-to-code/relay": "^0.1.0",
@@ -21,6 +21,8 @@
     "@journey-to-code/rules": "^0.1.0",
     "@open-parlor/courses": "*",
     "@vitejs/plugin-vue": "^6.0.11",
+    "@zag-js/combobox": "^1.48.0",
+    "@zag-js/vanilla": "^1.48.0",
     "@zubra/runtime": "^5.15.0",
     "jsqr": "^1.4.0",
     "modern-screenshot": "^4.7.0",

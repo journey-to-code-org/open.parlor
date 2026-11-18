@@ -161,6 +161,8 @@ SCREENS.delbies = { ship: [0, 0], foes: [], bullets: [], shop: true };
 SCREENS.pinkslips = { ship: [0, 0], foes: [], bullets: [], strip: true };
 SCREENS.airhockey = { ship: [0, 0], foes: [], bullets: [], rink: true };
 SCREENS.zubraquest = { ship: [0, 0], foes: [], bullets: [], quest: true };
+// The counter is in Delbie's shop, so it has the shop's picture.
+SCREENS.counter = { ship: [0, 0], foes: [], bullets: [], shop: true };
 const EMPTY_SCREEN: MiniScreen = { ship: [50, 82], foes: [], bullets: [] };
 
 const SEATS: Record<string, { seats: [number, number]; teams: boolean }> = {
