@@ -636,8 +636,9 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
   };
 
   return (
-    <main className="arcade">
-      <div className="arcade-cabinet">
+    <main className="arcade" data-game={game.id}>
+      {/* The cabinet's marquee (its name, lit up) is drawn from data-marquee on a wide screen. */}
+      <div className="arcade-cabinet" data-marquee={game.name}>
         <div className="arcade-rail">
           <div className="arcade-cell">
             <small>Score</small>
