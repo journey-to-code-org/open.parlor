@@ -29,6 +29,21 @@ export interface Projection {
 /** The tilt a table is seen at unless someone asks for the view from above: about 40°. */
 export const TILT = 0.7;
 
+/**
+ * About 17°: for a table whose shape everyone knows. The camera has no perspective, so a tilt only
+ * shortens what runs away from it (by cos tilt), and at 40° a pool table, twice as long as it's
+ * wide, looked more than two and a half times as long (#321); crokinole's round board was an oval
+ * and carrom's square one a wide oblong. This shortens them by 4%: still a little of the balls'
+ * tops and the cushions' faces, and the shape they are.
+ */
+export const GENTLE_TILT = 0.3;
+
+/** The games played on a table of a shape people know: pool's 2:1, carrom's square, crokinole's circle. */
+const KNOWN_SHAPES = new Set(["billiards", "carrom", "crokinole"]);
+
+/** The tilt a game's table is seen at, unless someone has asked for the view from above. */
+export const tiltFor = (game: string) => (KNOWN_SHAPES.has(game) ? GENTLE_TILT : TILT);
+
 /** How much of a length running away from the camera is left on the screen. */
 export const depthOf = (p: Pick<Projection, "tilt">) => Math.cos(p.tilt);
 /** How far up the screen one unit of height goes, in units of the ground. */
