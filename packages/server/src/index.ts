@@ -5,6 +5,7 @@
 //   PORT=8787 CARDROOM_DB=cardroom.db node dist/index.js
 //
 // Settings are CARDROOM_*; the older SPADES_* names still work (CARDROOM_* wins if both are set).
+import { loadPreviews, previewPage } from "./previews.js";
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { Meets, Rooms } from "@open-parlor/wasm/net";
 import { WebSocketServer } from "ws";
@@ -29,6 +30,8 @@ function setting(name: string): string | undefined {
 
 const port = Number(process.env.PORT ?? 8787);
 const web = resolve(setting("WEB") ?? fileURLToPath(new URL("../../web/dist", import.meta.url)));
+/** Each game's link preview, from the web build (previews.ts). */
+const previews = loadPreviews(web);
 // The other apps live under the parlor's address, each from its own build.
 const apps = [
   { at: "/designer/", root: resolve(setting("DESIGNER") ?? fileURLToPath(new URL("../../designer/dist", import.meta.url))), build: "npm run build -w @open-parlor/designer" },
@@ -169,7 +172,12 @@ const server = createServer(async (req, res) => {
       ...(app?.at === "/admin/" ? { "x-frame-options": "DENY", "x-robots-tag": "noindex", "referrer-policy": "no-referrer" } : {}),
     });
     // The page carries link-preview tags whose image needs this server's full address.
-    if (file.endsWith("index.html")) return void res.end(readFileSync(file, "utf8").replaceAll("__ORIGIN__", originOf(req.headers)));
+    // A link to one game previews as that game (previews.ts).
+    if (file.endsWith("index.html")) {
+      const origin = originOf(req.headers);
+      const html = readFileSync(file, "utf8").replaceAll("__ORIGIN__", origin);
+      return void res.end(file === join(web, "index.html") ? previewPage(html, { origin: origin.replace(/\/$/, ""), search: new URL(req.url ?? "/", "http://x").search, games: previews }) : html);
+    }
     createReadStream(file).pipe(res);
   } catch (e) {
     console.error(e);
