@@ -1,11 +1,9 @@
 // Delbie's Daycare & Geriatrics: a level written as a floor plan becomes a shape; the game's own
 // WAD is what its plans and art now make; and, laid over the real game, it is what the engine
 // plays. The last part is skipped when the game's data isn't here (npm run build fetches it).
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { gunzipSync } from "node:zlib";
 import { describe, expect, test } from "vitest";
-import data from "../games/shooter/data.json";
 import { buildGame, faults, levels, picturesUsed } from "../games/shooter/delbies/game.ts";
 import { generate } from "../games/shooter/delbies/generated.ts";
 // @ts-expect-error a plain script, with no typings
@@ -14,9 +12,10 @@ import { screenOf, startEngine, STATE_ENDING } from "../src/shooter/engine.ts";
 import { KEY } from "../src/shooter/keys.ts";
 import { catalogue } from "../wad/catalogue.ts";
 import { decodeThings, encodeThings, levelLumps, readLevel, wallNames, WALL_LOWER_UNPEGGED } from "../wad/level.ts";
-import { layer, modFromWad } from "../wad/mod.ts";
+import { wallPictures } from "../wad/texture.ts";
 import { decodePatch } from "../wad/picture.ts";
-import { decodeDmx } from "../wad/sound.ts";
+import { decodeDmx, songNamed } from "../wad/sound.ts";
+import { SONG_NAMES, SONGS } from "../games/shooter/delbies/songs.ts";
 import { fromPlan, type Look, wallNear } from "../wad/plan.ts";
 import { roomAt, trouble, wallsOf } from "../wad/shape.ts";
 import { linesFor, MOMENTS, plain, readWords, setLines, TEXTS, writeWords } from "../wad/words.ts";
@@ -97,8 +96,9 @@ describe("the game's own levels", () => {
     for (const level of levels()) expect(level.shape.walls.filter((wall) => wall.special === 11)).toHaveLength(1);
     const keyed = (level: number, door: number, key: number) => [levels()[level]!.shape.walls.filter((wall) => wall.special === door).length, levels()[level]!.things.filter((thing) => thing.type === key).length];
     expect([keyed(0, 26, 5), keyed(1, 27, 6), keyed(2, 28, 13)]).toEqual([[2, 1], [2, 1], [2, 1]]);
-    // The King Rat is in the basement; his relations are on three of the later floors, two of them on the last.
-    expect(levels().map((level) => level.things.filter((thing) => thing.type === 3003).length)).toEqual([0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 2]);
+    // The King Rat is in the basement; his relations are on three of the later floors, and on the last one of them has the cyborg rat beside him.
+    expect(levels().map((level) => level.things.filter((thing) => thing.type === 3003).length)).toEqual([0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1]);
+    expect(levels()[11]!.things.filter((thing) => thing.type === 16)).toHaveLength(1);
     const [mainFloor] = levels();
     // One way out, at the top of the stairs; the bathroom wants its key, from either side.
     expect(mainFloor!.shape.walls.filter((wall) => wall.special === 11)).toHaveLength(1);
@@ -117,14 +117,19 @@ describe("the game's own levels", () => {
     const built = await buildGame(nodes, art());
     expect(Buffer.from(built).equals(readFileSync(here("../games/shooter/delbies/delbies.wad")))).toBe(true);
     const names = readWad(built).lumps.map((lump) => lump.name);
-    expect(names.slice(0, 4)).toEqual(["TITLEPIC", "M_DOOM", "WORDS", "STFST00"]);
-    // Delbie's face, 42 times, and the bar, its weapon panel and the four squares behind the face.
-    // Then the rats' fifteen voices.
-    expect(names.indexOf("SS_START")).toBe(3 + 48 + 15);
+    // A game of its own: its colours and its lists of walls first, as the engine reads them, then its title and its words.
+    expect(readWad(built).kind).toBe("IWAD");
+    expect(names.slice(0, 8)).toEqual(["PLAYPAL", "COLORMAP", "TEXTURE1", "PNAMES", "TITLEPIC", "M_DOOM", "RULES", "WORDS"]);
+    const between = (start: string, end: string) => names.slice(names.indexOf(start) + 1, names.indexOf(end));
+    // Delbie's face, 42 times, and the rest of the bar: 108 pictures. What is around the game: 208. A lump for each of 16 places a song plays. Everything heard: 108 sounds, one for every name the engine has. (And before them, the game's rules and its words.)
+    expect(names.indexOf("S_START")).toBe(8 + 108 + 208 + 16 + 108);
+    // 240 pictures of rats and 176 of tools, pickups, another player and what shots and drums do.
+    expect(between("S_START", "S_END")).toHaveLength(240 + 176);
+    // Every wall and sky is one picture of its own name; then the floors and ceilings.
+    expect(between("P_START", "P_END")).toHaveLength(27);
+    expect(between("F_START", "F_END")).toHaveLength(17);
     expect(names.slice(-11)).toEqual(["E2M3", "THINGS", "LINEDEFS", "SIDEDEFS", "VERTEXES", "SEGS", "SSECTORS", "NODES", "SECTORS", "REJECT", "BLOCKMAP"]);
-    // 175 pictures of rats and 33 of tools.
-    // And ten pieces of the store's walls, between markers of their own. Then nine more levels, eleven lumps each.
-    expect(names).toHaveLength(16 + 175 + 33 + 48 + 15 + 22 + 10 + 2 + 9 * 11);
+    expect(names).toHaveLength(8 + 108 + 208 + 16 + 108 + 2 + 416 + 2 + 27 + 2 + 17 + 12 * 11);
   });
 });
 
@@ -156,12 +161,11 @@ describe("the game's words", () => {
   });
 });
 
-const file = here(`../public/data/${data.file}`);
+const file = here("../games/shooter/delbies/delbies.wad");
 
-describe.skipIf(!existsSync(file))("laid over the real game", () => {
-  const game = existsSync(file) ? new Uint8Array(gunzipSync(readFileSync(file))) : new Uint8Array(0);
-  const wad = existsSync(file) ? readWad(game) : { kind: "IWAD" as const, lumps: [] };
-  const over = new Uint8Array(readFileSync(here("../games/shooter/delbies/delbies.wad")));
+describe("the game, whole", () => {
+  const game = new Uint8Array(readFileSync(file));
+  const wad = readWad(game);
   const engine = new WebAssembly.Module(readFileSync(here("../games/shooter/shooter.wasm")));
 
   test("every picture its levels name is one the game has", () => {
@@ -171,59 +175,87 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
     expect(flats.filter((name) => !haveFlats.has(name))).toEqual([]);
   });
 
-  test("all of it has a place, and the rest of the game is as it was", () => {
-    const { changes, skipped } = modFromWad(over, catalogue(wad), wad);
-    // Its words too, which Freedoom has no lump for: a game without one is given it.
-    expect(skipped).toEqual([]);
-    expect(changes.filter((change) => change.kind === "words").map((change) => change.name)).toEqual(["WORDS"]);
-    const others = changes.filter((change) => change.kind !== "sprite").map((change) => `${change.kind}/${change.name}`).sort();
-    // The rats' voices: each in the place of a sound the game has, and none of them silence.
-    const voices = changes.filter((change) => change.kind === "sound");
-    expect(voices.map((change) => change.name).sort()).toEqual(["DSBGACT", "DSBGDTH1", "DSBGDTH2", "DSBGSIT1", "DSBGSIT2", "DSBRSDTH", "DSBRSSIT", "DSDMACT", "DSDMPAIN", "DSFIRSHT", "DSFIRXPL", "DSPOPAIN", "DSSGTATK", "DSSGTDTH", "DSSGTSIT"]);
+  test("all of it is the game's own: nothing is laid over anything, and nothing is left out", () => {
+    const all = catalogue(wad);
+    const of = (kind: string) => all.filter((asset) => asset.kind === kind).map((asset) => asset.name);
+    const data = (name: string) => wad.lumps.find((lump) => lump.name === name)!.data;
+    // The colours: fourteen palettes and thirty-four tables of each colour darker.
+    expect([data("PLAYPAL").length, data("COLORMAP").length]).toEqual([14 * 768, 34 * 256]);
+    // Everything heard is made here, and none of it silence.
+    const voices = of("sound");
+    expect(voices).toHaveLength(108);
+    for (const name of ["DSSGTSIT", "DSBRSDTH", "DSPISTOL", "DSSHOTGN", "DSDOROPN", "DSSWTCHN", "DSITEMUP", "DSPLPAIN", "DSBAREXP", "DSSAWFUL", "DSRLAUNC", "DSPLASMA", "DSBFG"]) expect(voices).toContain(name);
     for (const voice of voices) {
-      const heard = decodeDmx(voice.data)!;
+      const heard = decodeDmx(data(voice))!;
       expect(heard.rate).toBe(11025);
-      expect(heard.samples.length).toBeGreaterThan(900);
-      expect(Math.max(...heard.samples)).toBeGreaterThan(0.5);
+      expect(heard.samples.length).toBeGreaterThan(300);
+      expect(Math.max(...heard.samples.map(Math.abs))).toBeGreaterThan(0.5);
     }
-    // The store's walls: ten pieces, each the size of the piece it replaces, so every wall built from them still fits.
-    const pieces = changes.filter((change) => change.kind === "wall");
-    expect(pieces.map((change) => change.name).sort()).toEqual(["BCRATEL1", "BCRATEM1", "BCRATER1", "GCRATEL1", "GCRATEM1", "GCRATER1", "W33_7", "W33_9", "WALL40_1", "WALL40_2"]);
-    for (const piece of pieces) {
-      const [ours, theirs] = [decodePatch(piece.data)!, decodePatch(wad.lumps.filter((lump) => lump.name === piece.name).at(-1)!.data)!];
-      expect([piece.name, ours.width, ours.height]).toEqual([piece.name, theirs.width, theirs.height]);
+    // Every wall is one picture of its own name and its own size, and the first of the list is the spare the engine can't show.
+    const walls = wallPictures(wad);
+    expect([...walls.keys()][0]).toBe("NOWALL");
+    expect(walls.size).toBe(28);
+    for (const [name, wall] of walls) {
+      if (name === "NOWALL") continue;
+      const picture = decodePatch(data(name))!;
+      expect([name, wall.width, wall.height, wall.patches.map((piece) => piece.patch)]).toEqual([name, picture.width, picture.height, [name]]);
     }
-    expect(others.filter((name) => !/^(screen\/ST|sound\/|wall\/|words\/)/.test(name))).toEqual(["screen/M_DOOM", "screen/TITLEPIC", ...FLOORS.map((name) => `things/${name}`), ...FLOORS.map((name) => `walls/${name}`)]);
-    // The status bar: every face the game has is Delbie's now, each the size of the one it replaces.
-    const faces = wad.lumps.map((lump) => lump.name).filter((name) => /^STF(ST|TL|TR|OUCH|EVL|KILL|GOD|DEAD)/.test(name));
+    expect(of("floor")).toHaveLength(17);
+    const size = (name: string) => {
+      const picture = decodePatch(data(name))!;
+      return [picture.width, picture.height];
+    };
+    const names = wad.lumps.map((lump) => lump.name);
+    const around = (start: RegExp) => names.filter((name) => start.test(name));
+    // What the engine asks for by name around the game is all here: the menus, the small letters, the page between levels.
+    const wanted = ["NGAME", "OPTION", "LOADG", "SAVEG", "RDTHIS", "QUITG", "NEWG", "SKILL", "JKILL", "ROUGH", "HURT", "ULTRA", "NMARE", "OPTTTL", "ENDGAM", "MESSG", "MSGON", "MSGOFF", "DETAIL", "GDHIGH", "GDLOW", "SCRNSZ", "MSENS", "SVOL", "SFXVOL", "MUSVOL", "LGTTL", "SGTTL", "PAUSE", "SKULL1", "SKULL2", "THERML", "THERMM", "THERMR", "THERMO", "LSLEFT", "LSCNTR", "LSRGHT"].map((name) => `M_${name}`);
+    expect(wanted.filter((name) => !names.includes(name))).toEqual([]);
+    expect(around(/^STCFN0(3[3-9]|[4-8]\d|9[0-5])$/)).toHaveLength(63);
+    expect(["WIF", "WIENTER", "WIOSTK", "WIOSTI", "WISCRT2", "WITIME", "WIPAR", "WIPCNT", "WICOLON", "WIMINUS", "WISUCKS", "WIMSTT", "WIFRGS", "WIKILRS", "WIVCTMS", "WIMSTAR", "WIOSTF", "WIOSTS", "WISPLAT", "WIURH0", "WIURH1", "WIP1", "WIBP4", "STBAR", "STARMS", "STTPRCNT", "STTMINUS", "STKEYS5", "STFB3", "STPB3", "AMMNUM9", "BRDR_TL", "INTERPIC", "VICTORY2"].filter((name) => !names.includes(name))).toEqual([]);
+    // Every floor has its name for the page between levels, and the pages are whole screens.
+    expect(FLOORS.map((_, index) => `WILV${Math.floor(index / 9)}${index % 9}`).filter((name) => !names.includes(name))).toEqual([]);
+    for (const name of ["TITLEPIC", "HELP1", "HELP2", "CREDIT", "WIMAP0", "WIMAP1", "VICTORY2"]) expect([name, ...size(name)]).toEqual([name, 320, 200]);
+    // The small letters are all one height, so a line of them sits level; and a line of a menu is no taller than the engine leaves room for.
+    expect(new Set(around(/^STCFN0(3[3-9]|[4-8]\d|9[0-5])$/).map((name) => size(name)[1])).size).toBe(1);
+    expect(around(/^M_(NGAME|OPTION|LOADG|SAVEG|RDTHIS|QUITG|JKILL|ROUGH|HURT|ULTRA|NMARE)$/).filter((name) => size(name)[1]! > 16)).toEqual([]);
+    // The status bar: 42 faces of Delbie, each drawn from where the engine expects a face, and the bar across the screen.
+    const faces = around(/^STF(ST|TL|TR|OUCH|EVL|KILL|GOD|DEAD)/);
     expect(faces).toHaveLength(42);
-    expect(faces.filter((name) => !others.includes(`screen/${name}`))).toEqual([]);
-    for (const name of ["STFST00", "STFOUCH3", "STBAR"]) {
-      const [ours, theirs] = [decodePatch(changes.find((change) => change.name === name)!.data)!, decodePatch(wad.lumps.find((lump) => lump.name === name)!.data)!];
-      expect([ours.width, ours.height, ours.left, ours.top]).toEqual([theirs.width, theirs.height, theirs.left, theirs.top]);
+    for (const face of faces) expect([face, decodePatch(data(face))!.left, decodePatch(data(face))!.top]).toEqual([face, -5, -2]);
+    expect(size("STBAR")).toEqual([320, 32]);
+    // Everything that stands in a level has its picture: whatever a level places, the rats, the tools in hand, and what shots do.
+    const sprites = new Set(of("sprite").map((name) => name.slice(0, 4)));
+    expect(["PLAY", "SARG", "TROO", "BOSS", "BAL1", "BAL7", "PUNG", "PISG", "PISF", "SHTG", "SHTF", "CHGG", "CHGF", "SHOT", "MGUN", "CLIP", "AMMO", "SHEL", "SBOX", "STIM", "MEDI", "BON1", "BON2", "ARM1", "BKEY", "YKEY", "RKEY", "BAR1", "BEXP", "PUFF", "BLUD", "TFOG", "IFOG", "SAWG", "CSAW", "MISG", "LAUN", "MISL", "ROCK", "BROK", "PLSG", "PLSF", "PLAS", "PLSS", "PLSE", "CELL", "CELP", "BFGG", "BFGF", "BFUG", "BFS1", "BFE1", "BFE2", "BOS2", "HEAD", "SKUL", "FATT", "CYBR", "BAL2", "FATB", "FBXP"].filter((name) => !sprites.has(name))).toEqual([]);
+    const placed = new Set(levels().flatMap((level) => level.things.map((thing) => thing.type)));
+    expect([...placed].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 11, 13, 16, 17, 67, 69, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2011, 2012, 2013, 2014, 2015, 2018, 2023, 2025, 2026, 2035, 2046, 2048, 2049, 3001, 3002, 3003, 3005, 3006]);
+    // The music: the title, the page between levels, the ending and every level has a song, each lump only naming a file that is here.
+    const songs = names.filter((name) => name.startsWith("D_"));
+    expect(songs.sort()).toEqual(["D_INTRO", "D_INTROA", "D_INTER", "D_VICTOR", ...FLOORS.map((name) => `D_${name}`)].sort());
+    for (const song of songs) {
+      const named = songNamed(data(song))!;
+      expect([song, SONGS[song]]).toEqual([song, named]);
+      expect(SONG_NAMES).toContain(named);
+      // An MP3, small enough to fetch on a phone: under 3 MB.
+      const file = readFileSync(here(`../games/shooter/delbies/music/${named}.mp3`));
+      expect(file.length).toBeGreaterThan(500000);
+      expect(file.length).toBeLessThan(3000000);
+      expect(file[0]! === 0xff && (file[1]! & 0xe0) === 0xe0).toBe(true);
     }
-    // The rats: every picture of the three monsters they take the place of, and of what the mutant spits; none left as it was.
-    const drawn = new Set(changes.filter((change) => change.kind === "sprite").map((change) => change.name));
-    const theirs = wad.lumps.map((lump) => lump.name).filter((name) => /^(SARG|TROO|BOSS)[A-Z][0-8]|^BAL1/.test(name));
-    expect(theirs.filter((name) => !drawn.has(name))).toEqual([]);
-    // And 33 more: the tools in place of four weapons and what is picked up.
-    expect(drawn.size).toBe(theirs.length + 33);
-    const laid = readWad(layer(game, over));
-    // One lump more than the game came with: its words, which Freedoom has no place for.
-    expect(laid.lumps).toHaveLength(wad.lumps.length + 1);
-    expect(readWords(laid.lumps.at(-1)!.data).get("E1M1: Hangar")).toBe("The main floor");
-    expect(readLevel(laid, "E1M1").shape.rooms).toHaveLength(levels()[0]!.shape.rooms.length);
-    expect(levelLumps(laid, "E2M4")!.get("LINEDEFS")!.lump.data).toEqual(levelLumps(wad, "E2M4")!.get("LINEDEFS")!.lump.data);
-    expect(laid.lumps.filter((lump) => lump.name === "TITLEPIC").at(-1)!.data).toEqual(readWad(over).lumps[0]!.data);
+    expect(songNamed(new TextEncoder().encode("song:Not A Name"))).toBeUndefined();
+    expect(songNamed(new Uint8Array(4000))).toBeUndefined();
+    // Twelve levels and no more: there is nothing of anyone else's behind them.
+    expect(names.filter((name) => /^E\dM\d$/.test(name))).toEqual(FLOORS);
+    expect(readWords(data("WORDS")).get("E1M1: Hangar")).toBe("The main floor");
+    expect(readLevel(wad, "E1M1").shape.rooms).toHaveLength(levels()[0]!.shape.rooms.length);
   });
 
   test("the main floor is played: off the porch, through the front door, into the store", async () => {
     let clock = 0;
     let picture = new Uint8ClampedArray(0);
     const sounds: string[] = [];
-    const laid = layer(game, over);
+    const laid = game;
     const names = readWad(laid).lumps.map((lump) => lump.name);
-    const running = await startEngine(engine, new Map([["freedoom1.wad", laid]]), "freedoom1.wad", { now: () => clock, frame: (pixels) => (picture = pixels.slice()), sound: { start: (_channel, lump) => void sounds.push(names[lump]!), update() {}, stop() {}, playing: () => false } }, ["-warp", "1", "1"]);
+    const running = await startEngine(engine, new Map([["delbies.wad", laid]]), "delbies.wad", { now: () => clock, frame: (pixels) => (picture = pixels.slice()), sound: { start: (_channel, lump) => void sounds.push(names[lump]!), update() {}, stop() {}, playing: () => false } }, ["-warp", "1", "1"]);
     const run = (tics: number) => {
       for (let i = 0; i < tics; i++) {
         clock += 1000 / 35;
@@ -258,11 +290,11 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
   });
 
   test("each floor is played, the ninth leads on to the tenth, and the game ends after the twelfth", async () => {
-    const laid = layer(game, over);
+    const laid = game;
     /** Starts on a level; `then` is run with the engine. */
     const on = async (bytes: Uint8Array, name: string, then: (running: Awaited<ReturnType<typeof startEngine>>, run: (tics: number) => void) => void) => {
       let clock = 0;
-      const running = await startEngine(engine, new Map([["freedoom1.wad", bytes]]), "freedoom1.wad", { now: () => clock, frame: () => {} }, ["-warp", name[1]!, name[3]!]);
+      const running = await startEngine(engine, new Map([["delbies.wad", bytes]]), "delbies.wad", { now: () => clock, frame: () => {} }, ["-warp", name[1]!, name[3]!]);
       then(running, (tics) => {
         for (let i = 0; i < tics; i++) {
           clock += 1000 / 35;
@@ -327,7 +359,7 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
     const top = async (bytes: Uint8Array) => {
       let clock = 0;
       let picture = new Uint8ClampedArray(0);
-      const running = await startEngine(engine, new Map([["freedoom1.wad", bytes]]), "freedoom1.wad", { now: () => clock, frame: (pixels) => (picture = pixels.slice()) }, ["-warp", "1", "1", "-nomonsters"]);
+      const running = await startEngine(engine, new Map([["delbies.wad", bytes]]), "delbies.wad", { now: () => clock, frame: (pixels) => (picture = pixels.slice()) }, ["-warp", "1", "1", "-nomonsters"]);
       for (let i = 0; i < 70; i++) {
         clock += 1000 / 35;
         running.frame();
@@ -336,7 +368,7 @@ describe.skipIf(!existsSync(file))("laid over the real game", () => {
       // The top ten rows: where a message is written.
       return picture.slice(0, 320 * 10 * 4);
     };
-    const laid = layer(game, over);
+    const laid = game;
     const quiet = readWad(laid);
     const silent = writeWad({ kind: quiet.kind, lumps: quiet.lumps.map((lump) => (lump.name === "WORDS" ? { name: lump.name, data: writeWords(new Map([["E1M1: Hangar", "The main floor"]])) } : lump)) });
     const [said, unsaid, again] = [await top(laid), await top(silent), await top(silent)];

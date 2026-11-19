@@ -73,5 +73,470 @@
   "name": "DSBRSDTH",
   "at": 58863,
   "length": 16537
+ },
+ {
+  "name": "DSPISTOL",
+  "at": 75400,
+  "length": 1322
+ },
+ {
+  "name": "DSSHOTGN",
+  "at": 76722,
+  "length": 4961
+ },
+ {
+  "name": "DSSGCOCK",
+  "at": 81683,
+  "length": 1983
+ },
+ {
+  "name": "DSPUNCH",
+  "at": 83666,
+  "length": 1102
+ },
+ {
+  "name": "DSCLAW",
+  "at": 84768,
+  "length": 1764
+ },
+ {
+  "name": "DSPLPAIN",
+  "at": 86532,
+  "length": 2425
+ },
+ {
+  "name": "DSPLDETH",
+  "at": 88957,
+  "length": 8819
+ },
+ {
+  "name": "DSPDIEHI",
+  "at": 97776,
+  "length": 8820
+ },
+ {
+  "name": "DSOOF",
+  "at": 106596,
+  "length": 1323
+ },
+ {
+  "name": "DSNOWAY",
+  "at": 107919,
+  "length": 2314
+ },
+ {
+  "name": "DSITEMUP",
+  "at": 110233,
+  "length": 1102
+ },
+ {
+  "name": "DSWPNUP",
+  "at": 111335,
+  "length": 2094
+ },
+ {
+  "name": "DSGETPOW",
+  "at": 113429,
+  "length": 4851
+ },
+ {
+  "name": "DSSWTCHN",
+  "at": 118280,
+  "length": 881
+ },
+ {
+  "name": "DSSWTCHX",
+  "at": 119161,
+  "length": 881
+ },
+ {
+  "name": "DSDOROPN",
+  "at": 120042,
+  "length": 5512
+ },
+ {
+  "name": "DSDORCLS",
+  "at": 125554,
+  "length": 5292
+ },
+ {
+  "name": "DSPSTART",
+  "at": 130846,
+  "length": 3307
+ },
+ {
+  "name": "DSPSTOP",
+  "at": 134153,
+  "length": 1323
+ },
+ {
+  "name": "DSSTNMOV",
+  "at": 135476,
+  "length": 2756
+ },
+ {
+  "name": "DSTELEPT",
+  "at": 138232,
+  "length": 6614
+ },
+ {
+  "name": "DSSLOP",
+  "at": 144846,
+  "length": 3307
+ },
+ {
+  "name": "DSBAREXP",
+  "at": 148153,
+  "length": 8820
+ },
+ {
+  "name": "DSTINK",
+  "at": 156973,
+  "length": 551
+ },
+ {
+  "name": "DSSAWUP",
+  "at": 157524,
+  "length": 6063
+ },
+ {
+  "name": "DSSAWIDL",
+  "at": 163587,
+  "length": 2756
+ },
+ {
+  "name": "DSSAWFUL",
+  "at": 166343,
+  "length": 4961
+ },
+ {
+  "name": "DSSAWHIT",
+  "at": 171304,
+  "length": 4961
+ },
+ {
+  "name": "DSRLAUNC",
+  "at": 176265,
+  "length": 4960
+ },
+ {
+  "name": "DSRXPLOD",
+  "at": 181225,
+  "length": 7717
+ },
+ {
+  "name": "DSBFG",
+  "at": 188942,
+  "length": 13230
+ },
+ {
+  "name": "DSKNTSIT",
+  "at": 202172,
+  "length": 6615
+ },
+ {
+  "name": "DSKNTDTH",
+  "at": 208787,
+  "length": 11024
+ },
+ {
+  "name": "DSMANSIT",
+  "at": 219811,
+  "length": 7717
+ },
+ {
+  "name": "DSMANATK",
+  "at": 227528,
+  "length": 5512
+ },
+ {
+  "name": "DSMANDTH",
+  "at": 233040,
+  "length": 13230
+ },
+ {
+  "name": "DSCACSIT",
+  "at": 246270,
+  "length": 4410
+ },
+ {
+  "name": "DSCACDTH",
+  "at": 250680,
+  "length": 8820
+ },
+ {
+  "name": "DSSKLATK",
+  "at": 259500,
+  "length": 3858
+ },
+ {
+  "name": "DSCYBSIT",
+  "at": 263358,
+  "length": 11024
+ },
+ {
+  "name": "DSCYBDTH",
+  "at": 274382,
+  "length": 17640
+ },
+ {
+  "name": "DSHOOF",
+  "at": 292022,
+  "length": 1323
+ },
+ {
+  "name": "DSMETAL",
+  "at": 293345,
+  "length": 1653
+ },
+ {
+  "name": "DSPLASMA",
+  "at": 294998,
+  "length": 2425
+ },
+ {
+  "name": "DSMNPAIN",
+  "at": 297423,
+  "length": 3307
+ },
+ {
+  "name": "DSSKLDTH",
+  "at": 300730,
+  "length": 4410
+ },
+ {
+  "name": "DSBDOPN",
+  "at": 305140,
+  "length": 2756
+ },
+ {
+  "name": "DSBDCLS",
+  "at": 307896,
+  "length": 2866
+ },
+ {
+  "name": "DSITMBK",
+  "at": 310762,
+  "length": 2645
+ },
+ {
+  "name": "DSRADIO",
+  "at": 313407,
+  "length": 1543
+ },
+ {
+  "name": "DSDSHTGN",
+  "at": 314950,
+  "length": 5512
+ },
+ {
+  "name": "DSCHGUN",
+  "at": 320462,
+  "length": 1212
+ },
+ {
+  "name": "DSDBOPN",
+  "at": 321674,
+  "length": 5402
+ },
+ {
+  "name": "DSDBCLS",
+  "at": 327076,
+  "length": 6284
+ },
+ {
+  "name": "DSDBLOAD",
+  "at": 333360,
+  "length": 2756
+ },
+ {
+  "name": "DSVIPAIN",
+  "at": 336116,
+  "length": 6284
+ },
+ {
+  "name": "DSPEPAIN",
+  "at": 342400,
+  "length": 6284
+ },
+ {
+  "name": "DSPOSIT1",
+  "at": 348684,
+  "length": 8048
+ },
+ {
+  "name": "DSPOSIT2",
+  "at": 356732,
+  "length": 7166
+ },
+ {
+  "name": "DSPOSIT3",
+  "at": 363898,
+  "length": 6284
+ },
+ {
+  "name": "DSSPISIT",
+  "at": 370182,
+  "length": 6284
+ },
+ {
+  "name": "DSBSPSIT",
+  "at": 376466,
+  "length": 2756
+ },
+ {
+  "name": "DSVILSIT",
+  "at": 379222,
+  "length": 4520
+ },
+ {
+  "name": "DSPESIT",
+  "at": 383742,
+  "length": 2756
+ },
+ {
+  "name": "DSSKEPCH",
+  "at": 386498,
+  "length": 3638
+ },
+ {
+  "name": "DSVILATK",
+  "at": 390136,
+  "length": 3638
+ },
+ {
+  "name": "DSSKESWG",
+  "at": 393774,
+  "length": 4520
+ },
+ {
+  "name": "DSPODTH1",
+  "at": 398294,
+  "length": 3638
+ },
+ {
+  "name": "DSPODTH2",
+  "at": 401932,
+  "length": 2756
+ },
+ {
+  "name": "DSPODTH3",
+  "at": 404688,
+  "length": 8048
+ },
+ {
+  "name": "DSSPIDTH",
+  "at": 412736,
+  "length": 6284
+ },
+ {
+  "name": "DSBSPDTH",
+  "at": 419020,
+  "length": 2756
+ },
+ {
+  "name": "DSVILDTH",
+  "at": 421776,
+  "length": 4520
+ },
+ {
+  "name": "DSPEDTH",
+  "at": 426296,
+  "length": 4520
+ },
+ {
+  "name": "DSSKEDTH",
+  "at": 430816,
+  "length": 5402
+ },
+ {
+  "name": "DSPOSACT",
+  "at": 436218,
+  "length": 6284
+ },
+ {
+  "name": "DSBSPACT",
+  "at": 442502,
+  "length": 5402
+ },
+ {
+  "name": "DSBSPWLK",
+  "at": 447904,
+  "length": 7166
+ },
+ {
+  "name": "DSVILACT",
+  "at": 455070,
+  "length": 7166
+ },
+ {
+  "name": "DSFLAME",
+  "at": 462236,
+  "length": 5402
+ },
+ {
+  "name": "DSFLAMST",
+  "at": 467638,
+  "length": 8048
+ },
+ {
+  "name": "DSBOSPIT",
+  "at": 475686,
+  "length": 5402
+ },
+ {
+  "name": "DSBOSCUB",
+  "at": 481088,
+  "length": 3638
+ },
+ {
+  "name": "DSBOSSIT",
+  "at": 484726,
+  "length": 3638
+ },
+ {
+  "name": "DSBOSPN",
+  "at": 488364,
+  "length": 6284
+ },
+ {
+  "name": "DSBOSDTH",
+  "at": 494648,
+  "length": 3638
+ },
+ {
+  "name": "DSSSSIT",
+  "at": 498286,
+  "length": 5402
+ },
+ {
+  "name": "DSSSDTH",
+  "at": 503688,
+  "length": 7166
+ },
+ {
+  "name": "DSKEENPN",
+  "at": 510854,
+  "length": 6284
+ },
+ {
+  "name": "DSKEENDT",
+  "at": 517138,
+  "length": 3638
+ },
+ {
+  "name": "DSSKEACT",
+  "at": 520776,
+  "length": 8048
+ },
+ {
+  "name": "DSSKESIT",
+  "at": 528824,
+  "length": 5402
+ },
+ {
+  "name": "DSSKEATK",
+  "at": 534226,
+  "length": 4520
  }
 ]

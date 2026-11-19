@@ -2196,6 +2196,12 @@ void G_DoPlayDemo (void)
     int demoversion;
 	 
     gameaction = ga_nothing; 
+    // [open.wasm] A game needn't have recordings of itself to show: without one, on to the next page.
+    if (W_CheckNumForName (defdemoname) < 0)
+    {
+        D_AdvanceDemo ();
+        return;
+    }
     demobuffer = demo_p = W_CacheLumpName (defdemoname, PU_STATIC); 
 
     demoversion = *demo_p++;

@@ -75,8 +75,8 @@ const PLAYERS = [1, 2, 3, 4];
 // The rats take the place of two of the engine's monsters: a grease rat is its charging one, a
 // brake-fluid mutant the one that throws.
 const [GREASE_RAT, MUTANT] = [3002, 3001];
-const [SHOTGUN, SHELLS, SHELL_BOX, CLIP, CHAINSAW] = [2001, 2008, 2049, 2007, 2005];
-const [STIMPACK, MEDIKIT, ARMOUR, HEALTH_BONUS, ARMOUR_BONUS, SOULSPHERE] = [2011, 2012, 2018, 2014, 2015, 2013];
+const [SHOTGUN, SHELLS, SHELL_BOX, CLIP, TORCH] = [2001, 2008, 2049, 2007, 2005];
+const [STIMPACK, MEDIKIT, ARMOUR, HEALTH_BONUS, ARMOUR_BONUS] = [2011, 2012, 2018, 2014, 2015];
 const [BLUE_KEY, BARREL, DEATHMATCH] = [5, 2035, 11];
 
 export const things: Thing[] = [
@@ -117,8 +117,12 @@ export const things: Thing[] = [
   at(GREASE_RAT, 0, 300),
   ...[40, 120, 200, 420].map((y) => at(HEALTH_BONUS, 0, y)),
   // The bathroom.
-  at(CHAINSAW, -290, 390),
-  at(SOULSPHERE, -200, 330),
+  at(SHELL_BOX, -290, 390),
+  at(MEDIKIT, -200, 330),
+  // Under the sink: a torch and a can of brake cleaner (the engine's chainsaw).
+  at(TORCH, -250, 300),
+  // And a turbo that glows (the engine's soulsphere): the bathroom is the floor's secret.
+  at(2013, -160, 380),
   // The office.
   at(MUTANT, 250, 340, 180),
   at(SHELL_BOX, 320, 390),

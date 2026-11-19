@@ -1,7 +1,6 @@
-"""The store's own walls, in place of the pieces Freedoom's walls are built from.
+"""The store's own walls that are built from pieces: textures.py puts these together into whole walls.
 
-A wall picture is put together from pieces (wad/texture.ts), and a piece redrawn here changes
-every wall that uses it. Three sets:
+Three sets:
 
 - the shop wall (the pieces of GRAY1): cream paint over a navy wainscot, a rail between;
 - shelves of parts in boxes (the pieces of CRATWIDE, CRATE1 and CRATE2): orange boxes above, blue
@@ -10,7 +9,7 @@ every wall that uses it. Three sets:
 
 Run by hand (it needs numpy and Pillow):
 
-    python3 games/shooter/delbies/art/walls.py public/data/freedoom1-0.13.0.wad.gz
+    python3 games/shooter/delbies/art/walls.py
 
 It writes walls.bin.gz and walls.json, in the form rats.py writes the sprites.
 """
@@ -20,12 +19,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 here = Path(__file__).parent
-wad = gzip.open(sys.argv[1]).read()
-count, table = struct.unpack_from("<ii", wad, 4)
-for i in range(count):
-    at, size, name = struct.unpack_from("<ii8s", wad, table + i * 16)
-    if name.rstrip(b"\0") == b"PLAYPAL":
-        palette = np.frombuffer(wad[at:at + 768], np.uint8).reshape(256, 3).astype(int)
+palette = np.frombuffer((here / "palette.bin").read_bytes()[:768], np.uint8).reshape(256, 3).astype(int)
 cache = {}
 def nearest(rgb):
     key = tuple(int(v) for v in rgb)

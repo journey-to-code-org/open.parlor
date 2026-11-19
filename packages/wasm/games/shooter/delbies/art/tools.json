@@ -1,211 +1,163 @@
 [
  {
-  "name": "PUNGA0",
-  "width": 64,
-  "height": 80,
-  "left": -142,
-  "top": -88,
+  "name": "SHTGA0",
+  "width": 72,
+  "height": 71,
+  "left": -122,
+  "top": -73,
   "at": 0
  },
  {
-  "name": "PUNGB0",
-  "width": 66,
-  "height": 119,
-  "left": -131,
-  "top": -49,
-  "at": 10240
- },
- {
-  "name": "PUNGC0",
-  "width": 67,
-  "height": 167,
-  "left": -119,
-  "top": -1,
-  "at": 25948
- },
- {
-  "name": "PUNGD0",
-  "width": 66,
-  "height": 109,
-  "left": -133,
-  "top": -59,
-  "at": 48326
- },
- {
-  "name": "SHTGA0",
-  "width": 119,
-  "height": 128,
-  "left": -108,
-  "top": -40,
-  "at": 62714
- },
- {
   "name": "SHTGB0",
-  "width": 118,
-  "height": 119,
-  "left": -112,
-  "top": -49,
-  "at": 93178
+  "width": 72,
+  "height": 71,
+  "left": -124,
+  "top": -80,
+  "at": 10224
  },
  {
   "name": "SHTGC0",
-  "width": 121,
-  "height": 116,
-  "left": -114,
-  "top": -52,
-  "at": 121262
+  "width": 72,
+  "height": 71,
+  "left": -127,
+  "top": -88,
+  "at": 20448
  },
  {
   "name": "SHTGD0",
-  "width": 124,
-  "height": 122,
-  "left": -111,
-  "top": -46,
-  "at": 149334
+  "width": 72,
+  "height": 71,
+  "left": -129,
+  "top": -93,
+  "at": 30672
  },
  {
   "name": "SHTFA0",
   "width": 37,
   "height": 28,
-  "left": -148,
-  "top": -20,
-  "at": 179590
+  "left": -142,
+  "top": -50,
+  "at": 40896
  },
  {
   "name": "SHTFB0",
   "width": 61,
   "height": 46,
-  "left": -136,
-  "top": -8,
-  "at": 181662
+  "left": -130,
+  "top": -38,
+  "at": 42968
  },
  {
   "name": "PISGA0",
-  "width": 62,
-  "height": 86,
-  "left": -134,
-  "top": -82,
-  "at": 187274
+  "width": 88,
+  "height": 104,
+  "left": -133,
+  "top": -64,
+  "at": 48580
  },
  {
   "name": "PISGB0",
-  "width": 66,
-  "height": 94,
+  "width": 88,
+  "height": 104,
   "left": -133,
-  "top": -74,
-  "at": 197938
+  "top": -57,
+  "at": 66884
  },
  {
   "name": "PISGC0",
-  "width": 64,
-  "height": 90,
-  "left": -134,
-  "top": -78,
-  "at": 210346
+  "width": 88,
+  "height": 104,
+  "left": -133,
+  "top": -61,
+  "at": 85188
  },
  {
   "name": "PISGD0",
-  "width": 60,
-  "height": 84,
-  "left": -135,
-  "top": -84,
-  "at": 221866
+  "width": 88,
+  "height": 104,
+  "left": -133,
+  "top": -66,
+  "at": 103492
  },
  {
   "name": "PISGE0",
-  "width": 62,
-  "height": 86,
-  "left": -134,
-  "top": -82,
-  "at": 231946
+  "width": 88,
+  "height": 104,
+  "left": -133,
+  "top": -64,
+  "at": 121796
  },
  {
   "name": "PISFA0",
   "width": 45,
   "height": 39,
-  "left": -138,
-  "top": -52,
-  "at": 242610
+  "left": -149,
+  "top": -50,
+  "at": 140100
  },
  {
   "name": "CHGGA0",
-  "width": 62,
-  "height": 100,
-  "left": -134,
-  "top": -68,
-  "at": 246120
+  "width": 174,
+  "height": 93,
+  "left": -76,
+  "top": -58,
+  "at": 143610
  },
  {
   "name": "CHGGB0",
-  "width": 62,
-  "height": 100,
-  "left": -134,
-  "top": -68,
-  "at": 258520
+  "width": 174,
+  "height": 93,
+  "left": -77,
+  "top": -60,
+  "at": 175974
  },
  {
   "name": "CHGFA0",
-  "width": 37,
-  "height": 33,
-  "left": -142,
-  "top": -50,
-  "at": 270920
+  "width": 72,
+  "height": 51,
+  "left": -125,
+  "top": -9,
+  "at": 208338
  },
  {
   "name": "CHGFB0",
-  "width": 37,
-  "height": 33,
-  "left": -142,
-  "top": -50,
-  "at": 273362
+  "width": 72,
+  "height": 51,
+  "left": -124,
+  "top": -11,
+  "at": 215682
  },
  {
   "name": "SHOTA0",
-  "width": 44,
-  "height": 11,
-  "left": 22,
-  "top": 11,
-  "at": 275804
+  "width": 66,
+  "height": 15,
+  "left": 33,
+  "top": 15,
+  "at": 223026
  },
  {
   "name": "MGUNA0",
   "width": 36,
-  "height": 23,
+  "height": 30,
   "left": 18,
-  "top": 23,
-  "at": 276772
+  "top": 30,
+  "at": 225006
  },
  {
-  "name": "STIMA0",
+  "name": "SHELA0",
   "width": 19,
-  "height": 12,
+  "height": 13,
   "left": 9,
-  "top": 12,
-  "at": 278428
+  "top": 13,
+  "at": 227166
  },
  {
-  "name": "MEDIA0",
-  "width": 31,
-  "height": 20,
-  "left": 15,
-  "top": 20,
-  "at": 278884
- },
- {
-  "name": "ARM1A0",
-  "width": 25,
-  "height": 29,
-  "left": 12,
-  "top": 29,
-  "at": 280124
- },
- {
-  "name": "ARM1B0",
-  "width": 25,
-  "height": 29,
-  "left": 12,
-  "top": 29,
-  "at": 281574
+  "name": "SBOXA0",
+  "width": 34,
+  "height": 19,
+  "left": 17,
+  "top": 19,
+  "at": 227660
  },
  {
   "name": "CLIPA0",
@@ -213,54 +165,1246 @@
   "height": 11,
   "left": 5,
   "top": 11,
-  "at": 283024
+  "at": 228952
+ },
+ {
+  "name": "AMMOA0",
+  "width": 30,
+  "height": 20,
+  "left": 15,
+  "top": 20,
+  "at": 229194
+ },
+ {
+  "name": "PLAYA0",
+  "width": 26,
+  "height": 53,
+  "left": 13,
+  "top": 53,
+  "at": 230394
+ },
+ {
+  "name": "PLAYB0",
+  "width": 26,
+  "height": 53,
+  "left": 13,
+  "top": 53,
+  "at": 233150
+ },
+ {
+  "name": "PLAYC0",
+  "width": 26,
+  "height": 53,
+  "left": 13,
+  "top": 53,
+  "at": 235906
+ },
+ {
+  "name": "PLAYD0",
+  "width": 26,
+  "height": 53,
+  "left": 13,
+  "top": 53,
+  "at": 238662
+ },
+ {
+  "name": "PLAYE0",
+  "width": 32,
+  "height": 53,
+  "left": 16,
+  "top": 53,
+  "at": 241418
+ },
+ {
+  "name": "PLAYF0",
+  "width": 35,
+  "height": 53,
+  "left": 17,
+  "top": 53,
+  "at": 244810
+ },
+ {
+  "name": "PLAYG0",
+  "width": 26,
+  "height": 53,
+  "left": 13,
+  "top": 53,
+  "at": 248520
+ },
+ {
+  "name": "PLAYH0",
+  "width": 26,
+  "height": 50,
+  "left": 13,
+  "top": 50,
+  "at": 251276
+ },
+ {
+  "name": "PLAYI0",
+  "width": 26,
+  "height": 47,
+  "left": 13,
+  "top": 47,
+  "at": 253876
+ },
+ {
+  "name": "PLAYJ0",
+  "width": 26,
+  "height": 44,
+  "left": 13,
+  "top": 44,
+  "at": 256320
+ },
+ {
+  "name": "PLAYK0",
+  "width": 26,
+  "height": 41,
+  "left": 13,
+  "top": 41,
+  "at": 258608
+ },
+ {
+  "name": "PLAYL0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 260740
+ },
+ {
+  "name": "PLAYM0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 261620
+ },
+ {
+  "name": "PLAYN0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 262500
+ },
+ {
+  "name": "PLAYO0",
+  "width": 26,
+  "height": 49,
+  "left": 13,
+  "top": 49,
+  "at": 263380
+ },
+ {
+  "name": "PLAYP0",
+  "width": 26,
+  "height": 45,
+  "left": 13,
+  "top": 45,
+  "at": 265928
+ },
+ {
+  "name": "PLAYQ0",
+  "width": 26,
+  "height": 41,
+  "left": 13,
+  "top": 41,
+  "at": 268268
+ },
+ {
+  "name": "PLAYR0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 270400
+ },
+ {
+  "name": "PLAYS0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 271280
+ },
+ {
+  "name": "PLAYT0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 272160
+ },
+ {
+  "name": "PLAYU0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 273040
+ },
+ {
+  "name": "PLAYV0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 273920
+ },
+ {
+  "name": "PLAYW0",
+  "width": 40,
+  "height": 11,
+  "left": 20,
+  "top": 11,
+  "at": 274800
+ },
+ {
+  "name": "PUFFA0",
+  "width": 3,
+  "height": 3,
+  "left": 1,
+  "top": 9,
+  "at": 275680
+ },
+ {
+  "name": "PUFFB0",
+  "width": 5,
+  "height": 5,
+  "left": 2,
+  "top": 10,
+  "at": 275698
+ },
+ {
+  "name": "PUFFC0",
+  "width": 7,
+  "height": 7,
+  "left": 3,
+  "top": 11,
+  "at": 275748
+ },
+ {
+  "name": "PUFFD0",
+  "width": 5,
+  "height": 5,
+  "left": 2,
+  "top": 10,
+  "at": 275846
+ },
+ {
+  "name": "BLUDA0",
+  "width": 11,
+  "height": 11,
+  "left": 5,
+  "top": 11,
+  "at": 275896
+ },
+ {
+  "name": "BLUDB0",
+  "width": 9,
+  "height": 9,
+  "left": 4,
+  "top": 10,
+  "at": 276138
+ },
+ {
+  "name": "BLUDC0",
+  "width": 5,
+  "height": 5,
+  "left": 2,
+  "top": 8,
+  "at": 276300
+ },
+ {
+  "name": "TFOGA0",
+  "width": 13,
+  "height": 13,
+  "left": 6,
+  "top": 50,
+  "at": 276350
+ },
+ {
+  "name": "TFOGB0",
+  "width": 25,
+  "height": 25,
+  "left": 12,
+  "top": 56,
+  "at": 276688
+ },
+ {
+  "name": "TFOGC0",
+  "width": 37,
+  "height": 37,
+  "left": 18,
+  "top": 62,
+  "at": 277938
+ },
+ {
+  "name": "TFOGD0",
+  "width": 49,
+  "height": 49,
+  "left": 24,
+  "top": 68,
+  "at": 280676
+ },
+ {
+  "name": "TFOGE0",
+  "width": 57,
+  "height": 57,
+  "left": 28,
+  "top": 72,
+  "at": 285478
+ },
+ {
+  "name": "TFOGF0",
+  "width": 57,
+  "height": 57,
+  "left": 28,
+  "top": 72,
+  "at": 291976
+ },
+ {
+  "name": "TFOGG0",
+  "width": 49,
+  "height": 49,
+  "left": 24,
+  "top": 68,
+  "at": 298474
+ },
+ {
+  "name": "TFOGH0",
+  "width": 37,
+  "height": 37,
+  "left": 18,
+  "top": 62,
+  "at": 303276
+ },
+ {
+  "name": "TFOGI0",
+  "width": 25,
+  "height": 25,
+  "left": 12,
+  "top": 56,
+  "at": 306014
+ },
+ {
+  "name": "TFOGJ0",
+  "width": 13,
+  "height": 13,
+  "left": 6,
+  "top": 50,
+  "at": 307264
+ },
+ {
+  "name": "IFOGA0",
+  "width": 9,
+  "height": 9,
+  "left": 4,
+  "top": 27,
+  "at": 307602
+ },
+ {
+  "name": "IFOGB0",
+  "width": 17,
+  "height": 17,
+  "left": 8,
+  "top": 31,
+  "at": 307764
+ },
+ {
+  "name": "IFOGC0",
+  "width": 23,
+  "height": 23,
+  "left": 11,
+  "top": 34,
+  "at": 308342
+ },
+ {
+  "name": "IFOGD0",
+  "width": 17,
+  "height": 17,
+  "left": 8,
+  "top": 31,
+  "at": 309400
+ },
+ {
+  "name": "IFOGE0",
+  "width": 9,
+  "height": 9,
+  "left": 4,
+  "top": 27,
+  "at": 309978
+ },
+ {
+  "name": "BAL7A0",
+  "width": 17,
+  "height": 17,
+  "left": 8,
+  "top": 17,
+  "at": 310140
+ },
+ {
+  "name": "BAL7B0",
+  "width": 17,
+  "height": 17,
+  "left": 8,
+  "top": 17,
+  "at": 310718
+ },
+ {
+  "name": "BAL7C0",
+  "width": 36,
+  "height": 35,
+  "left": 18,
+  "top": 19,
+  "at": 311296
+ },
+ {
+  "name": "BAL7D0",
+  "width": 36,
+  "height": 35,
+  "left": 18,
+  "top": 23,
+  "at": 313816
+ },
+ {
+  "name": "BAL7E0",
+  "width": 36,
+  "height": 35,
+  "left": 18,
+  "top": 26,
+  "at": 316336
+ },
+ {
+  "name": "PUNGA0",
+  "width": 101,
+  "height": 65,
+  "left": -167,
+  "top": -85,
+  "at": 318856
+ },
+ {
+  "name": "PUNGB0",
+  "width": 92,
+  "height": 54,
+  "left": -170,
+  "top": -82,
+  "at": 331986
+ },
+ {
+  "name": "PUNGC0",
+  "width": 96,
+  "height": 62,
+  "left": -140,
+  "top": -78,
+  "at": 341922
+ },
+ {
+  "name": "PUNGD0",
+  "width": 92,
+  "height": 54,
+  "left": -174,
+  "top": -90,
+  "at": 353826
+ },
+ {
+  "name": "SAWGC0",
+  "width": 199,
+  "height": 146,
+  "left": -65,
+  "top": -22,
+  "at": 363762
+ },
+ {
+  "name": "SAWGD0",
+  "width": 199,
+  "height": 146,
+  "left": -65,
+  "top": -23,
+  "at": 421870
+ },
+ {
+  "name": "SAWGA0",
+  "width": 199,
+  "height": 160,
+  "left": -65,
+  "top": -8,
+  "at": 479978
+ },
+ {
+  "name": "SAWGB0",
+  "width": 199,
+  "height": 163,
+  "left": -65,
+  "top": -6,
+  "at": 543658
+ },
+ {
+  "name": "CSAWA0",
+  "width": 36,
+  "height": 16,
+  "left": 18,
+  "top": 16,
+  "at": 608532
+ },
+ {
+  "name": "MISGA0",
+  "width": 146,
+  "height": 93,
+  "left": -104,
+  "top": -75,
+  "at": 609684
+ },
+ {
+  "name": "MISGB0",
+  "width": 146,
+  "height": 93,
+  "left": -110,
+  "top": -89,
+  "at": 636840
+ },
+ {
+  "name": "LAUNA0",
+  "width": 44,
+  "height": 25,
+  "left": 22,
+  "top": 25,
+  "at": 663996
+ },
+ {
+  "name": "MISLA0",
+  "width": 30,
+  "height": 17,
+  "left": 15,
+  "top": 8,
+  "at": 666196
+ },
+ {
+  "name": "MISLB0",
+  "width": 59,
+  "height": 60,
+  "left": 29,
+  "top": 16,
+  "at": 667216
+ },
+ {
+  "name": "MISLC0",
+  "width": 59,
+  "height": 60,
+  "left": 29,
+  "top": 24,
+  "at": 674296
+ },
+ {
+  "name": "MISLD0",
+  "width": 53,
+  "height": 53,
+  "left": 26,
+  "top": 30,
+  "at": 681376
+ },
+ {
+  "name": "PLSGA0",
+  "width": 263,
+  "height": 96,
+  "left": -29,
+  "top": -52,
+  "at": 686994
+ },
+ {
+  "name": "PLSGB0",
+  "width": 263,
+  "height": 96,
+  "left": -29,
+  "top": -56,
+  "at": 737490
+ },
+ {
+  "name": "PLSFA0",
+  "width": 117,
+  "height": 138,
+  "left": -102,
+  "top": -5,
+  "at": 787986
+ },
+ {
+  "name": "PLSFB0",
+  "width": 117,
+  "height": 138,
+  "left": -101,
+  "top": -5,
+  "at": 820278
+ },
+ {
+  "name": "PLASA0",
+  "width": 44,
+  "height": 36,
+  "left": 22,
+  "top": 36,
+  "at": 852570
+ },
+ {
+  "name": "PLSSA0",
+  "width": 17,
+  "height": 17,
+  "left": 8,
+  "top": 14,
+  "at": 855738
+ },
+ {
+  "name": "PLSSB0",
+  "width": 12,
+  "height": 12,
+  "left": 6,
+  "top": 14,
+  "at": 856316
+ },
+ {
+  "name": "PLSEA0",
+  "width": 30,
+  "height": 30,
+  "left": 15,
+  "top": 13,
+  "at": 856604
+ },
+ {
+  "name": "PLSEB0",
+  "width": 30,
+  "height": 30,
+  "left": 15,
+  "top": 17,
+  "at": 858404
+ },
+ {
+  "name": "PLSEC0",
+  "width": 30,
+  "height": 30,
+  "left": 15,
+  "top": 20,
+  "at": 860204
+ },
+ {
+  "name": "PLSED0",
+  "width": 30,
+  "height": 30,
+  "left": 15,
+  "top": 17,
+  "at": 862004
+ },
+ {
+  "name": "PLSEE0",
+  "width": 30,
+  "height": 30,
+  "left": 15,
+  "top": 13,
+  "at": 863804
+ },
+ {
+  "name": "BFGGA0",
+  "width": 224,
+  "height": 109,
+  "left": -59,
+  "top": -59,
+  "at": 865604
+ },
+ {
+  "name": "BFGGB0",
+  "width": 224,
+  "height": 109,
+  "left": -59,
+  "top": -64,
+  "at": 914436
+ },
+ {
+  "name": "BFGFA0",
+  "width": 238,
+  "height": 132,
+  "left": -48,
+  "top": 14,
+  "at": 963268
+ },
+ {
+  "name": "BFGFB0",
+  "width": 240,
+  "height": 132,
+  "left": -47,
+  "top": 14,
+  "at": 1026100
+ },
+ {
+  "name": "BFUGA0",
+  "width": 34,
+  "height": 61,
+  "left": 17,
+  "top": 61,
+  "at": 1089460
+ },
+ {
+  "name": "BFS1A0",
+  "width": 43,
+  "height": 23,
+  "left": 21,
+  "top": 11,
+  "at": 1093608
+ },
+ {
+  "name": "BFS1B0",
+  "width": 43,
+  "height": 23,
+  "left": 21,
+  "top": 11,
+  "at": 1095586
+ },
+ {
+  "name": "BFE1A0",
+  "width": 49,
+  "height": 27,
+  "left": 24,
+  "top": 13,
+  "at": 1097564
+ },
+ {
+  "name": "BFE1B0",
+  "width": 79,
+  "height": 44,
+  "left": 39,
+  "top": 22,
+  "at": 1100210
+ },
+ {
+  "name": "BFE1C0",
+  "width": 110,
+  "height": 60,
+  "left": 55,
+  "top": 30,
+  "at": 1107162
+ },
+ {
+  "name": "BFE1D0",
+  "width": 130,
+  "height": 72,
+  "left": 65,
+  "top": 36,
+  "at": 1120362
+ },
+ {
+  "name": "BFE1E0",
+  "width": 110,
+  "height": 60,
+  "left": 55,
+  "top": 30,
+  "at": 1139082
+ },
+ {
+  "name": "BFE1F0",
+  "width": 68,
+  "height": 37,
+  "left": 34,
+  "top": 18,
+  "at": 1152282
+ },
+ {
+  "name": "BFE2A0",
+  "width": 15,
+  "height": 7,
+  "left": 7,
+  "top": 3,
+  "at": 1157314
+ },
+ {
+  "name": "BFE2B0",
+  "width": 24,
+  "height": 12,
+  "left": 12,
+  "top": 6,
+  "at": 1157524
+ },
+ {
+  "name": "BFE2C0",
+  "width": 33,
+  "height": 17,
+  "left": 16,
+  "top": 8,
+  "at": 1158100
+ },
+ {
+  "name": "BFE2D0",
+  "width": 20,
+  "height": 10,
+  "left": 10,
+  "top": 5,
+  "at": 1159222
+ },
+ {
+  "name": "STIMA0",
+  "width": 22,
+  "height": 17,
+  "left": 11,
+  "top": 17,
+  "at": 1159622
+ },
+ {
+  "name": "MEDIA0",
+  "width": 28,
+  "height": 28,
+  "left": 14,
+  "top": 28,
+  "at": 1160370
+ },
+ {
+  "name": "BON1A0",
+  "width": 10,
+  "height": 20,
+  "left": 5,
+  "top": 20,
+  "at": 1161938
+ },
+ {
+  "name": "BON2A0",
+  "width": 22,
+  "height": 20,
+  "left": 11,
+  "top": 20,
+  "at": 1162338
+ },
+ {
+  "name": "BON1B0",
+  "width": 10,
+  "height": 20,
+  "left": 5,
+  "top": 20,
+  "at": 1163218
+ },
+ {
+  "name": "BON2B0",
+  "width": 22,
+  "height": 20,
+  "left": 11,
+  "top": 20,
+  "at": 1163618
+ },
+ {
+  "name": "BON1C0",
+  "width": 10,
+  "height": 20,
+  "left": 5,
+  "top": 20,
+  "at": 1164498
+ },
+ {
+  "name": "BON2C0",
+  "width": 22,
+  "height": 20,
+  "left": 11,
+  "top": 20,
+  "at": 1164898
+ },
+ {
+  "name": "BON1D0",
+  "width": 10,
+  "height": 20,
+  "left": 5,
+  "top": 20,
+  "at": 1165778
+ },
+ {
+  "name": "BON2D0",
+  "width": 22,
+  "height": 20,
+  "left": 11,
+  "top": 20,
+  "at": 1166178
+ },
+ {
+  "name": "ARM1A0",
+  "width": 30,
+  "height": 22,
+  "left": 15,
+  "top": 22,
+  "at": 1167058
+ },
+ {
+  "name": "ARM1B0",
+  "width": 30,
+  "height": 22,
+  "left": 15,
+  "top": 22,
+  "at": 1168378
+ },
+ {
+  "name": "BAR1A0",
+  "width": 26,
+  "height": 42,
+  "left": 13,
+  "top": 42,
+  "at": 1169698
+ },
+ {
+  "name": "BAR1B0",
+  "width": 26,
+  "height": 42,
+  "left": 13,
+  "top": 42,
+  "at": 1171882
+ },
+ {
+  "name": "BAL1A0",
+  "width": 22,
+  "height": 18,
+  "left": 11,
+  "top": 9,
+  "at": 1174066
+ },
+ {
+  "name": "BAL1B0",
+  "width": 22,
+  "height": 18,
+  "left": 11,
+  "top": 9,
+  "at": 1174858
+ },
+ {
+  "name": "BAL1C0",
+  "width": 34,
+  "height": 33,
+  "left": 17,
+  "top": 16,
+  "at": 1175650
+ },
+ {
+  "name": "BAL1D0",
+  "width": 34,
+  "height": 33,
+  "left": 17,
+  "top": 20,
+  "at": 1177894
+ },
+ {
+  "name": "BAL1E0",
+  "width": 34,
+  "height": 33,
+  "left": 17,
+  "top": 23,
+  "at": 1180138
+ },
+ {
+  "name": "BAL2A0",
+  "width": 13,
+  "height": 13,
+  "left": 6,
+  "top": 12,
+  "at": 1182382
+ },
+ {
+  "name": "BAL2B0",
+  "width": 13,
+  "height": 13,
+  "left": 6,
+  "top": 12,
+  "at": 1182720
+ },
+ {
+  "name": "BAL2C0",
+  "width": 34,
+  "height": 33,
+  "left": 17,
+  "top": 16,
+  "at": 1183058
+ },
+ {
+  "name": "BAL2D0",
+  "width": 34,
+  "height": 33,
+  "left": 17,
+  "top": 20,
+  "at": 1185302
+ },
+ {
+  "name": "BAL2E0",
+  "width": 34,
+  "height": 33,
+  "left": 17,
+  "top": 23,
+  "at": 1187546
+ },
+ {
+  "name": "FATBA0",
+  "width": 22,
+  "height": 20,
+  "left": 11,
+  "top": 13,
+  "at": 1189790
+ },
+ {
+  "name": "FATBB0",
+  "width": 22,
+  "height": 20,
+  "left": 11,
+  "top": 14,
+  "at": 1190670
+ },
+ {
+  "name": "FBXPA0",
+  "width": 53,
+  "height": 54,
+  "left": 26,
+  "top": 18,
+  "at": 1191550
+ },
+ {
+  "name": "FBXPB0",
+  "width": 53,
+  "height": 54,
+  "left": 26,
+  "top": 24,
+  "at": 1197274
+ },
+ {
+  "name": "FBXPC0",
+  "width": 53,
+  "height": 54,
+  "left": 26,
+  "top": 30,
+  "at": 1202998
  },
  {
   "name": "BKEYA0",
-  "width": 12,
-  "height": 21,
-  "left": 6,
-  "top": 21,
-  "at": 283266
+  "width": 22,
+  "height": 14,
+  "left": 11,
+  "top": 14,
+  "at": 1208722
  },
  {
   "name": "BKEYB0",
-  "width": 12,
-  "height": 21,
-  "left": 6,
-  "top": 21,
-  "at": 283770
+  "width": 22,
+  "height": 14,
+  "left": 11,
+  "top": 14,
+  "at": 1209338
  },
  {
   "name": "YKEYA0",
-  "width": 12,
-  "height": 21,
-  "left": 6,
-  "top": 21,
-  "at": 284274
+  "width": 30,
+  "height": 7,
+  "left": 15,
+  "top": 7,
+  "at": 1209954
  },
  {
   "name": "YKEYB0",
-  "width": 12,
-  "height": 21,
-  "left": 6,
-  "top": 21,
-  "at": 284778
+  "width": 30,
+  "height": 7,
+  "left": 15,
+  "top": 7,
+  "at": 1210374
  },
  {
   "name": "RKEYA0",
-  "width": 12,
-  "height": 21,
-  "left": 6,
-  "top": 21,
-  "at": 285282
+  "width": 22,
+  "height": 12,
+  "left": 11,
+  "top": 12,
+  "at": 1210794
  },
  {
   "name": "RKEYB0",
+  "width": 22,
+  "height": 12,
+  "left": 11,
+  "top": 12,
+  "at": 1211322
+ },
+ {
+  "name": "BEXPA0",
+  "width": 30,
+  "height": 56,
+  "left": 15,
+  "top": 56,
+  "at": 1211850
+ },
+ {
+  "name": "BEXPB0",
+  "width": 30,
+  "height": 57,
+  "left": 15,
+  "top": 57,
+  "at": 1215210
+ },
+ {
+  "name": "BEXPC0",
+  "width": 34,
+  "height": 56,
+  "left": 17,
+  "top": 56,
+  "at": 1218630
+ },
+ {
+  "name": "BEXPD0",
+  "width": 34,
+  "height": 56,
+  "left": 17,
+  "top": 56,
+  "at": 1222438
+ },
+ {
+  "name": "BEXPE0",
+  "width": 34,
+  "height": 56,
+  "left": 17,
+  "top": 56,
+  "at": 1226246
+ },
+ {
+  "name": "ROCKA0",
+  "width": 24,
+  "height": 29,
+  "left": 12,
+  "top": 29,
+  "at": 1230054
+ },
+ {
+  "name": "BROKA0",
+  "width": 36,
+  "height": 28,
+  "left": 18,
+  "top": 28,
+  "at": 1231446
+ },
+ {
+  "name": "CELLA0",
   "width": 12,
-  "height": 21,
+  "height": 27,
   "left": 6,
+  "top": 27,
+  "at": 1233462
+ },
+ {
+  "name": "CELPA0",
+  "width": 30,
+  "height": 27,
+  "left": 15,
+  "top": 27,
+  "at": 1234110
+ },
+ {
+  "name": "PSTRA0",
+  "width": 9,
+  "height": 16,
+  "left": 4,
+  "top": 16,
+  "at": 1235730
+ },
+ {
+  "name": "SOULA0",
+  "width": 22,
+  "height": 21,
+  "left": 11,
   "top": 21,
-  "at": 285786
+  "at": 1236018
+ },
+ {
+  "name": "PMAPA0",
+  "width": 16,
+  "height": 21,
+  "left": 8,
+  "top": 21,
+  "at": 1236942
+ },
+ {
+  "name": "TLMPA0",
+  "width": 12,
+  "height": 44,
+  "left": 6,
+  "top": 44,
+  "at": 1237614
+ },
+ {
+  "name": "SOULB0",
+  "width": 22,
+  "height": 21,
+  "left": 11,
+  "top": 21,
+  "at": 1238670
+ },
+ {
+  "name": "PMAPB0",
+  "width": 16,
+  "height": 21,
+  "left": 8,
+  "top": 21,
+  "at": 1239594
+ },
+ {
+  "name": "TLMPB0",
+  "width": 12,
+  "height": 44,
+  "left": 6,
+  "top": 44,
+  "at": 1240266
+ },
+ {
+  "name": "SOULC0",
+  "width": 22,
+  "height": 21,
+  "left": 11,
+  "top": 21,
+  "at": 1241322
+ },
+ {
+  "name": "PMAPC0",
+  "width": 16,
+  "height": 21,
+  "left": 8,
+  "top": 21,
+  "at": 1242246
+ },
+ {
+  "name": "TLMPC0",
+  "width": 12,
+  "height": 44,
+  "left": 6,
+  "top": 44,
+  "at": 1242918
+ },
+ {
+  "name": "SOULD0",
+  "width": 22,
+  "height": 21,
+  "left": 11,
+  "top": 21,
+  "at": 1243974
+ },
+ {
+  "name": "PMAPD0",
+  "width": 16,
+  "height": 21,
+  "left": 8,
+  "top": 21,
+  "at": 1244898
+ },
+ {
+  "name": "TLMPD0",
+  "width": 12,
+  "height": 44,
+  "left": 6,
+  "top": 44,
+  "at": 1245570
+ },
+ {
+  "name": "SUITA0",
+  "width": 24,
+  "height": 22,
+  "left": 12,
+  "top": 22,
+  "at": 1246626
+ },
+ {
+  "name": "COLUA0",
+  "width": 30,
+  "height": 30,
+  "left": 15,
+  "top": 30,
+  "at": 1247682
  }
 ]

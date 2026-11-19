@@ -54,9 +54,14 @@ const WAYS: [number, number][] = [[1, 0], [0, 1], [-1, 0], [0, -1]];
 
 const ALL = FLAG_EASY | FLAG_MEDIUM | FLAG_HARD;
 const [GREASE_RAT, MUTANT, KING_RAT] = [3002, 3001, 3003];
+// The engine's flying skull, its floating spitter, its lesser boss, its fat one with two cannons, and its biggest.
+const [SPARK_PLUGS, COOLANT_RAT, TIRE_BRUTE, FAT_RAT, CYBORG_RAT] = [3006, 3005, 69, 67, 16];
+// The engine's chainsaw, rocket launcher and box of rockets, plasma gun and pack of cells.
+const [TORCH, ROTORS, ROTOR_STACK, JUMP_STARTER, BATTERY_CASE] = [2005, 2003, 2046, 2004, 17];
 const [SHOTGUN, CHAINGUN, CLIP, SHELLS, SHELL_BOX, AMMO_BOX, STIMPACK, MEDIKIT, ARMOUR_BONUS, ARMOUR, DEATHMATCH] = [2001, 2002, 2007, 2008, 2049, 2048, 2011, 2012, 2015, 2018, 11];
 /** A locked door's action, and the key for it: blue, yellow, red. */
-const LOCKS = [{ opens: 26, key: 5 }, { opens: 27, key: 6 }, { opens: 28, key: 13 }];
+// Each lock: what its door does, its key, and the door's picture, which is the key's colour.
+const LOCKS = [{ opens: 26, key: 5, door: "DOORBLU2" }, { opens: 27, key: 6, door: "DOORYEL" }, { opens: 28, key: 13, door: "DOORRED" }];
 
 /** Numbers that look random and are the same every time for the same seed (mulberry32). */
 function dice(seed: number) {
@@ -174,7 +179,7 @@ export function generate(level: number): Floor {
       : [ax - HALL, Math.min(ay + from.h, by + cell.h), ax + HALL, Math.max(ay - from.h, by - cell.h)];
     const half = across ? (hall[0] + hall[2]) / 2 : (hall[1] + hall[3]) / 2;
     plan.rooms[`hall${index}`] = look({ ceiling: 96, light: Math.max(96, theme.light - 32) });
-    plan.rooms[`door${index}`] = look({ ceiling: 96, door: index === locked ? "DOOR1" : theme.door, ...(index === locked ? { opens: lock.opens } : {}) });
+    plan.rooms[`door${index}`] = look({ ceiling: 96, door: index === locked ? lock.door : theme.door, ...(index === locked ? { opens: lock.opens } : {}) });
     plan.spaces.push([`hall${index}`, ...hall]);
     plan.spaces.push([`door${index}`, ...(across ? [half - 8, hall[1], half + 8, hall[3]] : [hall[0], half - 8, hall[2], half + 8]) as Box]);
   });
@@ -229,7 +234,9 @@ export function generate(level: number): Floor {
     const rats = Math.min(places.length - 8, 2 + Math.round(far * 4) + Math.min(3, cell.depth) + roll.below(2));
     for (let i = 0; i < rats; i++) {
       const mutant = roll.chance(0.2 + far * 0.35);
-      put(mutant ? MUTANT : GREASE_RAT, ...next(), angle, i < 2 ? ALL : i % 3 === 2 ? FLAG_HARD : FLAG_MEDIUM | FLAG_HARD);
+      // Further into the game, some of them are the stranger ones: a swarm of spark plugs, a coolant rat, a tire brute, a fat rat with cannons.
+      const stranger = level >= 10 && i % 6 === 5 ? FAT_RAT : level >= 7 && i % 7 === 6 ? TIRE_BRUTE : level >= 5 && i % 5 === 4 ? COOLANT_RAT : level >= 4 && i % 4 === 3 ? SPARK_PLUGS : 0;
+      put(stranger || (mutant ? MUTANT : GREASE_RAT), ...next(), angle, i < 2 ? ALL : i % 3 === 2 ? FLAG_HARD : FLAG_MEDIUM | FLAG_HARD);
     }
     // Something for the trouble.
     put(roll.chance(0.5) ? SHELLS : CLIP, ...next());
@@ -237,10 +244,25 @@ export function generate(level: number): Floor {
     if (!through.includes(index) || index === last) put(roll.chance(0.5) ? MEDIKIT : SHELL_BOX, ...next());
     if (index === keyRoom && level >= 5) put(CHAINGUN, ...next());
     if (index === keyRoom) put(AMMO_BOX, ...next());
+    // The heavier tools, further into the game, where there is still room for them: a torch and brake cleaner, brake rotors to throw, a jump starter.
+    const more = (type: number) => void (places.length && put(type, ...next()));
+    if (index === locked && level >= 4 && level % 2 === 0) more(TORCH);
+    if (index === locked && level >= 6) [ROTORS, ROTOR_STACK].forEach(more);
+    if (index === last && level >= 7) more(ROTOR_STACK);
+    if (index === keyRoom && level >= 9) [JUMP_STARTER, BATTERY_CASE].forEach(more);
+    if (index === last && level >= 10) more(BATTERY_CASE);
+    // And on the last two floors, a tank of refrigerant (the engine's biggest gun), which runs on the same charge.
+    if (index === locked && level >= 11) [2006, BATTERY_CASE].forEach(more);
+    // Things that help: a clipboard with the floor's plan, an energy drink, a suit for bad floor, and near the end a turbo.
+    if (index === keyRoom && level % 3 === 1) more(2026);
+    if (index === locked && level % 3 === 2) more(2023);
+    if (index === keyRoom && level % 4 === 3) more(2025);
+    if (index === last && level >= 9 && level % 2 === 1) more(2013);
     if (index === locked) put(ARMOUR, ...next());
     if (roll.chance(0.4) && places.length) put(ARMOUR_BONUS, ...next());
   });
-  for (let i = 0; i < kings; i++) put(KING_RAT, ex + (ox ? 0 : (i ? 72 : -72) * (kings - 1)), ey + (ox ? (i ? 72 : -72) * (kings - 1) : 0), facing(end));
+  // On the last floor the second of them is the cyborg rat.
+  for (let i = 0; i < kings; i++) put(level === 12 && i === 1 ? CYBORG_RAT : KING_RAT, ex + (ox ? 0 : (i ? 72 : -72) * (kings - 1)), ey + (ox ? (i ? 72 : -72) * (kings - 1) : 0), facing(end));
   // Where a game against each other puts people: four rooms, the start among them.
   for (const index of [keyRoom, last, locked]) if (index > 0) put(DEATHMATCH, ...middle(cells[index]!), facing(cells[index]!));
   return { title, plan, exit, things };

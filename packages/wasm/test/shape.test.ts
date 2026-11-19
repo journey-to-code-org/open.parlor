@@ -1,11 +1,9 @@
 // Changing what a level is built of: the shape read and written, the changes that can be made to
 // it, the node builder run on the result, and the engine playing what comes out. On the real
 // game's first level; skipped when the data isn't here (npm run build fetches it).
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { gunzipSync } from "node:zlib";
 import { describe, expect, test } from "vitest";
-import data from "../games/shooter/data.json";
 // @ts-expect-error a plain script, with no typings
 import { sourcesHash } from "../scripts/sources.mjs";
 import { startEngine } from "../src/shooter/engine.ts";
@@ -173,11 +171,11 @@ describe("a shape", () => {
   });
 });
 
-const file = here(`../public/data/${data.file}`);
+const file = here("../games/shooter/delbies/delbies.wad");
 
-describe.skipIf(!existsSync(file))("the real game's first level", () => {
-  const game = existsSync(file) ? new Uint8Array(gunzipSync(readFileSync(file))) : new Uint8Array(0);
-  const wad = existsSync(file) ? readWad(game) : { kind: "IWAD" as const, lumps: [] };
+describe("the game's first level", () => {
+  const game = new Uint8Array(readFileSync(file));
+  const wad = readWad(game);
   const engine = new WebAssembly.Module(readFileSync(here("../games/shooter/shooter.wasm")));
   const own = () => levelLumps(wad, "E1M1")!;
   const things = () => own().get("THINGS")!.lump.data;
@@ -187,7 +185,7 @@ describe.skipIf(!existsSync(file))("the real game's first level", () => {
     let clock = 0;
     let picture = new Uint8ClampedArray(0);
     const errors: string[] = [];
-    const running = await startEngine(engine, new Map([["freedoom1.wad", bytes]]), "freedoom1.wad", { now: () => clock, frame: (pixels) => (picture = pixels.slice()), log: (line) => void (/error/i.test(line) && errors.push(line)) }, ["-warp", "1", "1", "-nomonsters"]);
+    const running = await startEngine(engine, new Map([["delbies.wad", bytes]]), "delbies.wad", { now: () => clock, frame: (pixels) => (picture = pixels.slice()), log: (line) => void (/error/i.test(line) && errors.push(line)) }, ["-warp", "1", "1", "-nomonsters"]);
     const run = (tics: number) => {
       for (let i = 0; i < tics; i++) {
         clock += 1000 / 35;
@@ -218,7 +216,7 @@ describe.skipIf(!existsSync(file))("the real game's first level", () => {
     expect(written.VERTEXES).toEqual(own().get("VERTEXES")!.lump.data.slice(0, written.VERTEXES.length));
     // Every picture its walls name is one the game has.
     const names = new Set(["-", ...wallNames(wad)]);
-    expect(wallNames(wad).length).toBeGreaterThan(300);
+    expect(wallNames(wad).length).toBeGreaterThan(20);
     expect(level.shape.sides.flatMap((side) => [side.upper, side.lower, side.middle]).filter((name) => !names.has(name))).toEqual([]);
     // Where the player starts is in a room.
     const start = level.things.find((thing) => thing.type === 1)!;
@@ -313,7 +311,7 @@ describe.skipIf(!existsSync(file))("the real game's first level", () => {
     let clock = 0;
     let picture = new Uint8ClampedArray(0);
     const sounds: string[] = [];
-    const running = await startEngine(engine, new Map([["freedoom1.wad", changed]]), "freedoom1.wad", { now: () => clock, frame: (pixels) => (picture = pixels.slice()), sound: { start: (_c, lump) => void sounds.push(wad.lumps[lump]!.name), update() {}, stop() {}, playing: () => false } }, ["-warp", "1", "1"]);
+    const running = await startEngine(engine, new Map([["delbies.wad", changed]]), "delbies.wad", { now: () => clock, frame: (pixels) => (picture = pixels.slice()), sound: { start: (_c, lump) => void sounds.push(wad.lumps[lump]!.name), update() {}, stop() {}, playing: () => false } }, ["-warp", "1", "1"]);
     const run = (tics: number) => {
       for (let i = 0; i < tics; i++) {
         clock += 1000 / 35;
@@ -345,10 +343,8 @@ describe.skipIf(!existsSync(file))("the real game's first level", () => {
     // Covered all over, and not all one colour.
     expect(picture.solid.every((bit) => bit === 1)).toBe(true);
     expect(new Set(picture.pixels).size).toBeGreaterThan(4);
-    // All but two of the game's recipes find every patch they name (those two name one the game hasn't; no level uses them).
+    // Every one of the game's recipes finds every patch it names.
     const missing = [...recipes.values()].filter((recipe) => recipe.patches.some((piece) => !patches.has(piece.patch))).map((recipe) => recipe.name);
-    expect(missing).toEqual(["SLAD10", "SLAD11"]);
-    const used = new Set(levelNames(wad).flatMap((name) => readLevel(wad, name).shape.sides.flatMap((side) => [side.upper, side.lower, side.middle])));
-    expect(missing.filter((name) => used.has(name))).toEqual([]);
+    expect(missing).toEqual([]);
   });
 });

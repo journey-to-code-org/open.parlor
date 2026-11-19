@@ -23,7 +23,7 @@ export const plan: Plan = {
     hole: room({ floor: -24, floorFlat: "FLOOR7_1", wall: "WOOD5", light: 64, special: 7 }),
     badBoxes: room({ floor: 72, floorFlat: "CRATOP2", wall: "CRATE2", light: 88 }),
     // It wants the attic key (the yellow one).
-    keyDoor: room({ wall: "WOOD5", door: "DOOR1", opens: 27 }),
+    keyDoor: room({ wall: "WOOD5", door: "DOORYEL", opens: 27 }),
     ...Object.fromEntries(Array.from({ length: STEPS }, (_, i) => [`down${i + 1}`, room({ floor: -16 * (i + 1), floorFlat: "STEP1", light: 160, wall: "BROWN1", trim: "STEP4" })])),
     bottom: room({ floor: -16 * STEPS, light: 176, wall: "BROWN1" }),
   },

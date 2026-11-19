@@ -15,7 +15,7 @@ export class Exit extends Error {
 }
 
 export interface WasiOptions {
-  /** The disk: file contents by path, without the leading slash ("freedoom1.wad", "saves/0.dsg"). */
+  /** The disk: file contents by path, without the leading slash ("delbies.wad", "saves/0.dsg"). */
   files: Map<string, Uint8Array>;
   /** The module's memory. Asked for on every call, since growing it replaces the buffer. */
   memory: () => WebAssembly.Memory;

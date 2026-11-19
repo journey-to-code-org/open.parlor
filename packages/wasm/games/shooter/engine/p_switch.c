@@ -135,6 +135,12 @@ void P_InitSwitchList(void)
 	    
 	    value = R_TextureNumForName(alphSwitchList[i].name1);
 #endif
+	    // [open.wasm] A game needn't have every switch the engine knows of: one it hasn't is left out.
+	    if (R_CheckTextureNumForName(DEH_String(alphSwitchList[i].name1)) < 0
+	     || R_CheckTextureNumForName(DEH_String(alphSwitchList[i].name2)) < 0)
+	    {
+		continue;
+	    }
 	    switchlist[index++] = R_TextureNumForName(DEH_String(alphSwitchList[i].name1));
 	    switchlist[index++] = R_TextureNumForName(DEH_String(alphSwitchList[i].name2));
 	}

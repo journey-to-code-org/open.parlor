@@ -1,11 +1,13 @@
 // Sound effects through Web Audio. The engine hands over each effect as it sits in the WAD (a DMX
 // lump: a short header, then unsigned 8-bit samples); it is decoded once and kept.
 //
-// And the song. The engine hands over the song's lump, whole. If it is sound the browser can
-// decode (an MP3, an Ogg, a WAV someone put in a song's place) it is played, round and round if
-// the engine says so. The game's own songs are MUS data, which nothing here can play yet: they
-// are silence.
-import { decodeDmx } from "../../wad/sound.ts";
+// And the song. The engine hands over the song's lump, whole. A lump that only names a song
+// ("song:steel-teeth") is one of the game's own: its file is fetched, once, and kept for playing
+// with no connection. Anything else is played if it is sound the browser can decode (an MP3, an
+// Ogg, a WAV someone put in a song's place), round and round if the engine says so, and is
+// silence if it isn't.
+import { asset } from "../../host/assets.ts";
+import { decodeDmx, songNamed } from "../../wad/sound.ts";
 import type { SoundHost } from "./engine.ts";
 
 interface Voice {
@@ -23,7 +25,11 @@ export interface Audio extends SoundHost {
   close(): void;
 }
 
-export function createAudio(): Audio {
+/** The game's songs are mastered loud, and the effects are short and plain: a song is played under them. */
+const SONG_LEVEL = 0.6;
+
+/** `songs` is where each of the game's own songs is, by name. */
+export function createAudio(songs: Record<string, string> = {}): Audio {
   const Context = globalThis.AudioContext ?? (globalThis as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   const context = Context ? new Context() : null;
   const buffers = new Map<number, AudioBuffer | null>();
@@ -93,8 +99,11 @@ export function createAudio(): Audio {
         stopSong();
         if (!context) return;
         const mine = asked;
-        // What isn't sound the browser knows (the game's own MUS songs) is silence.
-        void context.decodeAudioData(data.buffer as ArrayBuffer).then(
+        const named = songNamed(data);
+        // A song that is only named is fetched; one whose file can't be had (no connection, and never played before) is silence.
+        const bytes = named === undefined ? Promise.resolve(data) : songs[named] ? asset(songs[named]) : Promise.reject(new Error("no such song"));
+        // What isn't sound the browser knows is silence too.
+        void bytes.then((sound) => context.decodeAudioData(sound.buffer.slice(sound.byteOffset, sound.byteOffset + sound.byteLength) as ArrayBuffer)).then(
           (buffer) => {
             if (mine !== asked) return;
             song = context.createBufferSource();
@@ -107,7 +116,7 @@ export function createAudio(): Audio {
         );
       },
       stop: stopSong,
-      volume: (volume) => void (songGain && (songGain.gain.value = level(volume))),
+      volume: (volume) => void (songGain && (songGain.gain.value = level(volume) * SONG_LEVEL)),
       pause: (paused) => void (song && (song.playbackRate.value = paused ? 0 : 1)),
     },
     mute: (on) => void (muted = on),

@@ -44,7 +44,7 @@ export const exit = { x: 0, y: 720, picture: "SW1BRN2" };
 const ALL = FLAG_EASY | FLAG_MEDIUM | FLAG_HARD;
 const at = (type: number, x: number, y: number, angle = 270, flags = ALL): Thing => ({ x, y, angle, type, flags });
 const [GREASE_RAT, MUTANT, KING_RAT] = [3002, 3001, 3003];
-const [SHOTGUN, CHAINGUN, SHELLS, SHELL_BOX, AMMO_BOX, STIMPACK, MEDIKIT, ARMOUR, BIG_ARMOUR, RED_KEY, BARREL, DEATHMATCH] = [2001, 2002, 2008, 2049, 2048, 2011, 2012, 2018, 2019, 13, 2035, 11];
+const [SHOTGUN, CHAINGUN, SHELLS, SHELL_BOX, AMMO_BOX, STIMPACK, MEDIKIT, ARMOUR, RED_KEY, BARREL, DEATHMATCH] = [2001, 2002, 2008, 2049, 2048, 2011, 2012, 2018, 13, 2035, 11];
 
 export const things: Thing[] = [
   ...[1, 2, 3, 4].map((type, i) => at(type, -72 + 48 * i, -592, 90)),
@@ -73,9 +73,12 @@ export const things: Thing[] = [
   at(BARREL, 688, -96),
   at(STIMPACK, 496, -352),
   // By the bay door, for what is on the other side of it.
-  at(BIG_ARMOUR, -96, 16),
+  at(ARMOUR, -96, 16),
   at(SHELL_BOX, 96, 16),
   at(MEDIKIT, 0, 16),
+  // Brake rotors, to throw (the engine's rocket launcher), and a stack more.
+  at(2003, 48, 64),
+  at(2046, -48, 64),
   // The yard, and the King Rat on his trailer.
   at(KING_RAT, 0, 448),
   at(GREASE_RAT, -400, 200, 0),

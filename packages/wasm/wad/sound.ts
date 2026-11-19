@@ -74,3 +74,15 @@ export function mixDown(channels: Float32Array[]): Float32Array {
   for (const channel of channels) for (let i = 0; i < mixed.length; i++) mixed[i]! += channel[i]! / channels.length;
   return mixed;
 }
+
+/**
+ * A song that isn't in the WAD: its lump is one line naming it, and whoever plays the game's songs
+ * finds the file by that name.
+ */
+export const songLump = (name: string) => new TextEncoder().encode(`song:${name}`);
+
+/** The song a lump names, if that is all the lump is. */
+export function songNamed(data: Uint8Array): string | undefined {
+  if (data.length > 64) return undefined;
+  return /^song:([a-z0-9-]+)\s*$/.exec(new TextDecoder().decode(data))?.[1];
+}

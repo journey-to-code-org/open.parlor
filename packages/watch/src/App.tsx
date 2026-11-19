@@ -180,7 +180,7 @@ export function App() {
           {[props.game.settings.mode === "coop" ? "Together" : "Against each other", props.game.minutes ? `${props.game.minutes} min in` : "Just started"].join(" · ")}
         </span>
       </span>
-      <action-button prop:size="sm" prop:variant="primary" prop:href={`../wasm/?room=${encodeURIComponent(props.game.code)}&watch`} prop:label={`Watch ${listed(props.game.players)} play Freedoom`}>
+      <action-button prop:size="sm" prop:variant="primary" prop:href={`../wasm/?room=${encodeURIComponent(props.game.code)}&watch`} prop:label={`Watch ${listed(props.game.players)} play Delbie's Doomsday`}>
         Watch
       </action-button>
     </li>

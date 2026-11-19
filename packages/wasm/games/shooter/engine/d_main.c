@@ -780,7 +780,8 @@ void D_IdentifyVersion(void)
     {
         // Doom 1.  But which version?
 
-        if (W_CheckNumForName("E4M1") > 0)
+        // [open.wasm] A game that brings its own words is whole however many levels it has: it isn't the shareware.
+        if (W_CheckNumForName("E4M1") > 0 || W_CheckNumForName("WORDS") >= 0)
         {
             // Ultimate Doom
 
@@ -834,7 +835,12 @@ void D_SetGameDescription(void)
     {
         // Doom 1.  But which version?
 
-        if (is_freedoom)
+        // [open.wasm] The game made here, which brings its own words, goes by its own name.
+        if (W_CheckNumForName("WORDS") >= 0)
+        {
+            gamedescription = GetGameName("Delbie's Doomsday");
+        }
+        else if (is_freedoom)
         {
             gamedescription = GetGameName("Freedoom: Phase 1");
         }
@@ -1099,9 +1105,13 @@ static void D_Endoom(void)
         return;
     }
 
-    endoom = W_CacheLumpName(DEH_String("ENDOOM"), PU_STATIC);
+    // [open.wasm] A game needn't have a text screen to leave by.
+    if (W_CheckNumForName(DEH_String("ENDOOM")) >= 0)
+    {
+        endoom = W_CacheLumpName(DEH_String("ENDOOM"), PU_STATIC);
 
-    I_Endoom(endoom);
+        I_Endoom(endoom);
+    }
 
 	exit(0);
 }

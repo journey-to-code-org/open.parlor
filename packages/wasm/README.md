@@ -37,10 +37,10 @@ browser; nothing of it is kept on the server.
 The engine is [doomgeneric](https://github.com/ozkl/doomgeneric), a port of the Doom engine made
 to be carried to new platforms, with the changes a web page needs
 ([`games/shooter/engine/CHANGES.md`](games/shooter/engine/CHANGES.md)). The game it plays is
-Delbie's Doomsday ([`games/shooter/delbies`](games/shooter/delbies/README.md)): a title, rats,
-words and twelve levels of its own, laid over [Freedoom: Phase 1](https://freedoom.github.io/),
-free levels, pictures and sounds for the engine, which is everything of the game that isn't yet
-its own.
+Delbie's Doomsday ([`games/shooter/delbies`](games/shooter/delbies/README.md)): one WAD, built
+in this folder, in which every level, picture, sound and colour is the game's own. Nothing of
+anyone else's game is fetched or laid under it. Its four songs are MP3s beside it, fetched one
+at a time as the engine first plays them.
 
 | | |
 | --- | --- |
@@ -50,11 +50,11 @@ its own.
 | Together | Up to four, each on a device of their own, against the monsters or each other. One starts a game and sends the others its link or its four-letter code |
 | Watching | Anyone with the link can watch, through any player's eyes, and is run through the game so far if they come late. A game its host lists also shows on the parlor's watch page |
 | Changing it | An editor at `/wasm/editor/` swaps any of the game's pictures and sounds for a file of your own, adds walls, floors, sprites and sounds it never had, changes its words and its rules (what each thing is, and the numbers it plays by), its levels, what is placed in them and what they are built of, and puts a file in place of any other lump of its data; the game is played with the changes, alone |
-| Sound | Effects, through Web Audio. A song is played if someone has put an MP3, an Ogg or a WAV in its place; the game's own songs (MUS data) are not, yet |
+| Sound | Effects, through Web Audio. The game's four songs are MP3s, fetched as they are first played; an MP3, an Ogg or a WAV put in a song's place in the editor is played too |
 | Saved games and settings | Kept in the browser (IndexedDB), under the engine's own menus |
 | Offline | After the first visit the page, the engine and the game's data are kept on the device |
 
-Not there yet: the game's own music (the songs are MUS data, which wants an OPL or MIDI synthesiser), joining a
+Not there yet: songs in the engine's own MUS form (they want an OPL or MIDI synthesiser), joining a
 game that has started as a player, and replays of games that are over.
 
 ## The editor
@@ -90,8 +90,8 @@ letters) and the sound effects. Any of them can be swapped for a file:
   side; `DSRAT1`). The engine draws and plays its own by name, so a new one is seen or heard
   once the Rules tab gives it to a thing.
 - **Songs** are among Everything else (`D_E1M1` and the rest). An MP3, an Ogg or a WAV put in a
-  song's place is played, round and round, at the menu's music volume. The game's own songs are
-  MUS data, which wants an OPL or MIDI synthesiser: they are still silence.
+  song's place is played, round and round, at the menu's music volume. A song in the engine's
+  own MUS form wants an OPL or MIDI synthesiser, and is silence.
 
 The **Rules** tab changes what was fixed in the engine's code. For each of the engine's 137
 kinds of thing: its health, speed, size, weight, damage, how easily it flinches, how long before
@@ -263,8 +263,7 @@ games/shooter/
   build.json          what to compile
   shooter.wasm        the engine, compiled. Committed, so building the site needs no C compiler
   shooter.wasm.json   a hash of the C it was compiled from
-  data.json           which Freedoom release is the game's data
-  delbies/            the game's own title and levels, laid over Freedoom: see its README
+  delbies/            the game: its levels, art and words, and delbies.wad built from them. See its README
   nodes/              the node builder: BSP 5.2's C (GPL-2.0) in bsp/, what calls it in glue/, and nodes.wasm, committed
 src/
   shooter/engine.ts   starts the engine and calls into it. No DOM: the tests run it in Node
@@ -301,8 +300,8 @@ npm run delbies -w @open-parlor/wasm  # rebuild the game's own WAD from its plan
 npm run typecheck -w @open-parlor/wasm   # after a build: Zubra writes its components' typings then
 ```
 
-`dev` and `build` fetch Freedoom from its release on GitHub the first time (28 MB, stored gzipped
-as 10 MB in `public/data/`, which git ignores) and check it against the hashes in `data.json`.
+The game's data is `games/shooter/delbies/delbies.wad` (2 MB), which is committed: `dev` and
+`build` fetch nothing.
 
 Recompiling the C needs `clang` and `wasm-ld` (on Debian or Ubuntu: `apt install clang lld`;
 clang 18 is what `shooter.wasm` was built with). The script fetches the WASI C library from the
@@ -317,8 +316,9 @@ doesn't match the sources. The same goes for `nodes/nodes.wasm`.
   `.wasm` on the site is this folder.
 - `games/shooter/nodes/` is BSP 5.2, by Colin Reed, Lee Killough, Simon Howard and Colin Phipps,
   under the same licence (`bsp/COPYING`, `bsp/AUTHORS`); so is `nodes.wasm`.
-- Freedoom is under a BSD 3-clause licence. Its licence and credits are served beside it and
-  linked from the foot of the page.
+- Everything in `games/shooter/delbies/` (the levels, the art and the scripts that draw it, the
+  sounds, the words, and `delbies.wad`) was made for this game and is under the repository's
+  licence. It uses the names the engine knows its lumps by, and nothing else of any other game.
 - "Doom" is a trademark of id Software. This is not Doom, and the game needs a name of its own.
 
 ## Moving it out
@@ -333,7 +333,7 @@ To make this folder a repository: copy it, and take from the parlor
   through the `@open-parlor/ui` alias in `vite.config.ts` and `tsconfig.json`): open.wasm takes
   its own copies, or zubra-ui itself,
 - the few lines in the server that serve a folder's own `index.html` (the editor's page),
-- the "Freedoom, playing now" list on the watch page (`packages/watch/src/App.tsx`),
+- the "playing now" list of this game on the watch page (`packages/watch/src/App.tsx`),
 - the step in `.github/workflows/pages.yml` and the lines in `ci.yml`,
 - `-w @open-parlor/wasm` and `build:net` in the root `package.json`'s scripts, and the server's
   dependency on this package,

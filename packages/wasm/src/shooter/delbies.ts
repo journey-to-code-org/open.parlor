@@ -1,13 +1,11 @@
-// Delbie's Doomsday, laid over Freedoom: the game's own title picture and levels
-// (games/shooter/delbies), fetched once and kept for playing with no connection.
-import over from "../../games/shooter/delbies/delbies.wad?url";
-import { asset } from "../../host/assets.ts";
-import { layer } from "../../wad/mod.ts";
+// Delbie's Doomsday: the game's data (games/shooter/delbies), all of it made here, fetched once and
+// kept for playing with no connection.
+import game from "../../games/shooter/delbies/delbies.wad?url";
 
-/** Where the game's own WAD is, for whoever keeps a list of what the page has fetched. */
-export const DELBIES = over;
+/** The game: where its WAD is, the name the engine opens it by, and the size of the download, for telling whoever is waiting. */
+export const DELBIES = { url: game, name: "delbies.wad", megabytes: 3 };
 
-/** Freedoom with Delbie's laid over it. */
-export async function withDelbies(game: Uint8Array): Promise<Uint8Array> {
-  return layer(game, await asset(over, { valid: (bytes) => String.fromCharCode(...bytes.subarray(0, 4)) === "PWAD" }));
-}
+/** Where each of the game's songs is, by name: fetched one at a time, the first time the engine plays it. */
+export const SONGS: Record<string, string> = Object.fromEntries(
+  Object.entries(import.meta.glob<string>("../../games/shooter/delbies/music/*.mp3", { query: "?url", import: "default", eager: true })).map(([path, url]) => [path.replace(/^.*\/|\.mp3$/g, ""), url]),
+);

@@ -3,11 +3,14 @@
 The shooter set in the store its crew call Delbie's Daycare & Geriatrics. (That is also the name
 of the parlor's idle game, and what the title picture says.)
 
-The game's own part: what is laid over Freedoom to make it ours. So far that is the title
-picture, the name over the menu, the rats, the status bar, the tools and pick-ups, some of the
-walls, the words, and twelve levels, after which the game ends. Everything else (the other
-monsters, the rest of the walls and floors, the other sounds, and 24 levels that are no longer
-reached) is still Freedoom's.
+The whole game: its colours, the title picture, the menus, the status bar, the rats, the tools
+and pick-ups, every wall, floor and sky, every sound, the words, and twelve levels, after which
+the game ends. All of it is made in this folder, and `delbies.wad` is a game on its own: the
+engine is given that file and no other. (It began laid over Freedoom, whose levels, pictures and
+sounds filled in what wasn't drawn yet. None of that is left.)
+
+What the engine can do that the game has nothing for is simply not there: the other monsters
+have no pictures and are placed in no level.
 
 - `attic.ts` and `basement.ts` are the second and third levels, written the same way: the attic's
   good side and bad side (holes in the floor, the attic key at the far end), and the basement's
@@ -24,27 +27,78 @@ reached) is still Freedoom's.
   room, George's returns desk, the bathroom (locked: its key is on George's desk), Jessica's
   office, and the stairs up at the back, where the level ends.
 - `game.ts` builds the levels from their plans, runs the node builder on them, and puts them in
-  a WAD with the art.
-- `art/title.webp` is the title picture, Mikey's. `art/convert.py` brings it into the game's
+  a WAD with the art: the colours first, then the lists of walls (every wall is one picture of
+  its own name), the screens, the sounds, the sprites, the walls and the floors between their
+  markers, and the levels.
+- `songs.ts` says which song plays where, and `music/` holds the songs: four MP3s of Mikey's
+  (Brass and Heavy Iron for the title, the page between levels and the ending; Steel Teeth and
+  Stripped To Bone by turns on the levels; Aisle Four Is A Trap on the King Rat's floors, 3, 8,
+  10 and 12), brought down to 32 kHz and 112 kbit/s, 9 MB between them. They are not in the WAD:
+  a song's lump there is one line naming it (`song:steel-teeth`), and the page fetches the file
+  the first time the engine plays it and keeps it for playing with no connection. So a song
+  never heard on a device isn't there offline.
+- `art/palette.py` makes the game's 256 colours (sixteen runs of sixteen shades, chosen for a
+  parts store: navy, steel, cream, cardboard, the yellow of a price gun, the green of old brake
+  fluid), the same tinted for being hurt and for picking things up, and each colour at 32
+  depths of shade. It writes `palette.bin`, which every other script reads its colours from.
+- `art/title.webp` is the title picture, Mikey's (the second he gave: Delbie before the store, in the rats), with the game's name laid into its corner. `art/convert.py` brings it into the game's
   256 colours as `title.raw` and, for the lettering over the menu, `logo.raw` and `logo.mask`.
   It needs Pillow and is run by hand when the picture changes.
-- `art/rats.py` draws the rats: each is a handful of rounded lumps, posed and looked at from the
-  eight sides the engine wants, lit and edged like the engine's own sprites. It writes
-  `sprites.bin.gz` and `sprites.json`: 175 pictures. It needs numpy and Pillow and is run by hand.
-- `art/hud.py` draws the status bar: Delbie's face (blond, blue-eyed, 42 moods) in place of the
-  engine's, and Freedoom's bar tinted steel blue with a yellow and black edge. It writes
-  `hud.bin.gz` and `hud.json`.
-- `art/tools.py` draws tools from the store in place of four weapons and what is picked up: the
-  "hammer" (a tape measure, in place of the fist), a price gun (the pistol), Delbie's lever-action
-  (the shotgun) and an impact wrench (the chaingun), each in the hand with its flash, the last two
-  on the floor as well; pasta and a pizza box for health, a shop apron for armour, a box of
-  ammunition and the three keys. It writes `tools.bin.gz` and `tools.json`: 33 pictures.
-- `art/sounds.py` makes the rats' voices: squeaks, chitters, hisses and a growl, built from sliding
-  tones and noise, in place of the sounds of the monsters the rats replaced. It writes
-  `sounds.bin.gz` and `sounds.json`: 15 sounds.
-- `art/walls.py` draws the store's walls, as pieces in place of the pieces Freedoom's walls are
-  built from: the shop wall (cream over a navy wainscot), shelves of parts in orange and blue
-  boxes, and the counter's front. It writes `walls.bin.gz` and `walls.json`: 10 pieces.
+- `art/monsters.py` makes every picture of the rats from the figures `cutout.py` cut off the
+  sheets Mikey gave: each rat from five sides (the engine's other three are those turned over),
+  attacking, hurt and dying. A walk is one figure lifted a pixel on every other step, since a
+  sheet has one figure a side. It writes `sprites.bin.gz` and `sprites.json`: 240 pictures.
+- `art/hud.py` makes the status bar: Delbie's face, from four pictures of him Mikey gave
+  (smiling, cross, bruised, bloodied: one for each state of health, moved a pixel or two for
+  where he looks, since the engine wants 42), and the bar
+  itself, a steel panel with a yellow and black edge and a dark window for each figure, with its
+  big and small figures, the keys' lights and the rim round a view made smaller. It writes
+  `hud.bin.gz` and `hud.json`: 108 pictures.
+- `art/cutout.py` cuts the weapons out of the pictures Mikey gave (each a mock-up of a weapon in
+  a scene: in gloved hands as the player sees it, or on a floor) into `art/given/`, with nothing
+  behind them. It needs OpenCV and the pictures, which are not in the repository: some carry
+  another game's status bar or a real brand's label, and nothing of those is in what is cut out
+  but a label too small to read.
+- `art/tools.py` makes the sprites of everything held and picked up. All nine weapons are Mikey's
+  pictures, brought into the game's colours as they are (and the box of tag rolls is his too):
+
+  | In the engine's place of | Here |
+  | --- | --- |
+  | the fist | the "hammer": a tape measure, swung with its blade out |
+  | the pistol | a price gun |
+  | the chainsaw | a torch and a can of brake cleaner |
+  | the shotgun | Delbie's lever-action |
+  | the chaingun | a jug of washer fluid with a pump on it |
+  | the rocket launcher | brake rotors, thrown |
+  | the plasma gun | a jump starter, a clamp in each hand |
+  | the biggest gun | a tank of R-134a |
+
+  Each is one picture or two, so what moves is the whole weapon (the lever isn't worked, the
+  rotor isn't seen leaving the hand). (The sprayer shares the price gun's
+  ammunition, as the engine's chaingun shares its pistol's.) Pasta, a pizza and a coffee for health, a shop apron and a hard hat for armour, the drum
+  of waste oil and what the mutant spits are his pictures too. The script still draws
+  cartridges loose and boxed, batteries and the three keys; another player (work shirt, cap, price gun); dust and blood
+  where a shot lands; the light things arrive in; what the King Rat throws; and a drum of waste
+  oil and what it does when shot. It writes `tools.bin.gz` and `tools.json`: 146 pictures.
+- `art/menu.py` draws what is around the game, in the colours of the title picture (yellow
+  letters edged in navy, a chequered strip): every line of the menus and a hex nut where the
+  skull was; the small letters the game speaks in; the page between levels, with each floor's
+  name and the figures; "How to play", which is the menu's read-me page; the credits, which
+  say whose engine this is; the sliders and the boxes saved games are named in; and the page
+  after the ending. It writes `menu.bin.gz` and `menu.json`: 208 pictures. It needs numpy, Pillow and the DejaVu Sans fonts, and is run after `tools.py` and
+  `rats.py`, whose pictures the pages show.
+- `art/sounds.py` makes everything heard, from sliding tones and noise: the rats' squeaks,
+  chitters, hisses and growl, and the price gun, the lever-action, doors, the breaker on the wall,
+  things picked up, and you. It writes `sounds.bin.gz` and `sounds.json`: 108 sounds, one for every name the engine has, so nothing it plays is silence.
+- `art/walls.py` draws the pieces three of the walls are put together from: the shop wall (cream
+  over a navy wainscot), shelves of parts in orange and blue boxes, and the counter's front. It
+  writes `walls.bin.gz` and `walls.json`: 10 pieces.
+- `art/textures.py` makes every wall, sky, floor and ceiling the levels use. Fifteen are Mikey's
+  (`given/wall-*.png`, off his three sheets: the blue block wall, shelves, the bay door, the
+  shop front, pegboards, brick, cracked concrete, the ceiling, and the hydraulic shop's hoses,
+  bench and oil), under the names the levels already used. The rest are painted by rule (courses of
+  brick, planks, cinder block, a bay door's slats, ceiling tiles) and from `walls.py`'s pieces.
+  It writes `textures.bin.gz` and `textures.json`: 25 walls and 17 floors. Run it after `walls.py`.
 - `words.txt` is what the game says: Delbie's lines for when a level starts, a rat notices you,
   one bites, you get one, and you die; and our words in place of the engine's for the first
   level's name, things picked up and the locked door. The engine reads them from the WAD
@@ -53,21 +107,40 @@ reached) is still Freedoom's.
 
 To rebuild after changing a plan: `npm run delbies -w @open-parlor/wasm`.
 
-The page lays `delbies.wad` over Freedoom when the game is fetched (`src/shooter/delbies.ts`),
-for a game alone and for a game with others alike, and the editor shows the game that way too.
+The page fetches `delbies.wad` and gives it to the engine as the game (`src/shooter/delbies.ts`),
+for a game alone and for a game with others alike, and it is what the editor opens.
+
+The art scripts are run in this order after a change of colours: `palette.py`, `convert.py`,
+`cutout.py` (only if the pictures changed), `monsters.py`, `tools.py`, `walls.py`, `textures.py`, `hud.py`, `menu.py`, `sounds.py`.
+
+## Also Mikey's
+
+The status bar (`given/bar.png`, its sample figures emptied out), the menu's pointer, the picture
+behind the page between levels, the three keys, the drum's explosion, the pickups for rotors and
+charge, and four things that help: an energy drink (the engine's berserk pack), a glowing turbo
+(its soulsphere), a chemical suit and a clipboard with the floor plan. A floor jack (`COLU`) and
+a trouble light (`TLMP`) have pictures and are placed nowhere yet.
 
 ## The rats
 
-Each takes the place of one of the engine's monsters, under that monster's sprite names, so the
-engine needs telling nothing:
+Each is one of the engine's monsters under that monster's sprite names, so the engine needs
+telling little:
 
-| Rat | In place of | Sprites |
+| Rat | To the engine | Sprites |
 | --- | --- | --- |
-| Grease rat | the charging, biting one | `SARG` |
-| Brake-fluid mutant | the one that throws; what it spits is `BAL1`, green | `TROO` |
+| Grease rat | the one that charges and bites | `SARG` |
+| Brake-fluid mutant | the one that throws; what it spits is `BAL1` | `TROO` |
 | The King Rat | the boss | `BOSS` |
+| Tire brute | the boss's lesser brother, made to only swing its iron | `BOS2` |
+| Coolant rat | the one that floats and spits (`BAL2`) | `HEAD` |
+| Spark-plug swarm | the skull that flies at you | `SKUL` |
+| Fat rat in coveralls | the one with a cannon on each arm (`FATB`) | `FATT` |
+| Cyborg rat | the biggest, which fires rockets: here, brake rotors | `CYBR` |
 
-The grease rat is also given a rat's numbers in the engine (`engine/CHANGES.md`): less health,
-faster, smaller, and a bite of 2 to 8, since they come in numbers. The other two behave as the
-monsters they replace, with voices of their own. Freedoom's other monsters are
-unchanged, and are left out of our levels.
+The first three are in the hand-made levels. The other five are on the generated floors only:
+spark plugs from the fourth, coolant rats from the fifth, tire brutes from the seventh, fat
+rats from the tenth, and the cyborg rat beside the King Rat on the twelfth.
+
+The grease rat is given a rat's numbers in the engine (`engine/CHANGES.md`). The game's `RULES`
+lump (`rules()` in `game.ts`) makes the tire brute melee only with 350 health, and gives the
+cyborg rat 1,500 health in place of 4,000.
