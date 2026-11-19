@@ -558,6 +558,11 @@ chat-room.house-chat .chat-bars { --chart-1: var(--felt); }
   /* Kings in the Corner's cross too: left to place itself, it took the first free cell, which at a
      table of two is the left-hand column, not the middle. */
   .palace-felt .cross:not(.row) { grid-area: center; }
+  /* And Memory's grid of cards: in the left-hand column it was cut off at the screen's edge. */
+  .palace-felt .board-area { grid-area: center; min-width: 0; }
+  /* A long list of choices (Liar's Poker's bids) ran down under the hand, out of reach: two to a
+     row, and it scrolls inside the table. */
+  .palace-felt .kit-choices.list { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 38vh; overflow-y: auto; overscroll-behavior: contain; padding: 2px; box-sizing: border-box; }
   .palace-felt .center-info { grid-area: info; min-width: 0; padding: 0 8px; text-wrap: balance; }
 }
 /* Palace buttons live in the felt, not floating over your face-up cards. */
