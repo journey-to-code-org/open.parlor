@@ -31,7 +31,7 @@ import { TableSettingsButton } from "../TableSettings";
 import { drawOverlay, drawScene, playFrame, powerColour, toneColour, type Aim, type Disc, type Effect } from "./draw";
 import { firstBall, PoolRack } from "./PoolRack";
 import { drawsIn3d, loadSport3d, type Sport3d } from "./scene3d";
-import { fitFrame, TILT, unprojectVector, type Projection } from "./projection";
+import { fitFrame, tiltFor, unprojectVector, type Projection } from "./projection";
 import { advanceRoll, beginRoll, finishRoll, landed, type Roll } from "./roll";
 import { AIM_LIMIT, guideOf, readSwipe, sideways, type Throw, type Touch } from "./throw";
 import type { Point } from "@journey-to-code/physics";
@@ -223,7 +223,7 @@ export function SportTable({ view, names, act, onLeave, banner, chat, together, 
     const board = sign.current;
     const over = board && getComputedStyle(board).position === "absolute" ? board.offsetTop + board.offsetHeight + 4 : 0;
     // Seen from an angle unless this device has asked for the plan view: the same drawing with no tilt.
-    fit.current = fitFrame(playFrame(table), w, h, { top: over, tilt: viewSetting() === "above" ? 0 : TILT });
+    fit.current = fitFrame(playFrame(table), w, h, { top: over, tilt: viewSetting() === "above" ? 0 : tiltFor(v.game) });
     lastPaint.current = now;
     const looks = new Map<string, SportBody>(table.bodies.map((b) => [b.id, b]));
     // The ball that's rolling is the colour of whoever threw it, not of whoever is up next.
