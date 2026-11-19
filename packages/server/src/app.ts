@@ -22,6 +22,7 @@ import { createTableChat } from "./tablechat.js";
 import { createAi, type AiOptions } from "./ai.js";
 import { personaFor } from "@journey-to-code/rules";
 import { createBugs, REPORT_LIMIT, type BugOptions } from "./bugs.js";
+import { createNews } from "./news.js";
 import { createLobby, type LobbyOptions } from "./lobby.js";
 import { createBots, type BotOptions } from "./bots.js";
 import { createPush, type PushOptions } from "./push.js";
@@ -180,6 +181,8 @@ export function createCardRoom(
   // "Report a problem": a player's report becomes an issue on GitHub.
   // With the parlor's own AI key, a report or request can be tidied before it's sent.
   const bugs = createBugs(rooms, { ...(ai.shared ? { tidy: (input) => ai.tidy(input) } : {}), ...options.bugs });
+  // "What's new" on the front page: the pull requests merged lately, from the repository reports go to.
+  const news = createNews({ repo: bugs.repo, token: options.bugs?.token, fetch: options.bugs?.fetch, now: options.bugs?.now });
 
   const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
   /** /push: the public key, and saying yes (or no) to notifications on this phone. */
@@ -216,7 +219,7 @@ export function createCardRoom(
   }
   /** The routes that aren't the rooms kit's own. */
   const ours = async (request: Request) =>
-    (await refusal(request)) ?? (await github.fetch(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await designs.fetch(request)) ?? (await courses.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await tunables.fetch(request)) ?? (await pages.fetch(request)) ?? (await spectate.fetch(request)) ?? (await challenges.fetch(request)) ?? (await devices.fetch(request)) ?? (await lobby.fetch(request)) ?? (await tables.fetch(request)) ?? (await houses.fetch(request));
+    (await refusal(request)) ?? (await github.fetch(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await news.fetch(request)) ?? (await designs.fetch(request)) ?? (await courses.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await tunables.fetch(request)) ?? (await pages.fetch(request)) ?? (await spectate.fetch(request)) ?? (await challenges.fetch(request)) ?? (await devices.fetch(request)) ?? (await lobby.fetch(request)) ?? (await tables.fetch(request)) ?? (await houses.fetch(request));
 
   return {
     rooms,
@@ -287,7 +290,7 @@ export function createCardRoom(
         req.headers.cookie = as.cookie;
         return this.handle(req, res);
       }
-      if (TABLE_CHAT.test(url.pathname) || under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/tunables", "/spectate", "/bugs", "/me", ...PAGE_MOUNTS])) {
+      if (TABLE_CHAT.test(url.pathname) || under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/tunables", "/spectate", "/bugs", "/news", "/me", ...PAGE_MOUNTS])) {
         const chunks: Buffer[] = [];
         let size = 0;
         for await (const chunk of req) {

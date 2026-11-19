@@ -300,10 +300,18 @@ export function Home({ last, onPick, onOpenHouse, onLobby, onWifi, onMove }: { l
       canList: false,
       // "Daily sudoku": the same, another page of the server's.
       canDaily: false,
+      // "What's new": the changes merged lately (the server's news.ts). None on a copy with no server.
+      news: [] as { title: string; url: string; merged: string }[],
     });
     void bugs.enabled().then((yes) => (props.canAsk = yes));
     void fetch("games", { method: "HEAD" })
       .then((reply) => (props.canList = reply.ok && (reply.headers.get("x-parlor-page") ?? "") === "games"))
+      .catch(() => {});
+    void fetch("news")
+      .then((reply) => (reply.ok ? reply.json() : null))
+      .then((body: { changes?: { title: string; url: string; merged: string }[] } | null) => {
+        if (Array.isArray(body?.changes)) props.news = body.changes;
+      })
       .catch(() => {});
     void fetch("daily", { method: "HEAD" })
       .then((reply) => {

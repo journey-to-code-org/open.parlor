@@ -57,6 +57,8 @@ const props = defineProps<{
   /** Whether this parlor has the page its server draws itself, with every game on it (`games`). */
   canList?: boolean;
   canDaily?: boolean;
+  /** "What's new": the changes merged lately, newest first. */
+  news?: { title: string; url: string; merged: string }[];
 }>();
 const emit = defineEmits<{ pick: [id: string]; house: [slug: string]; lobby: []; wifi: []; move: []; ask: [] }>();
 // The sheet for choosing what is kept for playing offline is the React app's (offline/OfflineGames.tsx): it listens for this.
@@ -94,6 +96,32 @@ const shown = computed(() => props.games.filter((g) => fits(g) && matchesSearch(
 const searchHint = computed(() => `Search ${props.games.length} games…`);
 /** Why nothing is showing, when nothing is. */
 const noneLine = computed(() => (words.value.length ? `No games match “${query.value.trim()}”${players.value === "any" ? "" : " for that many players"}.` : "No games for that many players yet."));
+
+// What's new: the latest changes, and which of them came since this browser last saw the list.
+const NEWS_SEEN_KEY = "parlor.newsSeen";
+const newsSeen = (() => {
+  try {
+    return localStorage.getItem(NEWS_SEEN_KEY) ?? "";
+  } catch {
+    return "";
+  }
+})();
+const news = computed(() => props.news ?? []);
+/** Newer than the newest this browser was shown before. Nothing is "new" on a first visit: it all is. */
+const isNew = (merged: string) => !!newsSeen && merged > newsSeen;
+const newCount = computed(() => news.value.filter((c) => isNew(c.merged)).length);
+watch(news, (list) => {
+  // Seen once shown: the next visit marks only what came after.
+  const latest = list[0]?.merged;
+  if (!latest) return;
+  try {
+    localStorage.setItem(NEWS_SEEN_KEY, latest);
+  } catch {
+    /* private mode: nothing is marked new next time */
+  }
+});
+const when = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+const toNews = () => document.getElementById("whats-new")?.scrollIntoView({ behavior: "smooth", block: "start" });
 
 // Starred games: a shelf of their own at the top. Kept in this browser.
 const favorites = ref<string[]>(loadFavorites());
@@ -250,6 +278,7 @@ async function toShelf(id: string) {
       <h1>open.parlor</h1>
       <p>{{ hello }}</p>
       <p v-if="firstVisit" class="free">Free, no sign-up, and it works offline.</p>
+      <button v-if="newCount" type="button" class="news-ping" @click="toNews"><span aria-hidden="true">🆕</span> {{ newCount === 1 ? "Something new" : `${newCount} new things` }} since you were last here</button>
     </header>
 
     <section v-if="firstVisit && starters.length" class="starters" aria-label="Start here">
@@ -482,6 +511,16 @@ async function toShelf(id: string) {
       </p>
     </section>
 
+    <section v-if="news.length" id="whats-new" class="whats-new" aria-labelledby="whats-new-title">
+      <h2 id="whats-new-title"><span aria-hidden="true">🆕</span> What's new</h2>
+      <ul>
+        <li v-for="c in news" :key="c.url">
+          <time :datetime="c.merged">{{ when(c.merged) }}</time>
+          <span class="news-line"><a :href="c.url" target="_blank" rel="noreferrer">{{ c.title }}</a> <span v-if="isNew(c.merged)" class="chip gold">New</span></span>
+        </li>
+      </ul>
+    </section>
+
     <p class="fine">Pick a game to practice against the computer, start a family table, find players, or take on a challenger.</p>
     <p class="fine links">
       <a class="design" href="watch/">👀 Watch a game</a>
@@ -584,6 +623,18 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .subshelf { margin: 20px 0 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1rem, 1.4vw, 1.15rem); font-weight: 600; color: #e3efe7; }
 .subshelf .shelf-toggle { width: auto; padding-bottom: 0; }
 .shelf-tools { display: flex; justify-content: flex-end; margin-top: 10px; }
+.news-ping { margin-top: 12px; padding: 6px 14px; border: 1px solid rgba(232, 196, 106, 0.55); border-radius: 999px; background: rgba(0, 0, 0, 0.2); color: var(--gold, #e8c46a); font: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+.news-ping:hover { background: rgba(0, 0, 0, 0.35); }
+.news-ping:focus-visible { outline: 3px solid #ffd76a; outline-offset: 3px; }
+.whats-new { margin-top: 40px; padding: 16px 18px; border-radius: 16px; background: rgba(0, 0, 0, 0.16); scroll-margin-top: 140px; }
+.whats-new h2 { margin: 0; font-size: 1.2rem; }
+.whats-new ul { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.whats-new li { display: grid; grid-template-columns: 4.2em 1fr; align-items: baseline; gap: 10px; font-size: 0.95rem; line-height: 1.35; }
+.whats-new time { color: #b9d0c2; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.whats-new a { color: var(--cream, #fbf6ec); text-decoration: none; }
+.whats-new a:hover { text-decoration: underline; text-decoration-color: var(--gold, #e8c46a); text-underline-offset: 3px; }
+.whats-new a:focus-visible { outline: 3px solid #ffd76a; outline-offset: 2px; border-radius: 4px; }
+.whats-new .chip { font-size: 0.72rem; margin-left: 4px; vertical-align: 1px; }
 .credit { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin: 28px 0 8px; padding-top: 18px; border-top: 1px solid rgba(255, 255, 255, 0.1); color: #b9d0c2; font-size: 0.9rem; }
 .credit code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--gold, #e8c46a); }
 .credit .heart { color: #ff7a7a; }
