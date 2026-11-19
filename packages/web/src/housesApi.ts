@@ -161,6 +161,8 @@ export const houses = {
   /** The models an account can use (with the pasted key, or the saved one), and one to start with. */
   aiModels: (slug: string, provider: AiProvider | "server", key?: string) => call<{ models: string[]; suggested: string }>(at(slug, "ai-models"), { provider, key }),
   testAi: (slug: string) => call<{ line: string }>(at(slug, "ai-test"), {}),
+  /** For each of these houses you're in, what others said in its chat since you last had it open. */
+  unread: (slugs: string[]) => call<{ unread: Record<string, number> }>(`/houses?unread=${slugs.map(encodeURIComponent).join(",")}`),
   /** A change to the house's chat (open.chat's `openChat()` sends them; see house/chat.ts). */
   chatSend: (slug: string, body: Record<string, unknown>) => call<unknown>(at(slug, "chat"), body),
   tournament: (slug: string, id: string) => call<Tournament>(at(slug, `tournaments/${encodeURIComponent(id)}`)),
