@@ -1,19 +1,82 @@
 # open.parlor
 
-Formerly Card Room. Family card and board games online: fifty-six games with house rules saved as presets, family
-**houses** with their own tables, leaderboards and tournaments (a knockout or a league), computer players with personalities,
-challenge links, and a widget that puts a game on any site, including [open.blog](https://github.com/journey-to-code-org/open.blog) ones.
+open.parlor is where [Zubra](https://github.com/journey-to-code-org/zubra) is tested in
+production. Zubra compiles a component written once into a custom element that any framework can
+use. A demo page per framework can't prove that, so the parlor is a real app built the way people
+actually build apps: one set of Zubra components, used from React, Vue, Svelte, Solid and Angular,
+each framework owning a different part of the site, all running against one real server.
 
-Built first for Grammi and Grammi's House. Everything runs in one small server you can host
-yourself (Docker or Railway), and practice games work anywhere, including the GitHub Pages build.
+The app is a family games site (fifty-six card, board, word and arcade games, houses, tournaments,
+computer players). The games are what make it a fair test: they need tables that update every
+move, forms with validation, dialogs, drag and drop, timers, offline play and many pages, which is
+everything a component library has to survive. It began as Spades for Grammi's blog, and it is
+played; but the reason it uses five frameworks is Zubra.
 
 [![Zubra conformance](https://img.shields.io/endpoint?url=https://journey-to-code-org.github.io/open.parlor/conformance/badge.json)](https://journey-to-code-org.github.io/open.parlor/conformance/)
 
-The parlor is also the proving ground for [Zubra](https://github.com/journey-to-code-org/zubra): its
-components are written once and used from React, Vue, Svelte, Solid and Angular, each in a different
-part of the app. [How the parlor is built](https://journey-to-code-org.github.io/open.parlor/conformance/)
-shows the checks that they behave the same in every one (and in Preact and Lit, in Chrome, Firefox
-and WebKit), how the last run went, and what the checks have found.
+## What the parlor proves
+
+### Five frameworks, one set of components
+
+The components are in [`packages/ui`](packages/ui): the parlor's own (cards, seats) and copies of
+[zubra-ui](https://github.com/journey-to-code-org/zubra-ui)'s, kept in step with it. Each
+framework gets a real part of the site, chosen to use the parts of that framework a team would
+actually reach for.
+
+| Framework | Its part of the parlor | What of the framework it leans on |
+| --- | --- | --- |
+| React | Every game table, the setup screens, tournaments ([`packages/web`](packages/web)) | Most of React |
+| Vue | The front of house: the start page, the open tables, a house's page and its chat; Read the Room's answer form | `v-model`, computed, `watch`, emits, Vue islands inside the React app |
+| Svelte | The card designer ([`packages/designer`](packages/designer)); the Mini Golf and bowling editors, inside the React app | Runes, `$state.raw`, a `.svelte.ts` module, pointer painting, a canvas, a worker |
+| Solid | The watch page ([`packages/watch`](packages/watch)); Read the Room's board; the same-wifi host and join screens; the arcade's and Delbie's sheets | Signals, stores, `For`/`Index`/`Switch`, islands updated in place from React |
+| Angular | The admin app ([`packages/admin`](packages/admin)) | The router (lazy pages, guards, child routes, query params), reactive forms over Zubra fields, `resource()`, signals |
+| None | `/games` and `/daily`, drawn by the server | [`@zubra/server`](https://github.com/journey-to-code-org/zubra/blob/main/docs/server-rendering.md) and [`@zubra/actions`](https://github.com/journey-to-code-org/zubra/blob/main/docs/actions.md): pages that work with JavaScript off |
+
+Beyond components, the parlor runs on the rest of Zubra: every game's rooms are on
+[`@zubra/sync`](https://github.com/journey-to-code-org/zubra) (through
+[open.rooms](https://github.com/journey-to-code-org/open.rooms)), and the server draws pages and
+answers forms with Zubra's server rendering and server functions. Every package moves to each
+Zubra release as it comes out, so the checks are always of the Zubra people install.
+
+### How it's checked
+
+- **The conformance suite** ([`packages/conformance`](packages/conformance)). One fixture page
+  that puts the components through what a page does with them (props, events, two-way binding,
+  slots, taking a component away and bringing it back), written in each of the five frameworks,
+  in Preact and Lit, and once with no framework as the baseline. Then each framework's own
+  features around the components: transitions, portals, lazy loading, kept-alive views, reactive
+  and template-driven forms, `Suspense`, stores. 214 checks, in Chrome, Firefox and WebKit.
+- **The real parts** (`packages/conformance/server-tests`). Browser tests of the parts above
+  against the parlor's own server, in the same three browsers: the Svelte editors, the routed
+  admin app, the server-drawn pages, the Solid wifi screens and sheets, the Vue lobby and house
+  page. A part moved from React to another framework gets its test written against the React
+  version first, so the move has to keep everything it did.
+- **CI** runs both on every pull request.
+
+Two rules keep the results honest. A fixture page never carries a workaround: if one framework
+needs something the others don't, that is a finding, and it goes to Zubra or zubra-ui as an issue,
+not into the page as a patch. And a known difference stays visible: its check is marked as
+expected to fail, with the issue, until the fix lands and the check passes.
+
+### What it has found
+
+The [results page](https://journey-to-code-org.github.io/open.parlor/conformance/) has the last
+run, the fixture pages to try by hand, and every finding. In short: slotting bugs in Angular, Vue,
+Svelte and Solid (fixed in Zubra 5.15.0); Preact 11's `moveBefore()` passing a component's slots
+by (zubra#370); a Svelte file in a React app getting React's wrapper (zubra#377); missing types
+for the server's options (zubra#375); controls with no disabled state, found by an Angular form
+(zubra-ui#20, #22); a tab list that didn't see panels added after it (zubra-ui#23). All are fixed
+upstream, and the parlor runs with no known differences. The real parts also find bugs that are
+the parlor's own, like a race in the same-wifi link that lost one join in ten.
+
+## The parlor
+
+Formerly Card Room. Fifty-six games with house rules saved as presets, family **houses** with their
+own tables, leaderboards and tournaments (a knockout or a league), computer players with
+personalities, challenge links, and a widget that puts a game on any site, including
+[open.blog](https://github.com/journey-to-code-org/open.blog) ones. Everything runs in one small
+server you can host yourself (Docker or Railway), and practice games work anywhere, including the
+GitHub Pages build.
 
 This repository is the app. The games and the rooms they are played in come from two packages' repositories:
 [open.games](https://github.com/journey-to-code-org/open.games) (the engine and every game) and
@@ -455,7 +518,7 @@ The game engine and the rooms live in their own repositories and come in from np
 | [`@journey-to-code/rules`](https://github.com/journey-to-code-org/open.games/tree/main/packages/rules), [`palace`](https://github.com/journey-to-code-org/open.games/tree/main/packages/palace), [`physics`](https://github.com/journey-to-code-org/open.games/tree/main/packages/physics), [`decks`](https://github.com/journey-to-code-org/open.games/tree/main/packages/decks) | Spades and the computer players' personas, Palace, the deterministic physics for the table sports, and card designs |
 | [`@journey-to-code/rooms`](https://github.com/journey-to-code-org/open.rooms) | Turn-based rooms over `@zubra/sync`: seats, server-decided moves, private views, bots |
 | [`packages/server`](packages/server) | The server: every game's rooms, houses, challenges, tournaments, the lobby, the sync log and the web app. It also draws two pages itself, `/games` and `/daily` (below) |
-| [`packages/web`](packages/web) | The app (React, with the game chooser in Vue): the card table, the board table, the word table and the canvas table for table sports, setup screens, houses, practice |
+| [`packages/web`](packages/web) | The app: React for the tables and setup, with Vue, Svelte and Solid islands (see above): the card table, the board table, the word table and the canvas table for table sports, setup screens, houses, practice |
 | [`packages/designer`](packages/designer) | The card designer (Svelte): draw a deck, keep it or share it, play with it |
 | [`packages/courses`](packages/courses) | Mini Golf courses and bowling lanes people make: painted on a grid, checked, and turned into a hole or a lane the game plays |
 | [`packages/watch`](packages/watch) | The watch page (Solid): the tables playing now, and tables of computer players to learn from |
@@ -495,13 +558,7 @@ for the day in the browser, and checks without reloading. Past days are at `/dai
 The clue count is the only dial for "hard", so a Saturday puzzle is fewer clues, not necessarily
 harder techniques.
 
-One set of Zubra components serves five frameworks: React and Vue in the parlor (Vue for the front
-of house: the start page, the open tables, and a house's page and chat), Svelte in the
-designer and in the Mini Golf course and bowling lane editors (Svelte inside the React app,
-`packages/web/src/golf/`), Solid on the watch page and in the web app's islands (Read the Room's
-board, the screens for hosting and joining a table on this wifi, and the sheets over the arcade
-and Delbie's Daycare & Geriatrics, `packages/web/src/solid/`),
-and Angular in the admin app.
+Which framework draws which part is in [What the parlor proves](#what-the-parlor-proves) above.
 
 The server decides every move. Each player's browser only ever receives its own view of a table
 (its own hand), never the whole game; moves the rules don't allow are refused on the server.
