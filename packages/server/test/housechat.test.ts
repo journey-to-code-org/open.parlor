@@ -222,6 +222,25 @@ describe("a house's chat", () => {
     expect(sent.map((s) => s.to)).toEqual(["https://push.example/2"]);
   });
 
+  it("says how many messages each of your houses has that you haven't seen", async () => {
+    const { slug, chat, owner, friend, third, stranger, phone } = await house();
+    const unread = (who: typeof owner, ...slugs: string[]) => who(`/houses?unread=${slugs.join(",")}`).then((r) => r.body.unread);
+    await owner(chat, { text: "Spades at eight?" });
+    await owner(chat, { text: "Bring snacks" });
+    expect(await unread(friend, slug)).toEqual({ [slug]: 2 });
+    expect(await unread(owner, slug)).toEqual({ [slug]: 0 });
+    // Opening the chat sees it; something new is one again.
+    await friend(chat);
+    expect(await unread(friend, slug)).toEqual({ [slug]: 0 });
+    await third(chat, { text: "I'm in" });
+    expect(await unread(friend, slug)).toEqual({ [slug]: 1 });
+    // A house you're not in, or that isn't there, is left out; so is everything for someone the parlor doesn't know.
+    const elsewhere = phone();
+    const theirs = (await elsewhere("/houses", { name: "Elsewhere", you: "Stranger" })).body.slug;
+    expect(await unread(friend, slug, theirs, "no-such-house")).toEqual({ [slug]: 1 });
+    expect(await unread(stranger, slug)).toEqual({});
+  });
+
   it("starts empty in a new house that takes a deleted one's name", async () => {
     const { chat, owner, slug, phone } = await house();
     await owner(chat, { text: "The old house" });

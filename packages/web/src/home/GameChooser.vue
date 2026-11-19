@@ -44,7 +44,8 @@ const props = defineProps<{
   categories: { id: string; name: string; emoji: string }[];
   /** The kinds of card game, in the order the cards shelf lists them. */
   cardGroups?: { id: string; name: string; emoji: string }[];
-  houses: { slug: string; name: string }[];
+  /** Each with what's new in its chat since this person last had it open, once that's known. */
+  houses: { slug: string; name: string; unread?: number }[];
   /** The game played last on this device, if any. */
   last: string | null;
   name: string;
@@ -243,8 +244,9 @@ async function toShelf(id: string) {
       <h2>Your houses</h2>
       <ul>
         <li v-for="h in houses" :key="h.slug">
-          <button type="button" class="house" @click="emit('house', h.slug)">
+          <button type="button" class="house" :aria-label="h.unread ? `${h.name}, ${h.unread} new ${h.unread === 1 ? 'message' : 'messages'}` : undefined" @click="emit('house', h.slug)">
             <span aria-hidden="true">🏠</span> {{ h.name }}
+            <span v-if="h.unread" class="unread" aria-hidden="true">{{ h.unread > 9 ? "9+" : h.unread }}</span>
           </button>
         </li>
       </ul>
@@ -498,6 +500,10 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
   color: var(--cream); font: inherit; font-weight: 600; padding: 10px 18px; cursor: pointer;
 }
 .house:hover, .house:focus-visible { border-color: var(--gold); background: rgba(232, 196, 106, 0.14); }
+.house .unread {
+  display: inline-block; min-width: 1.4em; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
+  background: var(--red, #c0392b); color: #fff; font-size: 0.78rem; font-weight: 700; line-height: 1.4; text-align: center;
+}
 
 .open ul { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); }
 .waiting {

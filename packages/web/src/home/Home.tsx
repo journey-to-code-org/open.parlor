@@ -8,6 +8,7 @@ import { arranged, refreshCatalogue } from "../catalogue";
 import { CARD_GROUPS, cardGroupOf, categoryOf, GAME_CATEGORIES } from "../categories";
 import { EVERY_GAME, type SoloGameId } from "../GamePicker";
 import { lobby, whoIsThere, type OpenTable } from "../lobbyApi";
+import { houses } from "../housesApi";
 import { loadMyHouses, loadName, type GameId } from "../storage";
 import GameChooser from "./GameChooser.vue";
 
@@ -317,6 +318,10 @@ export function Home({ last, onPick, onOpenHouse, onLobby, onWifi, onMove }: { l
     const load = () => {
       if (document.visibilityState === "hidden") return;
       lobby.list().then((tables) => (props.open = tables.map(brief)), () => undefined);
+      // What's new in each house's chat (the server leaves out houses this device isn't in now).
+      const mine = loadMyHouses();
+      if (mine.length && navigator.onLine)
+        houses.unread(mine.map((house) => house.slug)).then(({ unread }) => (props.houses = mine.map((house) => ({ ...house, unread: unread[house.slug] ?? 0 }))), () => undefined);
     };
     load();
     const timer = setInterval(load, 8000);

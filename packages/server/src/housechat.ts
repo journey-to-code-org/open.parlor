@@ -55,6 +55,8 @@ export function createHouseChat(sync: ChatSync, { push, blockedWords = [] }: { p
     messages: async (slug: string) => (await chat.read(roomOf(slug))).messages,
     /** The parlor's host takes a message down. */
     redact: (slug: string, id: number) => chat.redact(roomOf(slug), id),
+    /** What others said in the house's chat since this member last had it open. */
+    unread: (slug: string, member: string) => chat.unread(roomOf(slug), member),
     /** /houses/:slug/chat, for a member of the house (see `createChat`'s `handle`). */
     handle: (house: House, me: Member, method: string, input: Record<string, unknown>, query: URLSearchParams) => chat.handle(room(house), member(me), method, input, query),
     /**
