@@ -257,8 +257,8 @@ export function QuestTable({ rules, seed, onLeave }: Props) {
   };
 
   return (
-    <main className="arcade quest">
-      <div className="arcade-cabinet">
+    <main className="arcade quest" data-game="zubraquest">
+      <div className="arcade-cabinet" data-marquee="Zubra Quest">
         <div className="arcade-stage quest-stage">
           <canvas ref={canvas} width={RETRO_W * RETRO_ZOOM} height={RETRO_H * RETRO_ZOOM} className="quest-screen" aria-label="Zubra Quest" />
           {how && (

@@ -2417,6 +2417,50 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
   overscroll-behavior: none; -webkit-user-select: none; user-select: none;
 }
 .arcade-cabinet { width: min(100%, 640px); height: 100%; display: flex; flex-direction: column; }
+
+/* ---- The cabinet itself (#325) ------------------------------------------------------------------
+   Each game has its own colours (--arc-a, the main one, and --arc-b) for its cabinet: lit sides, a
+   marquee with its name, and the glow it throws on the arcade's carpet. On a phone it's only the
+   colours: the screen needs every bit of the height. */
+.arcade { --arc-a: #4cc9ff; --arc-b: #ff5fa2; }
+.arcade[data-game="skyfire"] { --arc-a: #4cc9ff; --arc-b: #ff8a3d; }
+.arcade[data-game="bulwark"] { --arc-a: #5ee6a0; --arc-b: #e0a84a; }
+.arcade[data-game="chipstack"] { --arc-a: #ffd166; --arc-b: #e63946; }
+.arcade[data-game="pinkslips"] { --arc-a: #ff5fa2; --arc-b: #8b5cf6; }
+.arcade[data-game="counter"] { --arc-a: #ffb347; --arc-b: #4cc9ff; }
+.arcade[data-game="zubraquest"] { --arc-a: #b48cff; --arc-b: #ffd166; }
+@media (min-width: 760px) and (min-height: 600px) {
+  .arcade {
+    /* The arcade at night: carpet with its scatter of neon, and the cabinet's own glow on it. */
+    background:
+      radial-gradient(ellipse 40% 60% at 50% 100%, color-mix(in srgb, var(--arc-a) 22%, transparent), transparent 70%),
+      radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--arc-b) 35%, transparent) 0 2px, transparent 3px) 0 0 / 90px 90px,
+      radial-gradient(circle at 70% 75%, color-mix(in srgb, var(--arc-a) 35%, transparent) 0 2px, transparent 3px) 0 0 / 120px 120px,
+      radial-gradient(circle at 45% 55%, rgba(255, 255, 255, 0.12) 0 1.5px, transparent 2.5px) 0 0 / 70px 70px,
+      #07081a;
+  }
+  .arcade-cabinet {
+    width: min(100%, 700px); padding: 0 22px; box-sizing: border-box; border-radius: 22px 22px 0 0;
+    /* The sides: dark, with a stripe of the game's colours down each, lit. */
+    background:
+      linear-gradient(90deg, var(--arc-a) 0 4px, var(--arc-b) 4px 8px, #101327 8px 22px, transparent 22px calc(100% - 22px), #101327 calc(100% - 22px) calc(100% - 8px), var(--arc-b) calc(100% - 8px) calc(100% - 4px), var(--arc-a) calc(100% - 4px)),
+      #101327;
+    box-shadow: 0 0 40px color-mix(in srgb, var(--arc-a) 30%, transparent), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  }
+  .arcade-cabinet::before {
+    /* The marquee: the game's name in neon on a backlit panel. */
+    content: attr(data-marquee); flex: none; display: grid; place-items: center; height: 62px; margin: 10px -4px 0; border-radius: 10px 10px 4px 4px;
+    font: 800 1.9rem/1 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: 0.14em; text-transform: uppercase; color: #fff;
+    text-shadow: 0 0 6px var(--arc-a), 0 0 18px var(--arc-a), 0 0 34px var(--arc-b);
+    background: radial-gradient(ellipse at 50% 120%, color-mix(in srgb, var(--arc-a) 45%, transparent), transparent 70%), linear-gradient(180deg, #1b1f3d, #0b0d1f);
+    border: 2px solid color-mix(in srgb, var(--arc-a) 70%, transparent); box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.6), 0 0 18px color-mix(in srgb, var(--arc-a) 35%, transparent);
+  }
+  .arcade-cabinet .arcade-rail { margin-top: 10px; border-radius: 8px 8px 0 0; border: 1px solid var(--arc-line); border-bottom-color: var(--arc-line); }
+  .arcade-cabinet .arcade-rail.low { margin-top: 0; border-radius: 0; }
+  /* The screen sits back in its bezel. */
+  .arcade-cabinet .arcade-stage { box-shadow: inset 0 0 0 3px #05060f, inset 0 0 24px rgba(0, 0, 0, 0.8); }
+}
+@media (prefers-reduced-transparency: reduce) { .arcade-cabinet::before { text-shadow: none; } }
 .arcade-rail {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: max(8px, env(safe-area-inset-top)) 14px 8px;
   background: var(--arc-rail); border-bottom: 1px solid var(--arc-line); font-variant-numeric: tabular-nums;
@@ -3472,3 +3516,73 @@ button.word-tile:active:not(:disabled) { transform: translateY(2px); }
 .table.field .field-seat { background: var(--arc-rail); border-color: var(--arc-line); }
 .table.field .field-seat.active { border-color: var(--gold); }
 @media (prefers-reduced-transparency: reduce) { .table.field .field-stage::after { display: none; } }
+
+/* ---- Over the Hill: an old television in the den (#325) -----------------------------------------
+   Not the card table: on a wide screen every .felt is drawn as the card table's oval, and the field
+   is a .felt, so that is taken off here. The room is a wood-panelled wall in lamplight; the field is
+   the glass of a big wooden CRT set, with its speaker and knobs; the controls sit beside it like the
+   TV listings. On a phone the set is only a thin frame, so the screen stays as big as it can. */
+.table.field-overthehill {
+  background:
+    radial-gradient(ellipse 60% 55% at 12% 8%, rgba(255, 196, 120, 0.22), transparent 70%),
+    radial-gradient(ellipse 90% 70% at 50% 110%, rgba(0, 0, 0, 0.55), transparent 70%),
+    repeating-linear-gradient(90deg, #3b2617 0 2px, #4a301d 2px 86px, #422a19 86px 88px, #4d321f 88px 170px),
+    #432b1a;
+  box-shadow: none;
+}
+.table.field-overthehill .felt.field-felt { margin: 0; border-radius: 0; background: none; box-shadow: none; }
+.table.field-overthehill .field-view {
+  position: relative; padding: 10px; border-radius: 18px;
+  /* Walnut, with a little grain and a lip of light along the top. */
+  background:
+    linear-gradient(180deg, rgba(255, 230, 190, 0.18), transparent 12%),
+    repeating-linear-gradient(100deg, rgba(0, 0, 0, 0.08) 0 3px, transparent 3px 11px),
+    linear-gradient(135deg, #6e4224, #4b2c17 55%, #3a2212);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55), inset 0 0 0 2px rgba(0, 0, 0, 0.35), inset 0 2px 0 rgba(255, 220, 170, 0.25);
+}
+/* The glass: rounder at the corners than a modern screen, bowed (a sheen across it, dark at the edges). */
+.table.field-overthehill .field-stage {
+  border-radius: 26px / 34px;
+  box-shadow: 0 0 0 6px #1b1410, 0 0 0 8px #0c0907, inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+.table.field-overthehill .field-stage::after {
+  background:
+    radial-gradient(ellipse 70% 45% at 30% 12%, rgba(255, 255, 255, 0.13), transparent 70%),
+    radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, 0.45) 100%),
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.14) 0 1px, transparent 1px 3px);
+}
+.table.field-overthehill .field-seat { background: rgba(20, 12, 6, 0.7); border-color: rgba(255, 210, 150, 0.25); }
+.table.field-overthehill .kit-bar { background: #1c120b; border-bottom-color: rgba(255, 200, 140, 0.18); }
+.table.field-overthehill .kit-bar .leave { color: #ffc983; }
+@media (min-width: 700px) {
+  /* Room for the set's speaker and knobs under the screen. */
+  .table.field-overthehill .field-view { padding: 22px 22px 58px; border-radius: 26px; }
+  .table.field-overthehill .field-stage { max-height: calc(78dvh - 90px); }
+  .table.field-overthehill .field-view::before {
+    /* The speaker: a grille of slats down the left of the panel under the screen. */
+    content: ""; position: absolute; left: 30px; bottom: 16px; width: min(38%, 220px); height: 26px; border-radius: 6px;
+    background: repeating-linear-gradient(90deg, #1c110a 0 3px, #5a3920 3px 7px); box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.7);
+  }
+  .table.field-overthehill .field-view::after {
+    /* Two knobs and a little red light, on the right. */
+    content: ""; position: absolute; right: 30px; bottom: 13px; width: 96px; height: 32px;
+    background:
+      radial-gradient(circle at 16px 16px, #d8c6a4 0 3px, #2a1c12 3.5px 12px, #8a6a45 12.5px 15px, transparent 15.5px),
+      radial-gradient(circle at 56px 16px, #d8c6a4 0 3px, #2a1c12 3.5px 12px, #8a6a45 12.5px 15px, transparent 15.5px),
+      radial-gradient(circle at 88px 16px, #ff5a4a 0 3px, rgba(255, 90, 74, 0.35) 4px 6px, transparent 7px);
+  }
+}
+@media (min-width: 1024px) {
+  .table.field-overthehill .felt.field-felt { padding: 24px 28px; gap: 24px; }
+  /* In the row beside the listings the set keeps its own height (in a phone's column this would shrink it to nothing). */
+  .table.field-overthehill .field-view { align-self: start; }
+  /* The den is the whole room, not a strip down the middle of the card room's green. */
+  .table.field-overthehill { background: transparent; }
+  body:has(.table.field-overthehill)::before {
+    background:
+      radial-gradient(ellipse 45% 55% at 18% 6%, rgba(255, 196, 120, 0.2), transparent 70%),
+      radial-gradient(ellipse 90% 60% at 50% 115%, rgba(0, 0, 0, 0.6), transparent 70%),
+      repeating-linear-gradient(90deg, #3b2617 0 2px, #4a301d 2px 86px, #422a19 86px 88px, #4d321f 88px 170px),
+      #432b1a;
+  }
+}
