@@ -6,6 +6,7 @@ import { unlockAudioOnFirstTap } from "./feedback/sounds";
 import { registerServiceWorker } from "./notifications";
 import { GameRequest } from "./GameRequest";
 import { OfflineNotice } from "./offline";
+import { FixedNotice } from "./FixedNotice";
 import { OfflineGames } from "./offline/OfflineGames";
 import { ReportProblem, useReports } from "./ReportProblem";
 import { applyDisplay } from "./display";
@@ -70,6 +71,7 @@ createRoot(document.getElementById("root")!).render(
       <App />
     </Crashed>
     <OfflineNotice />
+    <FixedNotice />
     <OfflineGames />
     <ReportProblem />
     <GameRequest />
