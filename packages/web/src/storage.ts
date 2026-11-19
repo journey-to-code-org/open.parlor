@@ -66,6 +66,20 @@ export const loadGame = (): GameId => {
   return g === "palace" || isKitGame(g) ? g : "spades";
 };
 export const saveGame = (game: GameId) => write(GAME_KEY, game);
+// ---- The front page's own lists: what was played lately, and the games starred -----------------
+const RECENT_KEY = "parlor.recent";
+const FAVORITES_KEY = "parlor.favorites";
+/** How many recent games are kept: enough for a row of them, and no more. */
+const RECENT_KEPT = 6;
+const ids = (value: unknown): string[] => (Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : []);
+/** The games opened on this device, the latest first (any game: a table, the arcade, a page of its own). */
+export const loadRecent = (): string[] => ids(read<unknown>(RECENT_KEY, []));
+/** Put a game at the front of the recent ones. */
+export const rememberPlayed = (id: string) => write(RECENT_KEY, [id, ...loadRecent().filter((g) => g !== id)].slice(0, RECENT_KEPT));
+/** The games starred on the front page, in the order they were starred. */
+export const loadFavorites = (): string[] => ids(read<unknown>(FAVORITES_KEY, []));
+export const saveFavorites = (list: string[]) => write(FAVORITES_KEY, [...new Set(list)]);
+
 /** The game played last on this device, or null for someone new. */
 export const loadLastGame = (): GameId | null => {
   const g = read<string | null>(GAME_KEY, null);

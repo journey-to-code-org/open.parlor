@@ -11,6 +11,7 @@ import PlayingCard from "@open-parlor/ui/playing-card.zb";
 import SelectField from "@open-parlor/ui/zubra-ui/select-field.zb";
 import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
 import { matchesSearch, searchWords } from "./search";
+import { loadFavorites, loadRecent, rememberPlayed, saveFavorites } from "../storage";
 
 export interface ChooserGame {
   id: string;
@@ -94,6 +95,16 @@ const searchHint = computed(() => `Search ${props.games.length} games…`);
 /** Why nothing is showing, when nothing is. */
 const noneLine = computed(() => (words.value.length ? `No games match “${query.value.trim()}”${players.value === "any" ? "" : " for that many players"}.` : "No games for that many players yet."));
 
+// Starred games: a shelf of their own at the top. Kept in this browser.
+const favorites = ref<string[]>(loadFavorites());
+const isFavorite = (id: string) => favorites.value.includes(id);
+function toggleFavorite(id: string) {
+  favorites.value = isFavorite(id) ? favorites.value.filter((f) => f !== id) : [...favorites.value, id];
+  saveFavorites(favorites.value);
+}
+/** The games played lately, latest first: "Jump back in". Read once, as the page opens. */
+const recent = computed(() => loadRecent().map(gameOf).filter((g): g is ChooserGame => !!g).slice(0, 4));
+
 // How the tiles are sorted: onto shelves by category, in the host's own order, or by name. Kept in this browser.
 type Sort = "category" | "host" | "name";
 const SORT_KEY = "cardroom.sort";
@@ -140,7 +151,9 @@ const shelves = computed<Shelf[]>(() => {
   if (sort.value === "category") {
     const known = new Set(props.categories.map((c) => c.id));
     const stray = shown.value.filter((g) => !known.has(g.category));
-    const all = [...props.categories.map((c) => ({ ...c, games: shown.value.filter((g) => g.category === c.id) })), { id: "other", name: "Other games", emoji: "🎮", games: stray }];
+    // Starred games first, in the order they were starred; each is on its own shelf too.
+    const starred = favorites.value.map((id) => shown.value.find((g) => g.id === id)).filter((g): g is ChooserGame => !!g);
+    const all = [{ id: "favorites", name: "Favorites", emoji: "⭐", games: starred }, ...props.categories.map((c) => ({ ...c, games: shown.value.filter((g) => g.category === c.id) })), { id: "other", name: "Other games", emoji: "🎮", games: stray }];
     return all.filter((s) => s.games.length).map((s) => ({ ...s, sections: s.id === "cards" && props.cardGroups?.length ? sectionsOfCards(s.games) : [{ id: "", name: "", emoji: "", games: s.games }] }));
   }
   const games = sort.value === "name" ? [...shown.value].sort((a, b) => a.name.localeCompare(b.name)) : shown.value;
@@ -209,9 +222,12 @@ function pick(id: string) {
   } catch {
     /* private mode: they'll see "Start here" again, which is harmless */
   }
-  // A game with a page of its own is gone to; the rest are the parlor's to open.
+  // A game with a page of its own is gone to; the rest are the parlor's to open (which remembers it as played).
   const page = props.games.find((g) => g.id === id)?.href;
-  if (page) return void location.assign(page);
+  if (page) {
+    rememberPlayed(id);
+    return void location.assign(page);
+  }
   emit("pick", id);
 }
 /** A few to start with, one from each kind of game, in the order a newcomer might like them. */
@@ -243,6 +259,18 @@ async function toShelf(id: string) {
           <button type="button" class="starter" @click="pick(g.id)">
             <span class="starter-emoji" aria-hidden="true">{{ g.emoji }}</span>
             <span class="starter-text"><strong>{{ g.name }}</strong><span>{{ g.blurb }}</span></span>
+          </button>
+        </li>
+      </ul>
+    </section>
+
+    <section v-if="!firstVisit && recent.length" class="starters recent" aria-label="Jump back in">
+      <h2>Jump back in</h2>
+      <ul>
+        <li v-for="(g, i) in recent" :key="g.id">
+          <button type="button" class="starter" @click="pick(g.id)">
+            <span class="starter-emoji" aria-hidden="true">{{ g.emoji }}</span>
+            <span class="starter-text"><strong>{{ g.name }}</strong><span>{{ i === 0 ? "Played last" : g.blurb }}</span></span>
           </button>
         </li>
       </ul>
@@ -324,7 +352,7 @@ async function toShelf(id: string) {
         </button>
       </h4>
       <ul v-if="!section.name || isOpen(sectionKey(shelf, section))" :id="`games-${shelf.id}-${section.id}`" class="grid" :aria-label="section.name || shelf.name || 'Games'">
-        <li v-for="g in section.games" :key="g.id">
+        <li v-for="g in section.games" :key="g.id" class="tile-slot">
           <button type="button" class="tile" :class="{ last: g.id === last, words: g.board?.shade === 'words' }" :aria-label="`${g.name}: ${g.blurb}, ${seatsLabel(g)}`" @click="pick(g.id)">
             <span v-if="g.screen" class="mini-screen" aria-hidden="true">
               <svg v-if="g.screen.road" viewBox="0 0 100 100">
@@ -442,6 +470,7 @@ async function toShelf(id: string) {
               <span v-if="g.id === last" class="chip gold">Last played</span>
             </span>
           </button>
+          <button type="button" class="star" :class="{ on: isFavorite(g.id) }" :aria-pressed="isFavorite(g.id)" :aria-label="`Favorite: ${g.name}`" :title="isFavorite(g.id) ? 'Take it off your favorites' : 'Add it to your favorites'" @click="toggleFavorite(g.id)">{{ isFavorite(g.id) ? "★" : "☆" }}</button>
         </li>
       </ul>
       </template>
@@ -564,8 +593,25 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .credit .dot { opacity: 0.5; }
 /* On a phone the repo link takes a line of its own, without a dot left hanging before it. */
 @media (max-width: 559px) { .credit .dot-before-repo { display: none; } .credit > a:last-child { flex-basis: 100%; text-align: center; } }
+/* The star sits in the tile's bottom-right corner, a button of its own beside the tile's (not inside it). */
+.tile-slot { position: relative; }
+.star {
+  position: absolute; right: 10px; bottom: 10px; z-index: 1;
+  width: 36px; height: 36px; display: grid; place-items: center; padding: 0;
+  border: 0; border-radius: 50%; background: rgba(0, 0, 0, 0.3); color: #cfe2d6;
+  font-size: 1.25rem; line-height: 1; cursor: pointer; transition: color 150ms, background 150ms, transform 150ms;
+}
+.star:hover { color: var(--gold, #e8c46a); background: rgba(0, 0, 0, 0.45); }
+.star:active { transform: scale(0.9); }
+.star.on { color: var(--gold, #e8c46a); }
+/* It rides up with the tile when the tile lifts, and keeps clear of the tile's chips. */
+.tile-slot:has(.tile:hover) .star { translate: 0 -4px; }
+.tile-slot .tile .chips { padding-right: 40px; }
+.star:focus-visible { outline: 3px solid #ffd76a; outline-offset: 2px; }
+.recent { margin-top: 28px; }
 .open-quiet { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 14px 0 0; padding: 10px 14px; border-radius: 12px; background: rgba(0, 0, 0, 0.16); color: #cfe2d6; font-size: 0.95rem; }
 .open-quiet .tool-link { margin-left: auto; }
+.open-quiet > span:not([aria-hidden]) { flex: 1 1 0; min-width: 12em; }
 .tool-link { border: 0; background: none; padding: 2px 0; color: var(--gold, #e8c46a); font: inherit; font-size: 0.9rem; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .tool-link:focus-visible { outline: 3px solid #ffd76a; outline-offset: 3px; border-radius: 4px; }
 @media (prefers-reduced-motion: reduce) { .chev { transition: none; } }
@@ -591,7 +637,7 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .surprise { white-space: nowrap; }
 .surprise:disabled { opacity: 0.45; cursor: default; }
 .grid { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: clamp(12px, 1.6vw, 20px); grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); }
-@media (max-width: 560px) { .grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .tile {
   position: relative; width: 100%; height: 100%; min-height: clamp(150px, 18vw, 200px);
