@@ -508,6 +508,21 @@ function seatForm(c) {
     c.rear || c.front ? h("div", { class: "two" },
       c.rear ? field("How wide it is from behind, metres", c.rear.width_m ?? 1.7, (n) => { c.rear.width_m = Math.max(0.5, Math.min(4, n ?? 1.7)); }, { type: "number", step: "0.05", min: 0.5, max: 4 }) : null,
       c.front ? field("How wide it is from in front, metres", c.front.width_m ?? 1.7, (n) => { c.front.width_m = Math.max(0.5, Math.min(4, n ?? 1.7)); }, { type: "number", step: "0.05", min: 0.5, max: 4 }) : null) : null,
+    h("details", { id: "sheetForm" }, h("summary", { text: "Its build sheet: the parts it left the factory with" }),
+      h("p", { class: "hint", text: "A car with a build sheet is made of real parts: each can come off, wear out, break and be sold. One line for each: the slot, an equals sign, and the part that fills it (by the short name it has in the pack). Slots under the hood stay off this list." }),
+      (() => {
+        const box = h("textarea", { id: "stock", spellcheck: "false", rows: 8 });
+        box.value = Object.entries(c.stock ?? {}).map(([slot, part]) => `${slot} = ${part}`).join("\n");
+        box.oninput = () => {
+          const lines = Object.fromEntries(box.value.split("\n").map((l) => l.split("=").map((x) => x.trim())).filter((l) => l.length === 2 && l[0] && l[1]));
+          if (Object.keys(lines).length) c.stock = lines; else { delete c.stock; delete c.optional; }
+          touch();
+        };
+        box.onchange = () => render();
+        return box;
+      })(),
+      c.stock ? field("The slots it will run without (seats, cruise control), with commas between", (c.optional ?? []).join(", "), (v) => { const n = v.split(",").map((x) => x.trim()).filter((x) => x in c.stock); if (n.length) c.optional = n; else delete c.optional; }) : null,
+      h("p", { class: "hint", text: "The parts there are: " + Object.entries(pack.manifest.parts ?? {}).map(([id, p]) => `${id} (${p.slot})`).join(", ") + "." })),
     c.paint_ramps?.mid ? h("details", {}, h("summary", { text: "Which colours in the pictures are its paint" }),
       h("p", { class: "hint", text: "A respray moves these colours and leaves the rest. The body's own colour is found when the picture is made; the others are for a picture painted with shadows and shine in colours of their own." }),
       h("div", { class: "two" },
@@ -919,6 +934,9 @@ function partsPanel() {
         field("More power, per cent", p.nitrous.gain, (v) => { p.nitrous.gain = Math.max(1, Math.min(200, Math.floor(v ?? 35))); }, { type: "number", min: 1, max: 200 }),
         field("A bottle lasts, seconds", p.nitrous.seconds, (v) => { p.nitrous.seconds = Math.max(1, Math.min(60, v ?? 8)); }, { type: "number", min: 1, max: 60 }),
         field("A fill costs", p.nitrous.fill ?? 20, (v) => { p.nitrous.fill = Math.max(0, Math.floor(v ?? 20)); }, { type: "number", min: 0 })) : null,
+      field("What has to be on the car with it, each a few words (a big-frame manifold), with commas between", (p.needs ?? []).join(", "), (v) => { const n = v.split(",").map((x) => x.trim()).filter(Boolean); if (n.length) p.needs = n; else delete p.needs; }),
+      field("What it gives other parts that need it, in the same words", (p.gives ?? []).join(", "), (v) => { const n = v.split(",").map((x) => x.trim()).filter(Boolean); if (n.length) p.gives = n; else delete p.gives; }),
+      field("For the driveline: the torque it holds, lb-ft (blank: it does not break)", p.holds ?? "", (v) => { if (v > 0) p.holds = v; else delete p.holds; }, { type: "number", min: 1 }),
       tick("It is a laptop and a cable: the car can be tuned at the rollers", !!p.tuner, (v) => { if (v) p.tuner = true; else delete p.tuner; }),
       choice("If it is a gearbox, what kind", p.auto == null ? "" : p.auto ? "auto" : "manual", [["", "Not a gearbox, or the same kind as the car's"], ["manual", "A manual: shifted by hand, on the strip and on the road"], ["auto", "An automatic: it shifts itself"]], (v) => { if (v) p.auto = v === "auto"; else delete p.auto; }),
       tick("It is a radar detector: it beeps when police are ahead on a road", !!p.radar, (v) => { if (v) p.radar = true; else delete p.radar; }),
@@ -1017,6 +1035,23 @@ function gamePanel() {
     }),
     m.title ? h("div", { class: "row", style: "margin-top:8px" }, h("button", { text: "No picture: write the name up", onclick: () => { delete m.title; tidy(); render(); } })) : null,
     h("p", { class: "hint", text: "The title is seen with Play it. Leave the bottom fifth of the picture plain: \"Press Enter\" is written there." }),
+    h("label", { for: "faults", text: "Cars sold as they stand: what can be wrong with one. A line each: what the ad says | the slots it breaks | the slots it breaks and does not mention" }),
+    (() => {
+      const box = h("textarea", { id: "faults", spellcheck: "false", rows: 6 });
+      const list = (v) => (v ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+      box.value = (m.faults ?? []).map((f) => [f.says, (f.breaks ?? []).join(", "), (f.hidden ?? []).join(", ")].join(" | ")).join("\n");
+      box.oninput = () => {
+        const faults = box.value.split("\n").map((l) => l.split("|")).filter((l) => l[0]?.trim()).map((l) => ({ says: l[0].trim().slice(0, 38), breaks: list(l[1]), hidden: list(l[2]) })).filter((f) => f.breaks.length || f.hidden.length);
+        if (faults.length) m.faults = faults.slice(0, 24); else delete m.faults;
+        touch();
+      };
+      return box;
+    })(),
+    field("Where such cars are, and what bringing one home costs: Ohio = 120, Maryland = 60", (m.sellers ?? []).map((x) => `${x.from} = ${x.ship}`).join(", "), (v) => {
+      const sellers = v.split(",").map((x) => x.split("=").map((y) => y.trim())).filter((x) => x.length === 2 && x[0] && +x[1] >= 0).map((x) => ({ from: x[0], ship: Math.floor(+x[1]) }));
+      if (sellers.length) m.sellers = sellers; else delete m.sellers;
+    }),
+    h("p", { class: "hint", text: "They are in the paper under AS IS when the pack has faults and a car with a build sheet." }),
     h("label", { text: "Work in the paper (up to 6 jobs)" }),
     (m.jobs ?? []).map((j, i) => h("div", { class: "three" },
       field("The job", j.name, (v) => { j.name = v; }, { maxlength: 22 }),
