@@ -16,7 +16,7 @@ Run by hand (it needs numpy and Pillow):
 
 It writes tools.bin.gz and tools.json, in the form rats.py writes the rats.
 """
-import gzip, json, struct, sys
+import gzip, json, zlib, struct, sys
 from pathlib import Path
 import math
 import numpy as np
@@ -102,9 +102,63 @@ def tape(draw, x, y, size=40, out=0):
     draw.ellipse((x + size // 2 - 4, y + size // 2 - 4, x + size // 2 + 4, y + size // 2 + 4), fill=STEEL_LIGHT)
     draw.rectangle((x + size - 8, y + 4, x + size - 3, y + 14), fill=RED)
 
-def given(name, rgba, held=False, dx=0, dy=0, middle=False):
+def sealed(rgba, loose=False, gap=None):
+    """A picture with its slips mended: a see-through slit or pinprick that the thing closes in is given the colour beside it, and
+    a single pixel standing alone off the thing is dropped (unless it is smoke or sparks, which are made of them)."""
+    rgba = rgba.copy()
+    there = rgba[..., 3] > 127
+    def beside(mask, corners=False):
+        near = np.zeros_like(mask)
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)) + (((1, 1), (1, -1), (-1, 1), (-1, -1)) if corners else ()):
+            near |= np.roll(np.roll(mask, dy, 0), dx, 1)
+        return near
+    if not loose:
+        alone = there & ~beside(np.pad(there, 1), corners=True)[1:-1, 1:-1]
+        there &= ~alone
+    # What is outside: everything see-through that can be reached from the edge.
+    clear = np.pad(~there, 1, constant_values=True)
+    outside = np.zeros_like(clear)
+    outside[0] = outside[-1] = True
+    outside[:, 0] = outside[:, -1] = True
+    while True:
+        grown = outside | (beside(outside) & clear)
+        if (grown == outside).all():
+            break
+        outside = grown
+    inside = np.pad(~there & ~outside[1:-1, 1:-1], 1)
+    # Of what is closed in, the part too narrow to be a real gap (under three pixels across).
+    # (Smoke and sparks have no real gaps that small either, so there it is under seven; `gap` says otherwise.)
+    reach = range(-(gap or (3 if loose else 1)), (gap or (3 if loose else 1)) + 1)
+    inside = np.pad(inside, max(reach))
+    core = inside.copy()
+    for dy in reach:
+        for dx in reach:
+            core &= np.roll(np.roll(inside, dy, 0), dx, 1)
+    roomy = core.copy()
+    for dy in reach:
+        for dx in reach:
+            roomy |= np.roll(np.roll(core, dy, 0), dx, 1)
+    inside, roomy = (one[max(reach):-max(reach), max(reach):-max(reach)] for one in (inside, roomy))
+    slips = (inside & ~roomy)[1:-1, 1:-1]
+    while slips.any():
+        done = False
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ready = slips & np.roll(np.roll(there, dy, 0), dx, 1)
+            if ready.any():
+                rgba[ready] = np.roll(np.roll(rgba, dy, 0), dx, 1)[ready]
+                there |= ready
+                slips &= ~ready
+                done = True
+        if not done:
+            break
+    rgba[..., 3] = there * 255
+    rgba[~there] = 0
+    return rgba
+
+def given(name, rgba, held=False, dx=0, dy=0, middle=False, loose=False, gap=None):
     """A picture someone made, as it is: brought into the game's colours, with no shading or edge added.
     Held: placed on the screen where it sits on its 320 by 200 picture, moved by dx and dy."""
+    rgba = sealed(rgba, loose, gap)
     there = rgba[..., 3] > 127
     rows, cols = np.where(there)
     y0, y1, x0, x1 = rows.min(), rows.max() + 1, cols.min(), cols.max() + 1
@@ -117,6 +171,38 @@ def given(name, rgba, held=False, dx=0, dy=0, middle=False):
     pixels = bytes(nearest(rgba[y, x, :3]) if there[y, x] else 0 for y in range(height) for x in range(width))
     pictures.append((name, width, height, left, top, pixels, bytes(there.astype(np.uint8).tobytes())))
 
+def burst(size, colours, radius, spokes=0, name=None, hollow=0.0):
+    """A splash, a puff or a flash, painted as his pictures are and not ruled with a compass: a ragged patch `radius[0]` across,
+    in the colours given from its dark edge to its bright middle, lit from the upper left, with `spokes` drops flung off it.
+    `hollow` is how much of its middle has gone, for one that is thinning out. The same numbers always paint the same picture."""
+    rng = np.random.default_rng(zlib.crc32(repr((size, colours, radius, spokes, hollow)).encode()))
+    full = size + 2
+    ys, xs = np.indices((full, full)).astype(float)
+    c = size // 2 + 1
+    angle, far = np.arctan2(ys - c, xs - c), np.hypot(xs - c, ys - c)
+    phase = rng.uniform(0, 2 * math.pi, 4)
+    reach = max(1.5, radius[0]) * (1 + 0.16 * np.sin(3 * angle + phase[0]) + 0.11 * np.sin(5 * angle + phase[1]) + 0.07 * np.sin(8 * angle + phase[2]))
+    coarse = Image.fromarray((rng.random((full // 3 + 2, full // 3 + 2)) * 255).astype(np.uint8)).resize((full, full), Image.BICUBIC)
+    grain = np.array(coarse).astype(float) / 255 - 0.5
+    depth = far / reach + grain * 0.32 + ((xs - c) + (ys - c)) / max(1.0, reach.mean()) * 0.14
+    tones = [np.array(colour, float) for colour in colours]
+    dark = tones[0] * 0.55
+    steps = [dark] + tones
+    rgba = np.zeros((full, full, 4), np.uint8)
+    edges = np.linspace(1.0, 0.0, len(steps) + 1)
+    for tone, outer, inner in zip(steps, edges[:-1], edges[1:]):
+        rgba[(depth <= outer) & ((depth > inner) | (inner <= 0))] = (*tone.astype(int), 255)
+    if hollow:
+        rgba[depth < hollow] = 0
+    for k in range(spokes):
+        a = k * 2 * math.pi / max(1, spokes) + phase[3] + rng.uniform(-0.3, 0.3)
+        out = radius[0] * rng.uniform(1.15, 1.6)
+        x, y = int(round(c + math.cos(a) * out)), int(round(c + math.sin(a) * out))
+        for dx, dy, tone in ((0, 0, tones[min(1, len(tones) - 1)]), (1, 0, tones[0]), (0, 1, tones[0])) if k % 2 == 0 else ((0, 0, tones[0]),):
+            if 0 <= x + dx < full and 0 <= y + dy < full:
+                rgba[y + dy, x + dx] = (*tone.astype(int), 255)
+    return Image.fromarray(rgba, "RGBA")
+
 # Delbie's lever-action, in gloved hands, looking down the barrel. The picture is Mikey's (given/rifle-held.png: cut out by cutout.py
 # of the one he gave, and made the size of the screen). It is one picture, so working the lever is the rifle
 # coming back and down and up again.
@@ -128,11 +214,10 @@ for name, (dx, dy) in {"SHTGA0": (0, 12), "SHTGB0": (2, 19), "SHTGC0": (5, 27), 
 
 # The flash at its muzzle, small and then large.
 for name, size in (("SHTFA0", 9), ("SHTFB0", 15)):
-    image, draw = screen()
-    cx, cy = 160, 112
-    draw.polygon([(cx, cy - size * 2), (cx + size // 2, cy - size // 2), (cx + size * 2, cy), (cx + size // 2, cy + size // 2), (cx, cy + size), (cx - size // 2, cy + size // 2), (cx - size * 2, cy), (cx - size // 2, cy - size // 2)], fill=(255, 190, 40))
-    draw.ellipse((cx - size // 2, cy - size // 2, cx + size // 2, cy + size // 2), fill=(255, 250, 210))
-    keep(name, image, held=True)
+    FLASH = np.array(burst(size * 4, ((200, 90, 20), (250, 160, 40), (255, 220, 110), (255, 250, 220)), (size * 1.5,), spokes=6))
+    image = np.zeros((200, 320, 4), np.uint8)
+    image[112 - FLASH.shape[0] // 2:112 - FLASH.shape[0] // 2 + FLASH.shape[0], 160 - FLASH.shape[1] // 2:160 - FLASH.shape[1] // 2 + FLASH.shape[1]] = FLASH
+    given(name, image, held=True, loose=True)
 
 # The price gun, in the pistol's place: Mikey's picture (given/pricegun-held.png), kicking up as a tag leaves it.
 PRICE_GUN = np.array(Image.open(here / "given" / "pricegun-held.png").convert("RGBA"))
@@ -140,20 +225,21 @@ for name, dy in {"PISGA0": 0, "PISGB0": -7, "PISGC0": -3, "PISGD0": 2, "PISGE0":
     given(name, PRICE_GUN, held=True, dy=dy)
 
 # A label leaving it, with a snap.
-image, draw = screen()
-draw.polygon([(171, 82), (177, 98), (193, 102), (177, 106), (171, 120), (165, 106), (149, 102), (165, 98)], fill=(255, 210, 60))
-draw.rectangle((164, 95, 178, 107), fill=(240, 110, 40))
-draw.line((167, 99, 175, 99), fill=BLACK)
-draw.line((167, 103, 173, 103), fill=BLACK)
-keep("PISFA0", image, held=True)
+SNAP = np.array(burst(40, ((200, 90, 20), (250, 170, 50), (255, 226, 130), (255, 250, 220)), (11,), spokes=5))
+image = np.zeros((200, 320, 4), np.uint8)
+image[102 - SNAP.shape[0] // 2:102 - SNAP.shape[0] // 2 + SNAP.shape[0], 171 - SNAP.shape[1] // 2:171 - SNAP.shape[1] // 2 + SNAP.shape[1]] = SNAP
+image[97:106, 165:178] = (236, 112, 44, 255)
+image[97:106, 165] = image[97:106, 177] = image[97, 165:178] = image[105, 165:178] = (120, 50, 20, 255)
+image[100, 168:175] = image[102, 168:173] = (40, 20, 16, 255)
+given("PISFA0", image, held=True, loose=True)
 
 # A jug of washer fluid with a pump on it, in the chaingun's place: Mikey's pictures (given/sprayer-*.png). It shakes as it
 # runs, and the spray is its flash.
 SPRAYER, SPRAY = (np.array(Image.open(here / "given" / f"sprayer-{part}.png").convert("RGBA")) for part in ("hands", "spray"))
 given("CHGGA0", SPRAYER, held=True, dy=5)
 given("CHGGB0", SPRAYER, held=True, dx=1, dy=7)
-given("CHGFA0", SPRAY, held=True, dy=5)
-given("CHGFB0", SPRAY[:, ::-1], held=True, dx=1, dy=7)
+given("CHGFA0", SPRAY, held=True, dy=5, loose=True)
+given("CHGFB0", SPRAY[:, ::-1], held=True, dx=1, dy=7, loose=True)
 
 def small(width, height):
     image = Image.new("RGBA", (width + 2, height + 2), (0, 0, 0, 0))
@@ -256,6 +342,16 @@ for prefix, colour in (("BKEY", (40, 90, 220)), ("YKEY", (240, 200, 40)), ("RKEY
         keep(prefix + letter + "0", image)
 
 # A box of rolls of tags for the price gun: Mikey's picture (given/tags-floor.png).
+# Cartridges for the lever-action are his picture of them loose: a few, and for a box of them the same heaped larger. And one
+# roll of tags is his box of them, small. (scaled() is below, so they are made the size here.)
+def sized(name, wide):
+    image = Image.open(here / "given" / f"{name}.png").convert("RGBA")
+    shrunk = np.array(image.resize((wide, max(1, round(image.height * wide / image.width))), Image.BOX))
+    shrunk[..., 3] = (shrunk[..., 3] > 127) * 255
+    return shrunk
+given("SHELA0", sized("shells", 14))
+given("SBOXA0", np.array(Image.open(here / "given" / "shells.png").convert("RGBA")).repeat(3, 0).repeat(3, 1)[::2, ::2])
+given("CLIPA0", sized("tags-floor", 16))
 given("AMMOA0", np.array(Image.open(here / "given" / "tags-floor.png").convert("RGBA")))
 
 # Someone else playing, as you see them: work shirt, cap, dark trousers, a price gun in hand. One picture a moment, the same from every side.
@@ -293,17 +389,6 @@ for index, letter in enumerate("OPQRSTUVW"):
     keep(f"PLAY{letter}0", worker(down=min(1, (index + 1) / 4)))
 
 # What a shot does to a wall (dust), and to a rat.
-def burst(size, colours, radius, spokes=0, name=None):
-    image, draw = small(size, size)
-    c = size // 2 + 1
-    for r, colour in zip(radius, colours):
-        if r > 0:
-            draw.ellipse((c - r, c - r, c + r, c + r), fill=colour)
-    for k in range(spokes):
-        import math
-        a = k * 2 * math.pi / spokes + 0.3
-        draw.line((c, c, c + math.cos(a) * size / 2, c + math.sin(a) * size / 2), fill=colours[0], width=1)
-    return image
 def flat(name, image, left=None, top=None):
     """Kept as drawn: no rounding, no dark edge, for light and dust."""
     rgba = np.array(image)
@@ -319,15 +404,10 @@ for letter, r in zip("ABCD", (1, 2, 3, 2)):
 for letter, r in zip("ABC", (5, 4, 2)):
     flat(f"BLUD{letter}0", burst(14, ((150, 20, 20), (210, 44, 40)), (r, r - 2)), top=r + 6)
 # Arriving (a player, or a thing coming back): a ring of light that opens and goes.
-for letter, r in zip("ABCDEFGHIJ", (6, 12, 18, 24, 28, 28, 24, 18, 12, 6)):
-    image, draw = small(60, 60)
-    draw.ellipse((30 - r, 30 - r, 30 + r, 30 + r), outline=(90, 200, 240), width=3)
-    draw.ellipse((30 - r // 2, 30 - r // 2, 30 + r // 2, 30 + r // 2), outline=(240, 250, 255), width=2)
-    flat(f"TFOG{letter}0", image, top=30 + r + 14)
-for letter, r in zip("ABCDE", (4, 8, 11, 8, 4)):
-    image, draw = small(26, 26)
-    draw.ellipse((13 - r, 13 - r, 13 + r, 13 + r), outline=(250, 220, 90), width=2)
-    flat(f"IFOG{letter}0", image, top=13 + r + 10)
+for letter, r, hollow in zip("ABCDEFGHIJ", (6, 12, 18, 24, 28, 28, 24, 18, 12, 6), (0, 0, 0, 0.2, 0.4, 0.55, 0.6, 0.6, 0.5, 0.3)):
+    flat(f"TFOG{letter}0", burst(60, ((30, 110, 150), (80, 190, 230), (170, 235, 250), (245, 252, 255)), (r,), spokes=6, hollow=hollow), top=30 + r + 14)
+for letter, r, hollow in zip("ABCDE", (4, 8, 11, 8, 4), (0, 0, 0.35, 0.55, 0.4)):
+    flat(f"IFOG{letter}0", burst(26, ((170, 120, 30), (240, 200, 70), (255, 244, 180)), (r,), spokes=4, hollow=hollow), top=13 + r + 10)
 # What the King Rat throws: a ball of old grease, turning, and what it leaves where it lands.
 for letter, turn in (("A", 0), ("B", 1)):
     image, draw = small(18, 18)
@@ -409,19 +489,14 @@ for letter, r in zip("BCD", (12, 20, 26)):
 CLAMPS, ARC = picture("jump-hands"), picture("jump-arc")
 given("PLSGA0", CLAMPS, held=True, dy=8)
 given("PLSGB0", CLAMPS, held=True, dy=12)
-given("PLSFA0", ARC, held=True, dy=8)
-given("PLSFB0", ARC[:, ::-1], held=True, dy=8)
+given("PLSFA0", ARC, held=True, dy=8, loose=True, gap=1)
+given("PLSFB0", ARC[:, ::-1], held=True, dy=8, loose=True, gap=1)
 given("PLASA0", picture("jump-floor"))
-for letter, turn in (("A", 0), ("B", 1)):
-    image, draw = small(16, 16)
-    for k in range(4):
-        a = k * math.pi / 2 + turn * math.pi / 4
-        draw.line((8, 8, 8 + math.cos(a) * 8, 8 + math.sin(a) * 8), fill=(120, 190, 255), width=1)
-    draw.ellipse((4, 4, 12, 12), fill=(90, 160, 250))
-    draw.ellipse((6, 6, 10, 10), fill=(235, 246, 255))
-    flat(f"PLSS{letter}0", image, top=14)
-for letter, r in zip("ABCDE", (5, 9, 12, 9, 5)):
-    flat(f"PLSE{letter}0", burst(30, ((70, 130, 240), (140, 200, 255), (240, 248, 255)), (r, r - 3, r - 6), spokes=6), top=r + 8)
+BLUES = ((40, 80, 200), (90, 160, 250), (160, 215, 255), (240, 248, 255))
+for letter, r in (("A", 5), ("B", 6)):
+    flat(f"PLSS{letter}0", burst(16, BLUES, (r,), spokes=4), top=14)
+for letter, r, hollow in zip("ABCDE", (5, 9, 12, 10, 7), (0, 0, 0, 0.4, 0.6)):
+    flat(f"PLSE{letter}0", burst(30, BLUES, (r,), spokes=6, hollow=hollow), top=r + 8)
 # A battery, and a case of them.
 image, draw = small(10, 14)
 draw.rectangle((1, 3, 9, 13), fill=(40, 44, 52))
@@ -442,17 +517,23 @@ keep("CELPA0", image)
 TANK, CLOUD = picture("tank-hands"), picture("tank-cloud")
 given("BFGGA0", TANK, held=True)
 given("BFGGB0", TANK, held=True, dy=5)
-given("BFGFA0", scaled(CLOUD, 320)[::2, ::2].repeat(2, 0).repeat(2, 1), held=True)
-given("BFGFB0", CLOUD, held=True)
+# The cloud has the tank's shape cut from its foot, and the tank is tipped 5 down while it shows: so is the cloud, or the room shows between them.
+given("BFGFA0", scaled(CLOUD, 320)[::2, ::2].repeat(2, 0).repeat(2, 1), held=True, dy=5, loose=True)
+given("BFGFB0", CLOUD, held=True, dy=5, loose=True)
 given("BFUGA0", picture("tank-floor"))
 rows, cols = np.where(CLOUD[..., 3] > 127)
 PUFF = CLOUD[rows.min():rows.max() + 1, cols.min():cols.max() + 1]
-given("BFS1A0", scaled(PUFF, 44), middle=True)
-given("BFS1B0", scaled(PUFF, 44)[:, ::-1], middle=True)
+# On its picture the tank stands in front of the cloud, so the cloud's foot has the tank's shape bitten out of it. Crossing a room it
+# is whole: its upper part, and under that the same turned over and round, and squat.
+upper = PUFF[:round(PUFF.shape[0] * 0.6)]
+under = np.array(Image.fromarray(upper[::-1, ::-1], "RGBA").resize((upper.shape[1], round(upper.shape[0] * 0.55)), Image.NEAREST))
+PUFF = sealed(np.vstack([upper, under]), loose=True, gap=40)
+given("BFS1A0", scaled(PUFF, 44), middle=True, loose=True)
+given("BFS1B0", scaled(PUFF, 44)[:, ::-1], middle=True, loose=True)
 for letter, wide in zip("ABCDEF", (50, 80, 110, 130, 110, 70)):
-    given(f"BFE1{letter}0", scaled(PUFF, wide)[:, ::(1 if letter in "ACE" else -1)], middle=True)
+    given(f"BFE1{letter}0", scaled(PUFF, wide)[:, ::(1 if letter in "ACE" else -1)], middle=True, loose=True)
 for letter, wide in zip("ABCD", (16, 26, 34, 22)):
-    given(f"BFE2{letter}0", scaled(PUFF, wide), middle=True)
+    given(f"BFE2{letter}0", scaled(PUFF, wide), middle=True, loose=True)
 
 # What is picked up, and the drum, are Mikey's pictures too: each takes the place of the one drawn above under its name.
 def lit(rgba, by):
@@ -477,17 +558,29 @@ GREENS, TEALS = ((40, 120, 20), (110, 230, 50), (220, 255, 170)), ((20, 110, 120
 for letter, r in zip("CDE", (8, 12, 15)):
     flat(f"BAL1{letter}0", burst(34, GREENS, (r, r - 4, r - 9), spokes=7), top=r + 8)
 # What the coolant rat spits, and where it lands: the same in teal.
-for letter, turn in (("A", 0), ("B", 1)):
-    image, draw = small(14, 14)
-    draw.ellipse((1, 1, 13, 13), fill=TEALS[0])
-    draw.ellipse((3, 3, 11, 11), fill=TEALS[1])
-    draw.ellipse((4 + turn * 3, 4, 7 + turn * 3, 7), fill=TEALS[2])
-    flat(f"BAL2{letter}0", image, top=12)
+def dyed(rgba, tones):
+    """A picture in other colours: its darks, middles and lights become those given, so a thing drawn once is drawn the same in each."""
+    light = rgba[..., :3].astype(float).max(2) / 255
+    light = (light - light[rgba[..., 3] > 127].min()) / max(0.01, np.ptp(light[rgba[..., 3] > 127]))
+    stops = np.linspace(0, 1, len(tones))
+    out = rgba.copy()
+    for channel in range(3):
+        out[..., channel] = np.interp(light, stops, [tone[channel] for tone in tones]).astype(np.uint8)
+    return out
+# The coolant rat's is the mutant's gob in the coolant's colour, and the King Rat's the same in old grease: each takes the place of
+# the ball drawn above for it.
+COOLANT = dyed(scaled(picture("spit"), 18), ((10, 60, 80),) + TEALS)
+given("BAL2A0", COOLANT, middle=True)
+given("BAL2B0", COOLANT[::-1], middle=True)
+GREASE = dyed(scaled(picture("spit"), 24), ((20, 16, 10), (52, 44, 30), (96, 104, 48), (150, 170, 80)))
+given("BAL7A0", GREASE, middle=True)
+given("BAL7B0", GREASE[::-1], middle=True)
 for letter, r in zip("CDE", (8, 12, 15)):
     flat(f"BAL2{letter}0", burst(34, TEALS, (r, r - 4, r - 9), spokes=7), top=r + 8)
-# What the fat rat's cannons throw: a bigger gout of the green, and where that lands.
-for letter, r in (("A", 7), ("B", 8)):
-    flat(f"FATB{letter}0", burst(22, GREENS, (r, r - 3, r - 6), spokes=5), top=r + 6)
+# What the fat rat's cannons throw (the engine's MANF): a bigger, hotter gout of the mutant's green. Where it lands is the rotor's blast.
+GOUT = dyed(scaled(picture("spit"), 34), ((24, 70, 10), (60, 160, 24), (150, 240, 60), (236, 255, 170)))
+given("MANFA0", GOUT, middle=True)
+given("MANFB0", GOUT[::-1], middle=True)
 for letter, r in zip("ABC", (12, 18, 24)):
     flat(f"FBXP{letter}0", burst(54, GREENS, (r, r - 5, r - 11), spokes=9), top=r + 6)
 

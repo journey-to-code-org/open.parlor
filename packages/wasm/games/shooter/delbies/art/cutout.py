@@ -59,8 +59,48 @@ def grab(image, rect, sure=(), never=()):
     cv2.grabCut(cv2.cvtColor(image, cv2.COLOR_RGB2BGR), mask, None, np.zeros((1, 65)), np.zeros((1, 65)), 8, cv2.GC_INIT_WITH_MASK)
     return filled(biggest((mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD)))
 
-def smaller(image, mask, size):
-    """A cut-out made smaller, without its background bleeding into its edge."""
+def holes(mask):
+    """Each patch of a mask's outside that it closes in: a label for every pixel, and which labels those are."""
+    count, labels = cv2.connectedComponents((~np.pad(mask, 1)).astype(np.uint8), connectivity=4)
+    labels = labels[1:-1, 1:-1]
+    return labels, [i for i in range(1, count) if i != 1 and (labels == i).any()]
+
+def mended(mask, most):
+    """A mask with the holes in it of up to `most` pixels closed: a pinprick where the thing was as dark or as pale as what was behind it."""
+    labels, inside = holes(mask)
+    sizes = np.bincount(labels.ravel())
+    return mask | np.isin(labels, [i for i in inside if sizes[i] <= most])
+
+def tidy(mask, by, loose=False):
+    """A mask made fit to be shrunk `by` times: pinpricks closed, crumbs dropped, and the rim taken off, which is where the ground it
+    was drawn on shows through as a pale or dark line round it. `loose` is for smoke, sparks and swarms, which are crumbs."""
+    area = by * by
+    mask = mended(mask, round(10 * area))
+    rim = max(1, round(by * 0.45))
+    worn = cv2.erode(mask.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * rim + 1, 2 * rim + 1))).astype(bool)
+    if loose:
+        return worn if worn.sum() > 0.5 * mask.sum() else mask
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(mask.astype(np.uint8))
+    kept = np.zeros_like(mask)
+    for i in range(1, count):
+        if stats[i, cv2.CC_STAT_AREA] >= 2.5 * area:
+            kept |= labels == i
+    # A thing too thin to lose its rim and still be there once shrunk (a wire, a tail, a handle) keeps it.
+    wide = 2 * int(np.ceil(by * 0.9)) + 1
+    thin = kept & ~cv2.morphologyEx(kept.astype(np.uint8), cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (wide, wide))).astype(bool)
+    return (worn & kept) | thin
+
+def smaller(image, mask, size, loose=False, ground=None, rim=True):
+    """A cut-out made smaller, without its background bleeding into its edge. `ground` is the colour it was drawn on, if that is
+    one that shows (white): what is left of it along the edge once shrunk is taken off."""
+    # (A face on the status bar is shrunk ten times and has no rim to speak of: it is left whole.)
+    mask = tidy(mask, mask.shape[1] / size[0], loose) if rim else mask
+    if ground is not None:
+        # At full size first: an edge pixel that is nearly the ground and isn't closed in by the thing is ground.
+        near = np.abs(image.astype(int) - np.array(ground)).max(2) < 70
+        for _ in range(3):
+            edge = mask & ~cv2.erode(mask.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
+            mask = mask & ~(edge & near)
     alpha = mask.astype(float)[..., None]
     both = Image.fromarray(np.dstack([(image * alpha).astype(np.uint8), (mask * 255).astype(np.uint8)]), "RGBA").resize(size, Image.BOX)
     both = np.array(both).astype(float)
@@ -78,14 +118,14 @@ def save(name, rgba, crop=False):
     print(name, rgba.shape[1], "x", rgba.shape[0])
 
 SCREEN = (320, 200)
-def view(name, image, mask):
+def view(name, image, mask, loose=False, ground=None):
     """A picture of the whole view, made the size of the engine's screen."""
-    save(name, smaller(image, mask, SCREEN))
-def lying(name, image, mask, wide):
+    save(name, smaller(image, mask, SCREEN, loose, ground))
+def lying(name, image, mask, wide, loose=False, ground=None):
     """A thing on a floor, cut to itself and made `wide` across."""
     rows, cols = np.where(mask)
     image, mask = image[rows.min():rows.max() + 1, cols.min():cols.max() + 1], mask[rows.min():rows.max() + 1, cols.min():cols.max() + 1]
-    save(name, smaller(image, mask, (wide, max(1, round(mask.shape[0] * wide / mask.shape[1])))), crop=True)
+    save(name, smaller(image, mask, (wide, max(1, round(mask.shape[0] * wide / mask.shape[1]))), loose, ground), crop=True)
 
 # The brake rotor (the rocket launcher): in the hand, on black; and on a floor, which is also what is thrown.
 rotor = load("rotor-held.webp")
@@ -110,8 +150,9 @@ ball = biggest(ball)
 wider = cv2.dilate(ball.astype(np.uint8), np.ones((13, 13), np.uint8)).astype(bool) & there & ~((b > r + 30) & (b > 120))
 wider[436:] = False
 ball = filled(ball | wider)
-view("torch-hands", torch, biggest(there & ~ball, keep=2, least=400))
-view("torch-flame", torch, ball)
+# The black of the can's lettering and of the creases in a glove is the thing, where the thing closes it in.
+view("torch-hands", torch, mended(biggest(there & ~ball, keep=2, least=400), 700))
+view("torch-flame", torch, ball, loose=True)
 can = load("cleaner-floor.webp")
 lying("cleaner-floor", can, grab(can, (370, 325, 320, 150)), 36)
 
@@ -126,9 +167,10 @@ arc = np.zeros_like(there)
 arc[120:420, 300:720] = True
 sparks = np.zeros_like(there)
 sparks[540:670, 380:660] = True
-arc = cv2.dilate((blue & (arc | sparks)).astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool) & (off(jump, (255, 255, 255), 12)) & (arc | sparks)
-view("jump-hands", jump, biggest(there & ~arc, keep=3, least=600))
-view("jump-arc", jump, arc)
+# Only the arc between the clamps: the sparks down at the box's posts came out as crumbs and a ruled line (the box's edge).
+arc = cv2.dilate((blue & arc).astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool) & (off(jump, (255, 255, 255), 12)) & arc
+view("jump-hands", jump, biggest(there & ~arc, keep=3, least=600), ground=(255, 255, 255))
+view("jump-arc", jump, arc, loose=True)
 box = load("jump-floor.webp")
 lying("jump-floor", box, grab(box, (345, 240, 355, 300), sure=[(385, 285, 665, 500)]), 44)
 
@@ -181,7 +223,7 @@ r, g, b = (tank[..., i].astype(int) for i in range(3))
 solid = np.zeros_like(there)
 solid[470:] = True
 solid[352:470, 402:604] = solid[338:470, 652:760] = solid[420:470, 330:900] = True
-glare = (g > r + 75) | (tank.min(2) > 205)
+glare = ((g > r + 75) & (g > 200)) | (tank.min(2) > 205)  # The gloves are green too, but a darker one.
 ys, xs = np.indices(there.shape)
 glare[(xs - 700) ** 2 + (ys - 380) ** 2 < 34 ** 2] = False  # The gauge's white face is the gauge.
 gear = there & solid & ~(glare & (np.arange(tank.shape[0])[:, None] < 470))
@@ -191,8 +233,21 @@ frost[580:] = False
 frost[:, 350:] = False
 gear &= ~frost
 gear = biggest(cv2.morphologyEx(gear.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8)).astype(bool), keep=1)
+# What is bright on the tank itself (its label, the shine on it) was taken for cloud: closed in by tank, it is tank.
+gear = mended(gear, 900) & there
+# And wisps of frost that trail off the hands and the gauge are cloud: anything too thin to be the tank, a hand, the hose or the gauge.
+stout = cv2.morphologyEx(gear.astype(np.uint8), cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9)))
+gear = biggest(gear & cv2.dilate(stout, np.ones((5, 5), np.uint8)).astype(bool), keep=1)
+# So is what is left that is white or ice blue and not closed in by the tank: the gauge's face and the valve's shine are, a wisp isn't.
+icy = (tank.min(2) > 170) & (tank.max(2) - tank.min(2) < 60)
+gear = mended(biggest(gear & ~icy, keep=1), 2500) & gear
+# Two of them are known by where they are: pale stuff left of the left hand's knuckles, and whatever isn't the red hose out past the gauge.
+ys, xs = np.indices(there.shape)
+gear &= ~((xs < 420) & (ys < 480) & (tank.min(2) > 140))
+gear &= ~((xs > 745) & (ys < 430) & ~(r > g + 60))
+gear = biggest(gear, keep=1)
 view("tank-hands", tank, gear)
-view("tank-cloud", tank, biggest(there & ~cv2.dilate(gear.astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool), keep=4, least=300))
+view("tank-cloud", tank, biggest(there & ~cv2.dilate(gear.astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool), keep=4, least=300), loose=True)
 stood = load("tank-floor.webp")
 lying("tank-floor", stood, grab(stood, (325, 185, 385, 440), sure=[(420, 290, 600, 560)]), 34)
 
@@ -213,7 +268,7 @@ spray[350:] = False
 spray = cv2.dilate(spray.astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool) & there
 spray[352:] = False
 view("sprayer-hands", jug, filled(biggest(there & ~spray)))
-view("sprayer-spray", jug, spray)
+view("sprayer-spray", jug, spray, loose=True)
 sat = load("sprayer-floor.webp")
 lying("sprayer-floor", sat, grab(sat, (310, 225, 375, 320), sure=[(440, 290, 640, 480)]), 36)
 
@@ -225,16 +280,21 @@ def alone(image, ground, by, columns=None):
         mask[:, :columns[0]] = mask[:, columns[1]:] = False
     return filled(biggest(mask, keep=2, least=300))
 drum = load("drum.webp")
-lying("drum", drum, alone(drum, (0, 0, 0), 22), 26)
+# The drum is black on black: what can be told from the ground is its rims, its rust and its label, and the rest of it is what
+# those close in. A drum has no hollows in its outline, so it is everything inside the line drawn round them.
+seen = biggest(off(drum, (0, 0, 0), 22), keep=6, least=200).astype(np.uint8)
+whole = np.zeros_like(seen)
+cv2.fillConvexPoly(whole, cv2.convexHull(cv2.findNonZero(seen)), 1)
+lying("drum", drum, whole.astype(bool), 26)
 wear = load("armour.webp")
-lying("apron", wear, alone(wear, (255, 255, 255), 30, (0, 585)), 30)
+lying("apron", wear, alone(wear, (255, 255, 255), 30, (0, 585)), 30, ground=(255, 255, 255))
 lying("hard-hat", wear, alone(wear, (255, 255, 255), 30, (585, 1024)), 22)
 food = load("food.webp")
 lying("pasta", food, alone(food, (0, 0, 0), 22, (0, 365)), 22)
 lying("pizza", food, alone(food, (0, 0, 0), 22, (365, 770)), 32)
 lying("coffee", food, alone(food, (0, 0, 0), 22, (770, 1024)), 13)
 spit = load("spit.webp")
-lying("spit", spit, alone(spit, (0, 0, 0), 30), 34)
+lying("spit", spit, alone(spit, (0, 0, 0), 30), 34, loose=True)
 
 # Delbie's face, four ways as his day goes: the head only, without the shirt or its name tag, each made the size of a face on the status bar.
 faces = load("faces.webp")
@@ -245,12 +305,12 @@ for index, (x0, x1) in enumerate(((20, 250), (275, 505), (525, 755), (780, 1010)
     mask = filled(biggest(mask))
     rows, cols = np.where(mask)
     y0, y1, a, b = rows.min(), rows.max() + 1, cols.min(), cols.max() + 1
-    save(f"face-{index}", smaller(faces[y0:y1, a:b], mask[y0:y1, a:b], (24, 29)))
+    save(f"face-{index}", smaller(faces[y0:y1, a:b], mask[y0:y1, a:b], (24, 29), rim=False))
 
 # The rats, off the sheets Mikey gave of them: each sheet a row or two of one rat, seen from the front round to the back, then
 # attacking, hurt and dying, on a plain ground. Each figure is found as a patch that isn't the ground, taken in order from the left,
 # and made the size it is in the game.
-def figures(name, rows, scale, least=250):
+def figures(name, rows, scale, least=250, loose=False):
     sheet = load(name)
     ground = np.median(sheet.reshape(-1, 3), 0)
     differs = np.abs(sheet.astype(int) - ground).max(2) > 14
@@ -267,8 +327,17 @@ def figures(name, rows, scale, least=250):
             x, y, w, h = stats[i, :4]
             if h < 0.4 * tallest:
                 continue
-            mask = filled(labels[y:y + h, x:x + w] == i)
-            found.append(smaller(sheet[y:y + h, x:x + w], mask, (max(1, round(w * scale)), max(1, round(h * scale)))))
+            # The figure is what differs from the ground. A patch of ground it closes in (between a tail and a body, under an arm)
+            # stays open, unless it is small or isn't the ground's colour after all.
+            patch = labels[y:y + h, x:x + w] == i
+            mask = patch & differs[y:y + h, x:x + w].astype(bool)
+            marks, inside = holes(mask)
+            away = np.abs(sheet[y:y + h, x:x + w].astype(int) - ground).max(2)
+            for hole in inside:
+                where = marks == hole
+                if where.sum() < 14 / scale ** 2 or np.median(away[where]) > 5:
+                    mask |= where
+            found.append(smaller(sheet[y:y + h, x:x + w], mask & filled(patch), (max(1, round(w * scale)), max(1, round(h * scale))), loose))
     return found
 for rat, sheet, rows, scale in (
     ("grease", "rats-sheet.png", [(18, 102)], 0.62),
@@ -280,7 +349,7 @@ for rat, sheet, rows, scale in (
     ("fat", "fat-sheet.webp", [(15, 195), (195, 385), (385, 572)], 0.5),
     ("cyborg", "cyborg-sheet.webp", [(40, 280), (280, 572)], 0.5),
 ):
-    for index, figure in enumerate(figures(sheet, rows, scale)):
+    for index, figure in enumerate(figures(sheet, rows, scale, loose=rat == "plugs")):
         save(f"{rat}-{index}", figure, crop=True)
 
 # Walls, floors and ceilings, off two sheets of six squares each: one grey and rusted, one in the store's blue and yellow.
@@ -342,7 +411,7 @@ for name, box, wide in (
     ("drum-hit", (22, 400, 104, 520), 24), ("blast-0", (125, 350, 222, 520), 30), ("blast-1", (240, 350, 335, 520), 30), ("blast-2", (370, 350, 475, 520), 34), ("blast-3", (490, 350, 600, 545), 34),
     ("tires", (650, 340, 775, 442), 30), ("jack", (885, 325, 995, 428), 30), ("trouble-light", (815, 400, 875, 540), 12),
 ):
-    lying(name, props, boxed(props, box), wide)
+    lying(name, props, boxed(props, box), wide, loose=name.startswith(("blast", "drum-hit")))
 
 # What is picked up for each weapon, off another sheet: each on a slab of floor, which is left behind.
 ammo = load("ammo-sheet.webp")
@@ -350,7 +419,18 @@ for name, rect, sure, wide in (
     ("shells", (12, 395, 172, 125), [(60, 440, 130, 490)], 20), ("rotor-one", (195, 380, 155, 140), [(235, 410, 310, 490)], 24), ("rotor-crate", (360, 375, 202, 150), [(400, 400, 520, 500)], 36),
     ("cleaner-cell", (572, 385, 110, 135), [(595, 420, 625, 500)], 14), ("battery-pack", (692, 375, 160, 145), [(715, 430, 790, 500), (800, 400, 830, 470)], 30),
 ):
-    lying(name, ammo, grab(ammo, rect, sure=sure), wide)
+    cut = grab(ammo, rect, sure=sure)
+    spread = ammo.astype(int).max(2) - ammo.astype(int).min(2)
+    if name == "shells":
+        # Brass, which the slab and the dark behind it are not: by its colour, so that it is the cartridges that are cut out.
+        x, y, w, h = rect
+        brass = np.zeros_like(cut)
+        brass[y:y + h, x:x + w] = (spread > 22)[y:y + h, x:x + w]
+        cut = mended(biggest(cv2.morphologyEx(brass.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8)).astype(bool), keep=12, least=30), 400)
+    if name == "rotor-crate":
+        # The slab is a flat grey; the crate isn't, and what grey there is in it (the rotors) the crate closes in.
+        cut = filled(biggest(cut & ~((spread < 6) & (ammo.max(2) > 60) & (ammo.max(2) < 100))))
+    lying(name, ammo, cut, wide)
 
 # What is around the game, off one sheet on white: the title picture, the name that goes over the menu (which on the sheet lies half
 # across the title), the picture behind the page between levels, the menu's pointer, and the status bar.

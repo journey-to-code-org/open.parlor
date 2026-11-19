@@ -62,6 +62,42 @@ colours = np.array([shade for one in RUNS for shade in one], float)
 colours[15] = 0
 colours[208] = colours[209] = 255
 
+# Those sixteen runs are where the colours start. Most of the game is pictures (given/), and a run ruled by formula is seldom the
+# shade a picture wants: a pale mint tank came out a speckle of bright green and grey. So each colour is moved to the middle of the
+# picture colours nearest it, a few times over (k-means), which is what fits 256 colours to pictures. Each stays tied to where it
+# started, so a run is still its colour, light to dark, where the engine's map expects it (reds at 176, greens at 112, greys at 96),
+# near enough, and a colour no picture wants stays as it was for what is drawn by code.
+def fitted(colours):
+    from PIL import Image
+    samples, weights = [], []
+    for file in sorted((here / "given").glob("*.png")):
+        rgba = np.array(Image.open(file).convert("RGBA")).reshape(-1, 4)
+        rgb = rgba[rgba[:, 3] > 127][:, :3]
+        rgb = rgb[:: max(1, len(rgb) // 5000)]
+        samples.append(rgb)
+        # A small picture (a hard hat) matters as much to look at as a wall does: each counts for nearer the same.
+        weights.append(np.full(len(rgb), (5000 / len(rgb)) ** 0.6, np.float32))
+    wanted, weight = np.concatenate(samples).astype(np.float32), np.concatenate(weights)
+    start = colours.astype(np.float32)
+    tie = weight.sum() / 256 * 0.06  # How many picture colours each starting colour counts as.
+    now = start.copy()
+    for _ in range(16):
+        which = np.concatenate([((wanted[i:i + 20000, None, :] - now[None]) ** 2).sum(2).argmin(1) for i in range(0, len(wanted), 20000)])
+        total = start * tie
+        count = np.full(256, tie, np.float32)
+        np.add.at(total, which, wanted * weight[:, None])
+        np.add.at(count, which, weight)
+        now = total / count[:, None]
+    # Within a run, light to dark as before.
+    for first in range(0, 256, 16):
+        run = now[first:first + 16]
+        now[first:first + 16] = run[np.argsort(-(run @ np.array([0.299, 0.587, 0.114], np.float32)), kind="stable")]
+    return now.round().astype(float)
+if (here / "given").is_dir():
+    colours = fitted(colours)
+    colours[15] = 0
+    colours[208] = colours[209] = 255
+
 def nearest_of(wanted):
     """For each colour wanted, which of the 256 is closest."""
     return ((wanted[:, None, :] - colours[None, :, :]) ** 2).sum(2).argmin(1).astype(np.uint8)
