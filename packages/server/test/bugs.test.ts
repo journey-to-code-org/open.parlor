@@ -172,3 +172,55 @@ describe("tidying before sending", () => {
     expect((await setup().phone()("/bugs/tidy", { kind: "bug", description: "The cards overlap on my phone." })).status).toBe(503);
   });
 });
+
+describe("telling a player their report was fixed", () => {
+  /** GitHub, as far as these tests ask it: a few issues, and a count of how often each was asked about. */
+  function github(issues: Record<number, { state: string; state_reason: string | null; title: string; pull_request?: object }>) {
+    const asked: string[] = [];
+    const fetch = (async (url: string) => {
+      asked.push(url);
+      const n = Number(url.split("/").pop());
+      return issues[n] ? Response.json(issues[n]) : new Response("{}", { status: 404 });
+    }) as unknown as typeof globalThis.fetch;
+    return { fetch, asked };
+  }
+  const ask = async (app: ReturnType<typeof createCardRoom>, query: string) => (await (await app.fetch(new Request(`${BASE}/bugs/fixed?n=${query}`)))!.json()) as { fixed: { number: number; title: string }[] };
+
+  it("says which issues were closed as fixed, and only those", async () => {
+    const { fetch } = github({
+      12: { state: "closed", state_reason: "completed", title: "Klondike: can't draw on phone" },
+      13: { state: "closed", state_reason: "not_planned", title: "Make it rain" },
+      14: { state: "open", state_reason: null, title: "Golf editor" },
+      15: { state: "closed", state_reason: "completed", title: "A pull request", pull_request: {} },
+    });
+    const { app } = setup({ fetch });
+    expect(await ask(app, "12,13,14,15,16")).toEqual({ fixed: [{ number: 12, title: "Klondike: can't draw on phone" }] });
+  });
+
+  it("asks GitHub about an issue once in a while, not every time a page does", async () => {
+    let at = 1_000_000;
+    const { fetch, asked } = github({ 12: { state: "open", state_reason: null, title: "Not yet" } });
+    const { app } = setup({ fetch, now: () => at });
+    await ask(app, "12");
+    await ask(app, "12");
+    expect(asked.filter((u) => u.endsWith("/issues/12"))).toHaveLength(1);
+    expect(asked[0]).toBe("https://api.github.com/repos/o/r/issues/12");
+    at += 16 * 60_000;
+    await ask(app, "12");
+    expect(asked.filter((u) => u.endsWith("/issues/12"))).toHaveLength(2);
+  });
+
+  it("takes only a few numbers, and only numbers", async () => {
+    const { fetch, asked } = github({});
+    const { app } = setup({ fetch });
+    await ask(app, "1,2,3,4,5,6,7,8,9,10,11,12,abc,-4,1.5,../x");
+    expect(asked).toHaveLength(10);
+  });
+
+  it("says none are fixed without a token, and asks nothing", async () => {
+    const { fetch, asked } = github({ 12: { state: "closed", state_reason: "completed", title: "Fixed" } });
+    const { app } = setup({ fetch, token: "" });
+    expect(await ask(app, "12")).toEqual({ fixed: [] });
+    expect(asked).toEqual([]);
+  });
+});
