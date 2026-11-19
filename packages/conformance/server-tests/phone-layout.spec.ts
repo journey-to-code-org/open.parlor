@@ -148,7 +148,7 @@ test.describe("on a phone", () => {
     expect(hrefs.length).toBeGreaterThan(20);
 
     const failures: string[] = [];
-    // Four at a time: each is its own phone (a context), so they don't share anything.
+    // One at a time: the other test files run beside this one, and four phones at once slowed them past their limits.
     const queue = [...hrefs];
     const worker = async () => {
       for (let href = queue.shift(); href; href = queue.shift()) {
@@ -175,7 +175,7 @@ test.describe("on a phone", () => {
         }
       }
     };
-    await Promise.all([worker(), worker(), worker(), worker()]);
+    await worker();
     failures.sort();
     expect(
       failures,
