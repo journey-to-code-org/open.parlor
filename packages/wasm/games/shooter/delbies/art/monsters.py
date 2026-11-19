@@ -41,8 +41,62 @@ def figure(rat, index, turned=False):
     rgba = np.array(Image.open(here / "given" / f"{rat}-{index}.png").convert("RGBA"))
     return rgba[:, ::-1] if turned else rgba
 
+def sealed(rgba, loose=False, gap=None):
+    """A picture with its slips mended: a see-through slit or pinprick that the thing closes in is given the colour beside it, and
+    a single pixel standing alone off the thing is dropped (unless it is smoke or sparks, which are made of them)."""
+    rgba = rgba.copy()
+    there = rgba[..., 3] > 127
+    def beside(mask, corners=False):
+        near = np.zeros_like(mask)
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)) + (((1, 1), (1, -1), (-1, 1), (-1, -1)) if corners else ()):
+            near |= np.roll(np.roll(mask, dy, 0), dx, 1)
+        return near
+    if not loose:
+        alone = there & ~beside(np.pad(there, 1), corners=True)[1:-1, 1:-1]
+        there &= ~alone
+    # What is outside: everything see-through that can be reached from the edge.
+    clear = np.pad(~there, 1, constant_values=True)
+    outside = np.zeros_like(clear)
+    outside[0] = outside[-1] = True
+    outside[:, 0] = outside[:, -1] = True
+    while True:
+        grown = outside | (beside(outside) & clear)
+        if (grown == outside).all():
+            break
+        outside = grown
+    inside = np.pad(~there & ~outside[1:-1, 1:-1], 1)
+    # Of what is closed in, the part too narrow to be a real gap (under three pixels across).
+    # (Smoke and sparks have no real gaps that small either, so there it is under seven; `gap` says otherwise.)
+    reach = range(-(gap or (3 if loose else 1)), (gap or (3 if loose else 1)) + 1)
+    inside = np.pad(inside, max(reach))
+    core = inside.copy()
+    for dy in reach:
+        for dx in reach:
+            core &= np.roll(np.roll(inside, dy, 0), dx, 1)
+    roomy = core.copy()
+    for dy in reach:
+        for dx in reach:
+            roomy |= np.roll(np.roll(core, dy, 0), dx, 1)
+    inside, roomy = (one[max(reach):-max(reach), max(reach):-max(reach)] for one in (inside, roomy))
+    slips = (inside & ~roomy)[1:-1, 1:-1]
+    while slips.any():
+        done = False
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ready = slips & np.roll(np.roll(there, dy, 0), dx, 1)
+            if ready.any():
+                rgba[ready] = np.roll(np.roll(rgba, dy, 0), dx, 1)[ready]
+                there |= ready
+                slips &= ~ready
+                done = True
+        if not done:
+            break
+    rgba[..., 3] = there * 255
+    rgba[~there] = 0
+    return rgba
+
 pictures = []
 def add(name, rgba, lift=0):
+    rgba = sealed(rgba, loose=name.startswith("SKUL"))
     there = rgba[..., 3] > 127
     height, width = there.shape
     pixels = bytes(nearest(rgba[y, x]) if there[y, x] else 0 for y in range(height) for x in range(width))

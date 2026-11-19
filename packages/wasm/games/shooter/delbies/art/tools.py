@@ -102,9 +102,63 @@ def tape(draw, x, y, size=40, out=0):
     draw.ellipse((x + size // 2 - 4, y + size // 2 - 4, x + size // 2 + 4, y + size // 2 + 4), fill=STEEL_LIGHT)
     draw.rectangle((x + size - 8, y + 4, x + size - 3, y + 14), fill=RED)
 
-def given(name, rgba, held=False, dx=0, dy=0, middle=False):
+def sealed(rgba, loose=False, gap=None):
+    """A picture with its slips mended: a see-through slit or pinprick that the thing closes in is given the colour beside it, and
+    a single pixel standing alone off the thing is dropped (unless it is smoke or sparks, which are made of them)."""
+    rgba = rgba.copy()
+    there = rgba[..., 3] > 127
+    def beside(mask, corners=False):
+        near = np.zeros_like(mask)
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)) + (((1, 1), (1, -1), (-1, 1), (-1, -1)) if corners else ()):
+            near |= np.roll(np.roll(mask, dy, 0), dx, 1)
+        return near
+    if not loose:
+        alone = there & ~beside(np.pad(there, 1), corners=True)[1:-1, 1:-1]
+        there &= ~alone
+    # What is outside: everything see-through that can be reached from the edge.
+    clear = np.pad(~there, 1, constant_values=True)
+    outside = np.zeros_like(clear)
+    outside[0] = outside[-1] = True
+    outside[:, 0] = outside[:, -1] = True
+    while True:
+        grown = outside | (beside(outside) & clear)
+        if (grown == outside).all():
+            break
+        outside = grown
+    inside = np.pad(~there & ~outside[1:-1, 1:-1], 1)
+    # Of what is closed in, the part too narrow to be a real gap (under three pixels across).
+    # (Smoke and sparks have no real gaps that small either, so there it is under seven; `gap` says otherwise.)
+    reach = range(-(gap or (3 if loose else 1)), (gap or (3 if loose else 1)) + 1)
+    inside = np.pad(inside, max(reach))
+    core = inside.copy()
+    for dy in reach:
+        for dx in reach:
+            core &= np.roll(np.roll(inside, dy, 0), dx, 1)
+    roomy = core.copy()
+    for dy in reach:
+        for dx in reach:
+            roomy |= np.roll(np.roll(core, dy, 0), dx, 1)
+    inside, roomy = (one[max(reach):-max(reach), max(reach):-max(reach)] for one in (inside, roomy))
+    slips = (inside & ~roomy)[1:-1, 1:-1]
+    while slips.any():
+        done = False
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            ready = slips & np.roll(np.roll(there, dy, 0), dx, 1)
+            if ready.any():
+                rgba[ready] = np.roll(np.roll(rgba, dy, 0), dx, 1)[ready]
+                there |= ready
+                slips &= ~ready
+                done = True
+        if not done:
+            break
+    rgba[..., 3] = there * 255
+    rgba[~there] = 0
+    return rgba
+
+def given(name, rgba, held=False, dx=0, dy=0, middle=False, loose=False, gap=None):
     """A picture someone made, as it is: brought into the game's colours, with no shading or edge added.
     Held: placed on the screen where it sits on its 320 by 200 picture, moved by dx and dy."""
+    rgba = sealed(rgba, loose, gap)
     there = rgba[..., 3] > 127
     rows, cols = np.where(there)
     y0, y1, x0, x1 = rows.min(), rows.max() + 1, cols.min(), cols.max() + 1
@@ -163,7 +217,7 @@ for name, size in (("SHTFA0", 9), ("SHTFB0", 15)):
     FLASH = np.array(burst(size * 4, ((200, 90, 20), (250, 160, 40), (255, 220, 110), (255, 250, 220)), (size * 1.5,), spokes=6))
     image = np.zeros((200, 320, 4), np.uint8)
     image[112 - FLASH.shape[0] // 2:112 - FLASH.shape[0] // 2 + FLASH.shape[0], 160 - FLASH.shape[1] // 2:160 - FLASH.shape[1] // 2 + FLASH.shape[1]] = FLASH
-    given(name, image, held=True)
+    given(name, image, held=True, loose=True)
 
 # The price gun, in the pistol's place: Mikey's picture (given/pricegun-held.png), kicking up as a tag leaves it.
 PRICE_GUN = np.array(Image.open(here / "given" / "pricegun-held.png").convert("RGBA"))
@@ -177,15 +231,15 @@ image[102 - SNAP.shape[0] // 2:102 - SNAP.shape[0] // 2 + SNAP.shape[0], 171 - S
 image[97:106, 165:178] = (236, 112, 44, 255)
 image[97:106, 165] = image[97:106, 177] = image[97, 165:178] = image[105, 165:178] = (120, 50, 20, 255)
 image[100, 168:175] = image[102, 168:173] = (40, 20, 16, 255)
-given("PISFA0", image, held=True)
+given("PISFA0", image, held=True, loose=True)
 
 # A jug of washer fluid with a pump on it, in the chaingun's place: Mikey's pictures (given/sprayer-*.png). It shakes as it
 # runs, and the spray is its flash.
 SPRAYER, SPRAY = (np.array(Image.open(here / "given" / f"sprayer-{part}.png").convert("RGBA")) for part in ("hands", "spray"))
 given("CHGGA0", SPRAYER, held=True, dy=5)
 given("CHGGB0", SPRAYER, held=True, dx=1, dy=7)
-given("CHGFA0", SPRAY, held=True, dy=5)
-given("CHGFB0", SPRAY[:, ::-1], held=True, dx=1, dy=7)
+given("CHGFA0", SPRAY, held=True, dy=5, loose=True)
+given("CHGFB0", SPRAY[:, ::-1], held=True, dx=1, dy=7, loose=True)
 
 def small(width, height):
     image = Image.new("RGBA", (width + 2, height + 2), (0, 0, 0, 0))
@@ -435,8 +489,8 @@ for letter, r in zip("BCD", (12, 20, 26)):
 CLAMPS, ARC = picture("jump-hands"), picture("jump-arc")
 given("PLSGA0", CLAMPS, held=True, dy=8)
 given("PLSGB0", CLAMPS, held=True, dy=12)
-given("PLSFA0", ARC, held=True, dy=8)
-given("PLSFB0", ARC[:, ::-1], held=True, dy=8)
+given("PLSFA0", ARC, held=True, dy=8, loose=True, gap=1)
+given("PLSFB0", ARC[:, ::-1], held=True, dy=8, loose=True, gap=1)
 given("PLASA0", picture("jump-floor"))
 BLUES = ((40, 80, 200), (90, 160, 250), (160, 215, 255), (240, 248, 255))
 for letter, r in (("A", 5), ("B", 6)):
@@ -463,8 +517,9 @@ keep("CELPA0", image)
 TANK, CLOUD = picture("tank-hands"), picture("tank-cloud")
 given("BFGGA0", TANK, held=True)
 given("BFGGB0", TANK, held=True, dy=5)
-given("BFGFA0", scaled(CLOUD, 320)[::2, ::2].repeat(2, 0).repeat(2, 1), held=True)
-given("BFGFB0", CLOUD, held=True)
+# The cloud has the tank's shape cut from its foot, and the tank is tipped 5 down while it shows: so is the cloud, or the room shows between them.
+given("BFGFA0", scaled(CLOUD, 320)[::2, ::2].repeat(2, 0).repeat(2, 1), held=True, dy=5, loose=True)
+given("BFGFB0", CLOUD, held=True, dy=5, loose=True)
 given("BFUGA0", picture("tank-floor"))
 rows, cols = np.where(CLOUD[..., 3] > 127)
 PUFF = CLOUD[rows.min():rows.max() + 1, cols.min():cols.max() + 1]
@@ -472,13 +527,13 @@ PUFF = CLOUD[rows.min():rows.max() + 1, cols.min():cols.max() + 1]
 # is whole: its upper part, and under that the same turned over and round, and squat.
 upper = PUFF[:round(PUFF.shape[0] * 0.6)]
 under = np.array(Image.fromarray(upper[::-1, ::-1], "RGBA").resize((upper.shape[1], round(upper.shape[0] * 0.55)), Image.NEAREST))
-PUFF = np.vstack([upper, under])
-given("BFS1A0", scaled(PUFF, 44), middle=True)
-given("BFS1B0", scaled(PUFF, 44)[:, ::-1], middle=True)
+PUFF = sealed(np.vstack([upper, under]), loose=True, gap=40)
+given("BFS1A0", scaled(PUFF, 44), middle=True, loose=True)
+given("BFS1B0", scaled(PUFF, 44)[:, ::-1], middle=True, loose=True)
 for letter, wide in zip("ABCDEF", (50, 80, 110, 130, 110, 70)):
-    given(f"BFE1{letter}0", scaled(PUFF, wide)[:, ::(1 if letter in "ACE" else -1)], middle=True)
+    given(f"BFE1{letter}0", scaled(PUFF, wide)[:, ::(1 if letter in "ACE" else -1)], middle=True, loose=True)
 for letter, wide in zip("ABCD", (16, 26, 34, 22)):
-    given(f"BFE2{letter}0", scaled(PUFF, wide), middle=True)
+    given(f"BFE2{letter}0", scaled(PUFF, wide), middle=True, loose=True)
 
 # What is picked up, and the drum, are Mikey's pictures too: each takes the place of the one drawn above under its name.
 def lit(rgba, by):
