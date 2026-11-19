@@ -463,6 +463,14 @@ async function toShelf(id: string) {
       <button type="button" class="design" @click="offlineGames">📴 Offline games: choose what's kept on this device</button>
       <button v-if="canAsk" type="button" class="design" @click="emit('ask')">💡 Don't see your game? Ask for it</button>
     </p>
+    <!-- Who made it, and where its source is. -->
+    <footer class="credit">
+      <span><code aria-hidden="true">&lt;/&gt;</code> with <span class="heart" role="img" aria-label="love">♥&#xFE0E;</span> by <a href="https://mnix.dev" rel="author">mnix.dev</a></span>
+      <span class="dot" aria-hidden="true">·</span>
+      <a href="https://github.com/mnichols08">@mnichols08</a>
+      <span class="dot dot-before-repo" aria-hidden="true">·</span>
+      <a href="https://github.com/journey-to-code-org/open.parlor">Open source on GitHub</a>
+    </footer>
   </div>
 </template>
 
@@ -547,6 +555,15 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .subshelf { margin: 20px 0 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1rem, 1.4vw, 1.15rem); font-weight: 600; color: #e3efe7; }
 .subshelf .shelf-toggle { width: auto; padding-bottom: 0; }
 .shelf-tools { display: flex; justify-content: flex-end; margin-top: 10px; }
+.credit { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin: 28px 0 8px; padding-top: 18px; border-top: 1px solid rgba(255, 255, 255, 0.1); color: #b9d0c2; font-size: 0.9rem; }
+.credit code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--gold, #e8c46a); }
+.credit .heart { color: #ff7a7a; }
+.credit a { color: var(--cream, #fbf6ec); text-decoration: underline; text-decoration-color: rgba(232, 196, 106, 0.6); text-underline-offset: 3px; }
+.credit a:hover { text-decoration-color: var(--gold, #e8c46a); }
+.credit a:focus-visible { outline: 3px solid #ffd76a; outline-offset: 3px; border-radius: 4px; }
+.credit .dot { opacity: 0.5; }
+/* On a phone the repo link takes a line of its own, without a dot left hanging before it. */
+@media (max-width: 559px) { .credit .dot-before-repo { display: none; } .credit > a:last-child { flex-basis: 100%; text-align: center; } }
 .open-quiet { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 14px 0 0; padding: 10px 14px; border-radius: 12px; background: rgba(0, 0, 0, 0.16); color: #cfe2d6; font-size: 0.95rem; }
 .open-quiet .tool-link { margin-left: auto; }
 .tool-link { border: 0; background: none; padding: 2px 0; color: var(--gold, #e8c46a); font: inherit; font-size: 0.9rem; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
