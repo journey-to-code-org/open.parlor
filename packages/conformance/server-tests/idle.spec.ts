@@ -15,9 +15,14 @@ test("the report from while you were out, and closing the store or keeping it", 
   await expect(page.getByRole("button", { name: "Move the store" })).toBeDisabled();
   await page.clock.runFor(6_000); // the store saves itself every few seconds
 
-  // Three hours later, the store has been running without you.
+  // Three hours later, the store has been running without you. Away means away: the page is left
+  // first (it saves as it goes), and the clock moves on while nothing of the store is running. Moved
+  // with the page still open, a timer firing after the jump (the store's tick, or its save as the
+  // page went) could run the store on to the new time itself, leaving nothing to report: Firefox
+  // sometimes fired one, Chrome never did.
+  await page.goto("about:blank");
   await page.clock.setSystemTime(new Date("2026-11-18T12:00:00"));
-  await page.reload();
+  await page.goto("/?game=delbies");
   await page.clock.runFor(1_000);
   const report = page.getByRole("dialog", { name: "While you were out" });
   await expect(report).toBeVisible({ timeout: 15_000 });
