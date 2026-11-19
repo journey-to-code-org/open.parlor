@@ -441,6 +441,7 @@ function carsPanel() {
         field("Revs held on the line", d.launch, drive("launch"), { type: "number", step: 100, min: 1000 }),
         field("Weight, lb", d.weight_lb, drive("weight_lb"), { type: "number", min: 500 }),
         field("Grip (12 is all four tyres)", d.grip, drive("grip"), { type: "number", step: "0.5", min: 1 })),
+      tick("It is an automatic: it shifts itself, on the strip and on the road", !!d.auto, (v) => { c.drive ??= {}; if (v) c.drive.auto = true; else delete c.drive.auto; }),
       tick("It has a turbo", "boost" in d ? !!turbo : true, (v) => { c.drive ??= {}; c.drive.boost = v ? { from: 2200, psi: 20, lag: 6 } : null; }),
       turbo ? h("div", { class: "three" },
         field("Wakes at, rpm", turbo.from, (v) => { turbo.from = v ?? 2200; }, { type: "number", step: 100 }),
@@ -686,6 +687,7 @@ function mapsPanel() {
       field("Blocks across", cols, () => {}, { type: "number", min: 1, max: 24, id: "mapCols", onchange: (e) => { size(Math.max(1, Math.min(24, +e.target.value || cols)), rows); render(); } }),
       field("Blocks down", rows, () => {}, { type: "number", min: 1, max: 24, id: "mapRows", onchange: (e) => { size(cols, Math.max(1, Math.min(24, +e.target.value || rows))); render(); } }),
       field("Other cars about", mp.traffic ?? 8, (n) => { mp.traffic = Math.max(0, Math.min(40, Math.floor(n ?? 8))); }, { type: "number", min: 0, max: 40 }),
+      field("How high its hills are, metres (0: flat)", mp.hills ?? 0, (n) => { if (n > 0) mp.hills = Math.min(30, n); else delete mp.hills; }, { type: "number", min: 0, max: 30 }),
       field("Gallons burned a kilometre", mp.gas_per_km ?? 0.4, (n) => { mp.gas_per_km = Math.max(0, n ?? 0.4); }, { type: "number", step: "0.1", min: 0 })),
     h("p", { class: "hint", text: "There is a street between every two blocks and one round the outside. The top of the map is north." })));
   const places = [["", "Nowhere: it is only a building"], ...Object.entries(m.places).map(([id, p]) => [id, p.title])];
@@ -892,6 +894,8 @@ function partsPanel() {
         field("More power, per cent", p.nitrous.gain, (v) => { p.nitrous.gain = Math.max(1, Math.min(200, Math.floor(v ?? 35))); }, { type: "number", min: 1, max: 200 }),
         field("A bottle lasts, seconds", p.nitrous.seconds, (v) => { p.nitrous.seconds = Math.max(1, Math.min(60, v ?? 8)); }, { type: "number", min: 1, max: 60 }),
         field("A fill costs", p.nitrous.fill ?? 20, (v) => { p.nitrous.fill = Math.max(0, Math.floor(v ?? 20)); }, { type: "number", min: 0 })) : null,
+      tick("It is a laptop and a cable: the car can be tuned at the rollers", !!p.tuner, (v) => { if (v) p.tuner = true; else delete p.tuner; }),
+      choice("If it is a gearbox, what kind", p.auto == null ? "" : p.auto ? "auto" : "manual", [["", "Not a gearbox, or the same kind as the car's"], ["manual", "A manual: shifted by hand, on the strip and on the road"], ["auto", "An automatic: it shifts itself"]], (v) => { if (v) p.auto = v === "auto"; else delete p.auto; }),
       tick("It is a radar detector: it beeps when police are ahead on a road", !!p.radar, (v) => { if (v) p.radar = true; else delete p.radar; }),
       tick("It is a turbo, and replaces the car's own", !!p.boost, (v) => { if (v) p.boost = { from: 3000, psi: 27, lag: 10 }; else delete p.boost; }),
       p.boost ? h("div", { class: "three" },
