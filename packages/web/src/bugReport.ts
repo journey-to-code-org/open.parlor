@@ -8,6 +8,7 @@
 import { createReportFlow } from "@journey-to-code/relay-ui";
 import type { Classes } from "@journey-to-code/relay-ui/react";
 import { createRelayClient } from "@journey-to-code/relay/client";
+import { rememberReport } from "./fixedNotice";
 
 declare const __BUILT__: string;
 
@@ -35,6 +36,13 @@ relay.takeScreenshot = async () => {
   } finally {
     for (const [el, own] of covered) Object.defineProperty(el, "firstChild", own);
   }
+};
+/** A report that's sent is remembered by its issue number, so this browser can hear when it's fixed (fixedNotice.ts). */
+const sendReport = relay.send;
+relay.send = async (report) => {
+  const sent = await sendReport(report);
+  rememberReport(sent.number);
+  return sent;
 };
 /** The report sheet's state: closed, writing, looking it over, sent. */
 export const reportFlow = createReportFlow(relay);

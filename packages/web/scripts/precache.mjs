@@ -2,7 +2,7 @@
 // keep a copy of them on the device and the games that need no server start with no connection.
 //
 // It runs after everything else has been written to dist/, and leaves out what isn't the app: the
-// blog embed (other sites load that), the link-preview image, and the worker itself. The version is
+// blog embed (other sites load that), the link-preview images (og.jpg, and og/ for each game), and the worker itself. The version is
 // a hash of the files, so a build that changes nothing keeps the copy people already have.
 //
 // The files are sorted into the core, which is always kept, and a pack for each kind of game
@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import { sortFiles } from "./packs.mjs";
 
 const dist = join(dirname(fileURLToPath(import.meta.url)), "../dist");
-const SKIP_DIRS = new Set(["embed", "designer", "watch", "admin", ".vite"]);
+const SKIP_DIRS = new Set(["embed", "designer", "watch", "admin", ".vite", "og"]);
 const SKIP_FILES = new Set(["sw.js", "og.jpg"]);
 
 function walk(dir) {
