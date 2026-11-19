@@ -313,6 +313,20 @@ export function createHouses(
       return json(await forMember(house, owner), 201, cookiePlayer ? {} : { "set-cookie": playerCookie(player, request) });
     }
 
+    // GET /houses?unread=<slug>,<slug> → { unread: { [slug]: count } }: what others said in each
+    // house's chat since you last had it open, for the houses among them you're in (others are left out)
+    if (parts.length === 0 && method === "GET") {
+      const slugs = [...new Set((new URL(request.url).searchParams.get("unread") ?? "").split(",").filter(Boolean))].slice(0, 20);
+      const unread: Record<string, number> = {};
+      if (cookiePlayer)
+        for (const slug of slugs) {
+          const found = await get(slug);
+          const member = found?.members.find((m) => m.player === cookiePlayer);
+          if (found && member) unread[found.slug] = await chat.unread(found.slug, member.id);
+        }
+      return json({ unread });
+    }
+
     const house = parts[0] ? await get(parts[0]) : undefined;
     if (!house) return json({ error: "There's no house at that link." }, 404);
     const action = parts[1] ?? "";
