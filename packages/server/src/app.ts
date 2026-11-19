@@ -17,6 +17,8 @@ import { createDesigns } from "./designs.js";
 import { BLOCKED_MESSAGE, createModeration } from "./moderation.js";
 import type { Packs } from "./packs.js";
 import { createHouses } from "./houses.js";
+import { createParlorChat } from "./chat.js";
+import { createTableChat } from "./tablechat.js";
 import { createAi, type AiOptions } from "./ai.js";
 import { personaFor } from "@journey-to-code/rules";
 import { createBugs, REPORT_LIMIT, type BugOptions } from "./bugs.js";
@@ -42,17 +44,6 @@ export function createCardRoom(
   });
   const gameOfRoom = (room: RoomDoc<unknown>): GameId => gameOfOptions(room.info ?? room.summary);
 
-  /** The last few things said at a table, oldest first. */
-  async function recentChat(id: string) {
-    const chat = (await rooms.sync.documents()).get("chat", id) ?? {};
-    return Object.keys(chat)
-      .filter((k) => /^m\d+$/.test(k))
-      .sort()
-      .slice(-8)
-      .map((k) => chat[k] as { name: string; text: string })
-      .map((m) => ({ name: m.name, text: m.text }));
-  }
-
   /**
    * A remark in the words of the house's model, when the table's house has connected one; null for the
    * bot's own line. The model gets only what the whole table can see.
@@ -72,7 +63,7 @@ export function createCardRoom(
         character: personaFor(bot).blurb,
         players: room.seats.flatMap((s) => (s.name ? [{ name: s.name, bot: s.bot }] : [])),
         summary: room.summary,
-        chat: await recentChat(id),
+        chat: await tables.recent(id),
         gist: r.text || undefined,
         replyingTo: said,
       },
@@ -95,7 +86,7 @@ export function createCardRoom(
         const now = Date.now();
         if (!always && now - (lastWord.get(id) ?? 0) < 1200) return;
         lastWord.set(id, now);
-        void rooms.say(id, r.seat, text);
+        void tables.say(id, r.seat, text);
       }, r.delay);
       timer.unref?.();
       timers.add(timer);
@@ -124,6 +115,21 @@ export function createCardRoom(
   // One log for the whole parlor: the rooms' Sync server and the houses' chats' (below) both keep it,
   // each in collections of its own, so one database (and one backup) holds everything.
   const log = options.log ?? memoryLog({ keep: "latest" });
+  // Every conversation in the parlor (open.chat, chat.ts): the houses' and the tables', followed live
+  // by the pages at /_zb/chat. A Sync server of its own, since the rooms' decides only what the rooms
+  // kit knows; one for all of them, so a page needs one connection. Only the server writes them.
+  const chatSync = createSyncServer({ mount: "/_zb/chat", log, device: "chat", authorize: (from) => parlorChat.authorize(from), warn: false });
+  const parlorChat = createParlorChat(chatSync, { blockedWords: options.lobby?.blockedNames });
+  const tables = createTableChat(parlorChat, { room: (id) => rooms.room(id), holders: (id) => rooms.holders(id) }, {
+    // At a table that is or was open to everyone: muted players can't chat, and crude words are covered.
+    beforeSay: (id, seat, text) => lobby.beforeSay(id, seat, text),
+    // Someone spoke to the table: an answer is never dropped for being close to other talk.
+    onSay: (id, message) =>
+      void rooms
+        .room(id)
+        .then((room) => room && answer(id, message, room))
+        .catch((e) => console.error("talk", e)),
+  });
   const rooms = createRooms(bots ? { ...tableRoom, think: bots.think } : tableRoom, {
     log,
     botDelay: options.botDelay,
@@ -150,10 +156,8 @@ export function createCardRoom(
       if (talk.finished(after) && !talk.finished(before)) void houses.tableFinished(id, tableRoom.summary!(after)).catch((e) => console.error("tournament", e));
       if (talk.finished(after)) lobby.finished(id);
     },
-    // At a table that is or was open to everyone: muted players can't chat, and crude words are covered.
-    beforeSay: ({ id, seat, text }) => lobby.beforeSay(id, seat, text),
-    // Someone spoke to the table: an answer is never dropped for being close to other talk.
-    onSay: ({ id, message, room }) => void answer(id, message, room).catch((e) => console.error("talk", e)),
+    // A table's chat is the parlor's (tablechat.ts): the rooms kit's own takes nothing more.
+    beforeSay: () => ({ error: "Update the page to talk at this table." }),
   });
   // Mini Golf courses people make, and every version of them where the game finds it.
   const courses = createCourses(rooms.sync, { blockedWords: options.lobby?.blockedNames });
@@ -166,16 +170,13 @@ export function createCardRoom(
   // "Ask for a game" on the server's own page goes the way the app's does: past the block list, to the relay.
   const pages = createPages(catalogue, { tunables, asking: () => bugs.enabled, ask: async (request) => (await refusal(request)) ?? (await bugs.fetch(request)) });
   const designs = createDesigns(rooms.sync, { tables: rooms });
-  // The houses' chats (open.chat), followed live by their members' pages at /_zb/chat: a Sync server of their
-  // own, since the rooms' decides only what the rooms kit knows. Only the server writes them.
-  const houseSync = createSyncServer({ mount: "/_zb/chat", log, device: "chat", authorize: (from) => houses.mayFollow(from), warn: false });
-  const houses = createHouses(rooms, { push, ai, gameOn: catalogue.isOn, deckFor: designs.deckFor, chatSync: houseSync, blockedWords: options.lobby?.blockedNames });
-  const challenges = createChallenges(rooms, push, { gameOn: catalogue.isOn });
+  const houses = createHouses(rooms, { push, ai, gameOn: catalogue.isOn, deckFor: designs.deckFor, chat: parlorChat });
+  const challenges = createChallenges(rooms, push, { gameOn: catalogue.isOn, say: tables.say });
   // The same player on another device: the houses they are told about are the ones they belong to.
   const devices = createDevices({ housesOf: async (player) => (await houses.all()).filter((h) => h.members.some((m) => m.player === player)).map((h) => ({ slug: h.slug, name: h.name })) });
   const lobby = createLobby(rooms, { push, gameOn: catalogue.isOn, ...options.lobby });
   const spectate = createSpectate(rooms, catalogue, options.spectate);
-  const moderation = createModeration(rooms, designs, { token: options.adminToken, github, houses, catalogue, tunables, promote, backups: options.backups, packs: options.packs, bots: bots ? () => bots.stats() : undefined, courses });
+  const moderation = createModeration(rooms, designs, { tableChat: tables, token: options.adminToken, github, houses, catalogue, tunables, promote, backups: options.backups, packs: options.packs, bots: bots ? () => bots.stats() : undefined, courses });
   // "Report a problem": a player's report becomes an issue on GitHub.
   // With the parlor's own AI key, a report or request can be tidied before it's sent.
   const bugs = createBugs(rooms, { ...(ai.shared ? { tidy: (input) => ai.tidy(input) } : {}), ...options.bugs });
@@ -206,6 +207,8 @@ export function createCardRoom(
 
   /** Everything a blocked player may not do: sit, move, talk, make houses, challenges or designs. Reading is left alone. */
   const ACTS = ["/rooms", "/houses", "/_zb/chat", "/challenges", "/lobby", "/designs", "/courses", "/push", "/spectate", "/bugs", "/me"];
+  /** A table's chat (tablechat.ts): the parlor's, under the rooms kit's address. */
+  const TABLE_CHAT = /^\/rooms\/[^/]+\/(chat|say)$/;
   const under = (pathname: string, mounts: string[]) => mounts.some((m) => pathname === m || pathname.startsWith(`${m}/`));
   async function refusal(request: Request): Promise<Response | null> {
     if (request.method === "GET" || request.method === "HEAD" || !under(new URL(request.url).pathname, ACTS)) return null;
@@ -213,10 +216,12 @@ export function createCardRoom(
   }
   /** The routes that aren't the rooms kit's own. */
   const ours = async (request: Request) =>
-    (await refusal(request)) ?? (await github.fetch(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await designs.fetch(request)) ?? (await courses.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await tunables.fetch(request)) ?? (await pages.fetch(request)) ?? (await spectate.fetch(request)) ?? (await challenges.fetch(request)) ?? (await devices.fetch(request)) ?? (await lobby.fetch(request)) ?? (await houses.fetch(request));
+    (await refusal(request)) ?? (await github.fetch(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await designs.fetch(request)) ?? (await courses.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await tunables.fetch(request)) ?? (await pages.fetch(request)) ?? (await spectate.fetch(request)) ?? (await challenges.fetch(request)) ?? (await devices.fetch(request)) ?? (await lobby.fetch(request)) ?? (await tables.fetch(request)) ?? (await houses.fetch(request));
 
   return {
     rooms,
+    /** The tables' chats (tablechat.ts). */
+    tables,
     houses,
     lobby,
     designs,
@@ -258,7 +263,7 @@ export function createCardRoom(
         answered.headers.append("set-cookie", as.setCookie);
         return answered;
       }
-      return (await ours(request)) ?? (await houseSync.fetch(request)) ?? (await rooms.fetch(request));
+      return (await ours(request)) ?? (await chatSync.fetch(request)) ?? (await rooms.fetch(request));
     },
     /** For Node's http: answers and resolves true, or resolves false for anything else. */
     async handle(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
@@ -282,7 +287,7 @@ export function createCardRoom(
         req.headers.cookie = as.cookie;
         return this.handle(req, res);
       }
-      if (under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/tunables", "/spectate", "/bugs", "/me", ...PAGE_MOUNTS])) {
+      if (TABLE_CHAT.test(url.pathname) || under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/tunables", "/spectate", "/bugs", "/me", ...PAGE_MOUNTS])) {
         const chunks: Buffer[] = [];
         let size = 0;
         for await (const chunk of req) {
@@ -305,10 +310,10 @@ export function createCardRoom(
         // Only the server's own pages can pass: when they are off, /games is the app's address again.
         return response ? answer(response) : false;
       }
-      // The rooms kit and the houses' chats read the request themselves; a blocked player is turned away before they do.
+      // The rooms kit and the parlor's chat read the request themselves; a blocked player is turned away before they do.
       const blocked = await refusal(new Request(url, { method: req.method === "GET" || req.method === "HEAD" ? "GET" : "POST", headers }));
       if (blocked) return answer(blocked);
-      if (under(url.pathname, ["/_zb/chat"])) return houseSync.handle(req, res);
+      if (under(url.pathname, ["/_zb/chat"])) return chatSync.handle(req, res);
       return rooms.handle(req, res);
     },
     close: () => {

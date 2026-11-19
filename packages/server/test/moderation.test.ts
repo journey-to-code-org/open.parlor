@@ -131,7 +131,7 @@ describe("moderation", () => {
     expect((await rowdy(`/rooms/${going}/act`, { move: { type: "ready" } })).status).toBe(403);
   });
 
-  it("removes a chat message's words", async () => {
+  it("takes a chat message down", async () => {
     const { phone, admin } = setup();
     const grammi = phone();
     const rowdy = phone();
@@ -141,10 +141,10 @@ describe("moderation", () => {
     expect(chat).toHaveLength(1);
     expect(chat[0]).toMatchObject({ name: "Rowdy", text: "something unkind" });
 
-    expect((await admin(`/tables/${id}/redact`, { key: chat[0].key })).status).toBe(200);
-    expect((await admin(`/tables/${id}`)).body.chat[0]).toMatchObject({ name: "Rowdy", text: "(removed by a moderator)", removed: true });
-    expect((await admin(`/tables/${id}/redact`, { key: "m999999" })).status).toBe(404);
-    expect((await admin(`/tables/${id}/redact`, { key: "seats" })).status).toBe(404);
+    expect((await admin(`/tables/${id}/redact`, { id: chat[0].id })).status).toBe(200);
+    expect((await admin(`/tables/${id}`)).body.chat).toEqual([]);
+    expect((await admin("/log")).body.log[0]).toMatchObject({ action: "Removed a chat message", target: expect.stringContaining("Rowdy at"), note: "something unkind" });
+    for (const gone of [chat[0].id, 999999, "1", undefined]) expect((await admin(`/tables/${id}/redact`, { id: gone })).status).toBe(404);
   });
 
   it("blocks a player: out of their seats, and nothing they do lands until they're unblocked", async () => {

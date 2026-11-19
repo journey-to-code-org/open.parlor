@@ -48,7 +48,7 @@ app-root { display: block; min-height: 100dvh; }
 .chat { max-height: 14rem; overflow-y: auto; padding: 0.25rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); }
 .chat li { display: flex; align-items: center; gap: 0.5rem; padding: 0.2rem 0; font-size: 0.925rem; }
 .chat .line { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.chat .gone .line { color: var(--muted-foreground); font-style: italic; }
+.chat .notice .line { color: var(--muted-foreground); font-style: italic; }
 .chat:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .ask { overflow-wrap: anywhere; }
 

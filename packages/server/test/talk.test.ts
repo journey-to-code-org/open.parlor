@@ -6,6 +6,13 @@ const BASE = "http://test";
 let app: ReturnType<typeof createCardRoom> | null = null;
 afterEach(() => app?.close());
 
+/** What's been said at every table, as the tables' pages follow it live (the parlor's chat, `/_zb/chat`). */
+const tableChats = (changes: { collection: string; key: string; field: string; value: unknown }[]) => {
+  const latest = new Map<string, { by: string; text: string; bot?: true }[]>();
+  for (const c of changes) if (c.collection === "chats" && c.key.startsWith("table:") && c.field === "messages") latest.set(c.key, c.value as never);
+  return [...latest.values()].flat().map((m) => ({ seat: /^seat:\d+$/.test(m.by) ? Number(m.by.slice(5)) : -1, text: m.text, bot: m.bot === true }));
+};
+
 describe("bots at a real table", () => {
   it("say hello, answer when spoken to by name, and play on", async () => {
     app = createCardRoom({ log: memoryLog({ keep: "latest" }), botDelay: 50 });
@@ -23,9 +30,7 @@ describe("bots at a real table", () => {
     await send(`/rooms/${id}/say`, { text: "good luck Dot 🍀" });
     await new Promise((r) => setTimeout(r, 3000));
 
-    const chat = ((await send(`/_zb/sync/pull?since=0`)).changes as { collection: string; value: { seat: number; text: string; bot: boolean } }[])
-      .filter((c) => c.collection === "chat")
-      .map((c) => c.value);
+    const chat = tableChats((await send(`/_zb/chat/pull?since=0`)).changes);
     expect(chat[0]).toMatchObject({ seat: 0, text: "good luck Dot 🍀", bot: false });
     const dot = chat.filter((m) => m.seat === 2 && m.bot);
     expect(dot.length).toBeGreaterThan(0);

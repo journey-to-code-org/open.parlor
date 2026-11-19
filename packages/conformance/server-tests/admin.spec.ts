@@ -64,8 +64,9 @@ test("a table: who's there, what's been said, a message removed, and the table c
   await expect(dialog(page)).toContainText(`rude words ${t}`);
   await dialog(page).getByRole("button", { name: `Remove ${names[1]}’s message` }).click();
   await expect(page.getByText("Removed the message.")).toBeVisible();
-  await expect(dialog(page).locator("li.gone")).toContainText(`${names[1]} (removed by a moderator)`);
+  // Gone for everyone at the table; the rest of what was said stays.
   await expect(dialog(page)).not.toContainText(`rude words ${t}`);
+  await expect(dialog(page)).toContainText(`hello from ${t}`);
 
   await dialog(page).getByRole("button", { name: "Close this table" }).click();
   const asking = page.getByRole("dialog", { name: `Close Palace table ${id}?` });
