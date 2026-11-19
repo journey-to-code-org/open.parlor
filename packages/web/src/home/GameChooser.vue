@@ -188,7 +188,7 @@ function surprise() {
 /** Where each face's pips sit in a die's three-by-three (0 is the top left). */
 const PIPS: Record<number, number[]> = { 1: [4], 2: [2, 6], 3: [2, 4, 6], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
 const seatsLabel = (g: ChooserGame) => (g.screen && g.seats[0] === 1 ? (g.seats[1] === 1 ? "1 player" : `1–${g.seats[1]} players`) : g.teams ? "4 players · partners" : g.seats[0] === g.seats[1] ? (g.seats[0] === 1 ? "1 player" : `${g.seats[0]} players`) : `${g.seats[0]}–${g.seats[1]} players`);
-const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : `${props.games.length} games to play with family and friends, from cards and chess to dice, words, mini golf and arcade.`));
+const tagline = computed(() => `${props.games.length} games to play with family and friends, from cards and chess to dice, words, mini golf and arcade.`);
 /** Someone who has never played here: no name, no last game. They get the line about what it costs and a few games to start with. */
 const STARTED_KEY = "parlor.started";
 const startedBefore = (() => {
@@ -198,7 +198,10 @@ const startedBefore = (() => {
     return false;
   }
 })();
-const firstVisit = computed(() => !props.name && !props.last && !startedBefore);
+/** Someone who has never opened a game here, named or not: the intro may have just asked their name. */
+const firstVisit = computed(() => !props.last && !startedBefore);
+/** "Welcome back" for someone who has played here; someone just named by the intro is welcomed, and told what's here. */
+const hello = computed(() => (!props.name ? tagline.value : firstVisit.value ? `Welcome, ${props.name}. ${tagline.value}` : `Welcome back, ${props.name}.`));
 /** Open a game, and remember that this device has been in one: the next visit isn't a first one. */
 function pick(id: string) {
   try {
@@ -257,14 +260,14 @@ async function toShelf(id: string) {
       </ul>
     </section>
 
-    <section class="open" aria-label="Open tables">
+    <section v-if="open.length" class="open" aria-label="Open tables">
       <div class="games-head">
         <h2>Open tables</h2>
         <span class="open-ways">
           <button type="button" class="house" @click="emit('lobby')">{{ open.length ? `See all ${open.length}` : "See open tables" }}</button>
         </span>
       </div>
-      <ul v-if="open.length">
+      <ul>
         <li v-for="t in waitingAt" :key="t.id">
           <button type="button" class="waiting" @click="emit('lobby')">
             <span class="waiting-emoji" aria-hidden="true">{{ gameOf(t.game)?.emoji }}</span>
@@ -275,8 +278,13 @@ async function toShelf(id: string) {
           </button>
         </li>
       </ul>
-      <p v-else class="quiet">Nobody's waiting right now. Pick a game and choose “Find players” to be first at the table.</p>
     </section>
+    <!-- With nobody waiting, one quiet line, so the games come up sooner. -->
+    <p v-else class="open-quiet">
+      <span aria-hidden="true">🪑</span>
+      <span>No open tables right now. Pick a game and choose “Find players” to start one.</span>
+      <button type="button" class="tool-link" @click="emit('lobby')">See the lobby</button>
+    </p>
 
     <section class="games" aria-label="Games">
       <div class="games-head">
@@ -455,6 +463,14 @@ async function toShelf(id: string) {
       <button type="button" class="design" @click="offlineGames">📴 Offline games: choose what's kept on this device</button>
       <button v-if="canAsk" type="button" class="design" @click="emit('ask')">💡 Don't see your game? Ask for it</button>
     </p>
+    <!-- Who made it, and where its source is. -->
+    <footer class="credit">
+      <span><code aria-hidden="true">&lt;/&gt;</code> with <span class="heart" role="img" aria-label="love">♥&#xFE0E;</span> by <a href="https://mnix.dev" rel="author">mnix.dev</a></span>
+      <span class="dot" aria-hidden="true">·</span>
+      <a href="https://github.com/mnichols08">@mnichols08</a>
+      <span class="dot dot-before-repo" aria-hidden="true">·</span>
+      <a href="https://github.com/journey-to-code-org/open.parlor">Open source on GitHub</a>
+    </footer>
   </div>
 </template>
 
@@ -471,7 +487,7 @@ async function toShelf(id: string) {
 }
 .hero { text-align: center; padding-top: clamp(8px, 4vh, 48px); }
 .hero h1 { margin: 6px 0 0; font-size: clamp(2.8rem, 7vw, 5.2rem); letter-spacing: -0.02em; text-shadow: 0 4px 24px rgba(0, 0, 0, 0.35); }
-.hero p { margin: 8px 0 0; font-size: clamp(1.05rem, 1.6vw, 1.3rem); font-style: italic; color: #d6e6dc; }
+.hero p { margin: 8px 0 0; text-wrap: balance; font-size: clamp(1.05rem, 1.6vw, 1.3rem); font-style: italic; color: #d6e6dc; }
 .hero p.free { margin-top: 6px; font-style: normal; font-weight: 600; font-size: 0.98rem; color: var(--gold, #e8c46a); }
 .starters h2 { margin: 0; }
 .starters ul { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); }
@@ -523,7 +539,6 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .waiting-emoji { font-size: 1.6rem; line-height: 1; }
 .waiting-text { display: flex; flex-direction: column; min-width: 0; }
 .waiting-text span { color: #d6e6dc; font-size: 0.9rem; }
-.quiet { margin: 10px 0 0; color: #b9d0c2; }
 
 .games-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .open-ways { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -540,6 +555,17 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .subshelf { margin: 20px 0 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1rem, 1.4vw, 1.15rem); font-weight: 600; color: #e3efe7; }
 .subshelf .shelf-toggle { width: auto; padding-bottom: 0; }
 .shelf-tools { display: flex; justify-content: flex-end; margin-top: 10px; }
+.credit { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin: 28px 0 8px; padding-top: 18px; border-top: 1px solid rgba(255, 255, 255, 0.1); color: #b9d0c2; font-size: 0.9rem; }
+.credit code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--gold, #e8c46a); }
+.credit .heart { color: #ff7a7a; }
+.credit a { color: var(--cream, #fbf6ec); text-decoration: underline; text-decoration-color: rgba(232, 196, 106, 0.6); text-underline-offset: 3px; }
+.credit a:hover { text-decoration-color: var(--gold, #e8c46a); }
+.credit a:focus-visible { outline: 3px solid #ffd76a; outline-offset: 3px; border-radius: 4px; }
+.credit .dot { opacity: 0.5; }
+/* On a phone the repo link takes a line of its own, without a dot left hanging before it. */
+@media (max-width: 559px) { .credit .dot-before-repo { display: none; } .credit > a:last-child { flex-basis: 100%; text-align: center; } }
+.open-quiet { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 14px 0 0; padding: 10px 14px; border-radius: 12px; background: rgba(0, 0, 0, 0.16); color: #cfe2d6; font-size: 0.95rem; }
+.open-quiet .tool-link { margin-left: auto; }
 .tool-link { border: 0; background: none; padding: 2px 0; color: var(--gold, #e8c46a); font: inherit; font-size: 0.9rem; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .tool-link:focus-visible { outline: 3px solid #ffd76a; outline-offset: 3px; border-radius: 4px; }
 @media (prefers-reduced-motion: reduce) { .chev { transition: none; } }

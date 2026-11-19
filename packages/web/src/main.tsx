@@ -11,6 +11,7 @@ import { OfflineGames } from "./offline/OfflineGames";
 import { ReportProblem, useReports } from "./ReportProblem";
 import { applyDisplay } from "./display";
 import { DECK_KEY, applyDeck, savedDeck } from "@journey-to-code/decks";
+import { introduce, wantsIntro } from "./splash/splash";
 import "./styles.css";
 
 watchForErrors();
@@ -65,15 +66,22 @@ class Crashed extends Component<{ children: ReactNode }, { crashed: boolean }> {
   }
 }
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <Crashed>
-      <App />
-    </Crashed>
-    <OfflineNotice />
-    <FixedNotice />
-    <OfflineGames />
-    <ReportProblem />
-    <GameRequest />
-  </StrictMode>,
-);
+function start() {
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <Crashed>
+        <App />
+      </Crashed>
+      <OfflineNotice />
+      <FixedNotice />
+      <OfflineGames />
+      <ReportProblem />
+      <GameRequest />
+    </StrictMode>,
+  );
+}
+
+// Someone new to the parlor is introduced first and asked their name (splash/splash.ts), and the
+// front page is drawn after, so it greets them by it. Everyone else goes straight in.
+if (wantsIntro()) void introduce().then(start);
+else start();
