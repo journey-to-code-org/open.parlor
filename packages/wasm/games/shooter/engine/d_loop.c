@@ -268,6 +268,11 @@ static void D_Disconnected(void)
 // available.
 //
 
+// [open.wasm] The first tic this device makes its own player's command for. 0 for a device that
+// was playing from the start; for one that came late and joined, the tic it came in at: before
+// it, its player's place in a tic is the room's, like everyone else's (see D_NetJoin).
+static int local_from = 0;
+
 void D_ReceiveTic(ticcmd_t *ticcmds, boolean *players_mask)
 {
     int i;
@@ -282,7 +287,7 @@ void D_ReceiveTic(ticcmd_t *ticcmds, boolean *players_mask)
 
     for (i = 0; i < NET_MAXPLAYERS; ++i)
     {
-        if (!drone && i == localplayer)
+        if (!drone && i == localplayer && recvtic >= local_from)
         {
             // This is us.  Don't overwrite it.
         }
@@ -488,6 +493,29 @@ void D_StartNetGame(net_gamesettings_t *settings,
 	ticdup = settings->ticdup;
 	new_sync = settings->new_sync;
 #endif
+}
+
+// [open.wasm] A device that has been watching becomes player `slot` at tic `at`. Every device is
+// told by the room, which has made `at` a tic it hasn't sent yet and puts this player in the game
+// from it (the tic's "playing" bit: RunTic in d_net.c brings them in). This device makes its
+// player's commands from `at` on, as a device playing from the start does from 0.
+void D_NetJoin(int slot, int at)
+{
+    extern int consoleplayer;
+
+    if (!drone || slot < 0 || slot >= NET_MAXPLAYERS || at < recvtic)
+    {
+        return;
+    }
+
+    drone = false;
+    localplayer = slot;
+    local_playeringame[slot] = true;
+    local_from = at;
+    maketic = at;
+    // Whose commands G_BuildTiccmd makes. What is shown stays whoever was being watched until
+    // this player is in the level (D_NetJoined).
+    consoleplayer = slot;
 }
 
 // [open.wasm] How many tics have arrived from the other devices and not been run yet. The

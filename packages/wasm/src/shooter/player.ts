@@ -120,6 +120,10 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
     hosting: nearby.Hosting | null;
     /** Puts the lobby back on the card, as it last was. */
     lobbyAgain(): void;
+    /** Came to play: if the game was already on, this device watches until the room puts it in. */
+    wants: boolean;
+    /** Has told the room it has caught up (and so may be put in). */
+    asked: boolean;
   }
   let net: Net | null = null;
   const watching = () => !!net?.game && net.game.slot < 0;
@@ -274,13 +278,27 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
     const players = running.players();
     // A game being caught up on would play a minute's sounds in a second.
     audio.mute(behind > 35);
+    // Came to play a game that was already on: once it has caught up, the room can put it in.
+    if (game.slot < 0 && room.wants && !room.asked && behind <= 2 && running.tics() > 0) {
+      room.asked = true;
+      room.session.ready();
+    }
     if (game.slot < 0) {
       // Whoever is being watched may have left: the first player still in the game, then.
       if (!((players >> room.viewing) & 1)) room.viewing = Math.max(0, game.players.findIndex((_, slot) => (players >> slot) & 1));
       running.view(room.viewing);
     }
     const names = room.waiting.filter((slot) => (players >> slot) & 1).map((slot) => game.players[slot]?.name ?? "a player");
-    const status = behind > 70 ? "Catching up…" : names.length ? `Waiting for ${names.join(" and ")}…` : "";
+    const status =
+      behind > 70
+        ? room.wants
+          ? "Catching up, then you're in…"
+          : "Catching up…"
+        : names.length
+          ? `Waiting for ${names.join(" and ")}…`
+          : game.slot < 0 && room.wants && room.asked
+            ? "Four are playing: you're in when someone leaves."
+            : "";
     const shown = `${status}|${players}|${room.viewing}`;
     if (shown === room.shown) return;
     room.shown = shown;
@@ -296,7 +314,7 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
       });
     }
     if (status) parts.push(el("span", "shooter-status", status));
-    // The host of a game on the wifi can add people while it is on: they come to watch.
+    // The host of a game on the wifi can add people while it is on, to play or to watch.
     const hosting = room.hosting;
     if (hosting) parts.push(button({ label: "Add someone", run: () => nearby.invite(card, location.href, hosting.attach, () => (card.hidden = true)) }, false));
     parts.push(button({ label: "Leave", run: () => (put(), leave(), home()) }, false));
@@ -416,10 +434,13 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
       const invite = hosting ? () => nearby.invite(card, location.href, hosting.attach, lobbyAgain) : undefined;
       showLobby(card, { code, link, invite, lobby: mine.lobby, session: mine.session, levels: options.levels, leave: () => (leave(), home()) });
     };
-    const mine: Net = (net = { code, session: null as unknown as Session, lobby: null, game: null, early: [], waiting: [], viewing: 0, shown: "", hosting, lobbyAgain });
+    const mine: Net = (net = { code, session: null as unknown as Session, lobby: null, game: null, early: [], waiting: [], viewing: 0, shown: "", hosting, lobbyAgain, wants: !watch, asked: false });
     mine.session = openSession(transport, name, watch, {
       lobby(lobby) {
         mine.lobby = lobby;
+        // Before the start, playing or watching is this device's own choice in the lobby; only
+        // someone who comes to a game already on, to play, waits to be put in.
+        if (!lobby.playing) mine.wants = !lobby.members.find((member) => member.id === lobby.you)?.watching;
         // Once the game is on, the lobby is only news of who has come and gone. While the host is
         // adding someone, the card is theirs: the lobby comes back when they are done.
         if (!card.dataset.nearby) lobbyAgain();
@@ -431,6 +452,19 @@ export function mountShooter(root: HTMLElement, options: ShooterOptions): Shoote
       },
       tics: (tics) => (mine.early ? mine.early.push(...tics) : tics.forEach((tic) => engine?.tic(tic))),
       waiting: (slots) => (mine.waiting = slots),
+      joined(slot, at, member) {
+        const game = mine.game;
+        if (net !== mine || !game) return;
+        // Their name, for "Waiting for…" and a watcher's choice of eyes.
+        game.players[slot] = member;
+        mine.shown = "";
+        if (member.id !== mine.lobby?.you || game.slot >= 0) return;
+        // This device: from tic `at`, its player's commands are its own.
+        game.slot = slot;
+        mine.wants = false;
+        engine?.join(slot, at);
+        fitPad();
+      },
       closed(why) {
         if (net !== mine) return;
         net = null;

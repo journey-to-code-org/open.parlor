@@ -37,6 +37,8 @@
 #include "deh_main.h"
 
 #include "d_loop.h"
+#include "st_stuff.h"
+#include "hu_stuff.h"
 
 ticcmd_t *netcmds;
 
@@ -68,6 +70,39 @@ static void PlayerQuitGame(player_t *player)
     }
 }
 
+// [open.wasm] A player comes into a game that is on: someone who arrived after it started, or
+// into the place of someone who left. They are in the game from this tic, on every device at
+// once, and spawn as a player does who has died in a game with others: at their start, or at
+// another player's if theirs is taken (G_DoReborn).
+static void PlayerJoinGame(player_t *player)
+{
+    static char joinmsg[80];
+    unsigned int player_num = player - players;
+
+    M_snprintf(joinmsg, sizeof(joinmsg), "Player %d joined the game", player_num + 1);
+
+    playeringame[player_num] = true;
+    player->playerstate = PST_REBORN;
+    players[consoleplayer].message = joinmsg;
+}
+
+// [open.wasm] The player this device became mid-game (D_NetJoin), once they are in the level:
+// from then on the picture, the status bar and the messages are theirs.
+int web_join_view = -1;
+
+static void D_NetJoined(void)
+{
+    if (web_join_view < 0 || gamestate != GS_LEVEL || !playeringame[web_join_view] || !players[web_join_view].mo)
+    {
+        return;
+    }
+
+    consoleplayer = displayplayer = web_join_view;
+    web_join_view = -1;
+    ST_Start();
+    HU_Start();
+}
+
 static void RunTic(ticcmd_t *cmds, boolean *ingame)
 {
     extern boolean advancedemo;
@@ -81,6 +116,11 @@ static void RunTic(ticcmd_t *cmds, boolean *ingame)
         {
             PlayerQuitGame(&players[i]);
         }
+        // [open.wasm] And for players coming in.
+        else if (!demoplayback && !playeringame[i] && ingame[i])
+        {
+            PlayerJoinGame(&players[i]);
+        }
     }
 
     netcmds = cmds;
@@ -92,6 +132,7 @@ static void RunTic(ticcmd_t *cmds, boolean *ingame)
         D_DoAdvanceDemo ();
 
     G_Ticker ();
+    D_NetJoined ();
 }
 
 static loop_interface_t doom_loop_interface = {

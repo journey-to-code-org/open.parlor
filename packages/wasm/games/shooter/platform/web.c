@@ -247,6 +247,17 @@ EXPORT(web_net_tic) void web_net_tic(const ticcmd_t *commands, int playing)
 }
 
 // How many tics have been given and not run yet. There is room for BACKUPTICS (128).
+// [open.wasm] A device that has been watching becomes player `slot` at tic `at` (d_loop.c): the
+// room has said so, and has put them in the game from that tic for everyone.
+void D_NetJoin(int slot, int at);
+extern int web_join_view;
+
+EXPORT(web_net_join) void web_net_join(int slot, int at)
+{
+    D_NetJoin(slot, at);
+    web_join_view = slot;
+}
+
 EXPORT(web_net_backlog) int web_net_backlog(void)
 {
     return D_NetBacklog();

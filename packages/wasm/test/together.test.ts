@@ -24,6 +24,8 @@ interface Device {
   picture: Uint8ClampedArray;
   /** Cuts the connection, as a closed tab does. */
   unplug(): void;
+  /** Came to play: says it has caught up once it has, if the game was already on. */
+  wants: boolean;
 }
 
 function table(options: { dropAfter?: number } = {}) {
@@ -41,11 +43,18 @@ function table(options: { dropAfter?: number } = {}) {
     // The two ends of a connection. What is sent arrives at once, as a copy, like bytes off a wire.
     const transport: Transport = { send: (sent) => seat.receive(typeof sent === "string" ? sent : sent.slice()), close: () => seat.leave(), onmessage: null, onclose: null };
     const seat = room.join({ send: (sent) => transport.onmessage?.(typeof sent === "string" ? sent : sent.slice()), close: () => transport.onclose?.() });
-    const device: Device = { name, engine: null, lobby: null, game: null, waiting: [], closed: null, picture: new Uint8ClampedArray(0), session: null as unknown as Session, unplug: () => (seat.leave(), transport.onclose?.()) };
+    const device: Device = { name, engine: null, lobby: null, game: null, waiting: [], closed: null, picture: new Uint8ClampedArray(0), wants: !watch, session: null as unknown as Session, unplug: () => (seat.leave(), transport.onclose?.()) };
     /** Tics that arrive while the engine is still starting. */
     const early: Parameters<Engine["tic"]>[0][] = [];
     device.session = openSession(transport, name, watch, {
       lobby: (lobby) => (device.lobby = lobby),
+      // As the page does: someone who came late to play is put in from the tic the room names.
+      joined(slot, at, member) {
+        if (device.game) device.game.players[slot] = member;
+        if (member.id !== device.lobby?.you || !device.game || device.game.slot >= 0) return;
+        device.game.slot = slot;
+        device.engine?.join(slot, at);
+      },
       waiting: (slots) => (device.waiting = slots),
       closed: (reason) => (device.closed = reason),
       tics: (tics) => (device.engine ? tics.forEach(device.engine.tic) : early.push(...tics)),
@@ -83,6 +92,11 @@ function table(options: { dropAfter?: number } = {}) {
         clock.now += TIC;
         for (const device of devices) {
           if (!device.engine?.frame()) continue;
+          // Came late to play, and caught up: as the page says it.
+          if (device.wants && device.game?.slot === -1 && device.engine.behind() <= 2 && device.engine.tics() > 0) {
+            device.wants = false;
+            device.session.ready();
+          }
           if (!history.has(device)) history.set(device, new Map());
           history.get(device)!.set(device.engine.tics(), device.engine.checksum());
         }
@@ -219,6 +233,65 @@ describe("a game across devices", () => {
     ben.engine!.analog(0, 0, 0);
     t.run(30);
     expect(t.agreement()).toMatchObject({ devices: 3, same: true });
+  });
+
+  test("someone who comes late to play is put in once caught up, plays, and every device has the same game", async () => {
+    const t = table();
+    const ada = t.connect("Ada");
+    const cy = t.connect("Cy", true);
+    ada.session.settings(settings());
+    ada.session.start();
+    await t.started();
+    t.run(40);
+    ada.engine!.analog(50, 0, 300);
+    t.run(400);
+
+    // Ben opens the link and asks to play: he watches while he runs through the game so far.
+    const ben = t.connect("Ben");
+    await t.started();
+    expect(ben.game?.slot).toBe(-1);
+    expect(ada.engine!.players()).toBe(0b01);
+    t.run(20);
+    // Caught up, he said so; the room put him in a second ahead, as player 2.
+    expect(ben.game?.slot).toBe(1);
+    expect(ada.game?.players[1]?.name).toBe("Ben");
+    expect(cy.game?.players[1]?.name).toBe("Ben");
+    t.run(60);
+    for (const device of [ada, ben, cy]) expect(device.engine!.players()).toBe(0b11);
+
+    // And he plays: what he does is in everyone's game, and the games stay one game.
+    const still = ben.picture.slice();
+    ben.engine!.analog(50, 0, -500);
+    t.run(120);
+    expect(sameView(still, ben.picture)).toBe(false);
+    ada.engine!.analog(0, 0, 0);
+    ben.engine!.analog(0, 0, 0);
+    t.run(30);
+    expect(ben.engine!.stopped).toBeNull();
+    expect(t.agreement()).toMatchObject({ devices: 3, same: true });
+    expect(t.agreement().compared).toBeGreaterThan(200);
+  });
+
+  test("someone who comes late to play takes the place of a player who left", async () => {
+    const t = table();
+    const ada = t.connect("Ada");
+    const ben = t.connect("Ben");
+    ada.session.settings(settings({ mode: "deathmatch", monsters: false }));
+    ada.session.start();
+    await t.started();
+    t.run(80);
+    ben.unplug();
+    t.run(40);
+    expect(ada.engine!.players()).toBe(0b01);
+    const dee = t.connect("Dee");
+    await t.started();
+    t.run(80);
+    expect(dee.game?.slot).toBe(1);
+    expect(ada.engine!.players()).toBe(0b11);
+    dee.engine!.analog(40, 0, 200);
+    t.run(100);
+    expect(dee.engine!.stopped).toBeNull();
+    expect(t.agreement()).toMatchObject({ same: true });
   });
 
   test("a player who leaves is out of the game, and it goes on for the other", async () => {

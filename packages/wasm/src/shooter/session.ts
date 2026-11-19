@@ -38,6 +38,8 @@ export interface SessionEvents {
   tics(tics: Tic[]): void;
   /** Whose commands the game is held up for, by player; none when it is running. */
   waiting?(slots: number[]): void;
+  /** Someone who came late is a player from tic `at`, in place `slot`: maybe this device. */
+  joined?(slot: number, at: number, member: Member): void;
   /** The room is done with this device, or the connection has gone: there will be no more tics. */
   closed(reason: string): void;
 }
@@ -49,6 +51,8 @@ export interface Session {
   watch(watch: boolean): void;
   /** The host starts the game. */
   start(): void;
+  /** Came late to play, and has run through the game so far: put me in. */
+  ready(): void;
   /** This device's command for a tic. */
   command(tic: number, command: Uint8Array): void;
   /** Leave. */
@@ -81,6 +85,7 @@ export function openSession(transport: Transport, name: string, watch: boolean, 
     if (message.t === "lobby") events.lobby?.(message);
     else if (message.t === "start") events.start(message);
     else if (message.t === "waiting") events.waiting?.(message.slots);
+    else if (message.t === "joined") events.joined?.(message.slot, message.at, message.member);
     else if (message.t === "closed") closed(message.reason);
   };
   say({ t: "hello", name, watch });
@@ -89,6 +94,7 @@ export function openSession(transport: Transport, name: string, watch: boolean, 
     settings: (settings) => void say({ t: "settings", settings }),
     watch: (to) => void say({ t: "watch", watch: to }),
     start: () => void say({ t: "start" }),
+    ready: () => void say({ t: "ready" }),
     command: (tic, command) => open && transport.send(encodeCommand(tic, command)),
     close: () => closed("You left the game."),
   };
