@@ -27,6 +27,7 @@ import {
   type GameId,
 } from "../storage";
 import { PalaceRulesFields, PalaceRulesSheet } from "./PalaceRules";
+import { palaceDeckNote } from "./decks";
 
 interface Props {
   /** Back to the open.parlor's front page, with every game. */
@@ -57,6 +58,7 @@ export function PalaceSetup({
   const all = useMemo(() => [...PALACE_PRESETS, ...saved], [saved]);
   const options = all.some((p) => p.id === rules.id) ? all : [rules, ...all];
   const errors = validatePalaceRules(rules);
+  const deckNote = palaceDeckNote(rules, seats);
   const isSaved = saved.some((p) => p.id === rules.id);
   const remember = () => {
     saveName(name);
@@ -133,6 +135,7 @@ export function PalaceSetup({
             options={[2, 3, 4, 5, 6].map((n) => [String(n), `${n} players`])}
             onChange={(v) => setSeats(Number(v))}
           />
+          {deckNote && <p className="fine deck-note">{deckNote}</p>}
         </>
       }
       table={<OpponentSettings />}

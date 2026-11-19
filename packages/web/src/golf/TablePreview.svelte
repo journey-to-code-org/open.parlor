@@ -4,6 +4,17 @@
   as they stood when it was struck. The very same painting as at a table (sport/draw.ts), so what
   the maker sees is what the players get.
 -->
+<script lang="ts" module>
+  // Counted for the page, so no two tables it has drawn share a key.
+  const versions = new WeakMap<object, number>();
+  let drawn = 0;
+  function versionOf(table: object): number {
+    let v = versions.get(table);
+    if (v === undefined) versions.set(table, (v = ++drawn));
+    return v;
+  }
+</script>
+
 <script lang="ts">
   import { BALL_RADIUS, type SportBody, type SportShot, type SportView } from "@journey-to-code/games";
   import { frames, type Frame, type SimResult } from "@journey-to-code/physics";
@@ -12,7 +23,7 @@
   import { TEE_BALL } from "./table";
 
   let {
-    table,
+    table: given,
     label,
     flat = false,
     class: className = "hole-preview",
@@ -26,6 +37,13 @@
     replay?: SportShot[] | null;
     onreplayend?: () => void;
   } = $props();
+
+  /**
+   * The table drawn, under a key of its own. The scene painter keeps a painted course per table key,
+   * and an editor's hole keeps one id however it's painted, so a changed hole drew as it was before
+   * (#277, #295). Each table handed in is a new object when anything on it changes: it gets a new key.
+   */
+  const table = $derived({ ...given, key: `${given.key}#${versionOf(given)}` });
 
   let canvas = $state<HTMLCanvasElement>()!;
 
