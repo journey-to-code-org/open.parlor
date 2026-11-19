@@ -121,13 +121,15 @@ def given(name, rgba, held=False, dx=0, dy=0, middle=False):
 # of the one he gave, and made the size of the screen). It is one picture, so working the lever is the rifle
 # coming back and down and up again.
 RIFLE = np.array(Image.open(here / "given" / "rifle-held.png").convert("RGBA"))
-for name, (dx, dy) in {"SHTGA0": (0, 0), "SHTGB0": (2, 7), "SHTGC0": (5, 15), "SHTGD0": (7, 20)}.items():
+# The engine draws what is held 16 higher than its place on a full screen once the status bar is on, so each is set lower by enough
+# for its bottom edge to be behind the bar and not in the air above it.
+for name, (dx, dy) in {"SHTGA0": (0, 12), "SHTGB0": (2, 19), "SHTGC0": (5, 27), "SHTGD0": (7, 32)}.items():
     given(name, RIFLE, held=True, dx=dx, dy=dy)
 
 # The flash at its muzzle, small and then large.
 for name, size in (("SHTFA0", 9), ("SHTFB0", 15)):
     image, draw = screen()
-    cx, cy = 160, 100
+    cx, cy = 160, 112
     draw.polygon([(cx, cy - size * 2), (cx + size // 2, cy - size // 2), (cx + size * 2, cy), (cx + size // 2, cy + size // 2), (cx, cy + size), (cx - size // 2, cy + size // 2), (cx - size * 2, cy), (cx - size // 2, cy - size // 2)], fill=(255, 190, 40))
     draw.ellipse((cx - size // 2, cy - size // 2, cx + size // 2, cy + size // 2), fill=(255, 250, 210))
     keep(name, image, held=True)
@@ -148,10 +150,10 @@ keep("PISFA0", image, held=True)
 # A jug of washer fluid with a pump on it, in the chaingun's place: Mikey's pictures (given/sprayer-*.png). It shakes as it
 # runs, and the spray is its flash.
 SPRAYER, SPRAY = (np.array(Image.open(here / "given" / f"sprayer-{part}.png").convert("RGBA")) for part in ("hands", "spray"))
-given("CHGGA0", SPRAYER, held=True)
-given("CHGGB0", SPRAYER, held=True, dx=1, dy=2)
-given("CHGFA0", SPRAY, held=True)
-given("CHGFB0", SPRAY[:, ::-1], held=True, dx=1, dy=2)
+given("CHGGA0", SPRAYER, held=True, dy=5)
+given("CHGGB0", SPRAYER, held=True, dx=1, dy=7)
+given("CHGFA0", SPRAY, held=True, dy=5)
+given("CHGFB0", SPRAY[:, ::-1], held=True, dx=1, dy=7)
 
 def small(width, height):
     image = Image.new("RGBA", (width + 2, height + 2), (0, 0, 0, 0))
@@ -368,10 +370,10 @@ def moved(rgba, dx, dy):
 
 # The "hammer", in the fist's place: a tape measure. Held ready, brought up, swung with its blade out, and back.
 READY, UP, SWING = picture("tape-ready"), picture("tape-up"), picture("tape-swing")
-given("PUNGA0", placed(READY, 268, 182), held=True)
-given("PUNGB0", placed(UP, 262, 168), held=True)
-given("PUNGC0", placed(SWING, 236, 172), held=True)
-given("PUNGD0", placed(UP, 266, 176), held=True)
+given("PUNGA0", placed(READY, 268, 190), held=True)
+given("PUNGB0", placed(UP, 262, 176), held=True)
+given("PUNGC0", placed(SWING, 236, 180), held=True)
+given("PUNGD0", placed(UP, 266, 184), held=True)
 
 # A torch and a can of brake cleaner, in the chainsaw's place: lit and waiting (it flickers), and the can let go into the flame.
 HANDS, FLAME = picture("torch-hands"), picture("torch-flame")
@@ -405,10 +407,10 @@ for letter, r in zip("BCD", (12, 20, 26)):
 
 # A jump starter, in the plasma gun's place: a clamp in each hand, and the arc between them. Its box on the floor; what it throws; charge to pick up.
 CLAMPS, ARC = picture("jump-hands"), picture("jump-arc")
-given("PLSGA0", CLAMPS, held=True)
-given("PLSGB0", CLAMPS, held=True, dy=4)
-given("PLSFA0", ARC, held=True)
-given("PLSFB0", ARC[:, ::-1], held=True)
+given("PLSGA0", CLAMPS, held=True, dy=8)
+given("PLSGB0", CLAMPS, held=True, dy=12)
+given("PLSFA0", ARC, held=True, dy=8)
+given("PLSFB0", ARC[:, ::-1], held=True, dy=8)
 given("PLASA0", picture("jump-floor"))
 for letter, turn in (("A", 0), ("B", 1)):
     image, draw = small(16, 16)
