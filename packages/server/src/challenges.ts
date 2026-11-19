@@ -39,7 +39,6 @@ interface Rooms {
   create(options: TableOptions, settings?: unknown): Promise<string>;
   seatPlayer(id: string, seat: number, player: string, name: string): Promise<void>;
   seatBot(id: string, seat: number, name: string): Promise<void>;
-  say(id: string, seat: number, text: string): Promise<unknown>;
 }
 
 const LETTERS = "abcdefghjkmnpqrstuvwxyz23456789";
@@ -52,7 +51,7 @@ const clean = (value: unknown, max: number) => String(value ?? "").replace(/\s+/
 export const LINK_LIMIT_PER_HOUR = 6;
 const SENDER_GAP_MS = 60_000;
 
-export function createChallenges(rooms: Rooms, push: Push, { mount = "/challenges", gameOn = () => true }: { mount?: string; /** Whether new tables of a game may be opened (the parlor's catalogue). */ gameOn?: (game: GameId) => boolean | Promise<boolean> } = {}) {
+export function createChallenges(rooms: Rooms, push: Push, { mount = "/challenges", gameOn = () => true, say }: { mount?: string; /** Whether new tables of a game may be opened (the parlor's catalogue). */ gameOn?: (game: GameId) => boolean | Promise<boolean>; /** Words in a table's chat from a seat (tablechat.ts): the challenger's message. */ say?: (id: string, seat: number, text: string) => Promise<unknown> } = {}) {
   const docs = rooms.sync.documents();
   const lastSent = new Map<string, number>();
 
@@ -169,7 +168,7 @@ export function createChallenges(rooms: Rooms, push: Push, { mount = "/challenge
       // The rest of the seats get computer players (a partner each in a team game).
       const bots = pickPersonas(seats - 2, mulberry32(now >>> 0));
       for (let seat = 2; seat < seats; seat++) await rooms.seatBot(id, seat, bots[seat - 2]!.name);
-      if (message) await rooms.say(id, 1, message);
+      if (message) await say?.(id, 1, message);
 
       const delivered = await push.notify(c.player, {
         title: `${name} challenged you to ${gameName(game)}! ${GAMES.find((g) => g.id === game)?.emoji ?? "🃏"}`,

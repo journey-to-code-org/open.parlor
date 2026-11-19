@@ -12,7 +12,8 @@
 //   moderation/log    server only: what the admin did, one field per action
 import { MOST_BYTES, type Packs } from "./packs.js";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { playerOf, type ChatMessage, type RoomDoc } from "@journey-to-code/rooms/server";
+import { playerOf, type RoomDoc } from "@journey-to-code/rooms/server";
+import type { TableChat } from "./tablechat.js";
 import type { Catalogue } from "./catalogue.js";
 import type { Tunables } from "./tunables.js";
 import { PromoteError, type Promote } from "./promote.js";
@@ -33,12 +34,10 @@ interface Rooms {
   };
   closeTable(id: string, reason: string): Promise<boolean>;
   removePlayer(id: string, seat: number, bot?: string): Promise<string | null>;
-  redact(id: string, key: string): Promise<boolean>;
-  /** Hold a game, let it go on, play a seat's turn at a held one, and tell the table (see @journey-to-code/rooms). */
+  /** Hold a game, let it go on, and play a seat's turn at a held one (see @journey-to-code/rooms). */
   pause(id: string, reason?: string): Promise<string | null>;
   resume(id: string): Promise<string | null>;
   botMoveFor(id: string, seat: number): Promise<string | null>;
-  announce(id: string, text: string, from?: string): Promise<unknown>;
 }
 
 /** The parts of the houses module moderation uses. */
@@ -82,7 +81,7 @@ const finished = (summary: unknown) => {
 /** How many wrong tokens a minute before everyone waits. */
 const WRONG_TOKENS_PER_MINUTE = 20;
 
-export function createModeration(rooms: Rooms, designs: Designs, { token, github, houses, catalogue, tunables, promote, backups, bots, courses, packs, mount = "/moderation", now = () => Date.now() }: { token?: string; /** Who may sign in with GitHub instead of the token (see github-login.ts). */ github?: Pick<GithubLogin, "enabled" | "valid">; houses?: Houses; catalogue?: Catalogue; /** The numbers a game lets its host change (see tunables.ts). */ tunables?: Tunables; /** Opens a pull request for them (see promote.ts). */ promote?: Promote; /** The pack Road to the Shootout plays, when the host has published one (see packs.ts). */ packs?: Packs; /** Mini Golf courses people make, to take out of the gallery. */ courses?: Courses; /** Copies of the database, when the parlor keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
+export function createModeration(rooms: Rooms, designs: Designs, { tableChat, token, github, houses, catalogue, tunables, promote, backups, bots, courses, packs, mount = "/moderation", now = () => Date.now() }: { /** The tables' chats (tablechat.ts): what's said at each, taking a message down, and telling a table. */ tableChat?: Pick<TableChat, "messages" | "redact" | "announce">; token?: string; /** Who may sign in with GitHub instead of the token (see github-login.ts). */ github?: Pick<GithubLogin, "enabled" | "valid">; houses?: Houses; catalogue?: Catalogue; /** The numbers a game lets its host change (see tunables.ts). */ tunables?: Tunables; /** Opens a pull request for them (see promote.ts). */ promote?: Promote; /** The pack Road to the Shootout plays, when the host has published one (see packs.ts). */ packs?: Packs; /** Mini Golf courses people make, to take out of the gallery. */ courses?: Courses; /** Copies of the database, when the parlor keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
   const secret = token?.trim() ? digest(token.trim()) : null;
   const docs = rooms.sync.documents();
   let wrong: number[] = [];
@@ -104,6 +103,7 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, github
   async function tables() {
     const view = await docs;
     const blocked = await bans();
+    const said = new Map(await Promise.all(view.all("rooms").map(async ({ key }) => [key, tableChat ? (await tableChat.messages(key)).length : 0] as const)));
     const houseOf = new Map<string, { slug: string; name: string }>();
     for (const house of view.all("houses") as unknown as { slug: string; name: string; tables?: { id: string }[] }[])
       for (const t of house.tables ?? []) houseOf.set(t.id, { slug: house.slug, name: house.name });
@@ -111,7 +111,6 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, github
       const room = doc as unknown as RoomDoc<unknown> & { key: string };
       const game = view.get("games", room.key) as { options?: unknown; holders?: (string | null)[] } | undefined;
       const id = gameOfOptions(game?.options ?? room.info ?? room.summary);
-      const chat = view.get("chat", room.key) ?? {};
       return {
         id: room.key,
         game: id,
@@ -123,7 +122,7 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, github
         finished: finished(room.summary),
         closed: room.closed ?? "",
         paused: room.paused ? { at: room.paused.at, reason: room.paused.reason } : null,
-        messages: Object.keys(chat).filter((k) => /^m\d+$/.test(k)).length,
+        messages: said.get(room.key) ?? 0,
         seats: (room.seats ?? []).map((seat, i) => {
           const holder = game?.holders?.[i] ?? null;
           const ref = holder ? playerRef(holder) : null;
@@ -262,11 +261,7 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, github
       const name = `${table.gameName} table ${table.id}`;
       // GET /moderation/tables/:id → the table and its chat
       if (!action && method === "GET") {
-        const chat = Object.entries(view.get("chat", id) ?? {})
-          .filter(([k]) => /^m\d+$/.test(k))
-          .sort(([a], [b]) => (a < b ? -1 : 1))
-          .map(([key, m]) => ({ key, ...(m as ChatMessage) }));
-        return json({ table: tableShown(table), chat });
+        return json({ table: tableShown(table), chat: (await tableChat?.messages(id)) ?? [] });
       }
       if (method !== "POST") return json({ error: "Not found" }, 404);
       // POST /moderation/tables/:id/pause { reason } → nobody can move, no computer player plays and no clock runs; the table is told
@@ -274,7 +269,7 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, github
         const reason = clean(input.reason, 200);
         const problem = await rooms.pause(id, reason);
         if (problem) return json({ error: problem }, 409);
-        await rooms.announce(id, reason ? `The host paused the game: ${reason}` : "The host paused the game.");
+        await tableChat?.announce(id, reason ? `The host paused the game: ${reason}` : "The host paused the game.");
         await record("Paused a table", name, reason);
         return json({ ok: true });
       }
@@ -282,7 +277,7 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, github
       if (action === "resume") {
         const problem = await rooms.resume(id);
         if (problem) return json({ error: problem }, 409);
-        await rooms.announce(id, "The host resumed the game.");
+        await tableChat?.announce(id, "The host resumed the game.");
         await record("Resumed a table", name);
         return json({ ok: true });
       }
@@ -292,7 +287,7 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, github
         const who = table.seats[seat]?.name ?? `Seat ${seat + 1}`;
         const problem = await rooms.botMoveFor(id, seat);
         if (problem) return json({ error: problem }, 409);
-        await rooms.announce(id, `The host played a turn for ${who}.`);
+        await tableChat?.announce(id, `The host played a turn for ${who}.`);
         await record("Played a turn for a seat", `${who} at ${name}`);
         return json({ ok: true });
       }
@@ -313,12 +308,11 @@ export function createModeration(rooms: Rooms, designs: Designs, { token, github
         await record("Removed a player from a table", `${who} at ${name}`, clean(input.reason, 200));
         return json({ ok: true });
       }
-      // POST /moderation/tables/:id/redact { key } → a chat message's words are gone
+      // POST /moderation/tables/:id/redact { id } → a chat message is gone, for everyone at the table
       if (action === "redact") {
-        const key = String(input.key ?? "");
-        const message = (view.get("chat", id) ?? {})[key] as ChatMessage | undefined;
-        if (!(await rooms.redact(id, key))) return json({ error: "There's no such message." }, 404);
-        await record("Removed a chat message", `${message?.name ?? "Someone"} at ${name}`, clean(message?.text, 120));
+        const message = tableChat && Number.isInteger(input.id) ? await tableChat.redact(id, input.id as number) : null;
+        if (!message) return json({ error: "There's no such message." }, 404);
+        await record("Removed a chat message", `${message.name || "Someone"} at ${name}`, clean(message.text, 120));
         return json({ ok: true });
       }
       return json({ error: "Not found" }, 404);

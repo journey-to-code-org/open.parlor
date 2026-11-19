@@ -43,8 +43,13 @@ function setup(fake: typeof fetch, shared?: { key: string; daily?: number }) {
   return { app, phone, log };
 }
 
-const chatOf = async (send: (path: string) => Promise<{ body: any }>) =>
-  ((await send(`/_zb/sync/pull?since=0`)).body.changes as { collection: string; value: { seat: number; text: string; bot: boolean } }[]).filter((c) => c.collection === "chat").map((c) => c.value);
+/** What's been said at every table, as the tables' pages follow it live (the parlor's chat, `/_zb/chat`). */
+const tableChats = (changes: { collection: string; key: string; field: string; value: unknown }[]) => {
+  const latest = new Map<string, { by: string; text: string; bot?: true }[]>();
+  for (const c of changes) if (c.collection === "chats" && c.key.startsWith("table:") && c.field === "messages") latest.set(c.key, c.value as never);
+  return [...latest.values()].flat().map((m) => ({ seat: /^seat:\d+$/.test(m.by) ? Number(m.by.slice(5)) : -1, text: m.text, bot: m.bot === true }));
+};
+const chatOf = async (send: (path: string) => Promise<{ body: any }>) => tableChats((await send(`/_zb/chat/pull?since=0`)).body.changes);
 
 describe("a house's AI connection", () => {
   it("an owner connects a key; it's tried first, sealed, and never sent back", async () => {

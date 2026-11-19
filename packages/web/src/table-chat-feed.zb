@@ -1,0 +1,28 @@
+<!--
+  A table's chat as a live document, for the table's page (TableChatFeed.tsx). open.chat's
+  <chat-feed> without its presence: nobody is buzzed about a table or counts what they haven't
+  read there, so the table's page has no one to tell it's looking. It also keeps a table's page
+  from sending presence through the table's own Sync connection (`/_zb/sync`), which refuses it:
+  on Zubra Sync 5.23, a page's presence goes through every connection it has.
+
+  `'use collection chats'` makes the `let`s the fields of `chats/<doc>`, which the parlor's server
+  writes and open.chat's `openChat()` brings to the page as it changes.
+  @prop {string} doc - The table's room: `table:ab12cd`.
+  @fires {{ messages: unknown[] }} chatchange - What's been said changed; `detail` is the messages.
+-->
+<script>
+  'use collection chats'
+  import { effect, emit } from '@zubra/runtime'
+
+  // The document, as the server writes it. Never assigned here: only the server writes it.
+  let messages = []
+
+  // A plain copy out, read whole so a change anywhere inside is a change.
+  effect(() => {
+    emit('chatchange', { messages: JSON.parse(JSON.stringify(messages)) })
+  })
+</script>
+<style>
+  :host { display: none; }
+</style>
+<table-chat-feed doc=""></table-chat-feed>

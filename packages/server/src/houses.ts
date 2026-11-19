@@ -3,6 +3,7 @@ import { createGarages } from "./garages.js";
 import { createStores } from "./stores.js";
 import { createScores } from "./scores.js";
 import { createHouseChat } from "./housechat.js";
+import { createParlorChat, type ParlorChat } from "./chat.js";
 // Houses: a family's own corner of the parlor. A house has members (who joined with its invite
 // link), saved house rules with one as the default, and the tables it has opened.
 //
@@ -153,7 +154,7 @@ function cleanPreset(value: unknown): RulePreset | string {
 
 export function createHouses(
   rooms: Rooms,
-  { mount = "/houses", push, ai = createAi(), gameOn = () => true, deckFor, chatSync, blockedWords }: { mount?: string; push?: Push; ai?: Ai; /** Where the houses' chats are kept and followed live (app.ts: open.chat's Zubra Sync server). Without it, the rooms' log, and nothing live. */ chatSync?: Parameters<typeof createHouseChat>[0]; /** Words a house's chat covers too, when it covers them. */ blockedWords?: string[]; /** The deck a design id stands for, for a player who may use it (the parlor's designs). */ deckFor?: (wanted: unknown, player: string | null) => Promise<TableDeck | undefined>; /** Whether new tables of a game may be opened (the parlor's catalogue). */ gameOn?: (game: GameId) => boolean | Promise<boolean> } = {},
+  { mount = "/houses", push, ai = createAi(), gameOn = () => true, deckFor, chat: parlorChat, blockedWords }: { mount?: string; push?: Push; ai?: Ai; /** The parlor's chat (chat.ts), where each house has its room. Without it, one of its own on the rooms' log, followed live by nobody. */ chat?: ParlorChat; /** Words a house's chat covers too, when it covers them (with no `chat`). */ blockedWords?: string[]; /** The deck a design id stands for, for a player who may use it (the parlor's designs). */ deckFor?: (wanted: unknown, player: string | null) => Promise<TableDeck | undefined>; /** Whether new tables of a game may be opened (the parlor's catalogue). */ gameOn?: (game: GameId) => boolean | Promise<boolean> } = {},
 ) {
   const docs = rooms.sync.documents();
   const get = async (slug: string) => {
@@ -183,7 +184,13 @@ export function createHouses(
   const stores = createStores(rooms.sync);
   const garages = createGarages(rooms.sync);
   const scores = createScores(rooms.sync);
-  const chat = createHouseChat(chatSync ?? rooms.sync, { push, blockedWords });
+  const chat = createHouseChat(parlorChat ?? createParlorChat(rooms.sync, { blockedWords }), {
+    push,
+    memberOf: async (request, slug) => {
+      const player = playerOf(request);
+      return player ? (await get(slug))?.members.find((m) => m.player === player) : undefined;
+    },
+  });
 
   /** What a member sees. No player secrets; the invite code, since members share the link. */
   async function forMember(house: HouseDoc, me: Member) {
@@ -696,15 +703,6 @@ export function createHouses(
     moderate,
     /** A house's chat, for the parlor's host: every message, and taking one down. */
     chat: { messages: chat.messages, redact: chat.redact },
-    /**
-     * Who may follow a house's chat live, for the chat's Sync server's `authorize`: the house's
-     * members read its room and say they're here (presence); nobody but the server writes it. A
-     * member's presence keeps their phone from buzzing while they're looking.
-     */
-    mayFollow: chat.authorize(async (request, slug) => {
-      const player = playerOf(request);
-      return player ? (await get(slug))?.members.find((m) => m.player === player) : undefined;
-    }),
     /** A table finished: if it was a tournament match, move its winner on. */
     tableFinished: (id: string, summary: unknown) => tournaments.tableFinished(id, summary, get),
     /**
