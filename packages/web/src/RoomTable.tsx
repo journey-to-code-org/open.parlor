@@ -1,5 +1,7 @@
 import { openRoom, RoomError, type ChatMessage, type Room } from "@journey-to-code/rooms/client";
 import { TableChat, type ChatProps } from "./Chat";
+import { TableChatFeed } from "./TableChatFeed";
+import { useTableChat } from "./tableChat";
 import type { RoomDoc } from "@journey-to-code/rooms/server";
 import { cleanSettings, partnerOf, personaFor, pickPersonas, seatsOf, teamOf, type Seat, type SeatView, type TableSettings } from "@journey-to-code/rules";
 import TextField from "@open-parlor/ui/zubra-ui/text-field.zb";
@@ -52,6 +54,18 @@ const WATCHING = "You're watching: the computer plays this seat.";
 
 /** A family table on the server: sit down, invite people, fill seats with bots, then play. */
 export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) {
+  // The table's chat (tableChat.tsx): opened before its feed is drawn, and followed whatever the table shows.
+  const talk = useTableChat(id);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  return (
+    <>
+      <TableChatFeed id={id} onMessages={setMessages} />
+      <TableScreen id={id} onLeave={onLeave} messages={messages} say={talk.say} />
+    </>
+  );
+}
+
+function TableScreen({ id, onLeave, messages, say }: { id: string; onLeave: () => void; messages: ChatMessage[]; say: (text: string) => Promise<string | null> }) {
   const room: AnyRoom = useMemo(() => openRoom<unknown, unknown, Summary>(id), [id]);
   const [doc, setDoc] = useState<RoomDoc<Summary> | null>(null);
   const [mySeat, setMySeat] = useState<Seat | null>(null);
@@ -59,7 +73,6 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
   const [viewVersion, setViewVersion] = useState<number | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   // Seats whose chat this device has hidden.
   const [hidden, setHidden] = useState<number[]>([]);
   // Someone without a seat watches. At a table of computer players they look over one seat's
@@ -81,13 +94,11 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
       })
       .catch((e) => (e instanceof RoomError && e.status === 404 ? setMissing(true) : setProblem(String(e.message ?? e))));
     const off = room.onRoom((next) => setDoc((prev) => ({ ...prev, ...next }) as RoomDoc<Summary>));
-    const offChat = room.onChat(setMessages);
     // A phone that slept has a stale idea of the server's clock: ask again when it wakes.
     const woke = () => document.visibilityState === "visible" && void room.syncClock().catch(() => {});
     document.addEventListener("visibilitychange", woke);
     return () => {
       off();
-      offChat();
       document.removeEventListener("visibilitychange", woke);
       room.close();
     };
@@ -249,11 +260,7 @@ export function RoomTable({ id, onLeave }: { id: string; onLeave: () => void }) 
   const chat: ChatProps = {
     messages: hidden.length ? messages.filter((m) => !hidden.includes(m.seat)) : messages,
     mySeat,
-    send: (text) =>
-      room.say(text).then(
-        () => null,
-        (e: Error) => e.message,
-      ),
+    send: say,
   };
   const game = gameOf(doc);
   const names = Object.fromEntries(doc.seats.map((s, i) => [i, s.name ?? seatLabel(game, i)])) as Record<Seat, string>;

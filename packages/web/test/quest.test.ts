@@ -41,6 +41,7 @@ describe("Zubra Quest's pictures", () => {
     }
     for (const den of QUEST_DENS) expect(BOSSES[den.boss], den.boss).toBeTruthy();
   });
+  // Every country, tile and edge: thousands of pictures, about 5 s on a busy CI runner, so it has longer than the usual 5 s.
   it("paints every tile in every kind of country, thirty-two pixels square", () => {
     for (const biome of ["meadow", "dunes", "marsh", "crags", "cave", ...QUEST_DENS.map((den) => den.biome)]) for (const tile of Object.values(QUEST_TILE)) {
       for (const mask of [0, 5, 10, 15]) {
@@ -50,7 +51,7 @@ describe("Zubra Quest's pictures", () => {
       for (let i = 3; i < art.data.length; i += 4) expect(art.data[i]).toBe(255);
       }
     }
-  });
+  }, 20_000);
   it("draws a frame for a game as it is played, and for the title", () => {
     const screen = questScreen();
     const s = zubraQuest.newGame(zubraQuest.normalize(null), 1, 7);

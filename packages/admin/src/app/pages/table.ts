@@ -72,12 +72,12 @@ import { askClose } from "./tables";
             <h3 class="sub">Chat</h3>
             @if (d.chat.length) {
               <ul class="chat" tabindex="0" aria-label="Chat messages">
-                @for (line of d.chat; track line.key) {
-                  <li [class.gone]="line.removed">
+                @for (line of d.chat; track line.id) {
+                  <li [class.notice]="line.notice">
                     <span class="line"
                       ><strong>{{ line.name }}</strong> {{ line.text }}</span
                     >
-                    @if (!line.removed && !line.bot && !line.notice) {
+                    @if (!line.bot && !line.notice) {
                       <action-button variant="ghost" size="sm" [label]="'Remove ' + line.name + '’s message'" (click)="redact(d.table, line)">Remove</action-button>
                     }
                   </li>
@@ -204,7 +204,7 @@ export class TablePage {
 
   protected async redact(table: Table, line: ChatLine): Promise<void> {
     try {
-      await this.admin.api.redact(table.id, line.key);
+      await this.admin.api.redact(table.id, line.id);
       this.admin.toast("Removed the message.", "success");
     } catch (error) {
       this.admin.toast(message(error), "danger");

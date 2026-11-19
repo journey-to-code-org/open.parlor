@@ -103,8 +103,10 @@ describe("challenges", () => {
     ]);
     expect(table.seats[2].bot && table.seats[3].bot).toBe(true);
     expect((await rick(`/rooms/${id}`)).body.seat).toBe(1);
-    const chat = (await rick("/_zb/sync/pull?since=0")).body.changes.filter((c: { collection: string }) => c.collection === "chat");
-    expect(chat[0].value).toMatchObject({ seat: 1, text: "Bring it on, Grammi 😤" });
+    // The table's chat, as its pages follow it live.
+    const chat = (await rick("/_zb/chat/pull?since=0")).body.changes.filter((c: { collection: string; key: string; field: string }) => c.collection === "chats" && c.key === `table:${id}` && c.field === "messages");
+    expect(chat.at(-1).value).toMatchObject([{ by: "seat:1", name: "Rick", text: "Bring it on, Grammi 😤" }]);
+    expect(chat.at(-1).value[0].bot).toBeUndefined();
     // She opens it and deals.
     expect((await grammi(`/rooms/${id}/start`, {})).status).toBe(200);
   });

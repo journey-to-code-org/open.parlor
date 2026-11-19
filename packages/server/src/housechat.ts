@@ -6,8 +6,8 @@
 // members, its owner and admins its managers. Crude words are covered with the parlor's own list
 // when a manager switches that on, and a member who isn't looking is buzzed through the parlor's
 // push notifications.
-import { chatAuthorize, createChat, type ChatMember, type ChatRoom, type ChatSync } from "@journey-to-code/chat/server";
-import { maskText } from "./names.js";
+import type { ChatMember, ChatRoom } from "@journey-to-code/chat/server";
+import type { ParlorChat } from "./chat.js";
 import type { Push } from "./push.js";
 
 interface Member {
@@ -28,7 +28,8 @@ export const roomOf = (slug: string) => `house:${slug}`;
 
 const member = (m: Member): ChatMember => ({ id: m.id, name: m.name, manager: m.role !== "member" });
 
-export function createHouseChat(sync: ChatSync, { push, blockedWords = [] }: { push?: Push; /** Words to cover as well, when a house covers them. */ blockedWords?: string[] } = {}) {
+export function createHouseChat(parlor: ParlorChat, { push, memberOf }: { push?: Push; /** Who is asking, in a house (by their cookie). */ memberOf: (request: Request, slug: string) => Promise<Member | undefined> }) {
+  const { chat } = parlor;
   // The players to buzz, by room and member, kept from the last time each room was used: the chat
   // names members by their public ids, and only the parlor knows whose phone each is.
   const players = new Map<string, Map<string, string>>();
@@ -37,8 +38,13 @@ export function createHouseChat(sync: ChatSync, { push, blockedWords = [] }: { p
     return { key: roomOf(house.slug), title: house.name, members: house.members.map(member) };
   };
 
-  const chat = createChat(sync, {
-    mask: (text) => maskText(text, blockedWords),
+  // A house's members may follow its room live and say they're there (presence); a member's
+  // presence keeps their phone from buzzing while they're looking.
+  parlor.kind("house:", {
+    member: async (request, key) => {
+      const me = await memberOf(request, key.slice("house:".length));
+      return me ? member(me) : null;
+    },
     notify(to, { room: where, from, body }) {
       const slug = where.key.slice("house:".length);
       for (const m of to) {
@@ -55,21 +61,9 @@ export function createHouseChat(sync: ChatSync, { push, blockedWords = [] }: { p
     messages: async (slug: string) => (await chat.read(roomOf(slug))).messages,
     /** The parlor's host takes a message down. */
     redact: (slug: string, id: number) => chat.redact(roomOf(slug), id),
-    /** What others said in the house's chat since this member last had it open. */
-    unread: (slug: string, member: string) => chat.unread(roomOf(slug), member),
+    /** What each house has that its member hasn't seen. */
+    unread: (slug: string, memberId: string) => chat.unread(roomOf(slug), memberId),
     /** /houses/:slug/chat, for a member of the house (see `createChat`'s `handle`). */
     handle: (house: House, me: Member, method: string, input: Record<string, unknown>, query: URLSearchParams) => chat.handle(room(house), member(me), method, input, query),
-    /**
-     * The `authorize` for the chat's Sync server: a house's members may follow its room live and
-     * say they're there; nobody but the server writes it. `memberOf` finds who is asking.
-     */
-    authorize: (memberOf: (request: Request, slug: string) => Promise<Member | undefined>) =>
-      chatAuthorize(chat, {
-        member: async (request, key) => {
-          if (!key.startsWith("house:")) return null;
-          const me = await memberOf(request, key.slice("house:".length));
-          return me ? member(me) : null;
-        },
-      }),
   };
 }

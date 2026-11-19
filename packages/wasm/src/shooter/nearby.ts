@@ -5,7 +5,7 @@
 // Each person is added with two scans: they scan the host's code (their camera app will do: it is
 // a link to this page, which opens from what the device kept), and the host scans theirs.
 import { Room } from "../../net/room.ts";
-import { canLink, offerSeat, stayAwake, takeSeat } from "../wifi/link.ts";
+import { canLink, offerSeat, stayAwake, takeSeat, UNREACHABLE } from "../wifi/link.ts";
 import { qrCode, scan } from "../wifi/qr.ts";
 import { codeIn, joinLink } from "../wifi/signal.ts";
 import type { Transport } from "./session.ts";
@@ -109,7 +109,9 @@ export function invite(card: HTMLElement, page: string, joined: (transport: Tran
   let stopReading = () => {};
   // While this is set the card is this screen's: news from the room doesn't draw over it.
   card.dataset.nearby = "invite";
+  let finished = false;
   const finish = () => {
+    finished = true;
     stopReading();
     delete card.dataset.nearby;
     done();
@@ -118,35 +120,50 @@ export function invite(card: HTMLElement, page: string, joined: (transport: Tran
   actions.append(button("Done", () => (cancel(), finish())));
   card.replaceChildren(el("h1", "", "Add someone on this wifi"), status, actions);
   card.hidden = false;
-  void offerSeat().then(
-    (seat) => {
-      cancel = seat.cancel;
-      const reading = asked("Their code", async (code) => {
-        status.textContent = "Connecting…";
-        try {
-          joined(await seat.answered(code));
-          cancel = () => {};
-          finish();
-          return true;
-        } catch (error) {
-          status.textContent = (error as Error).message;
-          return false;
-        }
-      });
-      stopReading = reading.stop;
-      status.textContent = "";
-      card.replaceChildren(
-        el("h1", "", "Add someone on this wifi"),
-        el("p", "", "1. They point their camera at this code. If the game is already open on their device, they choose “Join a game on this wifi” and scan it there."),
-        shown(joinLink(seat.code, page), "This game's code"),
-        el("p", "", "2. Their screen then shows a code of its own. Read it with this device:"),
-        reading.node,
-        status,
-        actions,
-      );
-    },
-    (error: Error) => (status.textContent = error.message),
-  );
+  // A code is good for one try. One that failed leaves its connection closed, and the guest's answer was to that code alone, so
+  // after a failure a new code is made and shown, and the guest starts again from it.
+  let busy = false;
+  const offer = (failed = "") =>
+    void offerSeat().then(
+      (seat) => {
+        if (finished) return seat.cancel();
+        cancel = seat.cancel;
+        const reading = asked("Their code", async (code) => {
+          if (busy) return false;
+          busy = true;
+          status.textContent = "Connecting…";
+          try {
+            joined(await seat.answered(code));
+            cancel = () => {};
+            finish();
+            return true;
+          } catch (error) {
+            // What the browser says of a code that isn't one, or isn't for this game, is no use to anyone.
+            const why = (error as Error).message === UNREACHABLE ? UNREACHABLE : "That code didn't work: it may be from an earlier try.";
+            seat.cancel();
+            reading.stop();
+            status.textContent = "Making a new code…";
+            offer(`${why} The code above is new. They scan it again, and you read the code they then show.`);
+            return false;
+          } finally {
+            busy = false;
+          }
+        });
+        stopReading = reading.stop;
+        status.textContent = failed;
+        card.replaceChildren(
+          el("h1", "", "Add someone on this wifi"),
+          el("p", "", "1. They point their camera at this code. If the game is already open on their device, they choose “Join a game on this wifi” and scan it there."),
+          shown(joinLink(seat.code, page), "This game's code"),
+          el("p", "", "2. Their screen then shows a code of its own. Read it with this device:"),
+          reading.node,
+          status,
+          actions,
+        );
+      },
+      (error: Error) => (status.textContent = error.message),
+    );
+  offer();
 }
 
 /**
@@ -177,7 +194,7 @@ export function join(card: HTMLElement, offer: string | null, joined: (transport
           cancel = () => {};
           joined(transport);
         },
-        (error: Error) => (status.textContent = error.message),
+        (error: Error) => (status.textContent = `${error.message} To try again, go back and read the host's new code.`),
       );
       return true;
     } catch (error) {

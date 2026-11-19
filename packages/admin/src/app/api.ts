@@ -41,8 +41,10 @@ export interface HouseChatLine {
   poll?: { options: string[]; votes: number };
 }
 
+/** A message in a table's chat. A message taken down is gone. */
 export interface ChatLine {
-  key: string;
+  id: number;
+  /** -1 for a notice. */
   seat: number;
   name: string;
   text: string;
@@ -50,7 +52,6 @@ export interface ChatLine {
   bot: boolean;
   /** A line from the host (paused, resumed, played a turn), not anyone's speech. */
   notice?: boolean;
-  removed?: boolean;
 }
 
 export interface Ban {
@@ -255,7 +256,7 @@ export class Api {
   resumeTable = (id: string) => this.send(`/tables/${id}/resume`, {});
   playFor = (id: string, seat: number) => this.send(`/tables/${id}/play-for`, { seat });
   unseat = (id: string, seat: number) => this.send(`/tables/${id}/unseat`, { seat });
-  redact = (id: string, key: string) => this.send(`/tables/${id}/redact`, { key });
+  redact = (id: string, message: number) => this.send(`/tables/${id}/redact`, { id: message });
   block = (ref: string, reason: string) => this.send(`/players/${ref}/block`, { reason });
   unblock = (ref: string) => this.send(`/players/${ref}/unblock`, {});
   hideDesign = (id: string, reason: string) => this.send(`/designs/${id}/hide`, { reason });

@@ -60,7 +60,7 @@ describe("pausing a table", () => {
     }
     // The table is told, in the chat, by the host and not by a seat.
     const chat = (await admin(`/tables/${id}`)).body.chat;
-    expect(chat.at(-1)).toMatchObject({ seat: -1, name: "The host", text: "The host paused the game: Checking something.", notice: true });
+    expect(chat.at(-1)).toMatchObject({ seat: -1, name: "", text: "The host paused the game: Checking something.", notice: true });
     // The admin's list shows it, and the log has it.
     expect((await admin("/tables")).body.tables[0]).toMatchObject({ status: "playing", paused: { reason: "Checking something." } });
     expect((await admin("/log")).body.log[0]).toMatchObject({ action: "Paused a table", note: "Checking something." });
