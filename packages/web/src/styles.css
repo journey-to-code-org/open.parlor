@@ -531,6 +531,8 @@ chat-room.house-chat .chat-bars { --chart-1: var(--felt); }
 .pile-stack { position: relative; width: calc(var(--trick-w) + 2 * var(--fan)); height: calc(var(--trick-h) + 6px); }
 .pile-card { position: absolute; left: calc(var(--i) * var(--fan)); top: calc(var(--i) * 2px); rotate: calc((var(--i) - 1) * 3deg); }
 /* The stack's edge takes the deck's own dark colour. */
+.pile-area .deck .deck-count { font-size: 0.7rem; opacity: 0.8; margin-top: 0; }
+.deck-note { text-align: left; margin-top: 4px; }
 .deck playing-card { filter: drop-shadow(calc(var(--depth, 0) * 1px) calc(var(--depth, 0) * 1px) 0 var(--deck-emblem-ink, #4b131b)); }
 .empty-slot {
   width: var(--trick-w); height: var(--trick-h); border-radius: calc(var(--trick-w) * 0.1); border: 2px dashed rgba(255, 255, 255, 0.3);
@@ -1004,7 +1006,10 @@ button.spread-card { cursor: pointer; animation: none; }
 /* Solitaire (Klondike, FreeCell): the felt is all yours. Columns line up under the top row. */
 .kit-felt.solo { grid-template-columns: minmax(0, 1fr); grid-template-areas: "center"; }
 .kit-felt.solo .opp-area { display: none; }
-.kit-felt.solo .center { grid-column: 1 / -1; width: 100%; }
+/* On a phone the card felt turns its middle into display: contents so the pile can sit between side
+   players; a solitaire has no side players, and its layout then landed in the first, narrow column,
+   off-centre with the stock pushed off the left edge where it couldn't be tapped (#299). */
+.kit-felt.solo .center { display: flex; grid-column: 1 / -1; width: 100%; min-width: 0; }
 .sol {
   --gap: calc(var(--trick-w) * 0.12);
   --trick-w: min(calc((100vw - 24px) / (var(--cols) * 1.13)), 88px);
