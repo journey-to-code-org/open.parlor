@@ -1,0 +1,358 @@
+{
+  "airhockey": {
+    "name": "Air Hockey",
+    "blurb": "A puck on air, a mallet each, and a goal to guard"
+  },
+  "anagrams": {
+    "name": "Anagrams",
+    "blurb": "The longest word from one rack of letters"
+  },
+  "backgammon": {
+    "name": "Backgammon",
+    "blurb": "Race your checkers home, and hit theirs on the way"
+  },
+  "billiards": {
+    "name": "Billiards",
+    "blurb": "Eight-ball and nine-ball, for two or as partners"
+  },
+  "blackjack": {
+    "name": "Blackjack",
+    "blurb": "Get closer to 21 than the dealer (chips only)"
+  },
+  "bluff": {
+    "name": "Bluff",
+    "blurb": "Say what you're putting down, true or not"
+  },
+  "bowling": {
+    "name": "Bowling",
+    "blurb": "Ten pins, ten frames: strikes, spares and a score sheet"
+  },
+  "bridge": {
+    "name": "Bridge",
+    "blurb": "Contract bridge, Chicago scoring"
+  },
+  "bulwark": {
+    "name": "Tower of Ryan",
+    "blurb": "Build towers, hold the road, send the next wave if you dare"
+  },
+  "canasta": {
+    "name": "Canasta",
+    "blurb": "Partners, melds and canastas"
+  },
+  "carrom": {
+    "name": "Carrom",
+    "blurb": "The flick board: nine pieces a side, and the queen"
+  },
+  "checkers": {
+    "name": "Checkers",
+    "blurb": "Jump their pieces and crown your kings"
+  },
+  "chess": {
+    "name": "Chess",
+    "blurb": "Checkmate the king, against the clock if you like"
+  },
+  "chinesecheckers": {
+    "name": "Chinese Checkers",
+    "blurb": "Hop your pegs across the star before anyone else"
+  },
+  "chipstack": {
+    "name": "Chip Stack",
+    "blurb": "Tap, buy, and stack as high as the clock allows"
+  },
+  "combat": {
+    "name": "Combat",
+    "blurb": "Hide your fleet, hunt theirs"
+  },
+  "contractrummy": {
+    "name": "Contract Rummy",
+    "blurb": "Seven rounds, seven contracts to lay down"
+  },
+  "counter": {
+    "name": "Delbie's Counter",
+    "blurb": "A shift behind the parts counter: look it up, ring it up, make the change, and keep the line moving."
+  },
+  "crazy8": {
+    "name": "Crazy Eights",
+    "blurb": "Match the card; eights are wild"
+  },
+  "cribbage": {
+    "name": "Cribbage",
+    "blurb": "Fifteen two, fifteen four, and a pair is six"
+  },
+  "crisscross": {
+    "name": "Criss-Crosswords",
+    "blurb": "Build crossing words from your tiles on one board"
+  },
+  "crokinole": {
+    "name": "Crokinole",
+    "blurb": "Flick discs at the hole in the middle, and theirs into the ditch"
+  },
+  "cuckoo": {
+    "name": "Cuckoo",
+    "blurb": "One card each; don't get stuck with the lowest"
+  },
+  "delbies": {
+    "name": "Delbie's Daycare & Geriatrics",
+    "blurb": "Run the parts store. Mind the counter. Never say no"
+  },
+  "dominoes": {
+    "name": "Dominoes",
+    "blurb": "Match the ends of the line and play out your tiles"
+  },
+  "drawguess": {
+    "name": "Draw & Guess",
+    "blurb": "One draws, everyone else guesses"
+  },
+  "drinkingpyramid": {
+    "name": "Drinking Pyramid",
+    "blurb": "Drinking game: remember your cards, match the pyramid, bluff"
+  },
+  "dropfour": {
+    "name": "Drop Four",
+    "blurb": "Drop your discs, four in a row wins"
+  },
+  "durak": {
+    "name": "Durak",
+    "blurb": "Attack, defend, and don't be the fool"
+  },
+  "euchre": {
+    "name": "Euchre",
+    "blurb": "Partners, bowers and calling trump"
+  },
+  "fivedraw": {
+    "name": "Five Card Draw",
+    "blurb": "Poker for chips: bet, swap, bet, show"
+  },
+  "fivehundred": {
+    "name": "Five Hundred",
+    "blurb": "Partners bid tricks; the joker is boss"
+  },
+  "flickfootball": {
+    "name": "Flick Football",
+    "blurb": "Paper football: flick it so it stops hanging over their edge"
+  },
+  "freecell": {
+    "name": "FreeCell",
+    "blurb": "Solitaire where every card is face up"
+  },
+  "fruitsalad": {
+    "name": "Fruit Salad",
+    "blurb": "Our own colour-card game: match the fruit"
+  },
+  "gin": {
+    "name": "Gin Rummy",
+    "blurb": "Two players, melds and knocking"
+  },
+  "go": {
+    "name": "Go",
+    "blurb": "Surround more of the board than they do (Weiqi, Baduk)"
+  },
+  "gofish": {
+    "name": "Go Fish",
+    "blurb": "Ask for cards, make books"
+  },
+  "golf": {
+    "name": "Golf",
+    "blurb": "Swap your way to the lowest score"
+  },
+  "handfoot": {
+    "name": "Hand and Foot",
+    "blurb": "Partners, books of seven, and a foot"
+  },
+  "hangman": {
+    "name": "Hangman",
+    "blurb": "Name letters and uncover the word before the misses run out"
+  },
+  "hearts": {
+    "name": "Hearts",
+    "blurb": "Dodge the hearts and the queen"
+  },
+  "holdem": {
+    "name": "Texas Hold'em",
+    "blurb": "Two cards, five on the board, chips only"
+  },
+  "horserace": {
+    "name": "Horse Race",
+    "blurb": "Drinking game: bet sips on an ace and watch them run"
+  },
+  "kingscorner": {
+    "name": "Kings in the Corner",
+    "blurb": "Solitaire for the whole table"
+  },
+  "kingscup": {
+    "name": "Kings Cup",
+    "blurb": "Drinking game: every card has a rule"
+  },
+  "klondike": {
+    "name": "Klondike Solitaire",
+    "blurb": "The classic solitaire, just for you"
+  },
+  "liarsdice": {
+    "name": "Liar's Dice",
+    "blurb": "Bid on dice you can't see, or call the bluff"
+  },
+  "liarspoker": {
+    "name": "Liar's Poker",
+    "blurb": "Bid poker hands hiding in everyone's cards"
+  },
+  "ludo": {
+    "name": "Ludo",
+    "blurb": "Race your tokens round the board and home"
+  },
+  "mahjongriichi": {
+    "name": "Mahjong Riichi",
+    "blurb": "Japanese mahjong: riichi, dora and calls for four"
+  },
+  "mahjongshanghai": {
+    "name": "Mahjong Shanghai",
+    "blurb": "Match the free tiles and clear the stack"
+  },
+  "mancala": {
+    "name": "Mancala",
+    "blurb": "Sow your seeds round the board and fill your store"
+  },
+  "memory": {
+    "name": "Memory",
+    "blurb": "Find the pairs (great for grandkids)"
+  },
+  "minigolf": {
+    "name": "Mini Golf",
+    "blurb": "Nine holes round the garden, in turn or all at once"
+  },
+  "ohhell": {
+    "name": "Oh Hell",
+    "blurb": "Bid exactly what you'll take"
+  },
+  "oldmaid": {
+    "name": "Old Maid",
+    "blurb": "Pairs, and don't get stuck with her"
+  },
+  "overthehill": {
+    "name": "Over the Hill",
+    "blurb": "Tanks, hills and a bag of odd shells: lob one over"
+  },
+  "palace": {
+    "name": "Palace",
+    "blurb": "First to shed every card wins"
+  },
+  "pig": {
+    "name": "Pig",
+    "blurb": "Roll again, or keep what you have?"
+  },
+  "pinkslips": {
+    "name": "Road to the Shootout",
+    "blurb": "Build a shitbox, line it up, and leave on the green"
+  },
+  "pinochle": {
+    "name": "Pinochle",
+    "blurb": "Partners, bidding, meld and tricks"
+  },
+  "pitch": {
+    "name": "Pitch",
+    "blurb": "Bid for High, Low, Jack and Game"
+  },
+  "president": {
+    "name": "President",
+    "blurb": "Climb from Scum to President"
+  },
+  "pyramid": {
+    "name": "Pyramid",
+    "blurb": "Solitaire: clear pairs that make 13"
+  },
+  "readtheroom": {
+    "name": "Read the Room",
+    "blurb": "A party game with no right answers, only the room's. Slide, vote, call it and caption it, and score for guessing what the others will say."
+  },
+  "reversi": {
+    "name": "Reversi",
+    "blurb": "Trap their discs and flip them to yours"
+  },
+  "ridethebus": {
+    "name": "Ride the Bus",
+    "blurb": "Drinking game: guess, match, and don't ride the bus"
+  },
+  "rummy500": {
+    "name": "Rummy 500",
+    "blurb": "Melds, lay-offs and a pile to dig into"
+  },
+  "secretword": {
+    "name": "Secret Word",
+    "blurb": "Guess the hidden word in six tries"
+  },
+  "sevens": {
+    "name": "Sevens",
+    "blurb": "Build out from the 7s"
+  },
+  "shipcaptaincrew": {
+    "name": "Ship, Captain, Crew",
+    "blurb": "Find a 6, a 5 and a 4, then sail with the biggest cargo"
+  },
+  "shuffleboard": {
+    "name": "Shuffleboard",
+    "blurb": "Slide your pucks down the long board, and knock theirs off"
+  },
+  "shutthebox": {
+    "name": "Shut the Box",
+    "blurb": "Roll, and shut the tiles that add up to it"
+  },
+  "skyfire": {
+    "name": "Shitstorm",
+    "blurb": "It's raining you-know-what: dodge it, flush it, beat your score"
+  },
+  "slapjack": {
+    "name": "Slapjack",
+    "blurb": "Flip, and slap the jacks first"
+  },
+  "spades": {
+    "name": "Spades",
+    "blurb": "Partners, bids and nils"
+  },
+  "speed": {
+    "name": "Speed",
+    "blurb": "No turns: play faster than the other player"
+  },
+  "spider": {
+    "name": "Spider",
+    "blurb": "Two-deck solitaire: build runs from king to ace"
+  },
+  "spite": {
+    "name": "Spite and Malice",
+    "blurb": "Race to play off your pile; kings are wild"
+  },
+  "switch": {
+    "name": "Switch",
+    "blurb": "Uno's ancestor, with an ordinary deck"
+  },
+  "tenthousand": {
+    "name": "Ten Thousand",
+    "blurb": "Six dice: bank the points, or push your luck"
+  },
+  "thirtyone": {
+    "name": "Thirty-One",
+    "blurb": "Three cards, one suit, as close to 31 as you dare"
+  },
+  "tictactoe": {
+    "name": "Tic-Tac-Toe",
+    "blurb": "Three in a row, or nine boards at once"
+  },
+  "war": {
+    "name": "War",
+    "blurb": "Flip, and the highest card takes all"
+  },
+  "whist": {
+    "name": "Whist",
+    "blurb": "Spades' grandparent: partners and tricks"
+  },
+  "wordhunt": {
+    "name": "Word Hunt",
+    "blurb": "Trace words in a square of letters before time runs out"
+  },
+  "yacht": {
+    "name": "Yacht",
+    "blurb": "Five dice, three rolls, one scorecard"
+  },
+  "zubraquest": {
+    "name": "Zubra Quest",
+    "blurb": "A sixteen-bit adventure: a sword, three dens, three stolen Stripes and the thief who took them."
+  }
+}
