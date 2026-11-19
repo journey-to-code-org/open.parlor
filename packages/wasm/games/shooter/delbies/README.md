@@ -110,8 +110,15 @@ To rebuild after changing a plan: `npm run delbies -w @open-parlor/wasm`.
 The page fetches `delbies.wad` and gives it to the engine as the game (`src/shooter/delbies.ts`),
 for a game alone and for a game with others alike, and it is what the editor opens.
 
-The art scripts are run in this order after a change of colours: `palette.py`, `convert.py`,
-`cutout.py` (only if the pictures changed), `monsters.py`, `tools.py`, `walls.py`, `textures.py`, `hud.py`, `menu.py`, `sounds.py`.
+The art scripts are run in this order: `cutout.py` (only if the pictures changed), `palette.py`, `convert.py`,
+`monsters.py`, `tools.py`, `walls.py`, `textures.py`, `hud.py`, `menu.py`, `sounds.py`. The palette comes after
+the cut-outs because it is fitted to them: its sixteen runs are where its colours start, and each is then moved
+to the middle of the picture colours nearest it.
+
+`cutout.py` tidies each cut-out before it is shrunk: pinprick holes are closed, crumbs dropped, and the rim taken
+off, where the ground a thing was drawn on showed as a pale or dark line round it. A thing too thin to lose its rim
+keeps it. Flashes, splashes and puffs are painted by `burst()` in `tools.py`, ragged and lit from one side, and what
+each rat throws is the mutant's gob in another colour.
 
 ## Also Mikey's
 
@@ -134,7 +141,7 @@ telling little:
 | Tire brute | the boss's lesser brother, made to only swing its iron | `BOS2` |
 | Coolant rat | the one that floats and spits (`BAL2`) | `HEAD` |
 | Spark-plug swarm | the skull that flies at you | `SKUL` |
-| Fat rat in coveralls | the one with a cannon on each arm (`FATB`) | `FATT` |
+| Fat rat in coveralls | the one with a cannon on each arm (its shot is `MANF`) | `FATT` |
 | Cyborg rat | the biggest, which fires rockets: here, brake rotors | `CYBR` |
 
 The first three are in the hand-made levels. The other five are on the generated floors only:
