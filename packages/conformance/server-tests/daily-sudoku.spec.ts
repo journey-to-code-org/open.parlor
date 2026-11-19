@@ -174,6 +174,8 @@ test.describe("with JavaScript on", () => {
   });
 
   test("the front page has it on a shelf, and its tile goes to it", async ({ page }) => {
+    // Past the newcomer's intro (src/splash): this is about the front page behind it.
+    await page.addInitScript(() => localStorage.setItem("parlor.intro", "seen"));
     await page.goto("/");
     // A tile like any other game's, there once the page has asked the server whether it draws one.
     await page.getByRole("button", { name: /^The daily sudoku:/ }).click();

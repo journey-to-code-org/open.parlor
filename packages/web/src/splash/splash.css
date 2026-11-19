@@ -1,0 +1,57 @@
+/* The newcomer's intro (splash.ts): the felt, a cream card in the middle, and the Zubra form controls
+   dressed in the parlor's colours. The card is cream, so the controls take the light theme's tokens. */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+  background: radial-gradient(ellipse at top, var(--felt-light), var(--felt) 60%, var(--felt-dark));
+  color: var(--ink);
+  font-family: Inter, system-ui, sans-serif;
+  transition: opacity 300ms ease-out, transform 300ms ease-out;
+}
+.splash.leaving { opacity: 0; transform: scale(1.02); pointer-events: none; }
+
+.splash-card {
+  --background: #fffdf7;
+  --foreground: var(--ink);
+  --input: #d6cfba;
+  --border: #d6cfba;
+  --muted-foreground: #646b60;
+  --ring: #b8902e;
+  --primary: var(--felt);
+  --primary-foreground: var(--cream);
+  box-sizing: border-box;
+  width: min(100%, 440px);
+  padding: clamp(24px, 6vw, 40px);
+  border-radius: 24px;
+  background: var(--cream);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(232, 196, 106, 0.5);
+  text-align: center;
+  animation: splash-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes splash-in { from { opacity: 0; transform: translateY(14px) scale(0.98); } }
+
+.splash-suits { color: #b8902e; letter-spacing: 0.6em; font-size: 0.95rem; }
+.splash-title { margin: 6px 0 0; font-size: clamp(2.4rem, 9vw, 3.2rem); letter-spacing: -0.02em; color: var(--felt-dark); }
+.splash-lead { margin: 6px 0 0; text-wrap: balance; font-family: Georgia, "Times New Roman", serif; font-style: italic; font-size: 1.1rem; color: #4d554a; }
+
+.splash-points { list-style: none; margin: 22px 0 0; padding: 0; display: grid; gap: 10px; text-align: left; }
+.splash-points li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: rgba(31, 77, 58, 0.07); font-size: 0.95rem; line-height: 1.35; }
+.splash-emoji { flex: none; font-size: 1.3rem; }
+
+.splash-form { margin-top: 24px; display: grid; gap: 16px; text-align: left; }
+.splash-form .field-control { font-size: 16px; }
+/* "Skip for now" already says the name can wait. */
+.splash-form .field-optional { display: none; }
+.splash-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.splash-actions action-button:first-child { flex: 1 1 auto; }
+.splash-actions action-button:first-child .action-button { width: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .splash, .splash-card { transition: none; animation: none; }
+}
+html[data-motion="off"] .splash-card { animation: none; }

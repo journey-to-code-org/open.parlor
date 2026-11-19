@@ -127,6 +127,8 @@ test.describe("with JavaScript on", () => {
   });
 
   test("the front page links to it", async ({ page }) => {
+    // Past the newcomer's intro (src/splash): this is about the front page behind it.
+    await page.addInitScript(() => localStorage.setItem("parlor.intro", "seen"));
     await page.goto("/");
     await page.getByRole("link", { name: /Every game on one page/ }).click();
     await expect(page).toHaveURL(/\/games$/);
