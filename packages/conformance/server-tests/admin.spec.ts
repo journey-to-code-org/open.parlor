@@ -82,6 +82,8 @@ test("a player blocked with a reason, and unblocked", async ({ page }) => {
   const { names } = await table(t);
   await signIn(page);
   await section(page, "Players");
+  // Found as a host would in a long list (the shared server has every browser's players): by name.
+  await page.getByRole("searchbox", { name: "Filter Players" }).fill(names[1]!);
   await page.getByRole("checkbox", { name: `Select ${names[1]}` }).check();
   await page.getByRole("button", { name: "Block player" }).click();
   await dialog(page).getByLabel("Reason").fill(`spam ${t}`);
