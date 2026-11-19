@@ -207,6 +207,12 @@ parlor's server, behind a WebSocket at `/wasm/play/<code>`.
   drone. Whose eyes it looks through is the device's own business and changes nothing in the game.
 - **The room keeps every tic.** Someone who comes late is sent the game from the start and runs
   through it to catch up, a hundred times faster than it was played.
+- **Someone who comes late to play** watches while they run through the game so far, then says
+  so; the room puts them in from a tic a second ahead, in the first place nobody is playing in
+  (one left by someone who went, or a new one, up to four), and tells every device. Each brings
+  them in at that tic as the engine brings back a player who died in a game with others, at their
+  start; the device that is them makes its player's commands from it on. While four are playing
+  they go on watching, and are put in when a place comes free.
 - **A player who stops sending** holds the game up. After a second and a half the others are told
   who they are waiting for; after ten the player is dropped and the game goes on.
 - **The games coming apart** is caught by the engine itself: each command carries a check on
@@ -223,7 +229,7 @@ A channel is opened by two scans, the parlor's own way (`packages/web/src/wifi`,
 `src/wifi/` so this package stands alone). The host's screen shows a QR code that is a link to
 this page with an offer after the `#`; a phone's camera opens it, from what the device kept. The
 guest's screen then shows a code back, which the host reads with **Use the camera**, or pastes.
-The host can add people while the game is on; they come to watch.
+The host can add people while the game is on, to play or to watch.
 
 - The game is the host's page: when the host leaves, it ends for everyone.
 - Devices have to be able to reach each other: a guest network, or a hotspot with "client

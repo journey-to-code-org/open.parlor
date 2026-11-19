@@ -25,6 +25,8 @@ export interface RoomOptions {
     /** The longest game, in tics. */
     longest?: number;
 }
+/** How long after the room's last tic someone who came late is put in: a second, for every device to hear of it first. */
+export declare const JOIN_LEAD = 35;
 export declare class Room {
     readonly code: string;
     private options;
@@ -60,6 +62,14 @@ export declare class Room {
     private members;
     private lobby;
     private said;
+    /**
+     * Someone who came to a game that is on, to play, has caught up: they are a player from a tic a
+     * second after the last one sent, in the first place nobody is playing in. Until they have a
+     * place they go on watching, and are let in as soon as one comes free.
+     */
+    private letIn;
+    /** A place among the players has come free: the first who is waiting to play, and caught up, may have it. */
+    private letInWaiting;
     private turnAway;
     private started;
     /** Someone who came after the start: the game so far, to run through. */

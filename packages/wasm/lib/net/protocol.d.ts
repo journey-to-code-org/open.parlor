@@ -38,6 +38,10 @@ export type ToRoom = {
 /** The host starts the game. */
  | {
     t: "start";
+}
+/** A device that came after the start to play has run through the game so far: it can be put in it. */
+ | {
+    t: "ready";
 };
 /** From the room. */
 export type FromRoom = {
@@ -54,6 +58,17 @@ export type FromRoom = {
     settings: Settings;
     players: Member[];
     slot: number;
+}
+/**
+ * Someone who came after the start is a player from tic `at`, in the engine's place `slot` (a
+ * new one, or one left by someone who went). Said to everyone; the device that is them makes
+ * its player's commands from `at` on.
+ */
+ | {
+    t: "joined";
+    slot: number;
+    at: number;
+    member: Member;
 }
 /** The game is held up for these players' commands (none: it is running). */
  | {

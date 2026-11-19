@@ -1136,8 +1136,12 @@ G_CheckSpot
     if (!players[playernum].mo)
     {
 	// first spawn of level, before corpses
-	for (i=0 ; i<playernum ; i++)
-	    if (players[i].mo->x == mthing->x << FRACBITS
+	// [open.wasm] Or a player who has just come into a game that is on: any other player in
+	// the game, on either side of them, may be standing on the spot. Not just those before
+	// them, and only those with a body.
+	for (i=0 ; i<MAXPLAYERS ; i++)
+	    if (i != playernum && playeringame[i] && players[i].mo
+		&& players[i].mo->x == mthing->x << FRACBITS
 		&& players[i].mo->y == mthing->y << FRACBITS)
 		return false;	
 	return true;
@@ -1270,8 +1274,18 @@ void G_DoReborn (int playernum)
     {
 	// respawn at the start
 
+	// [open.wasm] A player who has just come into the game has no body yet: they spawn as the
+	// level starts if it isn't on (between levels, the level being loaded spawns everyone).
+	if (!players[playernum].mo && gamestate != GS_LEVEL)
+	{
+	    return;
+	}
+
 	// first dissasociate the corpse 
-	players[playernum].mo->player = NULL;   
+	if (players[playernum].mo)
+	{
+	    players[playernum].mo->player = NULL;   
+	}
 		 
 	// spawn at random spot if in death match 
 	if (deathmatch) 

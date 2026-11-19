@@ -81,6 +81,8 @@ export interface Engine {
   players(): number;
   /** For a device that watches: look through this player's eyes. */
   view(player: number): void;
+  /** For a device that watches: be player `slot` from tic `at`, as the room has said. */
+  join(slot: number, at: number): void;
   /** A number made from everything that moves: the same on every device that has run the same tics. */
   checksum(): number;
   /** Why the engine stopped, once it has: exit code 0 is the player quitting. */
@@ -103,6 +105,7 @@ interface Exports {
   web_tics(): number;
   web_players(): number;
   web_view(player: number): void;
+  web_net_join(slot: number, at: number): void;
   web_checksum(): number;
 }
 
@@ -187,6 +190,7 @@ export async function startEngine(module: WebAssembly.Module, files: Map<string,
     tics: () => (engine.stopped ? 0 : exports.web_tics()),
     players: () => (engine.stopped ? 0 : exports.web_players()),
     view: (player) => void guarded(() => exports.web_view(player)),
+    join: (slot, at) => void guarded(() => exports.web_net_join(slot, at)),
     checksum: () => (engine.stopped ? 0 : exports.web_checksum() >>> 0),
     key: (pressed, key) => void guarded(() => exports.web_key(pressed ? 1 : 0, key)),
     mouse: (buttons, dx, dy) => void guarded(() => exports.web_mouse(buttons, dx, dy)),

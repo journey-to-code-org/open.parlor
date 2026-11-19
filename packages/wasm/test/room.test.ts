@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { cleanName, cleanSettings, decodeCommand, decodeTics, DEFAULT_SETTINGS, encodeCommand, encodeTics, type FromRoom } from "../net/protocol.ts";
-import { Room, Rooms } from "../net/room.ts";
+import { JOIN_LEAD, Room, Rooms } from "../net/room.ts";
 
 /** A room with a clock to turn, and devices that keep what they are told. */
 function table(options = {}) {
@@ -145,4 +145,48 @@ test("when the last player leaves, the people watching are told it is over", () 
   expect(t.room.empty).toBe(true);
   const late = t.sit("Late");
   expect(late.last("closed")?.reason).toBe("This game is over.");
+});
+
+test("someone who comes late to play watches until caught up, then plays from a tic a second ahead", () => {
+  const t = table();
+  const ada = t.sit("Ada");
+  ada.say({ t: "start" });
+  for (let tic = 0; tic < 100; tic++) ada.command(tic);
+  expect(ada.tics).toHaveLength(100);
+
+  const ben = t.sit("Ben");
+  expect(ben.last("start")?.slot).toBe(-1);
+  expect(ben.tics).toHaveLength(100);
+  ben.say({ t: "ready" });
+  const joined = ben.last("joined")!;
+  expect(joined).toMatchObject({ slot: 1, at: 100 + JOIN_LEAD, member: { name: "Ben", watching: false } });
+  expect(ada.last("joined")).toEqual(joined);
+
+  // Until then Ada's commands are the game; from then, it waits for Ben's too.
+  for (let tic = 100; tic < 160; tic++) ada.command(tic);
+  expect(ada.tics).toHaveLength(joined.at);
+  ben.command(joined.at - 1);
+  ben.command(joined.at);
+  expect(ada.tics).toHaveLength(joined.at + 1);
+  expect(t.room.summary.players).toEqual(["Ada", "Ben"]);
+});
+
+test("someone who came late to play waits while four are playing, and has the first place that comes free", () => {
+  const t = table();
+  const four = ["Ada", "Ben", "Cy", "Dee"].map((name) => t.sit(name));
+  four[0]!.say({ t: "start" });
+  const eve = t.sit("Eve");
+  eve.say({ t: "ready" });
+  expect(eve.last("joined")).toBeUndefined();
+  four[2]!.seat.leave();
+  expect(eve.last("joined")).toMatchObject({ slot: 2, member: { name: "Eve" } });
+});
+
+test("someone who came late only to watch is never put in", () => {
+  const t = table();
+  const ada = t.sit("Ada");
+  ada.say({ t: "start" });
+  const cy = t.sit("Cy", true);
+  cy.say({ t: "ready" });
+  expect(cy.last("joined")).toBeUndefined();
 });

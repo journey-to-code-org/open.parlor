@@ -39,13 +39,21 @@ export type ToRoom =
   /** A member changes between playing and watching, before the game starts. */
   | { t: "watch"; watch: boolean }
   /** The host starts the game. */
-  | { t: "start" };
+  | { t: "start" }
+  /** A device that came after the start to play has run through the game so far: it can be put in it. */
+  | { t: "ready" };
 
 /** From the room. */
 export type FromRoom =
   | { t: "lobby"; you: number; host: number; members: Member[]; settings: Settings; playing: boolean }
   /** The game is on. `players` are the members playing, in the engine's player order; `slot` is this device's place among them, or -1 to watch. */
   | { t: "start"; settings: Settings; players: Member[]; slot: number }
+  /**
+   * Someone who came after the start is a player from tic `at`, in the engine's place `slot` (a
+   * new one, or one left by someone who went). Said to everyone; the device that is them makes
+   * its player's commands from `at` on.
+   */
+  | { t: "joined"; slot: number; at: number; member: Member }
   /** The game is held up for these players' commands (none: it is running). */
   | { t: "waiting"; slots: number[] }
   /** The room has no more to say to this device. */

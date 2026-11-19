@@ -6,9 +6,12 @@
 // and knows nothing of the game, so it is small, and it runs the same wherever it is put: in the
 // parlor's server, or one day in the browser of whoever hosts on the wifi.
 //
-// The room keeps every tic it has sent. That is the whole game: someone who comes to watch late
-// is sent it from the start and runs through it to catch up, and it is a replay when it is over.
+// The room keeps every tic it has sent. That is the whole game: someone who comes late is sent it
+// from the start and runs through it to catch up, and it is a replay when it is over. Someone who
+// came late to play is put in the game once they have caught up, while there is a place.
 import { cleanName, cleanSettings, decodeCommand, DEFAULT_SETTINGS, encodeTics, MAX_PLAYERS, TICS_PER_MESSAGE } from "./protocol.js";
+/** How long after the room's last tic someone who came late is put in: a second, for every device to hear of it first. */
+export const JOIN_LEAD = 35;
 /** How far ahead of the tic being waited for a command may be: more is not a device playing the game. */
 const AHEAD = 70;
 export class Room {
@@ -41,7 +44,7 @@ export class Room {
     }
     /** A device has connected. */
     join(link) {
-        const peer = { id: this.nextId++, name: "", watching: false, link, joined: false, slot: -1 };
+        const peer = { id: this.nextId++, name: "", watching: false, link, joined: false, slot: -1, wants: false, ready: false };
         this.peers.push(peer);
         return {
             receive: (data) => {
@@ -66,7 +69,7 @@ export class Room {
         const next = this.log.length;
         const late = [];
         for (const player of this.players) {
-            if (!player.playing || player.ahead.has(next))
+            if (!player.playing || player.from > next || player.ahead.has(next))
                 continue;
             const quiet = now - player.heard;
             if (quiet > (player.begun ? this.options.dropAfter : this.options.startWithin))
@@ -102,14 +105,20 @@ export class Room {
             }
             peer.joined = true;
             peer.name = cleanName(message.name);
-            // A game that is on, or full, can only be watched.
+            // A full game can only be watched. Someone who comes to a game that is on watches while
+            // they catch up; if they came to play, they are put in it once they have (ready, below).
             peer.watching = message.watch === true || !!this.players || players >= MAX_PLAYERS;
+            peer.wants = !!this.players && message.watch !== true;
             if (!this.host)
                 this.host = peer.id;
             this.lobby();
             if (this.players)
                 this.catchUp(peer);
             return;
+        }
+        if (message.t === "ready") {
+            peer.ready = true;
+            return this.letIn(peer);
         }
         if (!peer.joined || this.players)
             return;
@@ -132,13 +141,43 @@ export class Room {
             const now = this.options.now();
             this.players = playing.map((member, slot) => {
                 member.slot = slot;
-                return { peer: member, playing: true, ahead: new Map(), heard: now, begun: false };
+                return { peer: member, playing: true, ahead: new Map(), heard: now, begun: false, from: 0 };
             });
             this.lobby();
             for (const other of this.peers)
                 if (other.joined)
                     this.started(other);
         }
+    }
+    /**
+     * Someone who came to a game that is on, to play, has caught up: they are a player from a tic a
+     * second after the last one sent, in the first place nobody is playing in. Until they have a
+     * place they go on watching, and are let in as soon as one comes free.
+     */
+    letIn(peer) {
+        if (!peer.joined || !peer.wants || !this.players || this.over)
+            return;
+        let slot = this.players.findIndex((player) => !player.playing);
+        if (slot < 0 && this.players.length < MAX_PLAYERS)
+            slot = this.players.length;
+        if (slot < 0)
+            return;
+        const at = this.log.length + JOIN_LEAD;
+        peer.wants = false;
+        peer.watching = false;
+        peer.slot = slot;
+        this.players[slot] = { peer, playing: true, ahead: new Map(), heard: this.options.now(), begun: false, from: at };
+        const member = { id: peer.id, name: peer.name, watching: false };
+        for (const other of this.peers)
+            if (other.joined)
+                this.send(other, { t: "joined", slot, at, member });
+        this.lobby();
+    }
+    /** A place among the players has come free: the first who is waiting to play, and caught up, may have it. */
+    letInWaiting() {
+        const next = this.peers.find((peer) => peer.joined && peer.wants && peer.ready);
+        if (next)
+            this.letIn(next);
     }
     turnAway(peer, reason) {
         this.send(peer, { t: "closed", reason });
@@ -162,7 +201,7 @@ export class Room {
         // The first command says how long this engine's commands are; the rest must agree.
         this.commandSize ||= sent.command.length;
         const next = this.log.length;
-        if (sent.command.length !== this.commandSize || sent.tic < next || sent.tic > next + AHEAD)
+        if (sent.command.length !== this.commandSize || sent.tic < Math.max(next, player.from) || sent.tic > Math.max(next, player.from) + AHEAD)
             return;
         player.ahead.set(sent.tic, sent.command);
         player.heard = this.options.now();
@@ -177,13 +216,14 @@ export class Room {
         const ready = [];
         for (;;) {
             const tic = first + ready.length;
-            const playing = this.players.filter((player) => player.playing);
+            // Someone who came late is in from their own tic, not before.
+            const playing = this.players.filter((player) => player.playing && player.from <= tic);
             if (playing.length === 0 || !playing.every((player) => player.ahead.has(tic)))
                 break;
             const commands = new Uint8Array(this.commandSize * MAX_PLAYERS);
             let mask = 0;
             this.players.forEach((player, slot) => {
-                if (!player.playing)
+                if (!player.playing || player.from > tic)
                     return;
                 mask |= 1 << slot;
                 commands.set(player.ahead.get(tic), slot * this.commandSize);
@@ -219,8 +259,11 @@ export class Room {
     retire(player) {
         player.playing = false;
         player.ahead.clear();
-        if (this.players.some((other) => other.playing))
+        if (this.players.some((other) => other.playing)) {
             this.advance();
+            // Their place may be someone's who is waiting to play.
+            this.letInWaiting();
+        }
         else
             this.end("Everyone who was playing has left.");
     }
