@@ -28,7 +28,7 @@ import { WifiHost } from "./wifi/WifiHost";
 import { WifiJoin } from "./wifi/WifiJoin";
 import { MoveDevice } from "./MoveDevice";
 import { TournamentPage } from "./TournamentPage";
-import { loadGame, loadLastGame, loadName, loadSameRules, loadTableSettings, rememberHouse, saveGame, type ArcadeRules, type GameId } from "./storage";
+import { loadGame, loadLastGame, loadName, loadSameRules, loadTableSettings, rememberHouse, rememberPlayed, saveGame, type ArcadeRules, type GameId } from "./storage";
 
 // The tables: each is fetched when a game of its kind is first opened, so a device need only keep
 // the kinds its owner wants for playing offline (offline/packs.ts).
@@ -110,6 +110,8 @@ export function App() {
   const pickGame = (g: GameId | SoloGameId) => {
     // The game to come back to is a table game: an arcade game is a visit.
     if (!isArcadeGame(g) && !isIdleGame(g)) saveGame(g);
+    // Every game counts towards the front page's "Jump back in", the arcade's too.
+    rememberPlayed(g);
     setGame(g);
     go(embedded ? { embed: "1", game: g } : { game: g });
     setScreen({ kind: "setup" });
