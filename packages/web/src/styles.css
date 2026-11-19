@@ -73,6 +73,8 @@ h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; }
 .error { color: #ffb4ab; }
 
 /* ---------- Setup ---------- */
+/* The felt's pale muted colour is for words on the felt; a placeholder sits on the cream box (the house name's). */
+.setup .field-control::placeholder { color: #6c6357; opacity: 1; }
 .setup {
   /* zubra-ui form controls on the dark felt */
   --card: rgba(0, 0, 0, 0.22);

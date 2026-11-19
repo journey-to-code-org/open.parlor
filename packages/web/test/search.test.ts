@@ -34,4 +34,11 @@ describe("the front page's search", () => {
     expect(find(dropFour, "Board games", "dropfour")).toBe(true);
     expect(find({ name: "Pokémon Café", blurb: "" }, "Arcade", "pokemon cafe")).toBe(true);
   });
+
+  it("finds a card game by its kind as well as its shelf", () => {
+    const holdem = { name: "Texas Hold'em", blurb: "Bet, bluff and make the best five" };
+    expect(find(holdem, "Card games Poker & casino", "poker")).toBe(true);
+    expect(find(holdem, "Card games Poker & casino", "casino")).toBe(true);
+    expect(find({ name: "Spades", blurb: "Partners, bids and nils" }, "Card games Trick-taking", "trick")).toBe(true);
+  });
 });

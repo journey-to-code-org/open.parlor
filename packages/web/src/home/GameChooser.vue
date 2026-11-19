@@ -85,7 +85,12 @@ const fits = (g: ChooserGame) => {
 const query = ref("");
 const words = computed(() => searchWords(query.value));
 const categoryName = (id: string) => props.categories.find((c) => c.id === id)?.name ?? id;
-const shown = computed(() => props.games.filter((g) => fits(g) && matchesSearch(g, categoryName(g.category), words.value)));
+const groupName = (id?: string) => (id && props.cardGroups?.find((k) => k.id === id)?.name) || "";
+/** The shelf a game sits on, and for a card game its kind too, so "poker" finds Hold'em and "trick" finds Spades. */
+const shelfWords = (g: ChooserGame) => `${categoryName(g.category)} ${groupName(g.group)}`;
+const shown = computed(() => props.games.filter((g) => fits(g) && matchesSearch(g, shelfWords(g), words.value)));
+/** Says what the box does and how much is in it, short enough to fit a phone's box whole. */
+const searchHint = computed(() => `Search ${props.games.length} games…`);
 /** Why nothing is showing, when nothing is. */
 const noneLine = computed(() => (words.value.length ? `No games match “${query.value.trim()}”${players.value === "any" ? "" : " for that many players"}.` : "No games for that many players yet."));
 
@@ -183,7 +188,7 @@ function surprise() {
 /** Where each face's pips sit in a die's three-by-three (0 is the top left). */
 const PIPS: Record<number, number[]> = { 1: [4], 2: [2, 6], 3: [2, 4, 6], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
 const seatsLabel = (g: ChooserGame) => (g.screen && g.seats[0] === 1 ? (g.seats[1] === 1 ? "1 player" : `1–${g.seats[1]} players`) : g.teams ? "4 players · partners" : g.seats[0] === g.seats[1] ? (g.seats[0] === 1 ? "1 player" : `${g.seats[0]} players`) : `${g.seats[0]}–${g.seats[1]} players`);
-const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : `${props.games.length} games to play with family and friends: cards, board games, words, table sports and arcade.`));
+const hello = computed(() => (props.name ? `Welcome back, ${props.name}.` : `${props.games.length} games to play with family and friends, from cards and chess to dice, words, mini golf and arcade.`));
 /** Someone who has never played here: no name, no last game. They get the line about what it costs and a few games to start with. */
 const STARTED_KEY = "parlor.started";
 const startedBefore = (() => {
@@ -278,7 +283,7 @@ async function toShelf(id: string) {
         <h2>Pick a game</h2>
         <div class="choosing">
           <div class="filter search">
-            <TextField v-model="query" type="search" label="Search" placeholder="Chess, dice, words…" autocomplete="off" inputmode="search" />
+            <TextField v-model="query" type="search" label="Find a game" :placeholder="searchHint" autocomplete="off" inputmode="search" />
           </div>
           <div class="filter">
             <SelectField v-model="players" label="Who's playing?" :options="sizes" />
@@ -487,6 +492,9 @@ async function toShelf(id: string) {
 .starter-text span { font-size: 0.86rem; color: #b9d0c2; }
 .jump { position: sticky; top: 0; z-index: 3; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 14px -4px 0; padding: 10px 4px; background: linear-gradient(rgba(20, 54, 40, 0.96), rgba(20, 54, 40, 0.88)); backdrop-filter: blur(6px); border-radius: 0 0 12px 12px; }
 .jump::-webkit-scrollbar { display: none; }
+/* Where there's room, every kind shows at once; on a narrow screen they scroll, and the edge fades to say there are more. */
+@media (min-width: 900px) { .jump { flex-wrap: wrap; } }
+@media (max-width: 899px) { .jump { mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); } }
 .jump-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(232, 196, 106, 0.5); background: rgba(10, 30, 20, 0.5); color: var(--cream, #fbf6ec); font-weight: 600; font-size: 0.9rem; cursor: pointer; white-space: nowrap; }
 .jump-chip small { font-weight: 400; color: #b9d0c2; }
 .jump-chip:hover { border-color: var(--gold, #e8c46a); }
@@ -537,7 +545,22 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 @media (prefers-reduced-motion: reduce) { .chev { transition: none; } }
 .filter { min-width: 220px; --background: var(--cream); --foreground: var(--ink); --border: rgba(255, 255, 255, 0.18); --muted-foreground: #cfe2d6; --ring: var(--gold); }
 .choosing { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
-.search { flex: 1 1 220px; }
+.search { flex: 2 1 280px; }
+/* A search box is never required, so it doesn't need saying; and a magnifier says what the box is for at a glance. */
+.search :deep(.field-optional) { display: none; }
+.search :deep(input) {
+  padding-left: 2.4rem;
+  background: var(--cream) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c6357' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m15.5 15.5 5 5'/%3E%3C/svg%3E") no-repeat 0.8rem center / 1.1rem;
+}
+/* The placeholder sits on the cream box, not the felt: the felt's pale label colour all but vanished there. */
+.search :deep(input::placeholder) { color: #6c6357; opacity: 1; }
+@media (max-width: 559px) {
+  /* On a phone: the search across the top, the two choices side by side, and "Surprise me" under them. */
+  .choosing { display: grid; grid-template-columns: 1fr 1fr; align-items: end; }
+  .choosing .filter { min-width: 0; }
+  .choosing .search, .choosing .surprise { grid-column: 1 / -1; }
+  .choosing .surprise { justify-self: start; }
+}
 .none .house { margin-left: 8px; }
 .surprise { white-space: nowrap; }
 .surprise:disabled { opacity: 0.45; cursor: default; }
