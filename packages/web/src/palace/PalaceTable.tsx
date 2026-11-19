@@ -13,6 +13,7 @@ import { usePalaceFx } from "./PalaceFx";
 import { HandSortBar, useHandOrder } from "../HandSort";
 import { cardKey } from "../handOrder";
 import { SoundButton } from "../SoundButton";
+import { palaceDecks } from "./decks";
 
 type PCard = Extract<Card, { kind: "pip" }>;
 const WORD: Record<number, [string, string]> = { 11: ["jack", "jacks"], 12: ["queen", "queens"], 13: ["king", "kings"], 14: ["ace", "aces"] };
@@ -167,6 +168,8 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
   };
   /** New cards in your hand come from the deck, or from the pile when you picked it up. */
   const handFrom = last?.pickedUp && last.seat === me ? ".pile" : ".deck";
+  /** Six players with three of each need 54 cards, so the deal used two decks; say so by the stack. */
+  const twoDecks = palaceDecks(view.rules, view.seats) === 2;
 
   // Sounds and a buzz: cards landing, burns, pickups, your turn.
   const lastKey = JSON.stringify([view.last, view.phase]);
@@ -355,9 +358,10 @@ export function PalaceTable({ view, seat: me, names, act, onLeave, banner, chat,
 
         <div className="center">
           <div role="group" className="pile-area" aria-label="The pile">
-            <div role="group" className="deck" aria-label={`${view.deck} cards left to draw`}>
+            <div role="group" className="deck" aria-label={`${view.deck} cards left to draw${twoDecks ? ", from two decks shuffled together" : ""}`}>
               {view.deck > 0 ? <PlayingCard back size="table" style={{ "--depth": Math.min(6, Math.ceil(view.deck / 8)) } as React.CSSProperties} /> : <div className="empty-slot">No deck</div>}
               <small>{view.deck} to draw</small>
+              {twoDecks && <small className="deck-count" title={`${view.seats} players need more than 52 cards, so two decks are shuffled together.`}>2 decks</small>}
             </div>
             <div
               className={`pile${picked.length ? " ready" : ""}`}
