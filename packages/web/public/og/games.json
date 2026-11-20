@@ -303,6 +303,10 @@
     "name": "Slapjack",
     "blurb": "Flip, and slap the jacks first"
   },
+  "snakes": {
+    "name": "Snakes & Ladders",
+    "blurb": "Race to the last square, up ladders and down snakes"
+  },
   "spades": {
     "name": "Spades",
     "blurb": "Partners, bids and nils"

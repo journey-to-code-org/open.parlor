@@ -66,7 +66,7 @@ describe("sharing a device", () => {
   });
 
   it("shares Mancala on one device, and passes Dominoes round to each player in turn", () => {
-    for (const id of ["mancala", "ludo", "chinesecheckers"]) expect(sharesDevice(id), id).toBe(true);
+    for (const id of ["mancala", "ludo", "chinesecheckers", "snakes"]) expect(sharesDevice(id), id).toBe(true);
     const { game, state } = start("dominoes", 3);
     let now = state;
     let at = 0;

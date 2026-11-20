@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 const SHARP = { skill: 1, sloppy: 0 };
 
-describe.each(["ludo", "chinesecheckers"])("%s", (id) => {
+describe.each(["ludo", "chinesecheckers", "snakes"])("%s", (id) => {
   it("never puts a piece on a cell that isn't there, or offers one", () => {
     const game = kitGame(id)!;
     const seats = game.seats.max;
