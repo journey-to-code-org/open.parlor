@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (ba5737e) components/stack-layout.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (ba5737e) components/stack-layout.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   Children one above the other with the same space between them: the vertical rhythm of a page,
   a form or a card. `gap` is any CSS length.

@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (ba5737e) components/content-card.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (ba5737e) components/content-card.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   A card: a picture, a heading, text and a footer, each optional. With `href` the heading is a
   link and the whole card is the target (one link for screen readers and the keyboard, not one per

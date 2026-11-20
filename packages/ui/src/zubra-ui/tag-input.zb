@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (7a95b65) components/tag-input.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (7a95b65) components/tag-input.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   A list of tags you type: Enter or comma adds one, Backspace in the empty field removes the
   last, × removes any. Suggestions come from `suggestions`. A form control.

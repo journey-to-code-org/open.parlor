@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (7eecf4e) components/progress-bar.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (7eecf4e) components/progress-bar.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   How far along something is: an upload, a setup checklist, a quota. A labelled progressbar with
   its value as a percentage, or (without `value`, or with `indeterminate`) a moving bar that says

@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (0d2fdd0) components/toggle-switch.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit.
+<!-- Copied from zubra-ui (0d2fdd0) components/toggle-switch.zb: https://github.com/zubra-js/zubra-ui. Ours to edit.
      The parts are named switch-*: component styles sit in a layer, so any page class called .track or
      .text (Backgammon's board is a .track) would otherwise win over them and bend the switch out of shape. -->
 <!--

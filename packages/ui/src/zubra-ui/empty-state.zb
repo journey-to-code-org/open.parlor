@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (ba5737e) components/empty-state.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (ba5737e) components/empty-state.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   What a list or page shows when there's nothing in it yet: a heading that says what's missing,
   a line on what it's for, and the action that fills it. Turns an empty screen into a next step.

@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (7eecf4e) components/line-chart.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (7eecf4e) components/line-chart.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   A price chart: an area under a line, with the high, low and a crosshair that follows the
   pointer and shows the value under it.

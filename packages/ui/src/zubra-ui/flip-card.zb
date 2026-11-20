@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (ba5737e) components/flip-card.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (ba5737e) components/flip-card.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   A card with two faces that flips in 3D. Click, Space or Enter flips it. Shadow DOM: the faces
   are slotted, and the page's CSS styles them, not the card's.

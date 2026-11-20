@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (7a95b65) components/money-input.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (7a95b65) components/money-input.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   An amount of money. Typing is free-form; on blur it's formatted (`1234.5` → `1,234.50`). The
   value is a number (or null when empty). A form control: `required` and `min` validate it.

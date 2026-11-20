@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (ba5737e) components/range-slider.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (ba5737e) components/range-slider.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   Pick a number by dragging, on a native `<input type="range">`: arrow keys, Page Up and Down,
   Home and End work as the browser's own, and it submits under `name`. The value shows beside the

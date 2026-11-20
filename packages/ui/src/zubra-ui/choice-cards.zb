@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (7a95b65) components/choice-cards.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (7a95b65) components/choice-cards.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   Pick one of several cards: a radio group. A form control; arrow keys move the choice.
   Each item is `{ id, title, detail, price, note }` (`detail`, `note` and `price` optional: a card

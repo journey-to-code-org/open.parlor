@@ -1,4 +1,4 @@
-/* Copied from zubra-ui (ba5737e) themes/default.css: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. */
+/* Copied from zubra-ui (ba5737e) themes/default.css: https://github.com/zubra-js/zubra-ui. Ours to edit. */
 /* Zubra UI's default theme: shadcn/ui's variables and values (the neutral "zinc" base), so any
    shadcn theme, or one from a theme generator, replaces it unchanged. Light by default; dark with
    `class="dark"` on <html> (as shadcn does it), or follow the system with `themes/system.css`. */

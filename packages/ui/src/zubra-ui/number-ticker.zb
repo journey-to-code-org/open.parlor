@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (7eecf4e) components/number-ticker.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (7eecf4e) components/number-ticker.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   A number that counts up (or down) to `value` when it first scrolls into view, and again from
   where it is whenever `value` changes: for stats, totals and dashboards. Formatted for `locale`

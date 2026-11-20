@@ -1,6 +1,6 @@
 # @open-parlor/ui
 
-The table's components, written in [Zubra](https://github.com/journey-to-code-org/zubra) as `.zb` files.
+The table's components, written in [Zubra](https://github.com/zubra-js/zubra) as `.zb` files.
 Each one compiles to a standard custom element, so the same source runs in the React app
 (`packages/web`, through `@zubra/unplugin`) and, next, as plain HTML in the open.blog embed.
 
@@ -16,7 +16,7 @@ Each one compiles to a standard custom element, so the same source runs in the R
 [`packages/decks`](https://github.com/journey-to-code-org/open.games/tree/main/packages/decks)): set them on the card or anything around it. Without them it's the parlor's
 own deck.
 
-`zubra-ui/` holds components copied from [zubra-ui](https://github.com/journey-to-code-org/zubra-ui),
+`zubra-ui/` holds components copied from [zubra-ui](https://github.com/zubra-js/zubra-ui),
 and its default theme (`zubra-ui/themes/`). They're ours to edit; each file says which commit it
 came from. The parlor's setup screens use the text field, select field and toggle switch; the
 card designer and the admin app are built from the rest: buttons, tabs, data tables, dialogs,

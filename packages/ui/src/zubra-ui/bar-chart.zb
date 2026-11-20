@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (7eecf4e) components/bar-chart.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (7eecf4e) components/bar-chart.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   Values compared side by side as horizontal bars, longest-to-shortest if `sorted`. Each bar has
   its label and value in text, and the chart is a list screen readers read in order, so nothing
