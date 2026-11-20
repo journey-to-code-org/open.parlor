@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (7a95b65) components/star-rating.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (7a95b65) components/star-rating.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   A star rating that is a form control: it submits its value under its `name`, is invalid while
   `required` and unset, and goes back to 0 when its form resets. `readonly` shows a rating.

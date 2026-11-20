@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (ba5737e) components/toast-region.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (ba5737e) components/toast-region.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   Short notifications that appear in a corner and go away by themselves. Put one region on the
   page; anything (a framework, a plain script) shows a toast by dispatching an event, so nothing

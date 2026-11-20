@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (ba5737e) components/status-badge.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (ba5737e) components/status-badge.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   A small label for a status, a count or a category. `variant` is neutral, primary, success,
   warning, danger or outline; `dot` adds a coloured dot before the text. The colour is never the

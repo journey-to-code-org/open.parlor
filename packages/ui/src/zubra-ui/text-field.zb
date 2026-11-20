@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (0d2fdd0) components/text-field.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (0d2fdd0) components/text-field.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   A labelled text field on a native <input> (or <textarea> with `rows`), so it submits under its
   `name`, autofills, and validates as the browser's own (`required`, `type="email"`, `minlength`,

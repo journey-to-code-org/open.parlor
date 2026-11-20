@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (ba5737e) components/alert-banner.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (ba5737e) components/alert-banner.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   A message in the page: info, success, warning or danger, with an icon, a heading and text. A
   danger alert is announced as soon as it appears (role="alert"); the others politely

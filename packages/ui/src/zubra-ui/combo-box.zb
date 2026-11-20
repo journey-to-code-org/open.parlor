@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (7a95b65) components/combo-box.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (7a95b65) components/combo-box.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   A combobox: type to filter, arrow keys to move, Enter to pick, Escape to close. A form control.
   Its behaviour is Zag.js's combobox machine (through @zubra/runtime/zag); its markup and styles are

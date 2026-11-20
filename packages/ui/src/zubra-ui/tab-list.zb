@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (c378b24) components/tab-list.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (c378b24) components/tab-list.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   Tabs: a tab list and the panels it switches between. The panels are the slotted elements with a
   `data-tab` attribute matching a tab's value; they get role=tabpanel, are labelled by their tab,

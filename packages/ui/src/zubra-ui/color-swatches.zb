@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (7a95b65) components/color-swatches.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (7a95b65) components/color-swatches.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   Pick a colour from `colors`. A form control (a radio group): arrow keys move the choice.
   `names` are what each colour is called, in the same order ("Barn red"), for screen readers and

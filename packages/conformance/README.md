@@ -126,10 +126,10 @@ CI runs them in all three browsers.
 None, on Zubra 5.23.0: every check passes in all three browsers.
 
 The last was Preact 11 reordering a keyed list inside a component
-([zubra#370](https://github.com/journey-to-code-org/zubra/issues/370)): it moves children with
+([zubra#370](https://github.com/zubra-js/zubra/issues/370)): it moves children with
 `moveBefore()` where the browser has it, and a Zubra host passed `insertBefore` on to its slots
 but not `moveBefore`, so the move threw and the list kept its old order. Fixed in
-[zubra#372](https://github.com/journey-to-code-org/zubra/pull/372), released in 5.23.0, and out of
+[zubra#372](https://github.com/zubra-js/zubra/pull/372), released in 5.23.0, and out of
 `KNOWN` since.
 
 `KNOWN` in each spec is where a difference goes when one turns up: the check's title and the

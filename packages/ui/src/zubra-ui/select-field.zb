@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (0d2fdd0) components/select-field.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (0d2fdd0) components/select-field.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   A labelled dropdown on a native <select>: the platform's own picker on every device, keyboard
   typeahead, autofill, and form submission under `name`. `options` is `[{ value, label }]`, or

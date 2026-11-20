@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (ba5737e) components/action-button.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (ba5737e) components/action-button.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   A button in six variants and three sizes, on a native <button>, so it submits forms, takes
   `type`, and works with the keyboard and screen readers as the browser's own. `loading` keeps its

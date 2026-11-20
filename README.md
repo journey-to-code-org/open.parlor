@@ -1,6 +1,6 @@
 # open.parlor
 
-open.parlor is where [Zubra](https://github.com/journey-to-code-org/zubra) is tested in
+open.parlor is where [Zubra](https://github.com/zubra-js/zubra) is tested in
 production. Zubra compiles a component written once into a custom element that any framework can
 use. A demo page per framework can't prove that, so the parlor is a real app built the way people
 actually build apps: one set of Zubra components, used from React, Vue, Svelte, Solid and Angular,
@@ -19,7 +19,7 @@ played; but the reason it uses five frameworks is Zubra.
 ### Five frameworks, one set of components
 
 The components are in [`packages/ui`](packages/ui): the parlor's own (cards, seats) and copies of
-[zubra-ui](https://github.com/journey-to-code-org/zubra-ui)'s, kept in step with it. Each
+[zubra-ui](https://github.com/zubra-js/zubra-ui)'s, kept in step with it. Each
 framework gets a real part of the site, chosen to use the parts of that framework a team would
 actually reach for.
 
@@ -30,10 +30,10 @@ actually reach for.
 | Svelte | The card designer ([`packages/designer`](packages/designer)); the Mini Golf and bowling editors, inside the React app | Runes, `$state.raw`, a `.svelte.ts` module, pointer painting, a canvas, a worker |
 | Solid | The watch page ([`packages/watch`](packages/watch)); Read the Room's board; the same-wifi host and join screens; the arcade's and Delbie's sheets | Signals, stores, `For`/`Index`/`Switch`, islands updated in place from React |
 | Angular | The admin app ([`packages/admin`](packages/admin)) | The router (lazy pages, guards, child routes, query params), reactive forms over Zubra fields, `resource()`, signals |
-| None | `/games` and `/daily`, drawn by the server | [`@zubra/server`](https://github.com/journey-to-code-org/zubra/blob/main/docs/server-rendering.md) and [`@zubra/actions`](https://github.com/journey-to-code-org/zubra/blob/main/docs/actions.md): pages that work with JavaScript off |
+| None | `/games` and `/daily`, drawn by the server | [`@zubra/server`](https://github.com/zubra-js/zubra/blob/main/docs/server-rendering.md) and [`@zubra/actions`](https://github.com/zubra-js/zubra/blob/main/docs/actions.md): pages that work with JavaScript off |
 
 Beyond components, the parlor runs on the rest of Zubra: every game's rooms are on
-[`@zubra/sync`](https://github.com/journey-to-code-org/zubra) (through
+[`@zubra/sync`](https://github.com/zubra-js/zubra) (through
 [open.rooms](https://github.com/journey-to-code-org/open.rooms)), and the server draws pages and
 answers forms with Zubra's server rendering and server functions. Every package moves to each
 Zubra release as it comes out, so the checks are always of the Zubra people install.
@@ -528,7 +528,7 @@ The game engine and the rooms live in their own repositories and come in from np
 | [`packages/ui`](packages/ui) | Components in Zubra: our own (cards, seats), the ones copied from zubra-ui, and the `<card-room>` embed |
 
 **A page the server draws.** The app needs JavaScript to show anything. `/games` doesn't: the
-server renders it with [`@zubra/server`](https://github.com/journey-to-code-org/zubra/blob/main/docs/server-rendering.md)
+server renders it with [`@zubra/server`](https://github.com/zubra-js/zubra/blob/main/docs/server-rendering.md)
 ([`pages.ts`](packages/server/src/pages.ts), [`games-page.zb`](packages/server/pages/games-page.zb)),
 so every game the host has switched on is in the HTML, in the host's order, each linking to its
 setup. Its form is a plain GET form: with JavaScript off, "Show" asks the server for the filtered
@@ -539,7 +539,7 @@ it; a parlor published as plain files (GitHub Pages) has none.
 
 Where the parlor takes requests, the page ends with "Ask for a game"
 ([`game-request.zb`](packages/server/pages/game-request.zb)), a form that posts to a function the
-component marks `'use server'` ([`@zubra/actions`](https://github.com/journey-to-code-org/zubra/blob/main/docs/actions.md),
+component marks `'use server'` ([`@zubra/actions`](https://github.com/zubra-js/zubra/blob/main/docs/actions.md),
 at `/_zb/action/…`). The function runs on the server and is never sent to the browser. With
 JavaScript off the browser posts the form, the server sends it back to the page, and the page is
 drawn with the answer once; with it on the post is a fetch and the page doesn't reload. A game the

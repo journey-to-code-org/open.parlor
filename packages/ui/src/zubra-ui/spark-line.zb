@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (7eecf4e) components/spark-line.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (7eecf4e) components/spark-line.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   A small line of recent values, green when it ends higher than it started, red when lower.
 -->

@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (ba5737e) components/loading-spinner.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (ba5737e) components/loading-spinner.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   Something is loading. Announced to screen readers once, as `label` ("Loading" by default),
   and shown as a ring that turns (a pulse instead, for visitors who asked for less motion).

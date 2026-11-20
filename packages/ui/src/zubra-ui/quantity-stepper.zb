@@ -1,4 +1,4 @@
-<!-- Copied from zubra-ui (7a95b65) components/quantity-stepper.zb: https://github.com/journey-to-code-org/zubra-ui. Ours to edit. -->
+<!-- Copied from zubra-ui (7a95b65) components/quantity-stepper.zb: https://github.com/zubra-js/zubra-ui. Ours to edit. -->
 <!--
   A number with − and + buttons, between `min` and `max`. A form control. `editable` lets the
   number be typed as well (a stock count of 40 shouldn't take forty presses); what's typed is
