@@ -41,6 +41,8 @@ export function controls(game: string): string[] {
       return ["Roll, then tap tiles that add up to the roll. Only tiles that can be part of it can be tapped.", "Tap a tile you have just shut to open it again. The roll is made when the tiles add up."];
     case "ludo":
       return ["Press Roll, then tap one of your tokens to move it that many squares. The ones that can move wear a gold ring.", "A token in your yard needs a six to come out."];
+    case "snakes":
+      return ["Press Roll, then move a piece for each die: tap the piece, then the square it lands on (or drag it there). The pieces that can move stand on gold squares.", "Give one die to each piece, or both to the same piece, in either order. A ladder carries a piece up; a snake carries it down."];
     case "chinesecheckers":
       return ["Tap one of your pegs, then the hole it should go to. The dots show where it can reach, jumps and all.", "Your pegs start nearest you and are heading for the point straight across."];
     case "mancala":

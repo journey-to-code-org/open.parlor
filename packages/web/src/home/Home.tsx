@@ -108,6 +108,8 @@ const BOARDS: Record<string, MiniBoard> = {
   tictactoe: { cols: 3, cells: [X, O, null, null, X, O, O, null, X] },
   // A token in each corner's colour, and the cross between them.
   ludo: { cols: 3, cells: [on("●", "red", false), null, on("●", "green", false), null, null, null, on("●", "blue", false), null, on("●", "gold", false)] },
+  // A piece at the foot of a ladder, another at a snake's head.
+  snakes: { cols: 3, cells: [on("↑", "green", false), null, on("●", "blue", false), null, on("↓", "red", false), null, on("●", "red", false), null, null] },
   // Pegs at four of the star's points, hopping in.
   chinesecheckers: { cols: 3, shade: "wood", cells: [null, on("●", "blue", false), null, on("●", "green", false), null, on("●", "gold", false), null, on("●", "red", false), null] },
   // Two rows of pits and the seeds in them: one empty, its neighbour full.

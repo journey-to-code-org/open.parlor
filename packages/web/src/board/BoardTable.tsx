@@ -47,6 +47,8 @@ import { DominoFace } from "./Domino";
 import { Dice } from "./Dice";
 import { Sheet } from "./Sheet";
 import { isPointsTrack, Track } from "./Track";
+import { GlideLayer, glides, inLayer } from "./Glide";
+import { drawsLink, Links } from "./Links";
 import { SoundButton } from "../SoundButton";
 
 export interface BoardTableProps {
@@ -347,6 +349,7 @@ export function BoardTable({ view, names, act, onLeave, banner, watching, togeth
                 mine={watching ? undefined : view.players[me]?.piece}
                 side={i > 0}
                 titled={view.grids.length > 1}
+                scale={motionScale(settings?.value.pace)}
                 picked={looking ? null : held?.grid === grid.id ? held.from : null}
                 asking={!looking && asking?.grid === grid.id ? asking : null}
                 onChoose={(kind) => asking && void send({ type: grid.select!.type, from: asking.from, to: asking.to, [asking.key]: kind, ...onGrid(grid) })}
@@ -577,6 +580,8 @@ interface GridProps {
   mine?: BoardPiece;
   side: boolean;
   titled: boolean;
+  /** How much pieces travel when they move (motionScale). */
+  scale: number;
   picked: number | string | null;
   /** A move waiting to be told which piece it makes (a promotion): the chooser is drawn on its cell. */
   asking: Asking | null;
@@ -601,9 +606,13 @@ interface Drag {
   pickedUp: boolean;
 }
 
-function Grid({ grid, view, names, mine, side, titled, picked, asking, onChoose, onCancel, onCell, onPick, onMove }: GridProps) {
+function Grid({ grid, view, names, mine, side, titled, scale, picked, asking, onChoose, onCancel, onCell, onPick, onMove }: GridProps) {
   const me = view.me;
   const el = useRef<HTMLDivElement>(null);
+  // A board whose pieces glide draws them in a layer over the cells (see Glide.tsx).
+  const layered = glides(view.game);
+  // A ladder or a snake that is drawn from end to end doesn't need the piece that marks where it starts.
+  const linked = useMemo(() => new Map((grid.links ?? []).flatMap((l) => (drawsLink(l.kind) ? [[l.from, l.kind] as const] : []))), [grid.links]);
   // Turned half round for a seat that plays from the far side: the cells are drawn last to first,
   // so the tab order, the arrow keys and the edges all follow what is on the screen.
   const flip = !!grid.flip;
@@ -724,7 +733,10 @@ function Grid({ grid, view, names, mine, side, titled, picked, asking, onChoose,
     if (e.button !== 0 || !sources.some((s) => s.from === cell)) return;
     settle();
     const pickedUp = picked !== cell;
-    drag.current = { cell, x: e.clientX, y: e.clientY, piece: e.currentTarget.querySelector<HTMLElement>(".piece"), moved: false, pickedUp };
+    // The piece under the finger: in the cell, or the top of the stack over it in the layer.
+    const gliders = layered ? el.current?.querySelectorAll<HTMLElement>(`.glider[data-cell="${cell}"]`) : undefined;
+    const piece = gliders?.length ? gliders[gliders.length - 1]! : e.currentTarget.querySelector<HTMLElement>(".piece");
+    drag.current = { cell, x: e.clientX, y: e.clientY, piece, moved: false, pickedUp };
     e.currentTarget.setPointerCapture?.(e.pointerId);
     if (pickedUp) onPick(cell);
   }
@@ -842,8 +854,12 @@ function Grid({ grid, view, names, mine, side, titled, picked, asking, onChoose,
           const tappable = canTap(cell);
           const source = sources.some((s) => s.from === cell);
           const state = blocks?.states[blockOf(cell)];
+          const above = layered && inLayer(piece);
+          const marker = !!piece && piece.owner === null && linked.get(cell) === piece.kind;
+          const tag = grid.tags?.[cell];
           const cls = [
             "cell",
+            above ? "occupied" : "",
             `shade-${shadeOf(cell)}`,
             ...(marks.get(cell) ?? []).map((m) => `mark-${m}`),
             claims.has(cell) ? `claim-${seatTone(claims.get(cell)!)}` : "",
@@ -894,7 +910,12 @@ function Grid({ grid, view, names, mine, side, titled, picked, asking, onChoose,
               style={grid.gravity ? ({ "--row": r } as React.CSSProperties) : undefined}
             >
               {/* Keyed by whose it is: a piece that changes sides is drawn afresh, so its animation plays again. */}
-              {piece && <Piece key={`${piece.owner}/${piece.tone ?? ""}`} piece={piece} />}
+              {tag && (
+                <span className="cell-tag" aria-hidden>
+                  {tag}
+                </span>
+              )}
+              {piece && !above && !marker && <Piece key={`${piece.owner}/${piece.tone ?? ""}`} piece={piece} />}
               {ghost === cell && mine && !piece && (
                 <span className={`piece ghost tone-${toneOf(mine)} kind-${mine.kind}`} aria-hidden>
                   {mine.glyph}
@@ -903,6 +924,12 @@ function Grid({ grid, view, names, mine, side, titled, picked, asking, onChoose,
             </button>
           );
         })}
+        <Links grid={grid} shown={shown} />
+        {layered && (
+          <GlideLayer grid={grid} shown={shown} scale={scale}>
+            {(piece) => <Piece piece={{ ...piece, id: undefined }} />}
+          </GlideLayer>
+        )}
         {asking && <Chooser asking={asking} at={shown(asking.to)} grid={grid} onChoose={onChoose} onCancel={onCancel} />}
         {blocks && (
           <div className="board-blocks" aria-hidden style={{ "--block-cols": blocks.cols, "--block-rows": blocks.rows } as React.CSSProperties}>

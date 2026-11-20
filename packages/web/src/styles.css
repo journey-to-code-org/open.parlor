@@ -1852,6 +1852,52 @@ html[data-motion="off"] .track .cube { animation: none; transition: none; }
 .board-ludo .board-grid .cell.can .piece.kind-token { box-shadow: 0 0 0 max(1.5px, 0.4cqw) #fffdf8, 0 0 0 max(4px, 1.1cqw) rgba(232, 196, 106, 0.95), 0 max(2px, 0.5cqw) max(3px, 0.8cqw) rgba(0, 0, 0, 0.5); }
 .board-ludo .board-grid .cell.mark-last:not(.shade-dark):not(.shade-light), .board-ludo .board-grid .cell.mark-from:not(.shade-dark):not(.shade-light) { box-shadow: inset 0 0 0 0.5px var(--line), inset 0 0 0 max(2px, 0.6cqw) rgba(232, 196, 106, 0.9); }
 
+/* A counted board: each cell's number in its corner (`tags`). */
+.board-grid .cell-tag { position: absolute; z-index: 2; top: 5%; left: 8%; font-size: calc(100cqw / var(--cols) * 0.2); font-weight: 700; line-height: 1; color: rgba(29, 26, 22, 0.7); pointer-events: none; text-shadow: 0 0 2px #fffdf8, 0 0 2px #fffdf8, 0 0 3px #fffdf8; }
+/* Things drawn from one cell to another (`links`): ladders and snakes, measured in cells. */
+.board-links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.link-ladder line { stroke: #8a5a2b; stroke-width: 0.06; stroke-linecap: round; }
+.link-ladder line.rung { stroke: #a8743a; stroke-width: 0.045; }
+.link-snake polyline { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.link-snake { --skin: #3f9b52; --under: #1c4a27; }
+.link-snake.skin-1 { --skin: #8a56b8; --under: #42235f; }
+.link-snake .belly { stroke: var(--under); stroke-width: 0.2; }
+.link-snake .back { stroke: var(--skin); stroke-width: 0.13; stroke-dasharray: 0.3 0.12; }
+.link-snake .head { fill: var(--skin); stroke: var(--under); stroke-width: 0.035; }
+.link-snake .eye { fill: #fffdf8; stroke: #1d1a16; stroke-width: 0.015; }
+/* Pieces that glide (Glide.tsx): one layer over the cells, an element for each piece, put where its cell is. */
+.glide-layer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.glider { position: absolute; display: grid; place-items: center; font-size: calc(100cqw / var(--cols) * 0.62); line-height: 1; }
+/* The pieces of a stack sit a little to the side of one another, so each can be seen. */
+.glider .piece { translate: calc((var(--k) - (var(--n) - 1) / 2) * 30%) calc((var(--k) - (var(--n) - 1) / 2) * -12%); }
+.board-grid .cell.target.occupied::after { width: 86%; background: none; border: max(2px, 0.5cqw) solid rgba(31, 77, 58, 0.6); z-index: 2; }
+
+/* Snakes & Ladders: a track of pale squares in two tints, a yard below it and a home above it for
+   each seat in its colour, pieces as discs, and the ladders and snakes drawn over the squares. */
+.board-snakes .board-grid { --line: rgba(29, 26, 22, 0.3); --line-w: 1px; background: transparent; box-shadow: none; border-radius: 0; overflow: visible; --snakes-red: #d8402f; --snakes-blue: #2f6fd8; --snakes-green: #2f9e5b; --snakes-gold: #e8b520; }
+.board-snakes .board-grid .cell { border: 0; background: #fffdf8; box-shadow: inset 0 0 0 0.5px var(--line); }
+.board-snakes .board-grid .cell:is(:nth-child(12n + 1), :nth-child(12n + 3), :nth-child(12n + 5), :nth-child(12n + 8), :nth-child(12n + 10), :nth-child(12n + 12)) { background: #f3ead6; }
+.board-snakes .board-grid .cell.shade-spot::before { content: none; }
+.board-snakes .board-grid .cell.claim-red { --own: var(--snakes-red); }
+.board-snakes .board-grid .cell.claim-blue { --own: var(--snakes-blue); }
+.board-snakes .board-grid .cell.claim-green { --own: var(--snakes-green); }
+.board-snakes .board-grid .cell.claim-gold { --own: var(--snakes-gold); }
+.board-snakes .board-grid .cell.shade-dark { background: color-mix(in srgb, var(--own) 45%, #fffdf8); box-shadow: inset 0 0 0 max(2px, 0.5cqw) var(--own); border-radius: 22%; scale: 0.9; }
+.board-snakes .board-grid .cell.shade-dark::before { position: absolute; bottom: 5%; font-size: calc(100cqw / var(--cols) * 0.17); font-weight: 700; color: rgba(29, 26, 22, 0.7); }
+.board-snakes .board-grid .cell.shade-dark.row-first::before { content: "Home"; }
+.board-snakes .board-grid .cell.shade-dark.row-last::before { content: "Yard"; }
+.board-snakes .board-grid .piece.kind-piece {
+  width: 58%; aspect-ratio: 1; border-radius: 50%; background: var(--token); font-size: 0; text-shadow: none;
+  box-shadow: 0 0 0 max(1.5px, 0.4cqw) #fffdf8, 0 max(2px, 0.5cqw) max(3px, 0.8cqw) rgba(0, 0, 0, 0.5);
+}
+.board-snakes .board-grid .piece.kind-piece.tone-red { --token: var(--snakes-red); }
+.board-snakes .board-grid .piece.kind-piece.tone-blue { --token: var(--snakes-blue); }
+.board-snakes .board-grid .piece.kind-piece.tone-green { --token: var(--snakes-green); }
+.board-snakes .board-grid .piece.kind-piece.tone-gold { --token: var(--snakes-gold); }
+/* A piece that can move stands on a gold square; the one picked up, and where the last went from and to, as on any board. */
+.board-snakes .board-grid .cell.source:not(.picked) { box-shadow: inset 0 0 0 0.5px var(--line), inset 0 0 0 max(3px, 0.8cqw) rgba(232, 196, 106, 0.95); }
+.board-snakes .board-grid .cell.mark-last:not(.shade-dark):not(.source), .board-snakes .board-grid .cell.mark-from:not(.shade-dark):not(.source) { box-shadow: inset 0 0 0 0.5px var(--line), inset 0 0 0 max(2px, 0.6cqw) rgba(232, 196, 106, 0.6); }
+
 /* Chinese Checkers: the star is two wooden triangles laid over each other, the holes two columns
    apart on a grid whose rows are spaced as a hexagon's are. A hole and its peg are drawn wider than
    the column they stand in, and the button is as wide as it can be without meeting its neighbour. */

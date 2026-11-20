@@ -351,6 +351,11 @@
       "emoji": "✡️",
       "blurb": "Move a peg one hole, or jump over a peg and keep jumping. First to get all ten into the point across the star wins."
     },
+    "snakes": {
+      "name": "Snakes & Ladders",
+      "emoji": "🐍",
+      "blurb": "Roll two dice and choose which piece takes each. Ladders take you up, snakes take you down, and anyone you land on goes back to the yard."
+    },
     "secretword": {
       "name": "Secret Word",
       "emoji": "🟩",
