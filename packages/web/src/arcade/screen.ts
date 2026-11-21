@@ -4,7 +4,7 @@
 // sparks and rings of an explosion, the words that float up from a pickup, the shake of a hit. Those
 // come from the view's events, one tick's worth at a time.
 import type { ArcadeEvent, ArcadeView } from "@journey-to-code/games";
-import { bulwarkLook, loadBulwarkLook } from "./bulwark-look";
+import { bulwarkLook, loadBulwarkLook, lookMotion } from "./bulwark-look";
 import { paintRoad } from "./road";
 import { blip, crash, notes } from "./sounds";
 
@@ -66,10 +66,11 @@ export interface ArcadeScreen {
 
 export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: number; height: number }, says: (text: string) => string = (text) => text, game?: string): ArcadeScreen {
   if (game === "bulwark") void loadBulwarkLook();
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d", { alpha: true, colorSpace: "srgb" })!;
   const FW = field.width;
   const FH = field.height;
-  const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  /** Nothing should travel: Zubra's reduced motion, or the parlor's motion turned off. */
+  const frozen = () => lookMotion() === 0;
   const stars = Array.from({ length: 110 }, (_, i) => ({ x: Math.random() * FW, y: Math.random() * FH, z: 1 + (i % 3) }));
   let sparks: Spark[] = [];
   let rings: Ring[] = [];
@@ -94,13 +95,20 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
   const ring = (x: number, y: number, r: number, grow: number, life: number, colour: string) => rings.push({ x, y, r, grow, life, max: life, colour });
   /**
    * Fire, smoke and a ring of air, as Over the Hill draws a blast. False when this game keeps
-   * the old sparks, or the person has asked for less motion.
+   * the old sparks. When nothing is meant to travel, one flash fades where it landed and this
+   * still returns true, so the old sparks are not put back.
    */
   function bang(x: number, y: number, scale: number): boolean {
-    if (game !== "bulwark" || reduced) return false;
+    if (game !== "bulwark") return false;
     const look = bulwarkLook();
-    if (look.blast === "embers") return false;
-    const power = (look.blast === "inferno" ? 1.65 : 1) * scale;
+    const motion = lookMotion();
+    // Embers keep the old sparks, unless nothing is meant to travel: then one flash that fades in place.
+    if (look.blast === "embers" && motion > 0) return false;
+    if (motion === 0) {
+      sparks.push({ x, y, vx: 0, vy: 0, life: 5, max: 5, colour: "#fff6e0", size: 180 * Math.min(1, scale), kind: "flash" });
+      return true;
+    }
+    const power = (look.blast === "inferno" ? 1.65 : 1) * scale * motion;
     sparks.push({ x, y, vx: 0, vy: 0, life: 7, max: 7, colour: "#fff6e0", size: 240 * power, kind: "flash" });
     const fires = Math.round(10 + 8 * power);
     for (let i = 0; i < fires && sparks.length < 900; i++) {
@@ -157,7 +165,9 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
     ground = document.createElement("canvas");
     ground.width = canvas.width;
     ground.height = canvas.height;
-    const g = ground.getContext("2d")!;
+    const g = ground.getContext("2d", { alpha: false, colorSpace: "srgb" })!;
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = "high";
     g.scale(scale, scale);
     g.fillStyle = "#1d3b2a";
     g.fillRect(0, 0, FW, FH);
@@ -271,7 +281,7 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
     }
     if (flash > 0.01) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = `rgba(255,255,255,${reduced ? flash * 0.2 : flash * 0.6})`;
+      ctx.fillStyle = `rgba(255,255,255,${frozen() ? flash * 0.2 : flash * 0.6})`;
       ctx.fillRect(0, 0, W, H);
     }
   }
@@ -494,6 +504,8 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
     drawOverlay(view, frame, project) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalAlpha = 1;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.setTransform(scale, 0, 0, scale, 0, 0);
       ctx.textAlign = "center";
@@ -519,14 +531,17 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
       const H = canvas.height;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalAlpha = 1;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      const sway = lookMotion();
       const sky = ctx.createLinearGradient(0, 0, 0, H);
       sky.addColorStop(0, "#05060f");
       sky.addColorStop(0.6, "#0a1024");
       sky.addColorStop(1, "#141a3a");
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, W, H);
-      const sx = reduced ? 0 : (Math.random() - 0.5) * shake * dpr;
-      const sy = reduced ? 0 : (Math.random() - 0.5) * shake * dpr;
+      const sx = sway === 0 ? 0 : (Math.random() - 0.5) * shake * dpr * sway;
+      const sy = sway === 0 ? 0 : (Math.random() - 0.5) * shake * dpr * sway;
       ctx.setTransform(scale, 0, 0, scale, sx, sy);
 
       const build = view.build;
@@ -566,7 +581,7 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
           ctx.globalAlpha = 0.25 + st.z * 0.2;
           ctx.fillStyle = st.z === 3 ? "#cfe6ff" : "#8fa3d6";
           const size = 8 + st.z * 7;
-          ctx.fillRect(st.x, (st.y + (reduced ? 0 : frame * st.z * 9)) % FH, size, size * (1 + st.z));
+          ctx.fillRect(st.x, (st.y + (frozen() ? 0 : frame * st.z * 9)) % FH, size, size * (1 + st.z));
         }
       }
       ctx.globalAlpha = 1;
@@ -609,7 +624,7 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
           ctx.stroke();
           ctx.globalAlpha = 1;
         } else if (t.kind.startsWith("drop:")) {
-          const bob = reduced ? 0 : Math.sin(frame / 8 + t.id) * 20;
+          const bob = frozen() ? 0 : Math.sin(frame / 8 + t.id) * 20;
           ctx.drawImage(stamp(colour, true), t.x - 260, t.y - 260 + bob, 520, 520);
           ctx.fillStyle = "#0b1020";
           ctx.font = `700 190px ${FONT}`;
@@ -640,7 +655,7 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
           }
         } else if (t.kind === "chip" || t.kind === "golden") {
           const big = t.kind === "chip";
-          const r = big ? t.r * (1 - bump * 0.06) : t.r * (1 + (reduced ? 0 : Math.sin(frame / 6) * 0.06));
+          const r = big ? t.r * (1 - bump * 0.06) : t.r * (1 + (frozen() ? 0 : Math.sin(frame / 6) * 0.06));
           const face = big ? colour : "#ffd166";
           const edge = big ? "#fbf6ec" : "#fff3c4";
           if (big && t.health) {
@@ -719,7 +734,7 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
         } else if (t.kind.startsWith("creep:")) {
           const kind = t.kind.slice(6);
           const tint = t.mark === "slowed" ? "#8fe9ff" : colour;
-          const bob = reduced ? 0 : Math.sin(frame / 5 + t.id) * 12;
+          const bob = frozen() ? 0 : Math.sin(frame / 5 + t.id) * 12;
           if (kind === "flyer") {
             ctx.fillStyle = "rgba(0,0,0,0.25)";
             ctx.beginPath();
@@ -800,9 +815,13 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
       for (const p of sparks) {
         const left = p.life / p.max;
         if (p.kind === "fire" || p.kind === "flash") {
-          const r = p.size * (p.kind === "flash" ? left : 0.65 + 0.7 * (1 - left));
+          const age = 1 - left;
+          const colour = p.kind === "flash" ? p.colour : age < 0.15 ? "#fff6dc" : age < 0.4 ? "#ffb347" : age < 0.65 ? "#ff6a1a" : "#c43212";
+          const r = p.size * (p.kind === "flash" ? left : 0.65 + 0.7 * age);
           ctx.globalAlpha = p.kind === "flash" ? left : Math.min(1, left * 1.5);
-          ctx.drawImage(stamp(p.colour, false), p.x - r, p.y - r, r * 2, r * 2);
+          ctx.globalCompositeOperation = "lighter";
+          ctx.drawImage(stamp(colour, false), p.x - r, p.y - r, r * 2, r * 2);
+          ctx.globalCompositeOperation = "source-over";
         } else if (p.kind === "smoke") {
           const r = p.size * (0.65 + 1.6 * (1 - left));
           ctx.globalAlpha = 0.42 * Math.pow(left, 1.3);
