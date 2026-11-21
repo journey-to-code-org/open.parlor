@@ -411,9 +411,11 @@ async function toShelf(id: string) {
                 <circle class="lamp amber" cx="50" cy="13" r="3" />
                 <circle class="lamp amber" cx="50" cy="20" r="3" />
                 <circle class="lamp go" cx="50" cy="27" r="3" />
-                <rect class="racer a" x="24" y="66" width="20" height="13" rx="3" />
-                <rect class="racer b" x="57" y="50" width="15" height="10" rx="2.5" />
-                <path class="tail" d="M27 75 h4 M37 75 h4 M59.5 57 h3 M66.5 57 h3" />
+                <path class="racer a" d="M20 79 L25 73 H33 L40 66 H52 L57 71 H64 V79 H20 Z" />
+                <path class="cabin" d="M40 67 H50 L53 71 H36 Z" />
+                <path class="racer b" d="M56 56 L60 52 H66 L71 48 H79 L82 51 H86 V59 H56 Z" />
+                <path class="cabin far" d="M71 49 H77 L79 52 H68 Z" />
+                <path class="tail" d="M23 77 H32 M50 77 H60 M58 57 H64 M76 57 H83" />
               </svg>
               <svg v-else-if="g.screen.quest" viewBox="0 0 100 100" shape-rendering="crispEdges">
                 <rect fill="#4aa84a" x="3" y="3" width="94" height="94" rx="14" />
@@ -850,8 +852,10 @@ h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
 .mini-screen .treepost { fill: #8b97b8; }
 .mini-screen .lamp.amber { fill: #ffb627; }
 .mini-screen .lamp.go { fill: #55d68a; }
-.mini-screen .racer.a { fill: #4cc9ff; stroke: #0e131c; stroke-width: 1.4; }
-.mini-screen .racer.b { fill: #ff5a6e; stroke: #0e131c; stroke-width: 1.2; }
+.mini-screen .racer.a { fill: #c42828; stroke: #1a0c0c; stroke-width: 1.2; }
+.mini-screen .racer.b { fill: #d9d4c8; stroke: #1a0c0c; stroke-width: 1.1; }
+.mini-screen .cabin { fill: #141820; }
+.mini-screen .cabin.far { fill: #2c3344; }
 .mini-screen .tail { stroke: #ff2d2d; stroke-width: 2; stroke-linecap: round; }
 .mini-screen .ice { fill: #0d1f3f; stroke: #9fb4dd; stroke-width: 2; }
 .mini-screen .rinkline { fill: none; stroke: rgba(125, 211, 252, 0.5); stroke-width: 1.6; }
