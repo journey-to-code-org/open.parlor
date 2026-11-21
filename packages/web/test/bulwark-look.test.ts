@@ -1,6 +1,21 @@
-// The road Tower of Ryan draws. The creeps walk a square path; this is the line the paint follows.
+// The look Tower of Ryan draws, apart from the game: a bend in the road, and how a blast goes.
 import { describe, expect, it } from "vitest";
+import file from "../src/arcade/bulwark-look.json";
+import { readBulwarkLook } from "../src/arcade/bulwark-look";
 import { roadCenterline } from "../src/arcade/road";
+
+describe("Tower of Ryan's look", () => {
+  it("uses the numbers shipped with the game when the host has saved nothing", () => {
+    expect(readBulwarkLook(undefined)).toEqual(file);
+    expect(readBulwarkLook({})).toEqual(file);
+  });
+
+  it("lays a saved look over those numbers, and drops anything out of range", () => {
+    expect(readBulwarkLook({ roadBend: 10, smokePuffs: 99, blast: "inferno" })).toEqual({ roadBend: 10, smokePuffs: 12, blast: "inferno" });
+    expect(readBulwarkLook({ roadBend: -4, blast: "nope" }).roadBend).toBe(0);
+    expect(readBulwarkLook({ blast: "nope" }).blast).toBe(file.blast);
+  });
+});
 
 describe("the road that is drawn", () => {
   const corner: [number, number][] = [

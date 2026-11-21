@@ -45,6 +45,8 @@ import {
   RingGeometry,
   Scene,
   SphereGeometry,
+  Sprite,
+  SpriteMaterial,
   SRGBColorSpace,
   TorusGeometry,
   Vector3,
@@ -54,6 +56,8 @@ import {
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { ArcadeBuild, ArcadeEvent, ArcadeGameId, ArcadeThing, ArcadeView } from "@journey-to-code/games";
 import type { Arcade3d, ArcadeFrame3d } from "./scene3d";
+import { bulwarkLook, loadBulwarkLook } from "./bulwark-look";
+import { paintRoad } from "./road";
 import { toneOf } from "./screen";
 
 const K = 0.001;
@@ -122,10 +126,11 @@ function scrap(o: Object3D) {
   o.removeFromParent();
 }
 
-// ---- What flies apart: sparks, rings and beams, for any world ---------------------------------------
+// ---- What flies apart: sparks, rings, beams, and the fire of a blast --------------------------------
 interface Spark { x: number; y: number; z: number; vx: number; vy: number; vz: number; life: number; max: number; size: number; colour: Color; fall: number }
 interface Ring { mesh: Mesh; r: number; grow: number; life: number; max: number }
 interface Beam { mesh: Mesh; from: Vector3; to: Vector3; life: number; max: number; kind: "line" | "bolt" | "lob"; wide: number }
+interface Puff { sprite: Sprite; vx: number; vy: number; vz: number; life: number; max: number; size: number; grow: number; kind: "fire" | "smoke" | "flash" }
 
 function effects(scene: Scene) {
   const MAX = 700;
@@ -146,6 +151,32 @@ function effects(scene: Scene) {
   const here = new Vector3();
   const tint = new Map<string, Color>();
   const colourOf = (c: string) => tint.get(c) ?? (tint.set(c, new Color(c)), tint.get(c)!);
+  const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const soft = canvasTexture(64, 64, (g) => {
+    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, "#ffffff");
+    grad.addColorStop(0.4, "#ffffffcc");
+    grad.addColorStop(1, "#ffffff00");
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+  });
+  let puffs: Puff[] = [];
+  /** A soft blob: fire and a flash add their light, smoke sits over the picture. */
+  function puff(x: number, y: number, z: number, kind: Puff["kind"], colour: string, size0: number, life: number, vx: number, vy: number, vz: number, grow: number) {
+    if (puffs.length > 480) return;
+    const material = new SpriteMaterial({ map: soft, color: colour, transparent: true, depthWrite: false, opacity: 0.85 });
+    if (kind !== "smoke") material.blending = AdditiveBlending;
+    const sprite = new Sprite(material);
+    sprite.position.set(x, y, z);
+    sprite.scale.set(size0, size0, 1);
+    sprite.renderOrder = 5;
+    scene.add(sprite);
+    puffs.push({ sprite, vx, vy, vz, life, max: life, size: size0, grow, kind });
+  }
+  const dropPuff = (p: Puff) => {
+    (p.sprite.material as Material).dispose();
+    p.sprite.removeFromParent();
+  };
 
   return {
     /** A burst of bits from a spot: `speed` is scene units a tick, `fall` how hard they are pulled down. */
@@ -169,6 +200,30 @@ function effects(scene: Scene) {
       const mesh = kind === "lob" ? new Mesh(shell, lit("#2a2622")) : new Mesh(rod, new MeshBasicMaterial({ color: colour, transparent: true, blending: AdditiveBlending, depthWrite: false }));
       scene.add(mesh);
       beams.push({ mesh, from: from.clone(), to: to.clone(), life, max: life, kind, wide });
+    },
+    /**
+     * A blast in the manner of Over the Hill: a flash, fire that burns from white down to red,
+     * a column going up, smoke that hangs, earth and sparks thrown out, and two rings of air.
+     * `power` is how large, `smoke` how many puffs are left behind.
+     */
+    blast(x: number, y: number, z: number, power: number, smoke: number) {
+      const scale = reduced ? Math.min(power, 0.55) : power;
+      const fires = reduced ? 4 : Math.round(8 + 7 * scale);
+      puff(x, y + 0.06, z, "flash", "#fff6e0", 0.42 * scale, 6, 0, 0.01, 0, 0.03);
+      for (let i = 0; i < fires; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const far = Math.random() * 0.16 * scale;
+        const fast = (0.01 + Math.random() * 0.018) * scale;
+        puff(x + Math.cos(a) * far, y + Math.random() * 0.04, z + Math.sin(a) * far, "fire", "#fff3c4", (0.1 + Math.random() * 0.14) * scale, 16 + Math.random() * 14, Math.cos(a) * fast, (0.01 + Math.random() * 0.018) * scale, Math.sin(a) * fast, 0.003);
+      }
+      const column = reduced ? 1 : Math.round(3 + 2 * scale);
+      for (let i = 0; i < column; i++) puff(x + (Math.random() - 0.5) * 0.08 * scale, y, z + (Math.random() - 0.5) * 0.08 * scale, "fire", "#ffd27a", 0.12 * scale, 20 + Math.random() * 12, (Math.random() - 0.5) * 0.005, 0.018 + Math.random() * 0.016, (Math.random() - 0.5) * 0.005, 0.002);
+      const hanging = reduced ? Math.min(2, smoke) : smoke;
+      for (let i = 0; i < hanging; i++) puff(x + (Math.random() - 0.5) * 0.22 * scale, y + 0.04, z + (Math.random() - 0.5) * 0.22 * scale, "smoke", Math.random() < 0.5 ? "#4a4540" : "#6b645c", (0.14 + Math.random() * 0.1) * scale, 48 + Math.random() * 36, (Math.random() - 0.5) * 0.004, 0.004 + Math.random() * 0.005, (Math.random() - 0.5) * 0.004, 0.005);
+      this.burst(x, y, z, Math.round(8 * scale), "#ffd27a", 0.035 * scale, 20, 0.028, 0.003);
+      this.burst(x, y, z, Math.round(6 * scale), "#5b4a33", 0.028 * scale, 26, 0.04, 0.006);
+      this.ring(x, 0.04, z, 0.08 * scale, 0.04 * scale, 14, "#fff1c9");
+      this.ring(x, 0.03, z, 0.05 * scale, 0.065 * scale, 16, "#ffb347");
     },
     /** A tick: everything moves on, and what is spent goes. */
     settle() {
@@ -196,6 +251,18 @@ function effects(scene: Scene) {
         if (--b.life > 0) return true;
         if (b.kind !== "lob") (b.mesh.material as Material).dispose();
         b.mesh.removeFromParent();
+        return false;
+      });
+      puffs = puffs.filter((p) => {
+        p.sprite.position.x += p.vx;
+        p.sprite.position.y += p.vy;
+        p.sprite.position.z += p.vz;
+        p.vx *= 0.94;
+        p.vz *= 0.94;
+        p.vy *= p.kind === "smoke" ? 0.985 : 0.96;
+        p.size += p.grow;
+        if (--p.life > 0) return true;
+        dropPuff(p);
         return false;
       });
     },
@@ -232,13 +299,26 @@ function effects(scene: Scene) {
         b.mesh.scale.set(w, w, far);
         (b.mesh.material as MeshBasicMaterial).opacity = left;
       }
+      for (const p of puffs) {
+        const mat = p.sprite.material as SpriteMaterial;
+        const left = p.life / p.max;
+        const age = 1 - left;
+        if (p.kind === "fire") {
+          mat.color.set(age < 0.15 ? "#fff6dc" : age < 0.4 ? "#ffb347" : age < 0.65 ? "#ff6a1a" : "#c43212");
+          mat.opacity = age < 0.5 ? 0.8 : Math.max(0, 0.8 * (1 - (age - 0.5) / 0.28));
+        } else if (p.kind === "smoke") mat.opacity = 0.5 * Math.pow(left, 1.4);
+        else mat.opacity = left * 0.9;
+        p.sprite.scale.set(p.size, p.size, 1);
+      }
     },
     clear() {
       sparks = [];
       for (const r of rings) r.mesh.removeFromParent();
       for (const b of beams) b.mesh.removeFromParent();
+      for (const p of puffs) dropPuff(p);
       rings = [];
       beams = [];
+      puffs = [];
       sparkMesh.count = 0;
     },
   };
@@ -428,6 +508,7 @@ function tree(n: () => number): Group {
 }
 
 function bulwarkWorld(scene: Scene, fx: Effects, FW: number, FH: number): World {
+  void loadBulwarkLook();
   scene.background = new Color("#22382b");
   scene.add(new HemisphereLight(0xdcefff, 0x41553a, 1.25));
   const sun = new DirectionalLight(0xfff0d2, 2.4);
@@ -492,34 +573,13 @@ function bulwarkWorld(scene: Scene, fx: Effects, FW: number, FH: number): World 
           g.lineWidth = 2;
           g.stroke();
         }
-      const trace = () => {
-        g.beginPath();
-        build.road.forEach(([x, y], i) => (i ? g.lineTo(x * s, y * s) : g.moveTo(x * s, y * s)));
-      };
-      g.lineJoin = g.lineCap = "round";
-      trace();
-      g.strokeStyle = "#4d3c27";
-      g.lineWidth = px * 0.94;
-      g.stroke();
-      trace();
-      g.strokeStyle = "#b99a6b";
-      g.lineWidth = px * 0.78;
-      g.stroke();
-      trace();
-      g.strokeStyle = "#c9ac7c";
-      g.lineWidth = px * 0.5;
-      g.stroke();
-      // Cart ruts, and stones in the dirt.
-      for (const off of [-0.16, 0.16]) {
-        g.save();
-        g.translate(off * px, off * px * 0.4);
-        trace();
-        g.strokeStyle = "rgba(77,60,39,0.4)";
-        g.lineWidth = 5;
-        g.setLineDash([40, 22]);
-        g.stroke();
-        g.restore();
-      }
+      paintRoad(
+        g,
+        build.road.map(([x, y]) => [x * s, y * s]),
+        px,
+        bulwarkLook().roadBend,
+        { shoulder: "#4d3c27", dirt: "#b99a6b", crown: "#c9ac7c", rut: "rgba(77,60,39,0.45)", stone: "#6e5a40", grass: "#2f6a33" },
+      );
     });
     const board = new Mesh(new PlaneGeometry(FW, FH).rotateX(-Math.PI / 2), new MeshStandardMaterial({ map, roughness: 1 }));
     board.receiveShadow = true;
@@ -639,6 +699,14 @@ function bulwarkWorld(scene: Scene, fx: Effects, FW: number, FH: number): World 
         const z = e.y * K;
         const tx = (e.to?.[0] ?? e.x) * K;
         const tz = (e.to?.[1] ?? e.y) * K;
+        // A full blast (fire, smoke, a ring of air) when the host has asked for one. Embers keeps the old sparks.
+        const bang = (bx: number, by: number, bz: number, scale: number) => {
+          const look = bulwarkLook();
+          if (look.blast === "embers") return false;
+          const power = (look.blast === "inferno" ? 1.65 : 1) * scale;
+          fx.blast(bx, by, bz, power, Math.round(look.smokePuffs * Math.min(1.5, scale)));
+          return true;
+        };
         switch (e.kind) {
           case "shot":
             fx.beam(from.set(x, muzzle(e.x, e.y), z), to.set(tx, 0.16, tz), colour, "line", 5, 0.02);
@@ -652,25 +720,29 @@ function bulwarkWorld(scene: Scene, fx: Effects, FW: number, FH: number): World 
             break;
           case "shell":
             fx.beam(from.set(x, muzzle(e.x, e.y), z), to.set(tx, 0.05, tz), colour, "lob", 9);
-            fx.ring(tx, 0.04, tz, 0.06, ((e.amount ?? 500) * K) / 9, 9, "#ffb347");
-            fx.burst(tx, 0.08, tz, 10, "#ffb347", 0.05, 16, 0.045);
-            fx.burst(tx, 0.08, tz, 5, "#5b4a33", 0.035, 20, 0.05);
+            if (!bang(tx, 0.1, tz, 1)) {
+              fx.ring(tx, 0.04, tz, 0.06, ((e.amount ?? 500) * K) / 9, 9, "#ffb347");
+              fx.burst(tx, 0.08, tz, 10, "#ffb347", 0.05, 16, 0.045);
+              fx.burst(tx, 0.08, tz, 5, "#5b4a33", 0.035, 20, 0.05);
+            } else shaking = Math.max(shaking, 0.04);
             break;
           case "frost":
             fx.ring(x, 0.05, z, 0.08, ((e.amount ?? 1000) * K) / 14, 14, "#8fe9ff");
             break;
           case "pop":
-            fx.burst(x, 0.2, z, 9, colour, 0.04, 18, 0.05);
+            if (!bang(x, 0.18, z, 0.62)) fx.burst(x, 0.2, z, 9, colour, 0.04, 18, 0.05);
             break;
           case "boss-down":
-            fx.burst(x, 0.4, z, 70, "#ffd166", 0.09, 50, 0.07);
-            fx.burst(x, 0.4, z, 40, colour, 0.07, 60, 0.08);
-            fx.ring(x, 0.05, z, 0.2, 0.09, 36, "#ffffff");
-            shaking = 0.12;
+            if (!bang(x, 0.4, z, 2.3)) {
+              fx.burst(x, 0.4, z, 70, "#ffd166", 0.09, 50, 0.07);
+              fx.burst(x, 0.4, z, 40, colour, 0.07, 60, 0.08);
+              fx.ring(x, 0.05, z, 0.2, 0.09, 36, "#ffffff");
+            }
+            shaking = 0.14;
             break;
           case "leak":
-            shaking = Math.max(shaking, 0.05);
-            fx.burst(x, 0.2, Math.min(z, FH), 14, "#ff5a6e", 0.05, 22, 0.05);
+            shaking = Math.max(shaking, 0.06);
+            if (!bang(x, 0.2, Math.min(z, FH), 0.85)) fx.burst(x, 0.2, Math.min(z, FH), 14, "#ff5a6e", 0.05, 22, 0.05);
             break;
           case "built":
           case "upgraded":
@@ -686,7 +758,7 @@ function bulwarkWorld(scene: Scene, fx: Effects, FW: number, FH: number): World 
     show({ view, frame, pointer, still }) {
       const build = view.build;
       if (!build) return;
-      const key = `${build.cols}x${build.rows}:${build.closed.join(",")}`;
+      const key = `${build.cols}x${build.rows}:${bulwarkLook().roadBend}:${build.closed.join(",")}`;
       if (key !== landKey) {
         landKey = key;
         buildLand(build);

@@ -280,7 +280,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
     const rec = recorder(game, seats);
     let live = true;
     setPosted(null);
-    const screen = createArcadeScreen(el, game.view(state).field, says);
+    const screen = createArcadeScreen(el, game.view(state).field, says, id);
     screen.resize();
     gl.current?.reset();
     const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
