@@ -1,6 +1,7 @@
 // One part of a game's tunables form, drawn from its shape: a number is a text field (empty means "as the
-// game has it", with the game's own number as the hint), a table is an entry for each name with a way to
-// add one, a list is a row for each item. It draws itself again inside itself for what is inside it.
+// game has it", with the game's own number as the hint), unless the shape asks for a slider or a stepper.
+// A choice is a menu, unless it asks for cards. A table is an entry for each name with a way to add one,
+// a list is a row for each item. It draws itself again inside itself for what is inside it.
 import { CUSTOM_ELEMENTS_SCHEMA, ChangeDetectionStrategy, Component, computed, input, signal } from "@angular/core";
 import { AbstractControl, FormArray, FormControl, FormGroup, FormRecord, ReactiveFormsModule } from "@angular/forms";
 import { ZubraModel } from "@zubra/runtime/angular";
@@ -16,17 +17,43 @@ const words = (key: string) => key.replace(/([A-Z])/g, " $1").toLowerCase();
   template: `
     @switch (shape().type) {
       @case ("int") {
-        <text-field
-          zubraModel
-          [formControl]="asControl()"
-          [label]="label()"
-          inputmode="numeric"
-          [placeholder]="hint()"
-          [error]="problem()"
-        ></text-field>
+        @if (drawn() === "slider") {
+          <div class="tune">
+            <range-slider [label]="label()" [min]="bounds().min" [max]="bounds().max" [step]="1" [unit]="unit()" [value]="numberShown()" [disabled]="control().disabled" (valuechange)="onNumber($event)"></range-slider>
+            @if (note()) { <p class="quiet">{{ note() }}</p> }
+            @if (asControl().value) { <action-button variant="ghost" size="sm" [disabled]="control().disabled" (click)="clearValue($event)">Leave as the game has it</action-button> }
+          </div>
+        } @else if (drawn() === "stepper") {
+          <div class="tune">
+            <div class="stepper">
+              <span class="stepper-label">{{ label() }}</span>
+              <quantity-stepper [label]="label()" [min]="bounds().min" [max]="bounds().max" [value]="numberShown()" [editable]="true" [disabled]="control().disabled" (valuechange)="onNumber($event)"></quantity-stepper>
+            </div>
+            @if (note()) { <p class="quiet">{{ note() }}</p> }
+            @if (asControl().value) { <action-button variant="ghost" size="sm" [disabled]="control().disabled" (click)="clearValue($event)">Leave as the game has it</action-button> }
+          </div>
+        } @else {
+          <text-field
+            zubraModel
+            [formControl]="asControl()"
+            [label]="label()"
+            inputmode="numeric"
+            [placeholder]="hint()"
+            [error]="problem()"
+          ></text-field>
+        }
       }
       @case ("enum") {
-        <select-field zubraModel [formControl]="asControl()" [label]="label()" [options]="options()"></select-field>
+        @if (drawn() === "cards") {
+          <div class="tune">
+            <p class="stepper-label">{{ label() }}</p>
+            <choice-cards [label]="label()" [items]="cardItems()" [value]="enumShown()" [disabled]="control().disabled" (valuechange)="onEnum($event)"></choice-cards>
+            @if (note()) { <p class="quiet">{{ note() }}</p> }
+            @if (asControl().value) { <action-button variant="ghost" size="sm" [disabled]="control().disabled" (click)="clearValue($event)">Leave as the game has it</action-button> }
+          </div>
+        } @else {
+          <select-field zubraModel [formControl]="asControl()" [label]="label()" [options]="options()"></select-field>
+        }
       }
       @case ("object") {
         <fieldset class="group" [disabled]="control().disabled">
@@ -94,7 +121,46 @@ export class ShapeField {
   private readonly changes = signal(0);
 
   protected asControl = () => this.control() as FormControl<string>;
-  protected hint = computed(() => (typeof this.defaults() === "number" ? String(this.defaults()) : ""));
+  protected hint = computed(() => {
+    if (typeof this.defaults() === "number") return String(this.defaults());
+    const shape = this.shape();
+    return shape.type === "int" && typeof shape.fallback === "number" ? String(shape.fallback) : "";
+  });
+  /** slider, stepper or cards, when this field is drawn with one of those instead of a text field. */
+  protected drawn = () => {
+    const shape = this.shape();
+    return shape.type === "int" || shape.type === "enum" ? shape.control : undefined;
+  };
+  protected note = () => {
+    const shape = this.shape();
+    return shape.type === "int" || shape.type === "enum" ? (shape.hint ?? "") : "";
+  };
+  protected unit = () => {
+    const shape = this.shape();
+    return shape.type === "int" ? (shape.unit ?? "") : "";
+  };
+  protected bounds = () => {
+    const shape = this.shape();
+    return shape.type === "int" ? { min: shape.min, max: shape.max } : { min: 0, max: 1 };
+  };
+  /** The number a slider or stepper shows: what was typed, or the game's own. */
+  protected numberShown = () => {
+    const text = String(this.control().value ?? "").trim();
+    const n = text === "" ? Number(this.hint()) : Number(text);
+    const { min, max } = this.bounds();
+    return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min;
+  };
+  protected cardItems = computed(() => {
+    const shape = this.shape();
+    if (shape.type !== "enum") return [];
+    return shape.cards ?? shape.of.map((id) => ({ id, title: id }));
+  });
+  protected enumShown = () => {
+    const value = String(this.control().value ?? "");
+    if (value) return value;
+    const shape = this.shape();
+    return shape.type === "enum" ? (shape.fallback || shape.of[0] || "") : "";
+  };
   protected problem = () => {
     const c = this.control();
     return (c.touched || c.dirty) && c.errors ? String(Object.values(c.errors)[0]) : "";
@@ -112,7 +178,10 @@ export class ShapeField {
   protected keys = computed(() => Object.keys((this.shape() as { fields: Record<string, Shape> }).fields));
   protected fieldShape = (key: string) => (this.shape() as { fields: Record<string, Shape> }).fields[key]!;
   protected child = (key: string) => (this.control() as FormGroup).controls[key]!;
-  protected label_ = (key: string) => words(key);
+  protected label_ = (key: string) => {
+    const field = this.fieldShape(key) as { label?: string };
+    return field.label || words(key);
+  };
   protected defaultOf = (key: string): unknown => {
     const d = this.defaults();
     return typeof d === "object" && d !== null && !Array.isArray(d) ? (d as Record<string, unknown>)[key] : undefined;
@@ -147,6 +216,37 @@ export class ShapeField {
       this.addProblem.set(problem ? String(Object.values(problem)[0]) : "");
       if (problem) this.adding.setErrors(problem);
     });
+  }
+
+  /** A slider or stepper moved. Mounting one reports the number it is showing; that is not a change. */
+  protected onNumber(event: Event): void {
+    const detail = event instanceof CustomEvent ? event.detail : event;
+    const n = typeof detail === "number" ? detail : Number(detail);
+    if (!Number.isFinite(n)) return;
+    const text = String(n);
+    const control = this.asControl();
+    if (control.value === text) return;
+    // The control shows the game's own number while nothing is saved, and says so. That is not a change.
+    if (control.value === "" && text === this.hint()) return;
+    control.setValue(text);
+    control.markAsDirty();
+  }
+
+  protected onEnum(event: Event): void {
+    const detail = event instanceof CustomEvent ? event.detail : "";
+    if (typeof detail !== "string" || !detail) return;
+    const control = this.asControl();
+    if (control.value === detail) return;
+    if (control.value === "" && detail === this.enumShown()) return;
+    control.setValue(detail);
+    control.markAsDirty();
+  }
+
+  protected clearValue(event: Event): void {
+    event.preventDefault();
+    const control = this.asControl();
+    control.setValue("");
+    control.markAsDirty();
   }
 
   protected add(event: Event): void {

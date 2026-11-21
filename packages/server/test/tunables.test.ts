@@ -129,7 +129,7 @@ describe("the host's side", () => {
     await admin("/tunables/sudoku", { values: { clues: [40, 38, 36, 33, 31, 29, 27] } });
     const { status, body } = await admin("/tunables");
     expect(status).toBe(200);
-    expect(body.games.map((g: { id: string }) => g.id)).toEqual(["back-room", "sudoku"]);
+    expect(body.games.map((g: { id: string }) => g.id)).toEqual(["back-room", "sudoku", "bulwark"]);
     expect(body.games[1].saved).toMatchObject({ version: 1, values: { clues: [40, 38, 36, 33, 31, 29, 27] } });
     // The shape reaches the admin app as plain JSON: a name pattern is its source.
     expect(body.games[0].shape.fields.cards.key).toBe("^[a-z][a-z0-9-]{0,23}$");
@@ -152,6 +152,28 @@ describe("the host's side", () => {
       ["Put a game's numbers back", "back-room", "version 2"],
       ["Changed a game's numbers", "back-room", "version 1"],
     ]);
+  });
+});
+
+describe("Tower of Ryan's look", () => {
+  const shape = TUNABLE_GAMES.bulwark!.shape;
+
+  it("takes the road and the blasts, and nothing the game plays by", () => {
+    expect(check(shape, {})).toEqual([]);
+    expect(check(shape, { roadBend: 40, smokePuffs: 2, blast: "inferno" })).toEqual([]);
+    expect(check(shape, { roadBend: 140 })).toEqual(["roadBend must be from 0 to 100."]);
+    expect(check(shape, { blast: "boom" })).toEqual(["blast must be one of embers, blast, inferno."]);
+    expect(check(shape, { lives: 10 })).toEqual(["lives isn't something this game lets you change."]);
+  });
+
+  it("ships the same numbers the form calls the game's own", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    const file = JSON.parse(readFileSync(fileURLToPath(new URL(`../../../${TUNABLE_GAMES.bulwark!.promoted}`, import.meta.url)), "utf8")) as Record<string, unknown>;
+    if (shape.type !== "object") throw new Error("shape");
+    for (const [key, field] of Object.entries(shape.fields)) {
+      expect(file[key]).toEqual("fallback" in field ? field.fallback : undefined);
+    }
   });
 });
 
