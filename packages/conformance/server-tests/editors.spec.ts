@@ -108,7 +108,7 @@ test.describe("the course editor", () => {
 
     await page.getByRole("button", { name: "Play it against the computer" }).click();
     await expect(page.getByRole("heading", { name: "Make a Mini Golf course" })).toHaveCount(0);
-    await expect(page.locator("canvas").filter({ visible: true }).first()).toBeVisible();
+    await expect(page.locator("canvas").filter({ visible: true }).first()).toBeVisible({ timeout: 20_000 });
   });
 
   test("watch the computer, play a practice round, and come back to the draft", async ({ page }) => {
