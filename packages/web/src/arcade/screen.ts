@@ -66,7 +66,7 @@ export interface ArcadeScreen {
 
 export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: number; height: number }, says: (text: string) => string = (text) => text, game?: string): ArcadeScreen {
   if (game === "bulwark") void loadBulwarkLook();
-  const ctx = canvas.getContext("2d", { alpha: true, colorSpace: "srgb" })!;
+  const ctx = canvas.getContext("2d", { alpha: true })!;
   const FW = field.width;
   const FH = field.height;
   /** Nothing should travel: Zubra's reduced motion, or the parlor's motion turned off. */
@@ -165,7 +165,7 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
     ground = document.createElement("canvas");
     ground.width = canvas.width;
     ground.height = canvas.height;
-    const g = ground.getContext("2d", { alpha: false, colorSpace: "srgb" })!;
+    const g = ground.getContext("2d", { alpha: false })!;
     g.imageSmoothingEnabled = true;
     g.imageSmoothingQuality = "high";
     g.scale(scale, scale);
