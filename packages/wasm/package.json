@@ -37,9 +37,9 @@
     }
   },
   "dependencies": {
+    "@journey-to-code/symbology": "^0.2.0",
     "@zubra/runtime": "^6.0.2",
     "jsqr": "^1.4.0",
-    "qrcode-generator": "^2.0.4",
     "solid-js": "^1.9.19",
     "svelte": "^5.57.0"
   }

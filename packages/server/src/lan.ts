@@ -1,8 +1,10 @@
 // Where this server can be reached on the local network, for a parlor run on a laptop or a
 // Raspberry Pi when the internet is out: everyone on the same wifi opens the address, or scans the
 // QR code printed with it. (docs/LOCAL-PLAY.md)
+import { loadQr, type Code } from "@journey-to-code/symbology";
 import { networkInterfaces } from "node:os";
-import qrcode from "qrcode-generator";
+
+const qr = await loadQr();
 
 /** A private IPv4 address: one a home router, or a phone's hotspot, hands out. */
 export const isPrivate = (address: string) => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(address);
@@ -19,13 +21,15 @@ export function lanAddresses(port: number, interfaces = networkInterfaces()): st
 }
 
 /** A QR code for a terminal: two rows of modules to a line of text, dark on light whatever the terminal's colours. */
+function darkAt(code: Code, row: number, col: number): boolean {
+  return row >= 0 && col >= 0 && row < code.size && col < code.size && code.modules[row * code.size + col] === 1;
+}
+
 export function terminalQr(text: string): string {
-  const qr = qrcode(0, "L");
-  qr.addData(text, "Byte");
-  qr.make();
-  const n = qr.getModuleCount();
+  const code = qr.encode(text);
+  const n = code.size;
   const quiet = 2;
-  const dark = (row: number, col: number) => row >= 0 && col >= 0 && row < n && col < n && qr.isDark(row, col);
+  const dark = (row: number, col: number) => darkAt(code, row, col);
   const lines: string[] = [];
   for (let row = -quiet; row < n + quiet; row += 2) {
     let line = "";

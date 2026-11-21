@@ -2540,7 +2540,7 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 /* The button for the special move is for fingers: a keyboard has a key for it. */
 .arcade-btn.special { display: none; border-color: #5ee6a0; color: #5ee6a0; font-size: 1rem; padding: 10px 18px; }
 @media (pointer: coarse) { .arcade-btn.special { display: inline-block; } }
-.arcade-sheet { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; overflow-y: auto; background: rgba(3, 4, 12, 0.55); }
+.arcade-sheet { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; padding: 16px; overflow-y: auto; background: rgba(3, 4, 12, 0.55); }
 .arcade-card {
   width: min(100%, 420px); display: flex; flex-direction: column; gap: 14px; padding: 22px; border-radius: 16px;
   background: rgba(9, 13, 32, 0.94); border: 1px solid var(--arc-line); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);

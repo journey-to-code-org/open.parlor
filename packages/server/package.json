@@ -20,6 +20,7 @@
     "@journey-to-code/relay": "^0.1.0",
     "@journey-to-code/rooms": "^0.3.0",
     "@journey-to-code/rules": "^0.1.0",
+    "@journey-to-code/symbology": "^0.2.0",
     "@open-parlor/courses": "*",
     "@open-parlor/wasm": "*",
     "@zubra/actions": "^6.0.2",
@@ -27,7 +28,6 @@
     "@zubra/runtime": "^6.0.2",
     "@zubra/server": "^6.0.2",
     "@zubra/sync": "^6.0.2",
-    "qrcode-generator": "^2.0.4",
     "web-push": "^4.0.0",
     "ws": "^8.23.0"
   },

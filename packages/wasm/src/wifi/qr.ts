@@ -1,15 +1,17 @@
 // QR codes, both ways: drawn on the screen for another device's camera, and read with this one's.
-// Reading uses the browser's own detector where it has one (Chrome on Android), and a decoder
-// loaded only when it's wanted everywhere else.
-import qrcode from "qrcode-generator";
+// The squares come from @journey-to-code/symbology. Reading uses the browser's own detector where
+// it has one (Chrome on Android), and a decoder loaded only when it's wanted everywhere else.
+import { loadQr, type Code } from "@journey-to-code/symbology";
+
+const qr = await loadQr();
+
+function grid(code: Code): boolean[][] {
+  return Array.from({ length: code.size }, (_, row) => Array.from({ length: code.size }, (_, col) => code.modules[row * code.size + col] === 1));
+}
 
 /** The dark squares of a QR code for `text`: a square grid, true where a module is dark. */
 export function qrModules(text: string): boolean[][] {
-  const qr = qrcode(0, "L");
-  qr.addData(text, "Byte");
-  qr.make();
-  const n = qr.getModuleCount();
-  return Array.from({ length: n }, (_, row) => Array.from({ length: n }, (_, col) => qr.isDark(row, col)));
+  return grid(qr.encode(text));
 }
 
 /** A QR code for `text`, as a picture for the page. */

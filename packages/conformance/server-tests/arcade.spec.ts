@@ -43,7 +43,11 @@ test("pause, carry on, then a game left alone ends with its sheet, and plays aga
   await expect(over.getByText(/A new best on this device|Your best:/)).toBeVisible();
   await expect(over.locator(".arcade-stats dt", { hasText: "Time" })).toBeVisible();
   await expect(over.getByRole("button", { name: "Play again" })).toBeFocused();
-  await over.getByRole("button", { name: "Play again" }).click();
+  // The clock is holding animation frames. WebKit will not call the button stable until a frame
+  // actually runs, so the click waits out the whole test. Advance time while it waits.
+  const again = over.getByRole("button", { name: "Play again" }).click();
+  await page.clock.runFor(500);
+  await again;
   await expect(over).toHaveCount(0);
   await expect(page.locator("canvas[aria-label$='the field']")).toBeVisible();
   // Paused again, and left from the sheet.
