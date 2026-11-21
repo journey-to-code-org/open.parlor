@@ -1677,7 +1677,10 @@ export function build(canvas: HTMLCanvasElement, game: ArcadeGameId, field: { wi
       for (const x of [w >> 2, w >> 1, (w * 3) >> 2]) {
         for (const y of [h >> 2, h >> 1, (h * 3) >> 2]) {
           gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
-          if (px[0] > 16 || px[1] > 16 || px[2] > 16) return true;
+          const red = px[0] ?? 0;
+          const green = px[1] ?? 0;
+          const blue = px[2] ?? 0;
+          if (red > 16 || green > 16 || blue > 16) return true;
         }
       }
       return false;
