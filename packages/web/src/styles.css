@@ -2520,6 +2520,7 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .arcade-cell b[data-hot="2"] { color: var(--arc-hot); text-shadow: 0 0 12px var(--arc-hot); }
 .arcade-score { font-size: 1.5rem !important; }
 .arcade-best { color: var(--gold); }
+.arcade-cell number-ticker { font: inherit; color: inherit; vertical-align: baseline; }
 .arcade-lives { color: var(--arc-cyan); letter-spacing: 0.12em; }
 .arcade-pips { color: #5ee6a0; letter-spacing: 0.1em; font-size: 1rem !important; }
 .arcade-pips.power { color: var(--arc-hot); }
