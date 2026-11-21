@@ -16,11 +16,6 @@ interface Flavour {
 }
 
 const FLAVOURS: Partial<Record<ArcadeGameId, Flavour>> = {
-  pinkslips: {
-    blurb: "A 1990 turbo coupe. Wrench it, then race for the pink slip",
-    tagline:
-      "The Kagami Umbra is the all-wheel-drive turbo coupe everyone in town wants. Buy one tired, keep an eye on the boost, and take it to the Shootout.",
-  },
   skyfire: {
     blurb: "It's raining you-know-what: dodge it, flush it, beat your score",
     tagline:
