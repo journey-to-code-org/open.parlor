@@ -2872,7 +2872,8 @@ html[data-motion="off"] .hand[data-rearranging] > playing-card { transition: non
 .pinks .empty { color: var(--dim); font-size: 0.88rem; line-height: 1.4; }
 .pinks-top { position: sticky; top: 0; z-index: 2; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 10px 16px; background: #1b1824; border-bottom: 1px solid var(--edge); }
 .pinks-top h1 { flex: 1; min-width: 150px; font-size: clamp(1.05rem, 2.6vw, 1.4rem); color: var(--pink); }
-.pinks-back { background: transparent !important; font-size: 0.85rem; padding: 6px 10px !important; }
+/* The shootout bar is not inside .pinks, so a button keeps the browser's dark label. Name the colour. */
+.pinks-back { background: transparent !important; color: #f1eef6; border-color: rgba(241, 238, 246, 0.55); font-size: 0.85rem; padding: 6px 10px !important; }
 .pinks-till { display: flex; gap: 18px; font-variant-numeric: tabular-nums; }
 .pinks-till div { display: flex; flex-direction: column; }
 .pinks-till small { font-size: 0.66rem; letter-spacing: 0.07em; text-transform: uppercase; }
