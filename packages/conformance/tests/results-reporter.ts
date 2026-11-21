@@ -2,9 +2,9 @@
 // (src/report/): every check, and how it went in each framework. Also dist/badge.json, in the
 // shape shields.io reads for the README's badge.
 import type { FullResult, Reporter, TestCase, TestResult } from "@playwright/test/reporter";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { zubraVersion } from "./zubra-line.ts";
 
 /** How one check went in one framework. "known" is a difference already reported upstream. */
 type Status = "passed" | "failed" | "known" | "skipped";
@@ -34,7 +34,9 @@ export default class ResultsReporter implements Reporter {
     // The last try is the one that counts (CI retries once).
     if (result.retry < test.results.length - 1) return;
     const [, engine = "", file = "", framework = ""] = test.titlePath();
-    const suite = file.includes("features") ? "features" : "components";
+    // The version gate is not one of the fixture checks, so it stays out of the results page.
+    const suite = file.includes("features") ? "features" : file.includes("conformance.spec") ? "components" : "";
+    if (!suite) return;
     const title = annotation(test, "check") ?? test.title;
     const known = test.expectedStatus === "failed";
     const status: Status = result.status === "skipped" ? "skipped" : test.outcome() === "unexpected" ? "failed" : known ? "known" : "passed";
@@ -54,12 +56,9 @@ export default class ResultsReporter implements Reporter {
     const features = [...this.rows.features.values()];
     const cells = [...components, ...features].flatMap((row) => Object.values(row.cells));
     const count = (status: Status) => cells.filter((cell) => cell.status === status).length;
-    // The package doesn't export its package.json, so find it from the entry point.
-    const entry = createRequire(import.meta.url).resolve("@zubra/runtime");
-    const runtime = `${entry.slice(0, entry.lastIndexOf("@zubra/runtime") + "@zubra/runtime".length)}/package.json`;
     const results = {
       ranAt: result.startTime.toISOString(),
-      zubra: (JSON.parse(readFileSync(runtime, "utf8")) as { version: string }).version,
+      zubra: zubraVersion("@zubra/runtime"),
       engines: [...this.engines],
       commit: process.env.GITHUB_SHA ?? null,
       repository: process.env.GITHUB_REPOSITORY ?? "journey-to-code-org/open.parlor",
