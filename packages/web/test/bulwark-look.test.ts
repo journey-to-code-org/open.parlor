@@ -1,7 +1,7 @@
 // The look Tower of Ryan draws, apart from the game: a bend in the road, and how a blast goes.
 import { describe, expect, it } from "vitest";
 import file from "../src/arcade/bulwark-look.json";
-import { readBulwarkLook } from "../src/arcade/bulwark-look";
+import { readBulwarkLook, lookMotion } from "../src/arcade/bulwark-look";
 import { roadCenterline } from "../src/arcade/road";
 
 describe("Tower of Ryan's look", () => {
@@ -14,6 +14,10 @@ describe("Tower of Ryan's look", () => {
     expect(readBulwarkLook({ roadBend: 10, smokePuffs: 99, blast: "inferno" })).toEqual({ roadBend: 10, smokePuffs: 12, blast: "inferno" });
     expect(readBulwarkLook({ roadBend: -4, blast: "nope" }).roadBend).toBe(0);
     expect(readBulwarkLook({ blast: "nope" }).blast).toBe(file.blast);
+  });
+
+  it("plays the whole show when nothing has asked for less motion", () => {
+    expect(lookMotion()).toBe(1);
   });
 });
 
