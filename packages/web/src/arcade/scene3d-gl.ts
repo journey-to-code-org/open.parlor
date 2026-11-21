@@ -11,6 +11,7 @@
 // in the picture; `pick` and `project` turn a spot of the canvas into a spot of the field and back,
 // which is all the table needs to know about it.
 import {
+  ACESFilmicToneMapping,
   AdditiveBlending,
   BoxGeometry,
   BufferAttribute,
@@ -35,9 +36,11 @@ import {
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
+  NormalBlending,
   Object3D,
   OctahedronGeometry,
   PCFShadowMap,
+  PCFSoftShadowMap,
   PerspectiveCamera,
   PlaneGeometry,
   Quaternion,
@@ -56,7 +59,7 @@ import {
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { ArcadeBuild, ArcadeEvent, ArcadeGameId, ArcadeThing, ArcadeView } from "@journey-to-code/games";
 import type { Arcade3d, ArcadeFrame3d } from "./scene3d";
-import { bulwarkLook, loadBulwarkLook } from "./bulwark-look";
+import { bulwarkLook, loadBulwarkLook, lookMotion } from "./bulwark-look";
 import { paintRoad } from "./road";
 import { toneOf } from "./screen";
 
@@ -111,7 +114,10 @@ function canvasTexture(w: number, h: number, draw: (g: CanvasRenderingContext2D,
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
-  draw(c.getContext("2d")!, rng(seed));
+  const g = c.getContext("2d", { colorSpace: "srgb" })!;
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = "high";
+  draw(g, rng(seed));
   const t = new CanvasTexture(c);
   t.colorSpace = SRGBColorSpace;
   t.anisotropy = 4;
@@ -134,7 +140,7 @@ interface Puff { sprite: Sprite; vx: number; vy: number; vz: number; life: numbe
 
 function effects(scene: Scene) {
   const MAX = 700;
-  const sparkMesh = new InstancedMesh(new IcosahedronGeometry(1, 0), new MeshBasicMaterial({ color: "#ffffff" }), MAX);
+  const sparkMesh = new InstancedMesh(new IcosahedronGeometry(1, 0), new MeshBasicMaterial({ color: "#ffffff", toneMapped: false }), MAX);
   sparkMesh.instanceMatrix.setUsage(DynamicDrawUsage);
   sparkMesh.frustumCulled = false;
   sparkMesh.count = 0;
@@ -151,7 +157,6 @@ function effects(scene: Scene) {
   const here = new Vector3();
   const tint = new Map<string, Color>();
   const colourOf = (c: string) => tint.get(c) ?? (tint.set(c, new Color(c)), tint.get(c)!);
-  const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const soft = canvasTexture(64, 64, (g) => {
     const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
     grad.addColorStop(0, "#ffffff");
@@ -161,21 +166,27 @@ function effects(scene: Scene) {
     g.fillRect(0, 0, 64, 64);
   });
   let puffs: Puff[] = [];
-  /** A soft blob: fire and a flash add their light, smoke sits over the picture. */
+  const spare: Sprite[] = [];
+  /** A soft blob: fire and a flash add their light, smoke sits over the picture. Sprites are kept and used again. */
   function puff(x: number, y: number, z: number, kind: Puff["kind"], colour: string, size0: number, life: number, vx: number, vy: number, vz: number, grow: number) {
     if (puffs.length > 480) return;
-    const material = new SpriteMaterial({ map: soft, color: colour, transparent: true, depthWrite: false, opacity: 0.85 });
-    if (kind !== "smoke") material.blending = AdditiveBlending;
-    const sprite = new Sprite(material);
+    const sprite = spare.pop() ?? new Sprite(new SpriteMaterial({ map: soft, transparent: true, depthWrite: false, toneMapped: false }));
+    const material = sprite.material as SpriteMaterial;
+    material.color.set(colour);
+    material.opacity = 0.85;
+    material.blending = kind === "smoke" ? NormalBlending : AdditiveBlending;
+    material.depthWrite = false;
+    material.toneMapped = false;
     sprite.position.set(x, y, z);
     sprite.scale.set(size0, size0, 1);
     sprite.renderOrder = 5;
+    sprite.visible = true;
     scene.add(sprite);
     puffs.push({ sprite, vx, vy, vz, life, max: life, size: size0, grow, kind });
   }
   const dropPuff = (p: Puff) => {
-    (p.sprite.material as Material).dispose();
     p.sprite.removeFromParent();
+    spare.push(p.sprite);
   };
 
   return {
@@ -190,14 +201,14 @@ function effects(scene: Scene) {
     },
     ring(x: number, y: number, z: number, r: number, grow: number, life: number, colour: string) {
       if (rings.length > 50) return;
-      const mesh = new Mesh(ringShape, new MeshBasicMaterial({ color: colour, transparent: true, blending: AdditiveBlending, depthWrite: false, side: DoubleSide }));
+      const mesh = new Mesh(ringShape, new MeshBasicMaterial({ color: colour, transparent: true, blending: AdditiveBlending, depthWrite: false, side: DoubleSide, toneMapped: false }));
       mesh.position.set(x, y, z);
       scene.add(mesh);
       rings.push({ mesh, r, grow, life, max: life });
     },
     beam(from: Vector3, to: Vector3, colour: string, kind: Beam["kind"], life: number, wide = 0.02) {
       if (beams.length > 80) return;
-      const mesh = kind === "lob" ? new Mesh(shell, lit("#2a2622")) : new Mesh(rod, new MeshBasicMaterial({ color: colour, transparent: true, blending: AdditiveBlending, depthWrite: false }));
+      const mesh = kind === "lob" ? new Mesh(shell, lit("#2a2622")) : new Mesh(rod, new MeshBasicMaterial({ color: colour, transparent: true, blending: AdditiveBlending, depthWrite: false, toneMapped: false }));
       scene.add(mesh);
       beams.push({ mesh, from: from.clone(), to: to.clone(), life, max: life, kind, wide });
     },
@@ -207,8 +218,13 @@ function effects(scene: Scene) {
      * `power` is how large, `smoke` how many puffs are left behind.
      */
     blast(x: number, y: number, z: number, power: number, smoke: number) {
-      const scale = reduced ? Math.min(power, 0.55) : power;
-      const fires = reduced ? 4 : Math.round(8 + 7 * scale);
+      const motion = lookMotion();
+      if (motion === 0) {
+        puff(x, y + 0.06, z, "flash", "#fff6e0", 0.28, 5, 0, 0, 0, 0);
+        return;
+      }
+      const scale = power * motion;
+      const fires = Math.round(8 + 7 * scale);
       puff(x, y + 0.06, z, "flash", "#fff6e0", 0.42 * scale, 6, 0, 0.01, 0, 0.03);
       for (let i = 0; i < fires; i++) {
         const a = Math.random() * Math.PI * 2;
@@ -216,9 +232,9 @@ function effects(scene: Scene) {
         const fast = (0.01 + Math.random() * 0.018) * scale;
         puff(x + Math.cos(a) * far, y + Math.random() * 0.04, z + Math.sin(a) * far, "fire", "#fff3c4", (0.1 + Math.random() * 0.14) * scale, 16 + Math.random() * 14, Math.cos(a) * fast, (0.01 + Math.random() * 0.018) * scale, Math.sin(a) * fast, 0.003);
       }
-      const column = reduced ? 1 : Math.round(3 + 2 * scale);
+      const column = Math.round(3 + 2 * scale);
       for (let i = 0; i < column; i++) puff(x + (Math.random() - 0.5) * 0.08 * scale, y, z + (Math.random() - 0.5) * 0.08 * scale, "fire", "#ffd27a", 0.12 * scale, 20 + Math.random() * 12, (Math.random() - 0.5) * 0.005, 0.018 + Math.random() * 0.016, (Math.random() - 0.5) * 0.005, 0.002);
-      const hanging = reduced ? Math.min(2, smoke) : smoke;
+      const hanging = Math.round(smoke * motion);
       for (let i = 0; i < hanging; i++) puff(x + (Math.random() - 0.5) * 0.22 * scale, y + 0.04, z + (Math.random() - 0.5) * 0.22 * scale, "smoke", Math.random() < 0.5 ? "#4a4540" : "#6b645c", (0.14 + Math.random() * 0.1) * scale, 48 + Math.random() * 36, (Math.random() - 0.5) * 0.004, 0.004 + Math.random() * 0.005, (Math.random() - 0.5) * 0.004, 0.005);
       this.burst(x, y, z, Math.round(8 * scale), "#ffd27a", 0.035 * scale, 20, 0.028, 0.003);
       this.burst(x, y, z, Math.round(6 * scale), "#5b4a33", 0.028 * scale, 26, 0.04, 0.006);
@@ -313,13 +329,28 @@ function effects(scene: Scene) {
     },
     clear() {
       sparks = [];
-      for (const r of rings) r.mesh.removeFromParent();
-      for (const b of beams) b.mesh.removeFromParent();
+      for (const r of rings) {
+        (r.mesh.material as Material).dispose();
+        r.mesh.removeFromParent();
+      }
+      for (const b of beams) {
+        if (b.kind !== "lob") (b.mesh.material as Material).dispose();
+        b.mesh.removeFromParent();
+      }
       for (const p of puffs) dropPuff(p);
       rings = [];
       beams = [];
       puffs = [];
       sparkMesh.count = 0;
+    },
+    /** Give the sprites back to the graphics card. The scene is going away. */
+    release() {
+      this.clear();
+      for (const sprite of spare) (sprite.material as Material).dispose();
+      spare.length = 0;
+      soft.dispose();
+      sparkMesh.geometry.dispose();
+      (sparkMesh.material as Material).dispose();
     },
   };
 }
@@ -699,10 +730,10 @@ function bulwarkWorld(scene: Scene, fx: Effects, FW: number, FH: number): World 
         const z = e.y * K;
         const tx = (e.to?.[0] ?? e.x) * K;
         const tz = (e.to?.[1] ?? e.y) * K;
-        // A full blast (fire, smoke, a ring of air) when the host has asked for one. Embers keeps the old sparks.
+        // A full blast when the host has asked for one. Embers keep the old sparks, unless nothing is meant to travel.
         const bang = (bx: number, by: number, bz: number, scale: number) => {
           const look = bulwarkLook();
-          if (look.blast === "embers") return false;
+          if (look.blast === "embers" && lookMotion() > 0) return false;
           const power = (look.blast === "inferno" ? 1.65 : 1) * scale;
           fx.blast(bx, by, bz, power, Math.round(look.smokePuffs * Math.min(1.5, scale)));
           return true;
@@ -1599,10 +1630,11 @@ function chipstackWorld(scene: Scene, fx: Effects, FW: number, FH: number): Worl
 export function build(canvas: HTMLCanvasElement, game: ArcadeGameId, field: { width: number; height: number }): Arcade3d | null {
   let renderer: WebGLRenderer;
   try {
-    renderer = new WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+    renderer = new WebGLRenderer({ canvas, antialias: true, alpha: false, stencil: false, powerPreference: "high-performance" });
   } catch {
     return null;
   }
+  renderer.outputColorSpace = SRGBColorSpace;
   const FW = field.width * K;
   const FH = field.height * K;
   const scene = new Scene();
@@ -1610,8 +1642,10 @@ export function build(canvas: HTMLCanvasElement, game: ArcadeGameId, field: { wi
   const fx = effects(scene);
   let world: World;
   if (game === "bulwark") {
+    renderer.toneMapping = ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = PCFShadowMap;
+    renderer.shadowMap.type = PCFSoftShadowMap;
     world = bulwarkWorld(scene, fx, FW, FH);
   } else if (game === "skyfire") world = skyfireWorld(scene, fx, FW, FH);
   else if (game === "chipstack") {
@@ -1685,7 +1719,8 @@ export function build(canvas: HTMLCanvasElement, game: ArcadeGameId, field: { wi
       try {
         world.show(frame);
         fx.show();
-        const shake = frame.still ? 0 : world.shake();
+        const sway = frame.still ? 0 : lookMotion();
+        const shake = sway === 0 ? 0 : world.shake() * sway;
         camera.position.copy(home);
         if (shake > 0.002) camera.position.add(v.set((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake));
         camera.updateMatrixWorld();
@@ -1725,7 +1760,7 @@ export function build(canvas: HTMLCanvasElement, game: ArcadeGameId, field: { wi
     },
     dispose() {
       world.reset();
-      fx.clear();
+      fx.release();
       renderer.dispose();
     },
   };
