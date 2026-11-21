@@ -114,7 +114,8 @@ function canvasTexture(w: number, h: number, draw: (g: CanvasRenderingContext2D,
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
-  const g = c.getContext("2d", { colorSpace: "srgb" })!;
+  // Already sRGB. Asking the context for a colour space makes some Windows drivers upload a black texture.
+  const g = c.getContext("2d")!;
   g.imageSmoothingEnabled = true;
   g.imageSmoothingQuality = "high";
   draw(g, rng(seed));
@@ -1630,7 +1631,7 @@ function chipstackWorld(scene: Scene, fx: Effects, FW: number, FH: number): Worl
 export function build(canvas: HTMLCanvasElement, game: ArcadeGameId, field: { width: number; height: number }): Arcade3d | null {
   let renderer: WebGLRenderer;
   try {
-    renderer = new WebGLRenderer({ canvas, antialias: true, alpha: false, stencil: false, powerPreference: "high-performance" });
+    renderer = new WebGLRenderer({ canvas, antialias: true });
   } catch {
     return null;
   }
@@ -1659,11 +1660,31 @@ export function build(canvas: HTMLCanvasElement, game: ArcadeGameId, field: { wi
   }
 
   let lost = false;
+  let proved = false;
   canvas.addEventListener("webglcontextlost", (e) => {
     e.preventDefault();
     lost = true;
   });
   canvas.addEventListener("webglcontextrestored", () => (lost = false));
+  /** True when the picture that was just drawn has some light in it. A frame of black is a driver that didn't present. */
+  function drew(): boolean {
+    try {
+      const gl = renderer.getContext();
+      const w = gl.drawingBufferWidth;
+      const h = gl.drawingBufferHeight;
+      if (w < 2 || h < 2) return true;
+      const px = new Uint8Array(4);
+      for (const x of [w >> 2, w >> 1, (w * 3) >> 2]) {
+        for (const y of [h >> 2, h >> 1, (h * 3) >> 2]) {
+          gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+          if (px[0] > 16 || px[1] > 16 || px[2] > 16) return true;
+        }
+      }
+      return false;
+    } catch {
+      return true;
+    }
+  }
 
   /** Where the camera stands when nothing is shaking it. */
   const home = new Vector3();
@@ -1725,6 +1746,13 @@ export function build(canvas: HTMLCanvasElement, game: ArcadeGameId, field: { wi
         if (shake > 0.002) camera.position.add(v.set((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake));
         camera.updateMatrixWorld();
         renderer.render(scene, camera);
+        if (!proved) {
+          proved = true;
+          if (!drew()) {
+            lost = true;
+            return false;
+          }
+        }
         return true;
       } catch {
         lost = true;
