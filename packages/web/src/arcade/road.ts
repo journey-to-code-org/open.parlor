@@ -70,7 +70,7 @@ export function roadCenterline(points: readonly (readonly [number, number])[], c
     const p2x = b.x + vx * r;
     const p2y = b.y + vy * r;
     add(p0x, p0y, true);
-    const steps = 6;
+    const steps = 8;
     for (let s = 1; s <= steps; s++) {
       const u = s / steps;
       const k = 1 - u;
@@ -169,6 +169,8 @@ function dress(g: CanvasRenderingContext2D, line: readonly (readonly [number, nu
 export function paintRoad(g: CanvasRenderingContext2D, points: readonly (readonly [number, number])[], cell: number, bend: number, ink: RoadInk): void {
   const line = roadCenterline(points, cell, bend);
   if (line.length < 2) return;
+  g.lineCap = "round";
+  g.lineJoin = "round";
   const t = Math.min(1, Math.max(0, bend / 100));
   const half = cell * (0.4 + 0.05 * t);
   fillRibbon(g, line, half * 1.14, cell, ink.shoulder);
