@@ -20,7 +20,9 @@ import { LiveSolidIsland } from "../wifi/island";
 import { arcadeSays } from "./flavour";
 import { hasArcade3d, loadArcade3d, type Arcade3d } from "./scene3d";
 import { createArcadeScreen, type ArcadePointer } from "./screen";
+import { lookMotion } from "./bulwark-look";
 import { notes, setArcadeSound, wakeArcadeSound } from "./sounds";
+import NumberTicker from "@open-parlor/ui/zubra-ui/number-ticker.zb";
 
 /** What the server's room says of an arcade game played live (see the server's arcade.ts). */
 export interface LiveView {
@@ -115,6 +117,13 @@ function loadArcadeDepth(game: ArcadeGameId): boolean | null {
   } catch {
     return null;
   }
+}
+
+/** Gold and lives, counted by Zubra. `from` stays at the first number, so a later change counts from where it was. */
+function CountingNumber({ value, prefix = "" }: { value: number; prefix?: string }) {
+  const from = useRef(value);
+  const motion = lookMotion();
+  return <NumberTicker value={value} from={from.current} duration={motion === 0 ? 0 : motion < 1 ? 140 : 220} prefix={prefix} />;
 }
 
 /** The computer players: steady, and not quite perfect. */
@@ -280,10 +289,9 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
     const rec = recorder(game, seats);
     let live = true;
     setPosted(null);
-    const screen = createArcadeScreen(el, game.view(state).field, says);
+    const screen = createArcadeScreen(el, game.view(state).field, says, id);
     screen.resize();
     gl.current?.reset();
-    const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
     controls.clear();
     setEnding(null);
     setPaused(false);
@@ -391,7 +399,7 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
         glEl.style.width = el.style.width;
         glEl.style.height = el.style.height;
       }
-      solid.current = !!scene && depthRef.current && scene.render({ view, frame, width: el.clientWidth, height: el.clientHeight, dpr: Math.min(2, window.devicePixelRatio || 1), still, ...(pointer ? { pointer } : {}) });
+      solid.current = !!scene && depthRef.current && scene.render({ view, frame, width: el.clientWidth, height: el.clientHeight, dpr: Math.min(2, window.devicePixelRatio || 1), still: lookMotion() === 0, ...(pointer ? { pointer } : {}) });
       if (glEl) glEl.style.visibility = solid.current ? "visible" : "hidden";
       if (solid.current) screen.drawOverlay(view, frame, scene!.project);
       else screen.draw(view, frame, pointer);
@@ -748,11 +756,15 @@ export function ArcadeTable({ game: id, rules, seats, seed, autofire, rival, liv
             <>
               <div className="arcade-cell">
                 <small>Lives</small>
-                <b className="arcade-hearts">♥ {build.lives}</b>
+                <b className="arcade-hearts">
+                  <CountingNumber value={build.lives} prefix="♥ " />
+                </b>
               </div>
               <div className="arcade-cell">
                 <small>Gold</small>
-                <b className="arcade-best">{points(build.bank)}</b>
+                <b className="arcade-best">
+                  <CountingNumber value={build.bank} />
+                </b>
               </div>
               {build.next && !ending && (
                 <button type="button" className="arcade-btn send" title={build.next.preview} onClick={() => controls.order?.("send")}>

@@ -4,6 +4,8 @@
 // sparks and rings of an explosion, the words that float up from a pickup, the shake of a hit. Those
 // come from the view's events, one tick's worth at a time.
 import type { ArcadeEvent, ArcadeView } from "@journey-to-code/games";
+import { bulwarkLook, loadBulwarkLook, lookMotion } from "./bulwark-look";
+import { paintRoad } from "./road";
 import { blip, crash, notes } from "./sounds";
 
 const TONES: Record<string, string> = {
@@ -27,7 +29,7 @@ const STAR: Shape = Array.from({ length: 16 }, (_, i) => {
 const BOSS: Shape = [[0, 1], [0.5, 0.55], [1.25, 0.35], [1.05, -0.35], [0.5, -0.5], [0.3, -0.95], [-0.3, -0.95], [-0.5, -0.5], [-1.05, -0.35], [-1.25, 0.35], [-0.5, 0.55]];
 const CARRIER: Shape = [[-1.15, -0.5], [1.15, -0.5], [1.3, 0.1], [0.7, 0.75], [-0.7, 0.75], [-1.3, 0.1]];
 
-interface Spark { x: number; y: number; vx: number; vy: number; life: number; max: number; colour: string; size: number }
+interface Spark { x: number; y: number; vx: number; vy: number; life: number; max: number; colour: string; size: number; kind?: "bit" | "fire" | "smoke" | "flash" }
 interface Ring { x: number; y: number; r: number; grow: number; life: number; max: number; colour: string }
 interface Word { x: number; y: number; text: string; life: number; max: number; big: boolean; colour: string }
 interface Beam { x: number; y: number; tx: number; ty: number; life: number; max: number; colour: string; kind: "line" | "bolt" | "lob"; blast: number }
@@ -62,11 +64,13 @@ export interface ArcadeScreen {
   reset(): void;
 }
 
-export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: number; height: number }, says: (text: string) => string = (text) => text): ArcadeScreen {
-  const ctx = canvas.getContext("2d")!;
+export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: number; height: number }, says: (text: string) => string = (text) => text, game?: string): ArcadeScreen {
+  if (game === "bulwark") void loadBulwarkLook();
+  const ctx = canvas.getContext("2d", { alpha: true, colorSpace: "srgb" })!;
   const FW = field.width;
   const FH = field.height;
-  const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  /** Nothing should travel: Zubra's reduced motion, or the parlor's motion turned off. */
+  const frozen = () => lookMotion() === 0;
   const stars = Array.from({ length: 110 }, (_, i) => ({ x: Math.random() * FW, y: Math.random() * FH, z: 1 + (i % 3) }));
   let sparks: Spark[] = [];
   let rings: Ring[] = [];
@@ -89,19 +93,81 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
     }
   }
   const ring = (x: number, y: number, r: number, grow: number, life: number, colour: string) => rings.push({ x, y, r, grow, life, max: life, colour });
+  /**
+   * Fire, smoke and a ring of air, as Over the Hill draws a blast. False when this game keeps
+   * the old sparks. When nothing is meant to travel, one flash fades where it landed and this
+   * still returns true, so the old sparks are not put back.
+   */
+  function bang(x: number, y: number, scale: number): boolean {
+    if (game !== "bulwark") return false;
+    const look = bulwarkLook();
+    const motion = lookMotion();
+    // Embers keep the old sparks, unless nothing is meant to travel: then one flash that fades in place.
+    if (look.blast === "embers" && motion > 0) return false;
+    if (motion === 0) {
+      sparks.push({ x, y, vx: 0, vy: 0, life: 5, max: 5, colour: "#fff6e0", size: 180 * Math.min(1, scale), kind: "flash" });
+      return true;
+    }
+    const power = (look.blast === "inferno" ? 1.65 : 1) * scale * motion;
+    sparks.push({ x, y, vx: 0, vy: 0, life: 7, max: 7, colour: "#fff6e0", size: 240 * power, kind: "flash" });
+    const fires = Math.round(10 + 8 * power);
+    for (let i = 0; i < fires && sparks.length < 900; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const far = Math.random() * 90 * power;
+      const life = 18 + Math.random() * 16;
+      sparks.push({
+        x: x + Math.cos(a) * far,
+        y: y + Math.sin(a) * far * 0.55,
+        vx: Math.cos(a) * (18 + Math.random() * 36) * power,
+        vy: -(30 + Math.random() * 50) * (0.5 + 0.5 * Math.min(1, power)),
+        life,
+        max: life,
+        colour: Math.random() < 0.34 ? "#fff3c4" : Math.random() < 0.5 ? "#ffb347" : "#ff6a1a",
+        size: (55 + Math.random() * 70) * power,
+        kind: "fire",
+      });
+    }
+    const column = Math.round(3 + 2 * power);
+    for (let i = 0; i < column && sparks.length < 900; i++) {
+      const life = 22 + Math.random() * 12;
+      sparks.push({ x: x + (Math.random() - 0.5) * 50 * power, y, vx: (Math.random() - 0.5) * 16, vy: -(70 + Math.random() * 80), life, max: life, colour: "#ffd27a", size: (40 + Math.random() * 40) * power, kind: "fire" });
+    }
+    const smokes = Math.round(look.smokePuffs * Math.min(1.4, scale));
+    for (let i = 0; i < smokes && sparks.length < 900; i++) {
+      const life = 50 + Math.random() * 40;
+      sparks.push({
+        x: x + (Math.random() - 0.5) * 120 * power,
+        y: y + (Math.random() - 0.5) * 30,
+        vx: (Math.random() - 0.5) * 14,
+        vy: -(8 + Math.random() * 16),
+        life,
+        max: life,
+        colour: Math.random() < 0.5 ? "#4a4540" : "#6b645c",
+        size: (46 + Math.random() * 50) * power,
+        kind: "smoke",
+      });
+    }
+    burst(x, y, Math.round(8 * power), "#ffd27a", 80 * power, 22);
+    burst(x, y, Math.round(6 * power), "#5b4a33", 55, 28);
+    ring(x, y, 36 * power, 30 * power, 14, "#fff1c9");
+    ring(x, y, 18 * power, 20 * power, 18, "#ffb347");
+    return true;
+  }
   const beam = (e: ArcadeEvent, kind: Beam["kind"], life: number, blast = 0) => e.to && beams.length < 200 && beams.push({ x: e.x, y: e.y, tx: e.to[0], ty: e.to[1], life, max: life, colour: toneOf(e.tone), kind, blast });
 
   /** The ground of a game that builds on a grid: grass, the road, and the squares that can be built on. */
   let ground: HTMLCanvasElement | null = null;
   let groundKey = "";
   function groundFor(build: NonNullable<ArcadeView["build"]>) {
-    const key = `${canvas.width}:${build.closed.join(",")}`;
+    const key = `${canvas.width}:${bulwarkLook().roadBend}:${build.closed.join(",")}`;
     if (ground && key === groundKey) return ground;
     groundKey = key;
     ground = document.createElement("canvas");
     ground.width = canvas.width;
     ground.height = canvas.height;
-    const g = ground.getContext("2d")!;
+    const g = ground.getContext("2d", { alpha: false, colorSpace: "srgb" })!;
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = "high";
     g.scale(scale, scale);
     g.fillStyle = "#1d3b2a";
     g.fillRect(0, 0, FW, FH);
@@ -113,25 +179,14 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
         g.fillRect(col * build.cell + 12, row * build.cell + 12, build.cell - 24, build.cell - 24);
       }
     }
-    const trace = () => {
-      g.beginPath();
-      build.road.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
-    };
-    g.lineJoin = "round";
-    g.lineCap = "round";
-    trace();
-    g.strokeStyle = "#5b4a33";
-    g.lineWidth = build.cell * 0.92;
-    g.stroke();
-    trace();
-    g.strokeStyle = "#cdb48a";
-    g.lineWidth = build.cell * 0.74;
-    g.stroke();
-    trace();
-    g.strokeStyle = "rgba(91, 74, 51, 0.5)";
-    g.lineWidth = 16;
-    g.setLineDash([90, 130]);
-    g.stroke();
+    paintRoad(g, build.road, build.cell, bulwarkLook().roadBend, {
+      shoulder: "#5b4a33",
+      dirt: "#cdb48a",
+      crown: "#e4d2ae",
+      rut: "rgba(91,74,51,0.5)",
+      stone: "#6e5a40",
+      grass: "#2f6a38",
+    });
     return ground;
   }
 
@@ -226,7 +281,7 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
     }
     if (flash > 0.01) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.fillStyle = `rgba(255,255,255,${reduced ? flash * 0.2 : flash * 0.6})`;
+      ctx.fillStyle = `rgba(255,255,255,${frozen() ? flash * 0.2 : flash * 0.6})`;
       ctx.fillRect(0, 0, W, H);
     }
   }
@@ -266,9 +321,11 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
             if (!quiet) crash(0.4, 0.14);
             break;
           case "boss-down":
-            burst(e.x, e.y, 90, "#ffd166", 170, 60);
-            burst(e.x, e.y, 60, "#ff5a6e", 120, 70);
-            ring(e.x, e.y, 200, 90, 40, "#ffffff");
+            if (!bang(e.x, e.y, 2.3)) {
+              burst(e.x, e.y, 90, "#ffd166", 170, 60);
+              burst(e.x, e.y, 60, "#ff5a6e", 120, 70);
+              ring(e.x, e.y, 200, 90, 40, "#ffffff");
+            }
             shake = 34;
             flash = 1;
             if (!quiet) {
@@ -348,20 +405,21 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
             break;
           case "shell":
             beam(e, "lob", 9, e.amount ?? 500);
-            if (e.to) {
+            if (e.to && !bang(e.to[0], e.to[1], 1)) {
               ring(e.to[0], e.to[1], 60, (e.amount ?? 500) / 9, 9, "#ffb347");
               burst(e.to[0], e.to[1], 7, "#ffb347", 60, 16);
-            }
+            } else if (e.to) shake = Math.max(shake, 8);
             if (!quiet) crash(0.22, 0.06);
             break;
           case "frost":
             if (rings.length < 60) ring(e.x, e.y, 80, (e.amount ?? 1000) / 14, 14, "#8fe9ff");
             break;
           case "pop":
-            burst(e.x, e.y, 6, toneOf(e.tone), 55, 16);
+            if (!bang(e.x, e.y, 0.62)) burst(e.x, e.y, 6, toneOf(e.tone), 55, 16);
             if (!quiet) blip(520, 0.05, "triangle", 0.02, -200);
             break;
           case "leak":
+            bang(e.x, e.y, 0.85);
             flash = Math.max(flash, 0.35);
             shake = Math.max(shake, 12);
             if (!quiet) blip(160, 0.35, "sawtooth", 0.08, -80);
@@ -429,6 +487,8 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
         p.y += p.vy;
         p.vx *= 0.94;
         p.vy *= 0.94;
+        if (p.kind === "fire") p.vy -= 1.2;
+        else if (p.kind === "smoke") p.vy -= 0.35;
         return --p.life > 0;
       });
       rings = rings.filter((r) => {
@@ -444,6 +504,8 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
     drawOverlay(view, frame, project) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalAlpha = 1;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.setTransform(scale, 0, 0, scale, 0, 0);
       ctx.textAlign = "center";
@@ -469,14 +531,17 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
       const H = canvas.height;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalAlpha = 1;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      const sway = lookMotion();
       const sky = ctx.createLinearGradient(0, 0, 0, H);
       sky.addColorStop(0, "#05060f");
       sky.addColorStop(0.6, "#0a1024");
       sky.addColorStop(1, "#141a3a");
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, W, H);
-      const sx = reduced ? 0 : (Math.random() - 0.5) * shake * dpr;
-      const sy = reduced ? 0 : (Math.random() - 0.5) * shake * dpr;
+      const sx = sway === 0 ? 0 : (Math.random() - 0.5) * shake * dpr * sway;
+      const sy = sway === 0 ? 0 : (Math.random() - 0.5) * shake * dpr * sway;
       ctx.setTransform(scale, 0, 0, scale, sx, sy);
 
       const build = view.build;
@@ -516,7 +581,7 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
           ctx.globalAlpha = 0.25 + st.z * 0.2;
           ctx.fillStyle = st.z === 3 ? "#cfe6ff" : "#8fa3d6";
           const size = 8 + st.z * 7;
-          ctx.fillRect(st.x, (st.y + (reduced ? 0 : frame * st.z * 9)) % FH, size, size * (1 + st.z));
+          ctx.fillRect(st.x, (st.y + (frozen() ? 0 : frame * st.z * 9)) % FH, size, size * (1 + st.z));
         }
       }
       ctx.globalAlpha = 1;
@@ -559,7 +624,7 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
           ctx.stroke();
           ctx.globalAlpha = 1;
         } else if (t.kind.startsWith("drop:")) {
-          const bob = reduced ? 0 : Math.sin(frame / 8 + t.id) * 20;
+          const bob = frozen() ? 0 : Math.sin(frame / 8 + t.id) * 20;
           ctx.drawImage(stamp(colour, true), t.x - 260, t.y - 260 + bob, 520, 520);
           ctx.fillStyle = "#0b1020";
           ctx.font = `700 190px ${FONT}`;
@@ -590,7 +655,7 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
           }
         } else if (t.kind === "chip" || t.kind === "golden") {
           const big = t.kind === "chip";
-          const r = big ? t.r * (1 - bump * 0.06) : t.r * (1 + (reduced ? 0 : Math.sin(frame / 6) * 0.06));
+          const r = big ? t.r * (1 - bump * 0.06) : t.r * (1 + (frozen() ? 0 : Math.sin(frame / 6) * 0.06));
           const face = big ? colour : "#ffd166";
           const edge = big ? "#fbf6ec" : "#fff3c4";
           if (big && t.health) {
@@ -669,7 +734,7 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
         } else if (t.kind.startsWith("creep:")) {
           const kind = t.kind.slice(6);
           const tint = t.mark === "slowed" ? "#8fe9ff" : colour;
-          const bob = reduced ? 0 : Math.sin(frame / 5 + t.id) * 12;
+          const bob = frozen() ? 0 : Math.sin(frame / 5 + t.id) * 12;
           if (kind === "flyer") {
             ctx.fillStyle = "rgba(0,0,0,0.25)";
             ctx.beginPath();
@@ -748,9 +813,27 @@ export function createArcadeScreen(canvas: HTMLCanvasElement, field: { width: nu
         ctx.stroke();
       }
       for (const p of sparks) {
-        ctx.globalAlpha = p.life / p.max;
-        ctx.fillStyle = p.colour;
-        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        const left = p.life / p.max;
+        if (p.kind === "fire" || p.kind === "flash") {
+          const age = 1 - left;
+          const colour = p.kind === "flash" ? p.colour : age < 0.15 ? "#fff6dc" : age < 0.4 ? "#ffb347" : age < 0.65 ? "#ff6a1a" : "#c43212";
+          const r = p.size * (p.kind === "flash" ? left : 0.65 + 0.7 * age);
+          ctx.globalAlpha = p.kind === "flash" ? left : Math.min(1, left * 1.5);
+          ctx.globalCompositeOperation = "lighter";
+          ctx.drawImage(stamp(colour, false), p.x - r, p.y - r, r * 2, r * 2);
+          ctx.globalCompositeOperation = "source-over";
+        } else if (p.kind === "smoke") {
+          const r = p.size * (0.65 + 1.6 * (1 - left));
+          ctx.globalAlpha = 0.42 * Math.pow(left, 1.3);
+          ctx.fillStyle = p.colour;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.globalAlpha = left;
+          ctx.fillStyle = p.colour;
+          ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        }
       }
       sayWords();
       ctx.globalAlpha = 1;

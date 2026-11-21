@@ -14,8 +14,8 @@
 
 /** What a value may be. */
 export type Shape =
-  | { type: "int"; min: number; max: number }
-  | { type: "enum"; of: readonly string[] }
+  | { type: "int"; min: number; max: number; /** How the admin form draws it. A text field, when this is left off. */ control?: "slider" | "stepper"; unit?: string; /** The game's own number, shown until the host types one. */ fallback?: number; label?: string; hint?: string }
+  | { type: "enum"; of: readonly string[]; /** "cards" draws one card per choice instead of a menu. */ control?: "cards"; cards?: readonly { id: string; title: string; detail?: string }[]; fallback?: string; label?: string; hint?: string }
   /** Any number of entries, keyed by names that look like `key`. */
   | { type: "record"; key: RegExp; value: Shape; max: number }
   /** Named fields, each optional unless `required`. Anything else is refused. */
@@ -81,10 +81,36 @@ const SUDOKU: Shape = {
   fields: { clues: { type: "list", min: 7, max: 7, item: int(22, 60) } },
 };
 
+/**
+ * How Tower of Ryan is drawn (packages/web/src/arcade/bulwark-look.json). The road the creeps
+ * walk is the game's; this only changes the paint and the blasts.
+ */
+const BULWARK: Shape = {
+  type: "object",
+  fields: {
+    roadBend: { type: "int", min: 0, max: 100, control: "slider", unit: "%", fallback: 72, label: "Road", hint: "How far the road bends at a corner, and how much its edges wander. 0 keeps the square corners." },
+    smokePuffs: { type: "int", min: 0, max: 12, control: "stepper", fallback: 6, label: "Smoke", hint: "Puffs of smoke a blast leaves hanging." },
+    blast: {
+      type: "enum",
+      of: ["embers", "blast", "inferno"],
+      control: "cards",
+      fallback: "blast",
+      label: "Explosions",
+      hint: "What a shell, a kill and a hit on the gate look like.",
+      cards: [
+        { id: "embers", title: "Embers", detail: "A few sparks and a ring, the way a hit used to go." },
+        { id: "blast", title: "Blast", detail: "Fire, smoke and a ring of air, as Over the Hill does." },
+        { id: "inferno", title: "Inferno", detail: "The same blast, larger, with more fire." },
+      ],
+    },
+  },
+};
+
 /** Every game that can be tuned, and the shape of its tunables. */
 export const TUNABLE_GAMES: Readonly<Record<string, { name: string; shape: Shape; /** The file in the repository that holds the numbers promoted into the code (see promote.ts). */ promoted: string }>> = {
   "back-room": { name: "Delbie's Back Room", shape: BACK_ROOM, promoted: "packages/wasm/src/battler/promoted.json" },
   sudoku: { name: "The daily sudoku", shape: SUDOKU, promoted: "packages/server/src/promoted/sudoku.json" },
+  bulwark: { name: "Tower of Ryan", shape: BULWARK, promoted: "packages/web/src/arcade/bulwark-look.json" },
 };
 
 /** What one game's overrides may weigh as JSON. A whole table of cards and foes is about 2,000. */

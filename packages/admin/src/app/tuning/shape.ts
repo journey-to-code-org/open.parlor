@@ -5,8 +5,8 @@
 import { AbstractControl, FormArray, FormControl, FormGroup, FormRecord, type ValidationErrors, type ValidatorFn } from "@angular/forms";
 
 export type Shape =
-  | { type: "int"; min: number; max: number }
-  | { type: "enum"; of: string[] }
+  | { type: "int"; min: number; max: number; control?: "slider" | "stepper"; unit?: string; fallback?: number; label?: string; hint?: string }
+  | { type: "enum"; of: string[]; control?: "cards"; cards?: { id: string; title: string; detail?: string }[]; fallback?: string; label?: string; hint?: string }
   | { type: "record"; key: string; value: Shape; max: number }
   | { type: "object"; fields: Record<string, Shape>; required?: string[] }
   | { type: "list"; item: Shape; min: number; max: number };
@@ -48,7 +48,7 @@ export function build(shape: Shape, value: unknown): AbstractControl {
     case "int":
       return new FormControl(typeof value === "number" ? String(value) : "", { nonNullable: true, validators: [whole(shape.min, shape.max)] });
     case "enum":
-      return new FormControl(typeof value === "string" ? value : (shape.of[0] ?? ""), { nonNullable: true });
+      return new FormControl(typeof value === "string" && shape.of.includes(value) ? value : shape.control === "cards" ? "" : (shape.of[0] ?? ""), { nonNullable: true });
     case "object": {
       const saved = isObject(value) ? value : {};
       const group = new FormGroup(
@@ -79,10 +79,15 @@ export function read(shape: Shape, control: AbstractControl): unknown {
   switch (shape.type) {
     case "int": {
       const text = String(control.value ?? "").trim();
-      return text === "" ? undefined : Number(text);
+      if (text === "") return undefined;
+      const n = Number(text);
+      return shape.fallback !== undefined && n === shape.fallback ? undefined : n;
     }
-    case "enum":
-      return control.value as string;
+    case "enum": {
+      const value = String(control.value ?? "");
+      if (shape.control === "cards" && (!value || value === shape.fallback)) return undefined;
+      return value;
+    }
     case "object": {
       const group = control as FormGroup;
       const out: Record<string, unknown> = {};

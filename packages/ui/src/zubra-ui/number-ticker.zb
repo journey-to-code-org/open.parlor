@@ -7,6 +7,7 @@
 -->
 <script>
   import { onMount, effect } from '@zubra/runtime'
+  import { reducedMotion } from '@zubra/runtime/motion'
 
   let shown = from
   let started = false
@@ -23,8 +24,7 @@
   }
   function count(to) {
     cancelAnimationFrame(at.frame)
-    const reduced = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-    if (reduced || !(duration > 0)) return show(to)
+    if ((typeof matchMedia === "function" && reducedMotion()) || !(duration > 0)) return show(to)
     const start = at.number
     const length = duration
     const begun = performance.now()
