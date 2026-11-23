@@ -209,6 +209,31 @@ export function KitTable({
   const three = useWants3d(view.game);
   // A table played for chips (Hold'em, Five Card Draw, Blackjack) shows them: null anywhere else.
   const chips = chipsAtTable(view);
+  // Your buttons are never left under your own seat and hand, which stay on screen at the bottom:
+  // on a window too short for the whole table, it scrolls to show them (#359).
+  const choicesBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const table = root.current;
+    if (!table || !view.choices) return;
+    const show = () => {
+      const box = choicesBox.current;
+      const mine = table.querySelector<HTMLElement>(":scope > .me");
+      if (!box || !mine) return;
+      const top = table.querySelector(".kit-bar")?.getBoundingClientRect().bottom ?? 0;
+      const buttons = box.getBoundingClientRect();
+      const below = buttons.bottom + 8 - mine.getBoundingClientRect().top;
+      const above = top + 8 - buttons.top;
+      const by = below > 0 ? below : above > 0 ? -above : 0;
+      if (by) table.scrollBy({ top: by, behavior: reducedMotion() ? "auto" : "smooth" });
+    };
+    // After the cards and chips have moved to where they go.
+    const soon = setTimeout(show, 120);
+    addEventListener("resize", show);
+    return () => {
+      clearTimeout(soon);
+      removeEventListener("resize", show);
+    };
+  }, [view]);
   // Solid chips where the device can draw them and the setting asks for 3-D; the CSS ones otherwise.
   const chips3d = useChips3d(root, !!chips && three);
 
@@ -291,13 +316,27 @@ export function KitTable({
             {view.track && (
               <ScoreTrack track={view.track} view={view} names={names} />
             )}
-            {chips?.pot ? <ChipPile amount={chips.pot} kind="pot" columns={4} /> : null}
-            {view.info.length > 0 && (
-              <ul className="kit-info">
-                {view.info.map((line, i) => (
-                  <li key={i}>{named(line, names)}</li>
-                ))}
-              </ul>
+            {chips?.pot ? (
+              // The pot beside "Pot 110" and the rest, on their line: a row of its own made the
+              // middle too tall for a short window (#359).
+              <div className="info-line">
+                <ChipPile amount={chips.pot} kind="pot" columns={4} tall={5} />
+                {view.info.length > 0 && (
+                  <ul className="kit-info">
+                    {view.info.map((line, i) => (
+                      <li key={i}>{named(line, names)}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : (
+              view.info.length > 0 && (
+                <ul className="kit-info">
+                  {view.info.map((line, i) => (
+                    <li key={i}>{named(line, names)}</li>
+                  ))}
+                </ul>
+              )
             )}
             <p className="narration" aria-live="polite">
               {view.narration ? named(view.narration, names) : null}
@@ -307,6 +346,7 @@ export function KitTable({
             </div>
             {view.choices && !view.result && (
               <div
+                ref={choicesBox}
                 className={`felt-actions kit-choices ${view.choices.layout ?? ""}`}
               >
                 {view.choices.prompt && (
