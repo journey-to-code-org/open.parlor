@@ -2,6 +2,8 @@ import { PACES, SKILLS, TURN_TIMERS, type TableSettings } from "@journey-to-code
 import { createContext, useContext, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Choice } from "./RulesEditor";
+import { CHIP_STARTERS, PARLOR_CHIPS, myChips, playWithChips, sameChips, watchChips } from "@open-parlor/ui/chip-design";
+import { useChipDesign } from "./kit/Chips";
 import { ReportLink } from "./ReportProblem";
 import { loadTableSettings, saveTableSettings } from "./storage";
 import {
@@ -160,7 +162,48 @@ const PLAIN_MOTION: Record<DisplaySettings["motion"], string> = {
   off: "Everything just appears where it goes.",
 };
 
-export function DisplayFields({ sport = false, stones = false, depth = false, cards = true }: { sport?: boolean; stones?: boolean; depth?: boolean; cards?: boolean }) {
+/** At a table played for chips: which set this device shows, and the way to the chip designer. */
+function ChipFields() {
+  const playing = useChipDesign();
+  const [kept, setKept] = useState(myChips);
+  const [problem, setProblem] = useState<string | null>(null);
+  useEffect(() => watchChips(() => setKept(myChips())), []);
+  const sets: [string, typeof PARLOR_CHIPS][] = [
+    ...CHIP_STARTERS.map((d) => [`starter:${d.name}`, d] as [string, typeof PARLOR_CHIPS]),
+    ...kept.map((k) => [`mine:${k.id}`, k.design] as [string, typeof PARLOR_CHIPS]),
+  ];
+  // The chips in play may be a set since changed or deleted in the designer: still the ones shown.
+  const current = sets.find(([, d]) => sameChips(d, playing))?.[0] ?? "playing";
+  const options: [string, string][] = [
+    ...sets.map(([id, d], i) => [id, i < CHIP_STARTERS.length ? (d === PARLOR_CHIPS ? "The parlor's own" : d.name) : `${d.name} (yours)`] as [string, string]),
+    ...(current === "playing" ? ([["playing", playing.name]] as [string, string][]) : []),
+  ];
+  return (
+    <>
+      <Choice
+        label="Chips"
+        value={current}
+        options={options}
+        onChange={(id) => {
+          const chosen = sets.find(([key]) => key === id)?.[1];
+          if (!chosen) return;
+          try {
+            playWithChips(chosen === PARLOR_CHIPS ? null : chosen);
+            setProblem(null);
+          } catch (e) {
+            setProblem((e as Error).message);
+          }
+        }}
+      />
+      {problem && <p className="error">{problem}</p>}
+      <a className="link" href="designer/#chips" target="_blank" rel="noopener">
+        Design your own chips
+      </a>
+    </>
+  );
+}
+
+export function DisplayFields({ sport = false, stones = false, depth = false, cards = true, chips = false }: { sport?: boolean; stones?: boolean; depth?: boolean; cards?: boolean; chips?: boolean }) {
   const [display, setDisplay] = useState(loadDisplay);
   const change = (patch: Partial<DisplaySettings>) => {
     const next = { ...display, ...patch };
@@ -178,6 +221,7 @@ export function DisplayFields({ sport = false, stones = false, depth = false, ca
       <p className="fine">
         {cards ? MOTIONS.find((m) => m.id === display.motion)?.hint : PLAIN_MOTION[display.motion]}
       </p>
+      {chips && <ChipFields />}
       {cards && (
       <Choice
         label="Suit colours"
@@ -245,6 +289,7 @@ export function TableSettingsButton({
   stones = false,
   depth = false,
   cards = true,
+  chips = false,
 }: {
   settings: TableSettings;
   onChange: (next: TableSettings) => Promise<void> | void;
@@ -257,6 +302,8 @@ export function TableSettingsButton({
   depth?: boolean;
   /** Whether the game is played with cards: a table with none has no suit colours to choose. */
   cards?: boolean;
+  /** Whether the game is played for chips: this device may choose which chips it shows. */
+  chips?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -308,7 +355,7 @@ export function TableSettingsButton({
               {problem && <p className="error">{problem}</p>}
               <PlayersFields />
               {!solo && <h3>On this device</h3>}
-              <DisplayFields sport={sport} stones={stones} depth={depth} cards={cards} />
+              <DisplayFields sport={sport} stones={stones} depth={depth} cards={cards} chips={chips} />
               {anythingMoved && (
                 <button type="button" className="link" onClick={putEverythingBack}>
                   Put the buttons I've moved back

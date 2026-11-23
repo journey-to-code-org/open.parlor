@@ -687,6 +687,7 @@ chat-room.house-chat .chat-bars { --chart-1: var(--felt); }
 }
 .bar-buttons { display: flex; gap: 6px; align-items: center; }
 .bar-buttons .settings-toggle { position: static; }
+.sheet.table-settings a.link { color: var(--felt); display: inline-block; padding: 4px 0; }
 .sheet.table-settings { z-index: 41; max-height: calc(100dvh - 112px); overflow-y: auto; overscroll-behavior: contain; }
 .sheet-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, 0.35); }
 .sheet.table-settings .fine { color: var(--muted); margin-top: -6px; }
@@ -840,6 +841,58 @@ html[data-motion="calm"] palace-seat .active strong::before { content: "▶ "; }
 .kit-seat em { font-style: normal; font-size: calc(var(--ui-s) * 0.85); color: var(--gold); font-weight: 700; }
 .kit-seat.row { flex-direction: row; gap: 10px; min-width: 0; }
 .kit-seat.out { opacity: 0.6; }
+/* Chips, at a table played for them (kit/Chips.tsx): an amount as stacks of little cylinders. A
+   chip is two shapes: its edge, a band with a rounded underside and the insets striped across it,
+   and its face, an ellipse over the top of that. One chip sits a chip's thickness above the last,
+   so only the top face of a stack shows. Drawn the same on the flat table and the 3-D one, where
+   the seats and the middle of the table already stand up to face you. */
+.chip-pile { --chip-w: 18px; --chip-h: calc(var(--chip-w) * 0.46); --chip-t: 3px; display: inline-flex; align-items: flex-end; gap: 2px; flex: none; }
+.chip-col { position: relative; flex: none; width: var(--chip-w); height: calc(var(--chip-h) + var(--n) * var(--chip-t)); }
+.chip-col::before { content: ""; position: absolute; left: -6%; right: -14%; bottom: -2px; height: var(--chip-h); border-radius: 50%; background: rgba(0, 0, 0, 0.38); filter: blur(1.5px); }
+.chip { position: absolute; left: 0; bottom: calc(var(--k) * var(--chip-t)); width: 100%; height: calc(var(--chip-h) + var(--chip-t)); }
+.chip::before {
+  content: ""; position: absolute; inset: calc(var(--chip-h) / 2) 0 0;
+  border-radius: 0 0 50% 50% / 0 0 calc(var(--chip-h) / 2) calc(var(--chip-h) / 2);
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.42), transparent 28%, rgba(255, 255, 255, 0.28) 46%, transparent 64%, rgba(0, 0, 0, 0.48)),
+    repeating-linear-gradient(90deg, var(--c) 0 16%, var(--inset) 16% 28%), var(--c);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+}
+.chip::after {
+  content: ""; position: absolute; left: 0; top: 0; width: 100%; height: var(--chip-h); border-radius: 50%;
+  background:
+    radial-gradient(ellipse closest-side, var(--c) 0 46%, var(--inset) 50% 58%, var(--c) 62% 70%, transparent 74%),
+    repeating-conic-gradient(var(--c) 0 28deg, var(--inset) 28deg 45deg);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+}
+/* A seat's chips: what they have behind, and beside it (on a gold betting spot) what they have out. */
+.seat-chips { display: inline-flex; align-items: flex-end; gap: 10px; margin-top: 4px; }
+.kit-seat.row .seat-chips { margin-top: 0; align-self: center; }
+/* The chip designer's edges (/designer/#chips): how the insets are cut, on the band and the face. */
+.chip-pile[data-edge="blocks"] .chip::before { background: linear-gradient(90deg, rgba(0, 0, 0, 0.42), transparent 28%, rgba(255, 255, 255, 0.28) 46%, transparent 64%, rgba(0, 0, 0, 0.48)), repeating-linear-gradient(90deg, var(--c) 0 8%, var(--inset) 8% 28%), var(--c); }
+.chip-pile[data-edge="blocks"] .chip::after { background: radial-gradient(ellipse closest-side, var(--c) 0 46%, var(--inset) 50% 58%, var(--c) 62% 70%, transparent 74%), repeating-conic-gradient(var(--c) 0 12deg, var(--inset) 12deg 45deg); }
+.chip-pile[data-edge="dots"] .chip::before { background: linear-gradient(90deg, rgba(0, 0, 0, 0.42), transparent 28%, rgba(255, 255, 255, 0.28) 46%, transparent 64%, rgba(0, 0, 0, 0.48)), repeating-linear-gradient(90deg, var(--c) 0 20%, var(--inset) 20% 26%), var(--c); }
+.chip-pile:is([data-edge="ring"], [data-edge="plain"]) .chip::before { background: linear-gradient(90deg, rgba(0, 0, 0, 0.42), transparent 28%, rgba(255, 255, 255, 0.28) 46%, transparent 64%, rgba(0, 0, 0, 0.48)), var(--c); }
+.chip-pile[data-edge="ring"] .chip::before { box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.45), inset 0 calc(var(--chip-t) * -0.5) 0 calc(var(--chip-t) * -0.35) var(--inset); }
+.chip-pile:is([data-edge="ring"], [data-edge="plain"]) .chip::after { background: radial-gradient(ellipse closest-side, var(--c) 0 58%, var(--inset) 62% 68%, var(--c) 72%); }
+.chip-pile[data-finish="gloss"] .chip::after { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3), inset 2px 1px 2px rgba(255, 255, 255, 0.55); }
+.chip-pile[data-finish="metal"] .chip::before { filter: saturate(0.85) brightness(1.08) contrast(1.15); }
+.chip-pile.bet { position: relative; padding: 0 3px 1px; }
+.chip-pile.bet::before { content: ""; position: absolute; inset: auto -2px -3px; height: calc(var(--chip-h) + 4px); border-radius: 50%; border: 1px solid var(--gold); opacity: 0.8; }
+/* The pot, in the middle. */
+.chip-pile.pot { --chip-w: 24px; --chip-t: 4px; gap: 3px; }
+@media (min-width: 900px) { .chip-pile { --chip-w: 22px; --chip-t: 4px; } .chip-pile.pot { --chip-w: 30px; --chip-t: 5px; } }
+/* A chip put down drops onto its stack. */
+@media (prefers-reduced-motion: no-preference) {
+  .chip-pile:is(.bet, .pot) .chip { animation: chip-drop 220ms var(--ease-out, ease-out) backwards; animation-delay: calc(var(--k) * 25ms); }
+}
+@keyframes chip-drop { from { translate: 0 -14px; opacity: 0; } }
+html[data-motion="calm"] .chip-pile .chip { animation: none; }
+/* Solid chips (kit/chips3d.ts): one see-through canvas over the table, a stack of real chips drawn
+   where each CSS stack stands. The CSS chips keep their room on the page and are not painted. */
+.chips-gl { position: fixed; inset: 0; z-index: 7; width: 100%; height: 100%; pointer-events: none; visibility: hidden; }
+.chips-gl.up { visibility: visible; }
+.table.chips-solid .chip-col::before, .table.chips-solid .chip { visibility: hidden; }
 .kit-seat .dealer { display: inline-grid; place-items: center; width: 1.3em; height: 1.3em; border-radius: 50%; background: var(--cream); color: var(--ink); font-size: 0.7em; font-weight: 800; }
 .kit-seat.active { border-color: var(--gold); box-shadow: 0 0 12px rgba(232, 196, 106, 0.5); }
 @media (prefers-reduced-motion: no-preference) { .kit-seat.active { animation: kit-pulse 1800ms ease-out infinite; } }
@@ -910,6 +963,25 @@ html[data-motion="off"] .kit-seat.active strong::before, html[data-motion="calm"
 .table.kit .me { position: sticky; bottom: 0; z-index: 6; background: linear-gradient(rgba(9, 27, 19, 0), rgba(9, 27, 19, 0.94) 28%); }
 /* The turn prompt sits on the felt's bottom edge: keep the melds clear of it. */
 .kit-felt:has(.mine-on-table) .status { position: static; }
+/* On a card-kit table the turn line ("Your turn", "Waiting for everyone…") is one of the lines in the
+   middle, under what just happened and over the buttons. Pinned to the felt's bottom edge it sat
+   on whatever was lowest: the buttons on a wide table, your own seat on a narrow one. */
+.kit-felt .status { position: static; min-height: 0; }
+.kit-felt .status:empty { display: none; }
+/* The side seats always keep their width: the middle gives way to them (its lines wrap, its
+   buttons go two rows) rather than running under them. */
+.kit-felt:not(.solo) { grid-template-columns: minmax(min-content, 1fr) minmax(0, auto) minmax(min-content, 1fr); }
+@media (min-width: 1024px) { .kit-felt .center-info { max-width: 460px; } }
+/* What a pile is ("The dealer deals when every bet is in") wraps under the pile, not across the table. */
+.kit-felt :is(.pile, .deck, .pile-spread-area, .held-card) > small { max-width: max(calc(var(--trick-w) * 2.2), 9em); text-wrap: balance; overflow-wrap: anywhere; }
+/* A seat's line breaks only between its parts ("200 chips" · "bet 20"), never inside one. */
+.kit-seat .line-part { white-space: nowrap; }
+/* Your own seat on a phone: clear of the chat button at its left, and its chips go under the
+   words when the row hasn't room for both. */
+@media (max-width: 599px) {
+  .table.kit .me:has(.chat-toggle) .me-badge { padding-inline: 46px; }
+  .kit-seat.row { flex-wrap: wrap; justify-content: center; row-gap: 2px; max-width: 100%; box-sizing: border-box; }
+}
 
 /* ---- Setup screens (SetupLayout) --------------------------------------------------------------- */
 /* Phones: the columns and cards fall away, and the parts line up in the order you fill them in. */

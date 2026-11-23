@@ -27,6 +27,9 @@ import { seatAround } from "../palace/PalaceTable";
 import { TableSettingsButton } from "../TableSettings";
 import { usesCards } from "../categories";
 import { useWants3d } from "../display";
+import { ChipPile } from "./Chips";
+import { chipsAtTable, type TableChips } from "./chips";
+import { useChips3d } from "./useChips3d";
 import { HandSortBar, useHandOrder } from "../HandSort";
 import { cardKey } from "../handOrder";
 import { SoundButton } from "../SoundButton";
@@ -183,7 +186,7 @@ export function KitTable({
     <span className="mine">{view.pick?.prompt ?? view.gridTap?.prompt}</span>
   ) : view.turn === null && view.tap ? (
     <span className="mine">Play, quick!</span>
-  ) : view.turn !== null ? (
+  ) : view.turn === null && view.choices && !view.result ? null : view.turn !== null ? (
     `${names[view.turn] ?? "Someone"} is thinking…`
   ) : view.result ? null : (
     "Waiting for everyone…"
@@ -204,9 +207,14 @@ export function KitTable({
   // In 3-D the felt is a table seen from your chair, set out in space with CSS (".table.three" in
   // styles.css): the same page, and every card still the button it was.
   const three = useWants3d(view.game);
+  // A table played for chips (Hold'em, Five Card Draw, Blackjack) shows them: null anywhere else.
+  const chips = chipsAtTable(view);
+  // Solid chips where the device can draw them and the setting asks for 3-D; the CSS ones otherwise.
+  const chips3d = useChips3d(root, !!chips && three);
 
   return (
-    <main className={`table kit kit-${view.game}${three ? " three" : ""}`} ref={root}>
+    <main className={`table kit kit-${view.game}${three ? " three" : ""}${chips3d.up ? " chips-solid" : ""}`} ref={root}>
+      {chips3d.canvas}
       <header className="palace-bar kit-bar">
         <button
           type="button"
@@ -238,6 +246,7 @@ export function KitTable({
               solo={view.seats === 1}
               depth
               cards={usesCards(view.game)}
+              chips={!!chips}
             />
           )}
           <SoundButton on={soundOn} toggle={toggleSound} inline />
@@ -256,6 +265,7 @@ export function KitTable({
                 <div key={seat} className={`opp ${area}`} data-seat={seat}>
                   <KitSeat
                     view={view}
+                    chips={chips}
                     seat={seat}
                     name={names[seat] ?? `Seat ${seat + 1}`}
                   />
@@ -281,6 +291,7 @@ export function KitTable({
             {view.track && (
               <ScoreTrack track={view.track} view={view} names={names} />
             )}
+            {chips?.pot ? <ChipPile amount={chips.pot} kind="pot" columns={4} /> : null}
             {view.info.length > 0 && (
               <ul className="kit-info">
                 {view.info.map((line, i) => (
@@ -364,7 +375,7 @@ export function KitTable({
       <section className="me" data-seat={me}>
         {chat && <TableChat {...chat} />}
         <div className="me-badge">
-          <KitSeat view={view} seat={me} name={names[me] ?? "You"} row />
+          <KitSeat view={view} seat={me} name={names[me] ?? "You"} row chips={chips} />
         </div>
         {!view.handHidden && <HandSortBar {...holding.bar} />}
         {view.handHidden === "none" ? null : view.handHidden ? (
@@ -473,11 +484,14 @@ function KitSeat({
   seat,
   name,
   row,
+  chips,
 }: {
   view: KitView;
   seat: number;
   name: string;
   row?: boolean;
+  /** The table's chips, where the game is played for them: this seat's stack and bet are drawn. */
+  chips?: TableChips | null;
 }) {
   const p = view.players[seat]!;
   const active = view.turn === seat && !view.over;
@@ -495,13 +509,28 @@ function KitSeat({
           </span>
         )}
       </strong>
-      {p.line && <span>{named(p.line, [])}</span>}
+      {p.line && (
+        <span>
+          {named(p.line, []).split(" · ").map((part, i) => (
+            <span key={i} className="line-part">
+              {i > 0 ? " · " : ""}
+              {part}
+            </span>
+          ))}
+        </span>
+      )}
       {!row && !view.grids && p.cards > 0 && (
         <small>
           {p.cards} card{p.cards === 1 ? "" : "s"}
         </small>
       )}
       {p.badge && <em>{p.badge}</em>}
+      {chips && (chips.stacks[seat]! > 0 || chips.bets[seat]! > 0) && (
+        <span className="seat-chips">
+          <ChipPile amount={chips.stacks[seat]!} kind="stack" tall={6} />
+          <ChipPile amount={chips.bets[seat]!} kind="bet" tall={6} />
+        </span>
+      )}
     </div>
   );
 }
