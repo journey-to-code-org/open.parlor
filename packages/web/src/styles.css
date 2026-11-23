@@ -879,6 +879,13 @@ html[data-motion="calm"] palace-seat .active strong::before { content: "▶ "; }
 .chip-pile[data-finish="metal"] .chip::before { filter: saturate(0.85) brightness(1.08) contrast(1.15); }
 .chip-pile.bet { position: relative; padding: 0 3px 1px; }
 .chip-pile.bet::before { content: ""; position: absolute; inset: auto -2px -3px; height: calc(var(--chip-h) + 4px); border-radius: 50%; border: 1px solid var(--gold); opacity: 0.8; }
+/* The pot, beside the line that says how much is in it. */
+.info-line { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; max-width: 100%; }
+/* The top seat holds its chips beside its words, not under them: standing up off a 3-D table, a
+   taller seat reached over the rail (#359), and every row it adds is a row the middle hasn't got. */
+.opp-area.top .kit-seat:has(.seat-chips) { display: grid; grid-template-columns: auto auto; column-gap: 12px; align-items: center; justify-items: center; }
+.opp-area.top .kit-seat:has(.seat-chips) > :not(.seat-chips) { grid-column: 1; }
+.opp-area.top .kit-seat:has(.seat-chips) > .seat-chips { grid-column: 2; grid-row: 1 / span 5; margin-top: 0; flex-direction: column; align-items: center; gap: 4px; }
 /* The pot, in the middle. */
 .chip-pile.pot { --chip-w: 24px; --chip-t: 4px; gap: 3px; }
 @media (min-width: 900px) { .chip-pile { --chip-w: 22px; --chip-t: 4px; } .chip-pile.pot { --chip-w: 30px; --chip-t: 5px; } }
@@ -972,6 +979,8 @@ html[data-motion="off"] .kit-seat.active strong::before, html[data-motion="calm"
    buttons go two rows) rather than running under them. */
 .kit-felt:not(.solo) { grid-template-columns: minmax(min-content, 1fr) minmax(0, auto) minmax(min-content, 1fr); }
 @media (min-width: 1024px) { .kit-felt .center-info { max-width: 460px; } }
+/* With the pot beside its line, a little wider, so the pile and "Pot 110" share a row. */
+@media (min-width: 1280px) { .kit-felt .center-info:has(.info-line) { max-width: 560px; } }
 /* What a pile is ("The dealer deals when every bet is in") wraps under the pile, not across the table. */
 .kit-felt :is(.pile, .deck, .pile-spread-area, .held-card) > small { max-width: max(calc(var(--trick-w) * 2.2), 9em); text-wrap: balance; overflow-wrap: anywhere; }
 /* A seat's line breaks only between its parts ("200 chips" · "bet 20"), never inside one. */
