@@ -2,6 +2,7 @@
 // controls, cards, dialogs and toasts (copied into packages/ui/src/zubra-ui). Importing one defines
 // its tag; Svelte templates then use the tags as they are.
 import "@open-parlor/ui/playing-card.zb";
+import "@open-parlor/ui/poker-chip.zb";
 import "@open-parlor/ui/zubra-ui/action-button.zb";
 import "@open-parlor/ui/zubra-ui/alert-banner.zb";
 import "@open-parlor/ui/zubra-ui/auto-grid.zb";

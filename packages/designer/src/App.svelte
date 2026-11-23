@@ -207,7 +207,7 @@
     <div>
       <a class="home" href="../"><span aria-hidden="true">←</span> open.parlor</a>
       <h1>Card designer</h1>
-      <p class="quiet">Draw your own deck. Keep it for yourself, or share it with everyone here.</p>
+      <p class="quiet">Draw your own deck. Keep it for yourself, or share it with everyone here. <a href="#chips">Design poker chips instead</a></p>
     </div>
     <div class="now" aria-live="polite">
       {#if playing}
