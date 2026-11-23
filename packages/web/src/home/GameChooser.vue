@@ -582,6 +582,11 @@ async function toShelf(id: string) {
 .jump-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(232, 196, 106, 0.5); background: rgba(10, 30, 20, 0.5); color: var(--cream, #fbf6ec); font-weight: 600; font-size: 0.9rem; cursor: pointer; white-space: nowrap; }
 .jump-chip small { font-weight: 400; color: #b9d0c2; }
 .jump-chip:hover { border-color: var(--gold, #e8c46a); }
+/* On a wide screen the kinds fit on one line, so the bar is one slim row instead of a tall slab with a lone chip on a second line. */
+@media (min-width: 1100px) {
+  .jump { gap: 6px; }
+  .jump-chip { padding: 6px 10px; font-size: 0.85rem; }
+}
 .shelf { scroll-margin-top: 64px; }
 .suits { letter-spacing: 0.5em; color: var(--gold); font-size: clamp(1rem, 1.6vw, 1.3rem); }
 h2 { margin: 0; font-size: clamp(1.3rem, 2vw, 1.7rem); color: var(--gold); }
