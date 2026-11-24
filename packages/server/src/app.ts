@@ -235,6 +235,8 @@ export function createCardRoom(
     moderation,
     catalogue,
     tunables,
+    /** The server's own pages (/games, /daily): `available()` says whether they are on. */
+    pages,
     bugs,
     push,
     /** The computer players' thinking: its counters, and when its workers are up. Null when they think on the main thread. */

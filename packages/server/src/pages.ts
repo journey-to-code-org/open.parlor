@@ -233,6 +233,10 @@ export function createPages(catalogue: Pick<Catalogue, "state">, { mount = "/gam
   }
 
   return {
+    /** Whether the server can draw its pages at all (they are off when the components won't compile), as the front page's no-JavaScript message needs to know. */
+    async available(): Promise<boolean> {
+      return (await make()) !== null;
+    },
     /**
      * Answers GET /games and the components' modules under /_zubra; null for anything else. The
      * page says which it is in a header: the app asks before linking to it, and a parlor published
