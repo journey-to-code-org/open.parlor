@@ -849,8 +849,8 @@ html[data-motion="calm"] palace-seat .active strong::before { content: "▶ "; }
 .chip-pile { --chip-w: 18px; --chip-h: calc(var(--chip-w) * 0.46); --chip-t: 3px; display: inline-flex; align-items: flex-end; gap: 2px; flex: none; }
 .chip-col { position: relative; flex: none; width: var(--chip-w); height: calc(var(--chip-h) + var(--n) * var(--chip-t)); }
 .chip-col::before { content: ""; position: absolute; left: -6%; right: -14%; bottom: -2px; height: var(--chip-h); border-radius: 50%; background: rgba(0, 0, 0, 0.38); filter: blur(1.5px); }
-.chip { position: absolute; left: 0; bottom: calc(var(--k) * var(--chip-t)); width: 100%; height: calc(var(--chip-h) + var(--chip-t)); }
-.chip::before {
+.chip-col > .chip { position: absolute; left: 0; bottom: calc(var(--k) * var(--chip-t)); width: 100%; height: calc(var(--chip-h) + var(--chip-t)); }
+.chip-col > .chip::before {
   content: ""; position: absolute; inset: calc(var(--chip-h) / 2) 0 0;
   border-radius: 0 0 50% 50% / 0 0 calc(var(--chip-h) / 2) calc(var(--chip-h) / 2);
   background:
@@ -858,7 +858,7 @@ html[data-motion="calm"] palace-seat .active strong::before { content: "▶ "; }
     repeating-linear-gradient(90deg, var(--c) 0 16%, var(--inset) 16% 28%), var(--c);
   box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.45);
 }
-.chip::after {
+.chip-col > .chip::after {
   content: ""; position: absolute; left: 0; top: 0; width: 100%; height: var(--chip-h); border-radius: 50%;
   background:
     radial-gradient(ellipse closest-side, var(--c) 0 46%, var(--inset) 50% 58%, var(--c) 62% 70%, transparent 74%),
@@ -899,7 +899,7 @@ html[data-motion="calm"] .chip-pile .chip { animation: none; }
    where each CSS stack stands. The CSS chips keep their room on the page and are not painted. */
 .chips-gl { position: fixed; inset: 0; z-index: 7; width: 100%; height: 100%; pointer-events: none; visibility: hidden; }
 .chips-gl.up { visibility: visible; }
-.table.chips-solid .chip-col::before, .table.chips-solid .chip { visibility: hidden; }
+.table.chips-solid .chip-col::before, .table.chips-solid .chip-col > .chip { visibility: hidden; }
 .kit-seat .dealer { display: inline-grid; place-items: center; width: 1.3em; height: 1.3em; border-radius: 50%; background: var(--cream); color: var(--ink); font-size: 0.7em; font-weight: 800; }
 .kit-seat.active { border-color: var(--gold); box-shadow: 0 0 12px rgba(232, 196, 106, 0.5); }
 @media (prefers-reduced-motion: no-preference) { .kit-seat.active { animation: kit-pulse 1800ms ease-out infinite; } }
