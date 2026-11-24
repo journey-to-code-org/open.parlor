@@ -55,6 +55,27 @@ function sorted(value: unknown): unknown {
   return Object.fromEntries(Object.keys(value).sort().map((k) => [k, sorted(value[k])]));
 }
 
+/** The most one file the assistant may read or write, in characters. */
+export const MAX_FILE = 80_000;
+/** The most files one assistant pull request may change. */
+export const MAX_FILES = 6;
+
+/**
+ * Why a path may not be read or changed by the assistant, or null when it may. Only the games' and
+ * the apps' own source and the docs (packages/ and docs/); never CI, dependencies, the lockfile, the
+ * Dockerfile, secrets, or the files that decide who gets in or hold the keys. A person reviews every
+ * pull request, but what the assistant may not touch is also what it can't be talked into touching.
+ */
+export function refusedPath(path: unknown): string | null {
+  if (typeof path !== "string" || !path || path.length > 200) return "That isn't a file path.";
+  if (path.includes("\\") || path.includes("\0") || path.startsWith("/") || path.split("/").some((part) => part === ".." || part === "." || part === "")) return "That isn't a plain path inside the repository.";
+  if (!/^(packages|docs)\//.test(path)) return "Only files under packages/ and docs/ may be changed.";
+  if (/(^|\/)(node_modules|\.git|\.github|dist|\.env[^/]*)(\/|$)/.test(path)) return "That folder is off limits.";
+  if (/(^|\/)(package\.json|package-lock\.json|npm-shrinkwrap\.json|Dockerfile)$/.test(path)) return "Dependencies and the build setup are not for the assistant to change.";
+  if (/^packages\/server\/src\/(moderation|github-login|promote|assistant|ai|index)\.ts$/.test(path)) return "The files that decide who gets in, hold the keys or open pull requests are not for the assistant to change.";
+  return null;
+}
+
 export class PromoteError extends Error {
   constructor(message: string, readonly status = 502) {
     super(message);
@@ -96,6 +117,68 @@ export function createPromote(sync: Sync, { token, repo = "journey-to-code-org/o
     repo,
     base,
     last,
+    /** A file as it is on the base branch, or null when there is none. Only paths `refusedPath` allows. */
+    async read(path: string): Promise<string | null> {
+      const why = refusedPath(path);
+      if (why) throw new PromoteError(why, 422);
+      if (!enabled) throw new PromoteError("Reading the code isn't set up on this parlor.", 503);
+      const file = await api("GET", `/contents/${path}?ref=${encodeURIComponent(base)}`);
+      if (file.status === 404) return null;
+      if (file.status !== 200 || typeof file.body?.content !== "string") throw refused(`read ${path}`, file);
+      const text = Buffer.from(file.body.content, "base64").toString("utf8");
+      if (text.length > MAX_FILE) throw new PromoteError(`${path} is too large to work on here.`, 413);
+      return text;
+    },
+    /** The names in a folder on the base branch (folders end in "/"), or null when there is none. */
+    async list(path: string): Promise<string[] | null> {
+      if (path !== "packages" && path !== "docs") {
+        const why = refusedPath(`${path.replace(/\/$/, "")}/x`);
+        if (why) throw new PromoteError(why, 422);
+      }
+      if (!enabled) throw new PromoteError("Reading the code isn't set up on this parlor.", 503);
+      const dir = await api("GET", `/contents/${path.replace(/\/$/, "")}?ref=${encodeURIComponent(base)}`);
+      if (dir.status === 404) return null;
+      if (dir.status !== 200 || !Array.isArray(dir.body)) throw refused(`list ${path}`, dir);
+      return dir.body.slice(0, 300).map((e: { name?: string; type?: string }) => `${e.name}${e.type === "dir" ? "/" : ""}`);
+    },
+    /**
+     * Opens a draft pull request that changes some files, on a new branch (`assistant/...`) that is
+     * taken back if any step fails. Never pushes to the base branch. Rejects with a PromoteError.
+     */
+    async change({ title, body, files }: { title: string; body: string; files: { path: string; content: string }[] }): Promise<{ url: string; number: number; branch: string }> {
+      if (!enabled) throw new PromoteError("Opening pull requests isn't set up on this parlor.", 503);
+      if (files.length === 0 || files.length > MAX_FILES) throw new PromoteError(`A pull request may change 1 to ${MAX_FILES} files.`, 422);
+      for (const file of files) {
+        const why = refusedPath(file.path);
+        if (why) throw new PromoteError(`${file.path}: ${why}`, 422);
+        if (typeof file.content !== "string" || file.content.length > MAX_FILE) throw new PromoteError(`${file.path} is too large.`, 422);
+      }
+      const head = await api("GET", `/git/ref/heads/${encodeURIComponent(base)}`);
+      if (head.status !== 200 || typeof head.body?.object?.sha !== "string") throw refused(`read the ${base} branch`, head);
+      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30) || "change";
+      const branch = `assistant/${slug}-${now().toString(36)}`;
+      const made = await api("POST", "/git/refs", { ref: `refs/heads/${branch}`, sha: head.body.object.sha });
+      if (made.status !== 201) throw refused("make a branch", made);
+      try {
+        for (const file of files) {
+          const there = await api("GET", `/contents/${file.path}?ref=${encodeURIComponent(branch)}`);
+          if (there.status !== 200 && there.status !== 404) throw refused(`read ${file.path}`, there);
+          const put = await api("PUT", `/contents/${file.path}`, {
+            message: `${title}: ${file.path}`,
+            content: Buffer.from(file.content).toString("base64"),
+            branch,
+            ...(there.status === 200 && typeof there.body?.sha === "string" ? { sha: there.body.sha } : {}),
+          });
+          if (put.status !== 200 && put.status !== 201) throw refused(`commit ${file.path}`, put);
+        }
+        const pr = await api("POST", "/pulls", { title, head: branch, base, draft: true, body: `${body}\n\nDrafted by the admin app's assistant and opened as a draft. CI runs on it like any change; read it, and merge it when it looks right.` });
+        if (pr.status !== 201 || typeof pr.body?.html_url !== "string") throw refused("open the pull request", pr);
+        return { url: pr.body.html_url, number: Number(pr.body.number) || 0, branch };
+      } catch (error) {
+        await api("DELETE", `/git/refs/heads/${branch}`).catch(() => undefined);
+        throw error;
+      }
+    },
     /** Opens the draft pull request for `game`'s saved numbers. Rejects with a PromoteError that is fit to show. */
     async open(game: string, saved: Saved): Promise<Promotion> {
       const spec = TUNABLE_GAMES[game];

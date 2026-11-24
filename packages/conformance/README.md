@@ -125,8 +125,8 @@ CI runs them in all three browsers.
 
 None, on the Zubra this package declares (the `^6` range in its `package.json`): every check
 passes in all three browsers. The run reads the installed `@zubra/runtime`, `@zubra/compiler` and
-`@zubra/unplugin` and fails if any of them is outside that range (`tests/version.spec.ts`), so a
-green run is of this line. Bump the range and the gate moves with it; the version of each run is
+`@zubra/unplugin` and warns if any of them is outside that range (`tests/version.spec.ts`; it
+never fails the run, so a newer Zubra can be tried before the range moves). Bump the range and the gate moves with it; the version of each run is
 in `results.json` and on the report page.
 
 The last difference was Preact 11 reordering a keyed list inside a component

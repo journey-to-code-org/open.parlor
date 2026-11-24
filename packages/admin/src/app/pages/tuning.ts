@@ -7,6 +7,7 @@ import { ZubraModel } from "@zubra/runtime/angular";
 import { Admin, message, when } from "../admin";
 import { ApiError, type TunableGame } from "../api";
 import { Ask } from "../ask";
+import { AssistantPanel } from "../tuning/assistant";
 import { ShapeField } from "../tuning/field";
 import { build, firstProblem, read } from "../tuning/shape";
 import type { AbstractControl } from "@angular/forms";
@@ -16,7 +17,7 @@ const DEFAULTS: Record<string, string> = { "back-room": "../wasm/battler-default
 
 @Component({
   selector: "app-tuning",
-  imports: [ReactiveFormsModule, ZubraModel, ShapeField],
+  imports: [ReactiveFormsModule, ZubraModel, ShapeField, AssistantPanel],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -58,6 +59,7 @@ const DEFAULTS: Record<string, string> = { "back-room": "../wasm/battler-default
           </form>
         }
       }
+      <app-assistant (applied)="applied($event)"></app-assistant>
     }
   `,
 })
@@ -137,6 +139,12 @@ export class TuningPage implements OnInit {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  /** The assistant saved some numbers as a game's live override. */
+  protected applied({ game, saved }: { game: string; saved: TunableGame["saved"] }): void {
+    this.games.update((all) => all.map((g) => (g.id === game ? { ...g, saved } : g)));
+    if (this.picked() === game) void this.show(game);
   }
 
   protected done = (game: TunableGame) => game.promoted?.version === game.saved.version;

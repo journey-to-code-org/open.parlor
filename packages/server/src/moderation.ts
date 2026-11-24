@@ -17,6 +17,7 @@ import type { TableChat } from "./tablechat.js";
 import type { Catalogue } from "./catalogue.js";
 import type { Tunables } from "./tunables.js";
 import { PromoteError, type Promote } from "./promote.js";
+import type { Assistant } from "./assistant.js";
 import type { GithubLogin } from "./github-login.js";
 import type { Backups } from "./backup.js";
 import type { Courses } from "./courses.js";
@@ -81,7 +82,7 @@ const finished = (summary: unknown) => {
 /** How many wrong tokens a minute before everyone waits. */
 const WRONG_TOKENS_PER_MINUTE = 20;
 
-export function createModeration(rooms: Rooms, designs: Designs, { tableChat, token, github, houses, catalogue, tunables, promote, backups, bots, courses, packs, mount = "/moderation", now = () => Date.now() }: { /** The tables' chats (tablechat.ts): what's said at each, taking a message down, and telling a table. */ tableChat?: Pick<TableChat, "messages" | "redact" | "announce">; token?: string; /** Who may sign in with GitHub instead of the token (see github-login.ts). */ github?: Pick<GithubLogin, "enabled" | "valid">; houses?: Houses; catalogue?: Catalogue; /** The numbers a game lets its host change (see tunables.ts). */ tunables?: Tunables; /** Opens a pull request for them (see promote.ts). */ promote?: Promote; /** The pack Road to the Shootout plays, when the host has published one (see packs.ts). */ packs?: Packs; /** Mini Golf courses people make, to take out of the gallery. */ courses?: Courses; /** Copies of the database, when the parlor keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
+export function createModeration(rooms: Rooms, designs: Designs, { tableChat, token, github, houses, catalogue, tunables, promote, assistant, backups, bots, courses, packs, mount = "/moderation", now = () => Date.now() }: { /** The tables' chats (tablechat.ts): what's said at each, taking a message down, and telling a table. */ tableChat?: Pick<TableChat, "messages" | "redact" | "announce">; token?: string; /** Who may sign in with GitHub instead of the token (see github-login.ts). */ github?: Pick<GithubLogin, "enabled" | "valid">; houses?: Houses; catalogue?: Catalogue; /** The numbers a game lets its host change (see tunables.ts). */ tunables?: Tunables; /** Opens a pull request for them (see promote.ts). */ promote?: Promote; /** The model that helps the host change a game (see assistant.ts). */ assistant?: Assistant; /** The pack Road to the Shootout plays, when the host has published one (see packs.ts). */ packs?: Packs; /** Mini Golf courses people make, to take out of the gallery. */ courses?: Courses; /** Copies of the database, when the parlor keeps one on disk. */ backups?: Backups; /** The computer players' thinking, in numbers (see bots.ts). */ bots?: () => unknown; mount?: string; now?: () => number } = {}) {
   const secret = token?.trim() ? digest(token.trim()) : null;
   const docs = rooms.sync.documents();
   let wrong: number[] = [];
@@ -442,6 +443,37 @@ export function createModeration(rooms: Rooms, designs: Designs, { tableChat, to
         await record("Put a game's numbers back", id, `version ${saved.version}`);
         return json(saved);
       }
+    }
+
+    if (area === "assistant" && assistant) {
+      // GET /moderation/assistant → whether it is on, which model, and whether it can read and change code
+      if (!id && method === "GET") return json(assistant.state());
+      // POST /moderation/assistant/chat { messages: [{ role, content }] } → its answer, and a proposal when it made one
+      if (id === "chat" && method === "POST") {
+        try {
+          const answer = await assistant.chat(input.messages);
+          if (answer.proposal) await record("The assistant proposed a change", answer.proposal.kind === "tunables" ? answer.proposal.gameName : answer.proposal.title, answer.proposal.kind);
+          return json(answer);
+        } catch (error) {
+          if (error instanceof PromoteError) return json({ error: error.message }, error.status);
+          return json({ error: error instanceof Error ? error.message.slice(0, 300) : "The assistant couldn't answer." }, 502);
+        }
+      }
+      // POST /moderation/assistant/apply { id } → a proposed set of numbers, saved as the game's live override
+      if (id === "apply" && method === "POST") {
+        const done = await assistant.apply(String(input.id ?? ""));
+        if ("problem" in done) return json({ error: done.problem }, done.status);
+        await record("Applied the assistant's numbers", done.game, `version ${done.saved.version}`);
+        return json({ game: done.game, saved: done.saved });
+      }
+      // POST /moderation/assistant/pull-request { id } → a proposed code change, as a draft pull request
+      if (id === "pull-request" && method === "POST") {
+        const done = await assistant.openPullRequest(String(input.id ?? ""));
+        if ("problem" in done) return json({ error: done.problem }, done.status);
+        await record("Opened a pull request for the assistant's change", done.title, done.url);
+        return json(done);
+      }
+      return json({ error: "Not found" }, 404);
     }
 
     if (area === "designs") {

@@ -76,7 +76,7 @@ const cardRoom = createCardRoom({
   // Computer players think in worker threads: as many as CARDROOM_BOT_WORKERS says (0 for none), or
   // what suits the machine. The workers start, and warm up, while the server is already listening.
   bots: { workers: workersFrom(setting("BOT_WORKERS")), budgetMs: Number(setting("BOT_BUDGET")) || undefined, ceilingMs: Number(setting("BOT_CEILING")) || undefined },
-  ai: { secret: setting("SECRET"), shared: { key: setting("AI_KEY"), provider: setting("AI_PROVIDER"), model: setting("AI_MODEL"), daily: Number(setting("AI_DAILY")) || undefined } },
+  ai: { secret: setting("SECRET"), shared: { key: setting("AI_KEY"), provider: setting("AI_PROVIDER"), model: setting("AI_MODEL"), daily: Number(setting("AI_DAILY")) || undefined, adminModel: setting("ADMIN_AI_MODEL"), adminDaily: Number(setting("ADMIN_AI_DAILY")) || undefined } },
 });
 if (!setting("SECRET")) console.log("houses' AI keys are stored unsealed: set CARDROOM_SECRET to encrypt them");
 if (db && !backups) console.log("backups are off (CARDROOM_BACKUPS=off): nothing copies the database");

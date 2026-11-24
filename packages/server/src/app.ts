@@ -6,6 +6,7 @@ import { createRooms, type RoomDoc } from "@journey-to-code/rooms/server";
 import { createCatalogue } from "./catalogue.js";
 import { createTunables } from "./tunables.js";
 import { createPromote, type PromoteOptions } from "./promote.js";
+import { createAssistant } from "./assistant.js";
 import { createGithubLogin, type GithubLoginOptions } from "./github-login.js";
 import { PAGE_MOUNTS, createPages, publicOrigin } from "./pages.js";
 import { createChallenges } from "./challenges.js";
@@ -167,6 +168,7 @@ export function createCardRoom(
   const catalogue = createCatalogue(rooms.sync);
   const tunables = createTunables(rooms.sync);
   const promote = createPromote(rooms.sync, options.promote);
+  const assistant = createAssistant(ai, tunables, promote);
   const github = createGithubLogin({ origin: (request) => publicOrigin(Object.fromEntries(request.headers)) || new URL(request.url).origin, ...options.github });
   // "Ask for a game" on the server's own page goes the way the app's does: past the block list, to the relay.
   const pages = createPages(catalogue, { tunables, asking: () => bugs.enabled, ask: async (request) => (await refusal(request)) ?? (await bugs.fetch(request)) });
@@ -177,7 +179,7 @@ export function createCardRoom(
   const devices = createDevices({ housesOf: async (player) => (await houses.all()).filter((h) => h.members.some((m) => m.player === player)).map((h) => ({ slug: h.slug, name: h.name })) });
   const lobby = createLobby(rooms, { push, gameOn: catalogue.isOn, ...options.lobby });
   const spectate = createSpectate(rooms, catalogue, options.spectate);
-  const moderation = createModeration(rooms, designs, { tableChat: tables, token: options.adminToken, github, houses, catalogue, tunables, promote, backups: options.backups, packs: options.packs, bots: bots ? () => bots.stats() : undefined, courses });
+  const moderation = createModeration(rooms, designs, { tableChat: tables, token: options.adminToken, github, houses, catalogue, tunables, promote, assistant, backups: options.backups, packs: options.packs, bots: bots ? () => bots.stats() : undefined, courses });
   // "Report a problem": a player's report becomes an issue on GitHub.
   // With the parlor's own AI key, a report or request can be tidied before it's sent.
   const bugs = createBugs(rooms, { ...(ai.shared ? { tidy: (input) => ai.tidy(input) } : {}), ...options.bugs });
