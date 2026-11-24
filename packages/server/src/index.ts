@@ -5,6 +5,7 @@
 //   PORT=8787 CARDROOM_DB=cardroom.db node dist/index.js
 //
 // Settings are CARDROOM_*; the older SPADES_* names still work (CARDROOM_* wins if both are set).
+import { withServerPages } from "./nojs.js";
 import { loadPreviews, previewPage } from "./previews.js";
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { Meets, Rooms } from "@open-parlor/wasm/net";
@@ -176,7 +177,10 @@ const server = createServer(async (req, res) => {
     if (file.endsWith("index.html")) {
       const origin = originOf(req.headers);
       const html = readFileSync(file, "utf8").replaceAll("__ORIGIN__", origin);
-      return void res.end(file === join(web, "index.html") ? previewPage(html, { origin: origin.replace(/\/$/, ""), search: new URL(req.url ?? "/", "http://x").search, games: previews }) : html);
+      if (file !== join(web, "index.html")) return void res.end(html);
+      // The front page's message for a browser with JavaScript off links this server's pages that work without it.
+      const page = withServerPages(html, await cardRoom.pages.available());
+      return void res.end(previewPage(page, { origin: origin.replace(/\/$/, ""), search: new URL(req.url ?? "/", "http://x").search, games: previews }));
     }
     createReadStream(file).pipe(res);
   } catch (e) {
