@@ -123,16 +123,18 @@ CI runs them in all three browsers.
 
 ## Known differences
 
-None, on Zubra 6.0.2: every check passes in all three browsers. The run reads the installed
-`@zubra/runtime`, `@zubra/compiler` and `@zubra/unplugin` and fails if any of them is older than
-6.0.2 or on another major (`tests/version.spec.ts`), so a green run is of this line.
+None, on the Zubra this package declares (the `^6` range in its `package.json`): every check
+passes in all three browsers. The run reads the installed `@zubra/runtime`, `@zubra/compiler` and
+`@zubra/unplugin` and warns if any of them is outside that range (`tests/version.spec.ts`; it
+never fails the run, so a newer Zubra can be tried before the range moves). Bump the range and the gate moves with it; the version of each run is
+in `results.json` and on the report page.
 
 The last difference was Preact 11 reordering a keyed list inside a component
 ([zubra#370](https://github.com/zubra-js/zubra/issues/370)): it moves children with
 `moveBefore()` where the browser has it, and a Zubra host passed `insertBefore` on to its slots
 but not `moveBefore`, so the move threw and the list kept its old order. Fixed in
 [zubra#372](https://github.com/zubra-js/zubra/pull/372), released in 5.23.0, and out of
-`KNOWN` since. The same check still passes on 6.0.2.
+`KNOWN` since. The same check still passes on 6.x.
 
 `KNOWN` in each spec is where a difference goes when one turns up: the check's title and the
 Zubra issue it was reported in. A listed check is expected to fail, so the run stays

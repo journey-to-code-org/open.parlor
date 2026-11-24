@@ -168,6 +168,25 @@ export interface TunableGame {
   promoted?: { version: number; url: string; number: number; branch: string; at: number } | null;
 }
 
+/** What the assistant proposed: new numbers for a game, or edits to some files (as a draft pull request). */
+export type AssistantProposal =
+  | { id: string; kind: "tunables"; game: string; gameName: string; base: number; changes: { path: string; from: string; to: string }[]; values: Record<string, unknown> }
+  | { id: string; kind: "code"; title: string; summary: string; files: { path: string; isNew: boolean; added: number; removed: number; diff: string }[] };
+
+export interface AssistantAnswer {
+  reply: string;
+  proposal?: AssistantProposal;
+  problems?: string[];
+  looked: string[];
+}
+
+export interface AssistantState {
+  enabled: boolean;
+  model: string;
+  canReadCode: boolean;
+  maxTurn: number;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -250,6 +269,10 @@ export class Api {
   setTunables = (game: string, values: unknown) => this.send<TunableGame["saved"]>(`/tunables/${game}`, { values });
   promoteTunables = (game: string) => this.send<NonNullable<TunableGame["promoted"]>>(`/tunables/${game}/promote`, {});
   resetTunables = (game: string) => this.send<TunableGame["saved"]>(`/tunables/${game}/reset`, {});
+  assistant = () => this.send<AssistantState>("/assistant");
+  assistantChat = (messages: { role: "user" | "assistant"; content: string }[]) => this.send<AssistantAnswer>("/assistant/chat", { messages });
+  assistantApply = (id: string) => this.send<{ game: string; saved: TunableGame["saved"] }>("/assistant/apply", { id });
+  assistantPullRequest = (id: string) => this.send<{ url: string; number: number; branch: string; title: string }>("/assistant/pull-request", { id });
 
   closeTable = (id: string, reason: string) => this.send(`/tables/${id}/close`, { reason });
   pauseTable = (id: string, reason: string) => this.send(`/tables/${id}/pause`, { reason });

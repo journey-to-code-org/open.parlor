@@ -22,7 +22,7 @@ interface Known {
 const REORDER = "a keyed list reordered in a slot keeps its elements";
 
 // What a framework is known to do differently, with the issue it was reported in: none now, on
-// Zubra 6.0.2. Preact 11's moveBefore() (zubra#370) was the last, fixed in Zubra 5.23.0.
+// the Zubra 6 this package declares. Preact 11's moveBefore() (zubra#370) was the last, fixed in Zubra 5.23.0.
 const KNOWN: Partial<Record<Framework, Record<string, Known>>> = {};
 
 const t = (page: Page, name: string) => page.locator(`[data-t="${name}"]`);

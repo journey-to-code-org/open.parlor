@@ -42,6 +42,15 @@ const TIDY_PROMPT: TidyPromptOptions = {
   nameHint: "the game's usual name, spelled properly in Title Case, under 40 characters",
 };
 
+/** One turn of a conversation with the model. */
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+/** Messages the admin assistant may send in a day, on the parlor's key, when the host hasn't said. */
+export const ADMIN_DAILY = 400;
+
 /** What a house keeps about its connection. `key` is sealed; it never leaves the server. */
 export interface HouseAi {
   /** "server": the parlor's own key (set by whoever runs it); then `key` and `model` are empty. */
@@ -66,7 +75,7 @@ export interface AiOptions {
   /** Seals keys at rest (CARDROOM_SECRET). Without one they're stored as given, in the server-only log. */
   secret?: string;
   /** The parlor's own key, for every table (CARDROOM_AI_KEY and friends). */
-  shared?: { provider?: string; key?: string; model?: string; daily?: number };
+  shared?: { provider?: string; key?: string; model?: string; daily?: number; /** The model the admin assistant uses on that key (CARDROOM_ADMIN_AI_MODEL); a stronger one than the bots'. */ adminModel?: string; /** Messages the admin assistant may send in a day (CARDROOM_ADMIN_AI_DAILY). */ adminDaily?: number };
   /** For tests. */
   fetch?: typeof fetch;
   /** How long (ms) to wait for a line before the bot says its own. Default 6000. */
@@ -156,6 +165,9 @@ export function createAi(options: AiOptions = {}) {
   const shared: (HouseAi & { provider: AiProvider }) | null = given
     ? { provider: sharedProvider, key: `plain:${given}`, model: options.shared?.model?.trim() || defaultModel(sharedProvider), context: "", on: true }
     : null;
+  // The admin assistant rides the same key with a model of its own: a larger one, since it writes JSON and code.
+  const adminModel = options.shared?.adminModel?.trim() || (sharedProvider === "anthropic" ? "claude-sonnet-5-5" : shared?.model || defaultModel(sharedProvider));
+  const adminDaily = options.shared?.adminDaily && options.shared.adminDaily > 0 ? options.shared.adminDaily : ADMIN_DAILY;
   const sharedDaily = options.shared?.daily && options.shared.daily > 0 ? options.shared.daily : SHARED_LINES;
   /** A house's connection as it's actually called: the parlor's key when that's what it uses. */
   const resolve = (ai: HouseAi): (HouseAi & { provider: AiProvider }) | null =>
@@ -169,7 +181,11 @@ export function createAi(options: AiOptions = {}) {
   }
 
   /** The model's whole answer, as it gave it. Throws like `ask`. */
-  async function complete(asked: HouseAi, system: string, user: string, maxTokens: number, maxReasoning: number, wait = timeout): Promise<string> {
+  const complete = (asked: HouseAi, system: string, user: string, maxTokens: number, maxReasoning: number, wait = timeout): Promise<string> =>
+    exchange(asked, system, [{ role: "user", content: user }], maxTokens, maxReasoning, wait);
+
+  /** The same, for a conversation: what was said so far, oldest first, ending with the user's turn. */
+  async function exchange(asked: HouseAi, system: string, messages: ChatMessage[], maxTokens: number, maxReasoning: number, wait = timeout): Promise<string> {
     const ai = resolve(asked);
     if (!ai) throw new Error("This parlor has no AI account of its own any more. Connect the house's own.");
     const key = open(ai.key);
@@ -183,9 +199,9 @@ export function createAi(options: AiOptions = {}) {
         : { "content-type": "application/json", authorization: `Bearer ${key}` },
       body: JSON.stringify(
         anthropic
-          ? { model: ai.model, max_tokens: maxTokens, system, messages: [{ role: "user", content: user }] }
+          ? { model: ai.model, max_tokens: maxTokens, system, messages }
           : // Room for a reasoning model to think before it answers.
-            { model: ai.model, max_completion_tokens: maxReasoning, messages: [{ role: "system", content: system }, { role: "user", content: user }] },
+            { model: ai.model, max_completion_tokens: maxReasoning, messages: [{ role: "system", content: system }, ...messages] },
       ),
     });
     const data = (await response.json().catch(() => ({}))) as {
@@ -251,6 +267,24 @@ export function createAi(options: AiOptions = {}) {
   return {
     seal,
     models,
+    /** The admin assistant: the parlor's own key with its own model. Off when the parlor has no key. */
+    assistant: {
+      get enabled() {
+        return shared !== null;
+      },
+      get model() {
+        return adminModel;
+      },
+      /**
+       * The model's answer to a conversation, or throws a message fit to show the admin. Counts against
+       * the assistant's own allowance for the day (not the bots'). Slow answers are allowed: it is a person waiting.
+       */
+      async chat(system: string, messages: ChatMessage[], { maxTokens = 8000, wait = 120_000 }: { maxTokens?: number; wait?: number } = {}): Promise<string> {
+        if (!shared) throw new Error("This parlor has no AI key. Set CARDROOM_AI_KEY to turn the assistant on.");
+        if (!spend("\u0000admin", adminDaily)) throw new Error(`The assistant has used its ${adminDaily} messages for today. It starts again tomorrow (or raise CARDROOM_ADMIN_AI_DAILY).`);
+        return exchange({ ...shared, model: adminModel }, system, messages, maxTokens, maxTokens * 2, wait);
+      },
+    },
     /** Whether a sealed key can still be opened here. */
     readable: (ai: HouseAi) => open(ai.key) !== null,
     /** Whether the parlor has a key of its own. */

@@ -1,7 +1,10 @@
-// The line these checks are of. A run on 5.x, or on a 6.x older than 6.0.2, is not the run the notes describe.
+// The line these checks are of: the range this package declares for Zubra, so bumping it in
+// package.json moves the gate with it. A run on another major, or on a version older than the
+// range's floor, is not the run the notes describe.
 import { createRequire } from "node:module";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 
@@ -23,8 +26,27 @@ export function zubraVersion(name: string): string {
   throw new Error(`could not find the installed ${name}`);
 }
 
-/** `^6.0.2`: major 6, and not older than 6.0.2. */
-export function onZubra6(version: string): boolean {
-  const [major, minor = 0, patch = 0] = version.split(".").map((part) => Number(part));
-  return major === 6 && Number.isFinite(minor) && Number.isFinite(patch) && (minor > 0 || patch >= 2);
+type Deps = { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+
+/** The range this package declares for `name`, e.g. `^6.0.5`. */
+export function declaredRange(name: string): string {
+  const pkg = JSON.parse(readFileSync(fileURLToPath(new URL("../package.json", import.meta.url)), "utf8")) as Deps;
+  const range = pkg.dependencies?.[name] ?? pkg.devDependencies?.[name];
+  if (!range) throw new Error(`${name} is not declared in this package's package.json`);
+  return range;
+}
+
+function parts(version: string): [number, number, number] {
+  const [major = Number.NaN, minor = 0, patch = 0] = (version.split(/[-+]/)[0] ?? "").split(".").map((part) => Number(part));
+  return [major, minor, patch];
+}
+
+/** Whether `version` is in a caret range such as `^6.0.5`: the same major, and not older than the floor. */
+export function satisfiesCaret(version: string, range: string): boolean {
+  const match = /^\^(\d+\.\d+\.\d+)$/.exec(range);
+  if (!match) throw new Error(`expected a caret range like ^6.0.5, got ${range}`);
+  const [fMajor, fMinor, fPatch] = parts(match[1] ?? "");
+  const [major, minor, patch] = parts(version);
+  if (![major, minor, patch].every(Number.isFinite)) return false;
+  return major === fMajor && (minor > fMinor || (minor === fMinor && patch >= fPatch));
 }

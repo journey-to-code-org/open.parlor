@@ -1,0 +1,23 @@
+# Opens a pull request when Zubra releases, so CI (which runs the conformance suite in three
+# browsers) tells us whether the new version holds before it merges. All @zubra/* packages move
+# together, in one pull request, across every package in the workspace.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: daily
+    allow:
+      - dependency-name: "@zubra/*"
+    # Held at 6.0.2: in 6.0.3 to 6.0.5 a slotted text node stops updating once its element has been moved
+    # or re-attached (the admin's buttons lose their labels). Remove this when a fixed release is out.
+    ignore:
+      - dependency-name: "@zubra/*"
+        versions: ["6.0.3", "6.0.4", "6.0.5"]
+    groups:
+      zubra:
+        patterns:
+          - "@zubra/*"
+    commit-message:
+      prefix: "Bump Zubra"
+    open-pull-requests-limit: 2
