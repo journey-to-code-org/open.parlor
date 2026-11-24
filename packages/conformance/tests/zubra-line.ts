@@ -37,7 +37,7 @@ export function declaredRange(name: string): string {
 }
 
 function parts(version: string): [number, number, number] {
-  const [major, minor = 0, patch = 0] = version.split(/[-+]/)[0].split(".").map((part) => Number(part));
+  const [major = Number.NaN, minor = 0, patch = 0] = (version.split(/[-+]/)[0] ?? "").split(".").map((part) => Number(part));
   return [major, minor, patch];
 }
 
@@ -45,7 +45,7 @@ function parts(version: string): [number, number, number] {
 export function satisfiesCaret(version: string, range: string): boolean {
   const match = /^\^(\d+\.\d+\.\d+)$/.exec(range);
   if (!match) throw new Error(`expected a caret range like ^6.0.5, got ${range}`);
-  const [fMajor, fMinor, fPatch] = parts(match[1]);
+  const [fMajor, fMinor, fPatch] = parts(match[1] ?? "");
   const [major, minor, patch] = parts(version);
   if (![major, minor, patch].every(Number.isFinite)) return false;
   return major === fMajor && (minor > fMinor || (minor === fMinor && patch >= fPatch));
