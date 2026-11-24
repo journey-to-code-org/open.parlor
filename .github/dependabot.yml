@@ -1,0 +1,18 @@
+# Opens a pull request when Zubra releases, so CI (which runs the conformance suite in three
+# browsers) tells us whether the new version holds before it merges. All @zubra/* packages move
+# together, in one pull request, across every package in the workspace.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: daily
+    allow:
+      - dependency-name: "@zubra/*"
+    groups:
+      zubra:
+        patterns:
+          - "@zubra/*"
+    commit-message:
+      prefix: "Bump Zubra"
+    open-pull-requests-limit: 2

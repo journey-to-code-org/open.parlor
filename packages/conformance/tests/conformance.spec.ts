@@ -14,7 +14,7 @@ const OWN = "an element the page puts in a slot stays the page's own";
 const TOGETHER = "elements for different slots that arrive together each go to their slot";
 const GONE = "elements taken away again are gone from every slot";
 
-// Nothing differs today, on Zubra 6.0.2 (the last ones were fixed in Zubra 5.15.0).
+// Nothing differs today, on the Zubra 6 this package declares (the last ones were fixed in Zubra 5.15.0).
 const KNOWN: Partial<Record<Framework, Record<string, string>>> = {};
 
 const t = (page: Page, name: string) => page.locator(`[data-t="${name}"]`);

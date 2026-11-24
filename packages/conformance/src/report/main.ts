@@ -162,7 +162,7 @@ const found = () => [
       el("li", {}, el("span", { class: "what" }, item.what), el("span", {}, item.where), el("cluster-layout", { gap: "0.5rem" }, ...item.links.map(([text, href]) => link(href, text)))),
     ),
   ),
-  el("p", { class: "fine" }, "The suite runs on Zubra 6, from 6.0.2. The first run, on Zubra 5.9, found the five fixed Zubra differences and a gap in its typings. The disabled-state gap came from the framework feature checks, and the Preact one from adding a Preact page."),
+  el("p", { class: "fine" }, "The suite runs on Zubra 6; the version of the last run is above. The first run, on Zubra 5.9, found the five fixed Zubra differences and a gap in its typings. The disabled-state gap came from the framework feature checks, and the Preact one from adding a Preact page."),
 ];
 
 async function start(): Promise<void> {
