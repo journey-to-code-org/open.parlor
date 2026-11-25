@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { houses, inviteLink, type House } from "../housesApi";
+import ShareQr from "../vue/ShareQr.vue";
 
 const props = defineProps<{ house: House; canManage: boolean; attempt: (work: () => Promise<House | void>) => Promise<void> }>();
 const copied = ref(false);
@@ -41,6 +42,7 @@ const newLink = () => confirm("Make a new invite link? The old one will stop wor
       </li>
     </ul>
     <button type="button" class="secondary" @click="invite">{{ copied ? "Link copied" : "Invite family" }}</button>
+    <ShareQr :url="inviteLink(house)" :label="`A QR code to join ${house.name}`" what="Point a phone's camera here to join the house" />
     <button v-if="canManage" type="button" class="link" @click="newLink">Make a new invite link</button>
   </section>
 </template>

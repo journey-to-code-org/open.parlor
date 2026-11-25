@@ -49,6 +49,7 @@ import { Sheet } from "./Sheet";
 import { isPointsTrack, Track } from "./Track";
 import { GlideLayer, glides, inLayer } from "./Glide";
 import { drawsLink, Links } from "./Links";
+import { SnakesBoard } from "./SnakesBoard";
 import { SoundButton } from "../SoundButton";
 
 export interface BoardTableProps {
@@ -115,7 +116,8 @@ interface Asking {
 export function BoardTable({ view, names, act, onLeave, banner, watching, together, chat, settings, onHelp, onAgain}: BoardTableProps) {
   const game = kitGame(view.game)!;
   useOverSound(view.over, view.me, watching || together);
-  useBoardSounds(view.grids, watching);
+  // Snakes & Ladders makes its own sounds as each move is walked.
+  useBoardSounds(view.grids, watching || view.game === "snakes");
   const me = view.me;
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<Picked | null>(null);
@@ -171,7 +173,7 @@ export function BoardTable({ view, names, act, onLeave, banner, watching, togeth
   const takenSeen = useRef(taken);
   useEffect(() => {
     // A board swept clean for the next game makes no sound.
-    if (seen.current !== null && seen.current !== boardKey && pieces > 0) play(!stones ? "piece" : taken > takenSeen.current ? "capture" : "stone");
+    if (seen.current !== null && seen.current !== boardKey && pieces > 0 && view.game !== "snakes") play(!stones ? "piece" : taken > takenSeen.current ? "capture" : "stone");
     seen.current = boardKey;
     takenSeen.current = taken;
   }, [boardKey]);
@@ -324,6 +326,13 @@ export function BoardTable({ view, names, act, onLeave, banner, watching, togeth
         <div className={`boards${view.grids.length > 1 ? " many" : ""}`}>
           {view.grids.map((given, i) => {
             const grid = i === 0 && earlier ? earlier : given;
+            if (view.game === "snakes" && i === 0)
+              // Snakes & Ladders has a painted board of its own, which walks each move.
+              return (
+                <div key={grid.id} className="snl-wrap">
+                  <SnakesBoard grid={grid} view={view} names={names} scale={motionScale(settings?.value.pace)} watching={watching || looking} onMove={(from, to) => putDown(grid, from, to)} onSend={(move) => void send(move, true)} />
+                </div>
+              );
             return isPointsTrack(grid) ? (
               // A track of points has its dice and its cube on the board itself.
               <Track
@@ -442,7 +451,7 @@ export function BoardTable({ view, names, act, onLeave, banner, watching, togeth
           {onHelp && <HowToButton onClick={onHelp} />}
           {/* Resign, offer a draw, ask to take a move back: whatever the view says this seat may do. */}
           {view.offers && !watching && <OffersMenu can={view.offers.can} onSend={(move) => void send(move, true)} />}
-          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} cards={false} stones={stones} depth={hasBoard3d(view.game) || view.grids.some(isPointsTrack)} />}
+          {settings && <TableSettingsButton settings={settings.value} onChange={settings.change} cards={false} stones={stones} depth={hasBoard3d(view.game) || view.grids.some(isPointsTrack) || view.game === "snakes"} />}
           <SoundButton on={soundOn} toggle={toggleSound} inline />
         </span>
       </header>
