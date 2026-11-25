@@ -1,3 +1,4 @@
+import { ShareQr } from "./ShareQr";
 import type { PalaceRules } from "@journey-to-code/palace";
 import type { RulePreset } from "@journey-to-code/rules";
 import { GAME_LIST } from "./GamePicker";
@@ -68,6 +69,7 @@ export function ChallengeLink({ name, rules, palaceRules, kitRules }: { name: st
           {link.enabled ? "Pause challenges" : "Take challenges again"}
         </button>
       </div>
+      {link.enabled && <ShareQr url={url} label={`A QR code to challenge ${link.name}`} what={`Point a phone's camera here to challenge ${link.name}`} />}
       <p className="fine">
         {link.enabled ? `On: anyone with it can challenge ${link.name}` : "Paused: nobody can challenge you right now"} · {(link.games ?? []).map((g) => `${g.name}: ${g.rules}`).join(" · ")}.{" "}
         <button type="button" className="link" disabled={busy} onClick={() => change({ name: who, ...these })}>

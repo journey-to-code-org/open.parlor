@@ -3259,6 +3259,10 @@ main.setup.wifi { max-width: 520px; }
 .wifi-step > button { width: 100%; }
 /* A QR code is read by a camera: black on white whatever the page's colours, and as big as the column allows. */
 .qr { width: min(100%, 320px); height: auto; border-radius: 10px; background: #fff; }
+/* "Show a QR code" beside an invite (ShareQr.tsx, vue/ShareQr.vue). */
+.share-qr { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.share-qr .qr { width: min(100%, 280px); }
+.share-qr figcaption { font-size: 0.9rem; opacity: 0.85; text-align: center; }
 .qr-scan { width: min(100%, 320px); }
 .qr-scan video { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; background: #000; }
 .wifi-paste { display: flex; gap: 8px; align-items: end; width: 100%; }
