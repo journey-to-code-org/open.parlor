@@ -56,6 +56,7 @@ describe("a television as the table", () => {
     expect(typed.status).toBe(302);
     expect(typed.headers.get("location")).toBe(`/?table=${id}`);
     expect((await device()("/tv/ZZZZ")).status).toBe(404);
+    expect((await device()("/tv")).headers.get("location")).toBe("/");
 
     // Without the token, nothing.
     expect((await tv(`/tv/tables/${id}?token=nope`)).status).toBe(403);

@@ -195,6 +195,9 @@ export function createTv(rooms: Rooms, catalogue: Catalogue, { origin, wait = (m
     const parts = url.pathname.split("/").filter(Boolean); // ["tv", ...]
     if (parts[0] !== "tv") return null;
 
+    // Someone typing the address the television shows, before the code: the parlor itself.
+    if (parts.length === 1 && request.method === "GET") return new Response(null, { status: 302, headers: { location: "/" } });
+
     if (parts.length === 2 && parts[1] === "games" && request.method === "GET") return json({ games: await games() });
 
     // A phone that typed the code the television shows.
