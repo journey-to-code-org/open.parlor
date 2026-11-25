@@ -26,6 +26,7 @@ import { TurnClock } from "./TurnClock";
 import { seatAtTable, sharesDevice, type SeatSight } from "./kit/sameDevice";
 import { SECONDS, secondBase, secondRoom } from "./second";
 import { usesCards } from "./categories";
+import { ShareQr } from "./ShareQr";
 
 // An arcade game at a table: fetched when one is opened, like every other kind of table.
 const LiveArcade = lazyScreen(() => import("./arcade/ArcadeTable").then((m) => m.LiveArcade));
@@ -655,6 +656,7 @@ function Lobby(props: {
               {copied ? "Link copied" : "Invite people"}
             </button>
           )}
+          {!doc.locked && <ShareQr url={link} label={`A QR code for this ${about.name} table`} what="Point a phone's camera here to join this table" />}
           {mySeat !== null && !doc.locked && doc.seats.length > 1 && !full && (
             <button type="button" className="secondary" aria-pressed={Boolean(doc.open)} onClick={() => attempt(() => lobby.setOpen(room.id, !doc.open))}>
               {doc.open ? "Close the table (invited people only)" : "Open the table to everyone"}
