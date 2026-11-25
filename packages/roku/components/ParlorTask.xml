@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  The channel's one way to the parlor. A Roku may only make network calls off the render thread,
+  so every call is one of these.
+  mode "request": one call (method, url, body), its answer in `result` as { status, json }.
+  mode "follow":  asks url&after=<stamp> again and again, the server holding each ask until the
+                  table changes; every answer lands in `result`. Set `halt` to end it.
+-->
+<component name="ParlorTask" extends="Task">
+  <interface>
+    <field id="mode" type="string" value="request" />
+    <field id="method" type="string" value="GET" />
+    <field id="url" type="string" />
+    <field id="body" type="string" />
+    <field id="halt" type="boolean" value="false" />
+    <field id="result" type="assocarray" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="ParlorTask.brs" />
+</component>

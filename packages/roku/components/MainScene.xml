@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  The whole channel is one scene: the first screen (which game, how many, which rules), the room
+  waiting for phones (a QR code and a short code), and the game as the room sees it. Each screen is
+  drawn from scratch into `content` whenever what it shows changes.
+-->
+<component name="MainScene" extends="Scene">
+  <children>
+    <Rectangle id="felt" width="1920" height="1080" color="0x14321FFF" />
+    <Rectangle id="rail" width="1920" height="12" color="0xE8B64CFF" />
+    <Group id="content" />
+    <Rectangle id="toastBack" translation="[0,1000]" width="1920" height="80" color="0x000000B0" visible="false" />
+    <Label id="toast" translation="[120,1000]" width="1680" height="80" vertAlign="center" horizAlign="center" color="0xF5F0E1FF" visible="false" />
+    <Timer id="toastTimer" duration="5" repeat="false" />
+  </children>
+  <script type="text/brightscript" uri="MainScene.brs" />
+  <script type="text/brightscript" uri="Draw.brs" />
+  <script type="text/brightscript" uri="pkg:/source/config.brs" />
+</component>

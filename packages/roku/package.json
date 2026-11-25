@@ -1,0 +1,11 @@
+{
+  "name": "@open-parlor/roku",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The parlor on a Roku: the television is the table and the phones in the room are the controllers. BrightScript and SceneGraph, talking to the server's /tv routes.",
+  "type": "module",
+  "scripts": {
+    "package": "node scripts/build.mjs",
+    "lint": "npx -y brighterscript@0.73 --create-package false --root-dir . --files manifest 'source/**/*' 'components/**/*' 'images/**/*'"
+  }
+}
