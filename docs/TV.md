@@ -1,7 +1,7 @@
 # The parlor on a television
 
 The television is the table and the phones in the room are the controllers. A first version, for
-Roku, with **Read the Room** as its first game.
+Roku, with **Read the Room** and **Pass the Picture**.
 
 | Waiting for phones | A question | What the room said | The end |
 | --- | --- | --- | --- |
@@ -41,6 +41,15 @@ pictures. That decides the split:
   moderation all apply.
 - **Off the internet:** run the parlor on a laptop on the wifi (Option A in `LOCAL-PLAY.md`) and
   point the Roku at it. The QR code then carries the laptop's address, so the phones join it too.
+
+### Pass the Picture
+
+While everyone plays, the TV shows only the trail of steps (Write, Draw, Guess) and who has passed
+theirs on: what each phone is drawing or guessing stays on the phone. Then each chain is turned
+over on the big screen, the step before small on the left and the newest big on the right, as
+whoever started it presses *Show the next* on their phone. A drawing is painted by the server
+(`/tv/tables/:id/drawing.png`, `paint.ts`), since a Roku can't draw a freehand line, and shown as a
+picture. At the end of a chain: "From *the dog stole the turkey* to *a happy potato*!"
 
 ### Any game, not just this one
 

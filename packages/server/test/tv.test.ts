@@ -38,8 +38,10 @@ describe("a television as the table", () => {
   it("lists the games it can show", async () => {
     const { device } = setup();
     const { body } = await device()("/tv/games");
-    expect(body.games).toEqual([expect.objectContaining({ id: "readtheroom", name: "Read the Room", seats: { min: 3, max: 8, default: 4 } })]);
+    expect(body.games.map((g: { id: string }) => g.id)).toEqual(["readtheroom", "telephone"]);
+    expect(body.games[0]).toMatchObject({ name: "Read the Room", seats: { min: 3, max: 8, default: 4 } });
     expect(body.games[0].rules.map((r: { id: string }) => r.id)).toEqual(["party", "quick", "taps"]);
+    expect(body.games[1]).toMatchObject({ name: "Pass the Picture", seats: { min: 3, max: 12, default: 6 } });
   });
 
   it("opens a table, the phones join by its link or code, and it deals with computers in the empty seats", async () => {
@@ -101,6 +103,46 @@ describe("a television as the table", () => {
     for (const bar of screen.bars) expect(bar.label).not.toMatch(/\{\d+\}/);
     expect(screen.max).toBeGreaterThan(0);
     expect(screen.players.map((p: { name: string }) => p.name)).toEqual(["Ada", "Bea", "Cy"]);
+  });
+
+  it("shows Pass the Picture: who has passed theirs on, then each chain turned over, drawings painted", async () => {
+    const { app, device } = setup();
+    const tv = device();
+    const { id, token } = (await tv("/tv/tables", { game: "telephone", seats: 3, rules: "quick" })).body;
+    const phones = [device(), device(), device()];
+    for (const [seat, p] of phones.entries()) await p(`/rooms/${id}/sit`, { seat, name: ["Ada", "Bea", "Cy"][seat] });
+    expect((await tv(`/tv/tables/${id}/start`, { token })).body).toEqual({ ok: true });
+    const act = (seat: number, move: unknown) => phones[seat]!(`/rooms/${id}/act`, { move });
+    const screen = async () => (await tv(`/tv/tables/${id}?token=${token}`)).body.screen;
+
+    await act(0, { type: "write", text: "the dog stole the pie" });
+    let s = await screen();
+    expect(s.layout).toBe("pass");
+    expect(s.pass).toMatchObject({ phase: "play", step: 1, steps: 3, kinds: ["Write", "Draw", "Guess"], chain: null });
+    expect(s.players.map((p: { done: boolean }) => p.done)).toEqual([true, false, false]);
+    // Nothing anyone wrote is on the television while they play.
+    expect(JSON.stringify(s)).not.toContain("pie");
+
+    await act(1, { type: "write", text: "a cat" });
+    await act(2, { type: "write", text: "a hat" });
+    for (const seat of [0, 1, 2]) {
+      await act(seat, { type: "stroke", stroke: { points: [100, 100, 900, 900], color: 1, size: 2 } });
+      await act(seat, { type: "done" });
+    }
+    for (const seat of [0, 1, 2]) await act(seat, { type: "guess", text: "a horse" });
+    s = await screen();
+    expect(s.pass.phase).toBe("reveal");
+    expect(s.pass.chain).toMatchObject({ owner: "Ada", index: 1, of: 3, length: 3, shown: 1, done: false, last: { who: "Ada", verb: "wrote", text: "the dog stole the pie" }, prev: null });
+    await act(0, { type: "show", at: 1 });
+    s = await screen();
+    expect(s.pass.chain.prev).toMatchObject({ verb: "wrote", text: "the dog stole the pie" });
+    expect(s.pass.chain.last).toMatchObject({ who: "Bea", verb: "drew", text: "" });
+    const png = (await app.fetch(new Request(BASE + s.pass.chain.last.img)))!;
+    expect(png.headers.get("content-type")).toBe("image/png");
+    expect((await app.fetch(new Request(BASE + s.pass.chain.last.img.replace(`token=${token}`, "token=nope"))))!.status).toBe(403);
+    await act(0, { type: "show", at: 2 });
+    s = await screen();
+    expect(s.pass.chain).toMatchObject({ done: true, first: "the dog stole the pie", end: "a horse", last: { who: "Cy", verb: "thought it was" } });
   });
 
   it("draws the join link as a PNG", () => {

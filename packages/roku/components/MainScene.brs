@@ -328,6 +328,7 @@ sub drawLobby(t as dynamic)
   n = s.players.Count()
   cols = 2
   if n <= 4 then cols = 1
+  if n > 8 then cols = 3
   w = Int(940 / cols)
   for i = 0 to n - 1
     p = s.players[i]
@@ -360,7 +361,9 @@ end sub
 
 sub drawGame(s as object)
   ClearGroup(m.content)
-  if s.layout = "question" then
+  if s.layout = "pass" then
+    drawPass(s)
+  else if s.layout = "question" then
     drawQuestion(s)
   else if s.layout = "room" then
     drawRoom(s)
@@ -497,3 +500,124 @@ function sortedByScore(players as object) as object
   end for
   return out
 end function
+
+' ---------------------------------------------------------------------------------------------
+' Pass the Picture. While everyone plays, the TV shows only where the chains are and who has
+' passed theirs on: what each phone is drawing or guessing stays on the phone. Then each chain is
+' turned over on the big screen, the step before small on the left and the newest big on the right,
+' as whoever started it presses Show the next on their phone.
+
+sub drawPass(s as object)
+  c = m.c
+  p = s.pass
+  AddRect(m.content, 0, 0, 1920, 1080, "0x3A1C10FF")
+  if p.phase = "over" then
+    AddLabel(m.content, "That's every chain!", 120, 300, 1680, 160, 110, true, c.gold, "center")
+    AddLabel(m.content, "Happy Thanksgiving!", 120, 470, 1680, 100, 60, false, c.ink, "center")
+    AddLabel(m.content, "Back on the remote: play another", 120, 960, 1680, 50, 30, false, c.dim, "center")
+    return
+  end if
+  AddLabel(m.content, "Pass the Picture", 120, 40, 900, 90, 60, true, c.gold, "left")
+  AddLabel(m.content, s.count, 1000, 40, 800, 90, 40, true, c.ink, "right")
+  if p.phase = "play" then
+    drawPassTrail(p)
+    doing = "Writing"
+    if p.step > 0 then doing = p.kinds[p.step - 1]
+    words = { Write: "Everyone's writing something silly for someone else to draw", Draw: "Everyone's drawing what they were passed", Guess: "Everyone's guessing what they were passed" }
+    line = words[doing]
+    if line = invalid then line = "Everyone's busy on their phones"
+    AddLabel(m.content, line, 120, 420, 1680, 120, 56, true, c.ink, "center")
+    AddLabel(m.content, "No peeking: it's all on the phones until the end", 120, 560, 1680, 60, 34, false, c.dim, "center")
+    drawPassSeats(s.players)
+    return
+  end if
+  ch = p.chain
+  AddLabel(m.content, ch.owner + "'s chain", 120, 120, 1680, 80, 48, true, c.ink, "left")
+  ' The steps as stones: shown, showing now, still face down.
+  for i = 0 to ch.length - 1
+    fill = "0x5A3A28FF"
+    if i < ch.shown then fill = c.done
+    if i = ch.shown - 1 then fill = c.gold
+    AddRect(m.content, 120 + i * 70, 210, 56, 16, fill)
+  end for
+  if ch.prev <> invalid then
+    drawPassItem(ch.prev, 120, 270, 560, 520, false)
+    AddLabel(m.content, ">", 700, 470, 80, 120, 90, true, c.gold, "center")
+    drawPassItem(ch.last, 800, 250, 1000, 640, true)
+  else
+    drawPassItem(ch.last, 360, 250, 1200, 640, true)
+  end if
+  if ch.done and ch.first <> ch.end and ch.end <> "" then
+    AddRect(m.content, 120, 920, 1680, 100, "0x2F6B3FFF")
+    AddLabel(m.content, "From " + Chr(8220) + ch.first + Chr(8221) + " to " + Chr(8220) + ch.end + Chr(8221) + "!", 140, 920, 1640, 100, 40, true, c.ink, "center")
+  else if ch.done then
+    AddLabel(m.content, "That's the whole chain!", 120, 930, 1680, 80, 40, true, c.gold, "center")
+  else
+    AddLabel(m.content, ch.owner + " shows the next on their phone", 120, 950, 1680, 60, 32, false, c.dim, "center")
+  end if
+end sub
+
+' One step of a chain: who did it, and their words in a bubble or their drawing on a page.
+sub drawPassItem(it as object, x as integer, y as integer, w as integer, h as integer, big as boolean)
+  c = m.c
+  z = 34
+  if big then z = 44
+  AddLabel(m.content, it.who + " " + it.verb, x, y, w, 60, z, true, "0xE8A06AFF", "center")
+  if it.img <> "" then
+    side = h - 80
+    if side > w then side = w
+    AddRect(m.content, x + (w - side) / 2 - 6, y + 70, side + 12, side + 12, "0xE0B98AFF")
+    AddPoster(m.content, m.server + it.img, x + (w - side) / 2, y + 76, side, side)
+  else
+    tz = 50
+    if big then tz = 76
+    AddRect(m.content, x, y + 90, w, h - 160, "0xFFE6C2FF")
+    AddLabel(m.content, Chr(8220) + it.text + Chr(8221), x + 30, y + 100, w - 60, h - 180, tz, true, "0x2B1A10FF", "center")
+  end if
+end sub
+
+sub drawPassTrail(p as object)
+  c = m.c
+  n = p.kinds.Count()
+  if n = 0 then return
+  w = 150
+  if n > 10 then w = 130
+  x0 = (1920 - n * (w + 12)) / 2
+  for i = 0 to n - 1
+    fill = "0x5A3A28FF"
+    ink = c.dim
+    label = p.kinds[i]
+    if i + 1 < p.step then
+      fill = "0x2F6B3FFF"
+      ink = c.ink
+      label = "Done"
+    else if i + 1 = p.step then
+      fill = "0xF39C3DFF"
+      ink = "0x2B1A10FF"
+    end if
+    AddRect(m.content, x0 + i * (w + 12), 200, w, 90, fill)
+    AddLabel(m.content, label, x0 + i * (w + 12), 200, w, 90, 34, true, ink, "center")
+  end for
+end sub
+
+' Everyone, and a tick for each who has passed theirs on.
+sub drawPassSeats(players as object)
+  c = m.c
+  n = players.Count()
+  if n = 0 then return
+  w = Int(1680 / n)
+  for i = 0 to n - 1
+    p = players[i]
+    x = 120 + i * w
+    fill = "0x5A3A28FF"
+    status = "working..."
+    if p.done then
+      fill = "0x3FA66BFF"
+      status = "passed it on"
+    end if
+    AddRect(m.content, x + Int(w / 2) - 55, 720, 110, 110, fill)
+    AddLabel(m.content, Initial(p.name), x + Int(w / 2) - 55, 720, 110, 110, 56, true, c.ink, "center")
+    AddLabel(m.content, p.name, x, 840, w, 50, 32, true, c.ink, "center")
+    AddLabel(m.content, status, x, 890, w, 40, 26, false, c.dim, "center")
+  end for
+end sub
