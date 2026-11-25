@@ -12,6 +12,8 @@ import type { KitTableProps } from "./KitTable";
 const BoardTable = lazyScreen(() => import("../board/BoardTable").then((m) => m.BoardTable));
 const SportTable = lazyScreen(() => import("../sport/SportTable").then((m) => m.SportTable));
 const WordTable = lazyScreen(() => import("../word/WordTable").then((m) => m.WordTable));
+// Pass the Picture has a table of its own, in the word games' file, so it is kept for offline play with them.
+const PassTable = lazyScreen(() => import("../word/WordTable").then((m) => m.PassTable));
 const FieldTable = lazyScreen(() => import("../field/FieldTable").then((m) => m.FieldTable));
 const KitTable = lazyScreen(() => import("./KitTable").then((m) => m.KitTable));
 
@@ -23,7 +25,7 @@ export function GameTable({ view, rules, ...rest }: Omit<KitTableProps, "view" |
   // The first game of each kind on this device opens how to play; the "?" opens it again.
   const help = useHowToPlay(view.game, rest.watching);
   const props = { ...rest, onHelp: help.show };
-  const table = isFieldGame(view.game) ? <FieldTable view={view as FieldView} {...props} /> : isSportGame(view.game) ? <SportTable view={view as SportView} {...props} /> : isWordGame(view.game) ? <WordTable view={view as WordView} {...props} /> : isBoardGame(view.game) ? <BoardTable view={view as BoardView} {...props} /> : <KitTable view={view as KitView} {...props} />;
+  const table = isFieldGame(view.game) ? <FieldTable view={view as FieldView} {...props} /> : isSportGame(view.game) ? <SportTable view={view as SportView} {...props} /> : isWordGame(view.game) ? (view.game === "telephone" ? <PassTable view={view as WordView} {...props} /> : <WordTable view={view as WordView} {...props} />) : isBoardGame(view.game) ? <BoardTable view={view as BoardView} {...props} /> : <KitTable view={view as KitView} {...props} />;
   return (
     <>
       {table}

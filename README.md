@@ -728,6 +728,15 @@ the right length is sent, and a word that isn't one comes back refused, in words
 - **Draw & Guess:** the artist picks one of three words and draws it; everyone else types guesses,
   and the sooner you get it the more it scores. It needs people (computer players can't draw), so
   it has no practice table: start a family table (or, with the internet out, play on this wifi).
+- **Pass the Picture** (the drawing game of telephone) has a table of its own,
+  [`word/PassTable.tsx`](packages/web/src/word/PassTable.tsx), made for all ages and for family
+  who join from somewhere else: everyone writes something silly ("Give me an idea" fills one in),
+  each phone passes it on to be drawn, the drawing passes on to be guessed, and so on round the
+  table. Every screen asks one thing with one big button. A step ends when everyone has handed
+  theirs in (no clock), and whoever's waiting can doodle on a page nobody else sees. Then whoever
+  started each chain turns it over a step at a time, like a picture book, ending "From the dog
+  stole the turkey to a happy potato!". Nothing is scored. Its Thanksgiving rules give
+  Thanksgiving ideas. Needs people, so family tables only.
 
 The word list is in open.games (ENABLE, with SCOWL's frequency levels for which words are common),
 and it is part of the app's download: about a quarter of a megabyte compressed in the main

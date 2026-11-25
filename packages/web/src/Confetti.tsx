@@ -3,8 +3,8 @@ import { motionSetting } from "./display";
 
 const SUITS = ["♠︎", "♥︎", "♦︎", "♣︎"];
 
-/** A shower of suits for the winner, once, then gone. Hidden for reduced motion (in the CSS). */
-export function Confetti({ count = 24 }: { count?: number }) {
+/** A shower of suits for the winner, once, then gone. Hidden for reduced motion (in the CSS). `pieces`: something else to shower (autumn leaves). */
+export function Confetti({ count = 24, pieces }: { count?: number; pieces?: string[] }) {
   const [on, setOn] = useState(true);
   useEffect(() => {
     const t = setTimeout(() => setOn(false), 2200);
@@ -13,8 +13,8 @@ export function Confetti({ count = 24 }: { count?: number }) {
   const bits = useMemo(
     () =>
       Array.from({ length: count }, (_, i) => {
-        const suit = SUITS[i % 4]!;
-        const tone = i % 6 === 5 ? "gold" : suit.startsWith("♥") || suit.startsWith("♦") ? "red" : "black";
+        const suit = pieces ? pieces[i % pieces.length]! : SUITS[i % 4]!;
+        const tone = pieces ? "plain" : i % 6 === 5 ? "gold" : suit.startsWith("♥") || suit.startsWith("♦") ? "red" : "black";
         return {
           suit,
           tone,
@@ -26,7 +26,7 @@ export function Confetti({ count = 24 }: { count?: number }) {
           } as React.CSSProperties,
         };
       }),
-    [count],
+    [count, pieces?.join("")],
   );
   if (!on || motionSetting() !== "on") return null;
   return (

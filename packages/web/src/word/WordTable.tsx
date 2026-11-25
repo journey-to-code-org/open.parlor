@@ -30,6 +30,8 @@ import { SoundButton } from "../SoundButton";
 import { TableSettingsButton } from "../TableSettings";
 import { Canvas, PlaceBoard, TraceGrid, type TraceFlash } from "./WordPieces";
 
+export { PassTable } from "./PassTable";
+
 export interface WordTableProps {
   /** The same game again at once (a practice table): without it, "Play again" goes back to the game's page. */
   onAgain?: () => void;
