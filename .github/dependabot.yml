@@ -9,11 +9,6 @@ updates:
       interval: daily
     allow:
       - dependency-name: "@zubra/*"
-    # Held at 6.0.2: in 6.0.3 to 6.0.5 a slotted text node stops updating once its element has been moved
-    # or re-attached (the admin's buttons lose their labels). Remove this when a fixed release is out.
-    ignore:
-      - dependency-name: "@zubra/*"
-        versions: ["6.0.3", "6.0.4", "6.0.5"]
     groups:
       zubra:
         patterns:
