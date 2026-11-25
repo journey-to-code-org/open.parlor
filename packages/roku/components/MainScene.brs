@@ -44,7 +44,9 @@ end function
 sub saveServer(address as string)
   a = address.Trim()
   if a = "" then return
-  if LCase(Left(a, 4)) <> "http" then a = "http://" + a
+  ' A bare address is https: a host on the internet sends http on to https, and a POST loses its
+  ' body on the way. Type http:// for a parlor on a laptop on the wifi.
+  if LCase(Left(a, 4)) <> "http" then a = "https://" + a
   while Right(a, 1) = "/"
     a = Left(a, Len(a) - 1)
   end while
@@ -108,7 +110,9 @@ end sub
 sub openTable()
   if m.games.Count() = 0 then return
   g = m.games[m.gameAt]
-  request("POST", "/tv/tables", { game: g.id, seats: m.seats, rules: g.rules[m.rulesAt].id }, "onOpened")
+  ' Said in the address as well as the body: the address survives a redirect, the body may not.
+  query = "?game=" + g.id + "&seats=" + Str(m.seats).Trim() + "&rules=" + g.rules[m.rulesAt].id
+  request("POST", "/tv/tables" + query, { game: g.id, seats: m.seats, rules: g.rules[m.rulesAt].id }, "onOpened")
   showToast("Opening a table…")
 end sub
 
@@ -165,7 +169,7 @@ end sub
 
 sub deal()
   if m.table = invalid then return
-  request("POST", "/tv/tables/" + m.table.id + "/start", { token: m.table.token, fill: true }, "onDealt")
+  request("POST", "/tv/tables/" + m.table.id + "/start?fill=1&token=" + m.table.token, { token: m.table.token, fill: true }, "onDealt")
 end sub
 
 sub onDealt(event as object)

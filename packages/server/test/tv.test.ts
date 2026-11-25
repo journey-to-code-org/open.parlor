@@ -112,6 +112,16 @@ describe("a television as the table", () => {
     expect(raw.includes(0)).toBe(true);
   });
 
+  it("takes a post's fields from its address when the body was lost on a redirect", async () => {
+    const { app, device } = setup();
+    const post = (path: string) => app.fetch(new Request(BASE + path, { method: "POST" })).then(async (r) => ({ status: r!.status, body: await r!.json() }));
+    const made = await post("/tv/tables?game=readtheroom&seats=3&rules=quick");
+    expect(made.status).toBe(201);
+    const { id, token } = made.body;
+    await device()(`/rooms/${id}/sit`, { seat: 0, name: "Grammi" });
+    expect((await post(`/tv/tables/${id}/start?fill=1&token=${token}`)).body).toEqual({ ok: true });
+  });
+
   it("refuses a game it can't show", async () => {
     const { device } = setup();
     expect((await device()("/tv/tables", { game: "hearts" })).status).toBe(400);
