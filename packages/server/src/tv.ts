@@ -144,6 +144,18 @@ export function qrPng(text: string, scale = 10, quiet = 4): Buffer {
 
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * A post's fields, from its body, or from its address when the body is missing: a television that
+ * was sent from http:// on to https:// can arrive with its body lost on the way.
+ */
+async function inputOf(request: Request, url: URL): Promise<Any> {
+  const body = ((await request.json().catch(() => null)) ?? null) as Any | null;
+  if (body && typeof body === "object" && Object.keys(body).length) return body;
+  const query: Any = Object.fromEntries(url.searchParams);
+  if (query.fill !== undefined) query.fill = query.fill === "1" || query.fill === "true";
+  return query;
+}
+
 export function createTv(rooms: Rooms, catalogue: Catalogue, { origin, wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms)), longPoll = LONG_POLL_MS }: { origin: (request: Request) => string; wait?: (ms: number) => Promise<void>; longPoll?: number }) {
   const docs = rooms.sync.documents();
 
@@ -183,6 +195,9 @@ export function createTv(rooms: Rooms, catalogue: Catalogue, { origin, wait = (m
     const parts = url.pathname.split("/").filter(Boolean); // ["tv", ...]
     if (parts[0] !== "tv") return null;
 
+    // Someone typing the address the television shows, before the code: the parlor itself.
+    if (parts.length === 1 && request.method === "GET") return new Response(null, { status: 302, headers: { location: "/" } });
+
     if (parts.length === 2 && parts[1] === "games" && request.method === "GET") return json({ games: await games() });
 
     // A phone that typed the code the television shows.
@@ -196,7 +211,7 @@ export function createTv(rooms: Rooms, catalogue: Catalogue, { origin, wait = (m
 
     // POST /tv/tables → a new table for the room
     if (parts.length === 2 && request.method === "POST") {
-      const input = ((await request.json().catch(() => ({}))) ?? {}) as Any;
+      const input = await inputOf(request, url);
       const game = String(input.game ?? "") as GameId;
       if (!TV_GAMES.includes(game) || !kitGame(game)) return json({ error: "That game isn't on the television yet." }, 400);
       if (!(await catalogue.isOn(game))) return json({ error: `${gameName(game)} is switched off in this parlor.` }, 403);
@@ -220,8 +235,8 @@ export function createTv(rooms: Rooms, catalogue: Catalogue, { origin, wait = (m
       return new Response(new Uint8Array(qrPng(joinLink(request, id))), { headers: { "content-type": "image/png", "cache-control": "public, max-age=86400" } });
     }
 
-    const input = request.method === "POST" ? (((await request.json().catch(() => ({}))) ?? {}) as Any) : {};
-    const token = request.method === "POST" ? input.token : url.searchParams.get("token");
+    const input = request.method === "POST" ? await inputOf(request, url) : {};
+    const token = input.token ?? url.searchParams.get("token");
     if (token !== tv.token) return json({ error: "This isn't your table." }, 403);
 
     // GET /tv/tables/:id?after=<stamp> → the screen, once it differs from `after` (or after a while, as it is)
