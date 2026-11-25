@@ -2045,12 +2045,17 @@ html[data-motion="off"] .track .cube { animation: none; transition: none; }
 
 /* In 3-D the board leans back on the felt and shows its wooden edge, the pawns stand up on it (each
    turned back to face us, about its foot) and hop up off it, and the chips stand up like flags. */
-.snl-wrap:has(.snl.tilted) { perspective: 1100px; perspective-origin: 50% 0%; padding-bottom: 2%; }
+.snl-cam:has(.snl.tilted) { perspective: 1100px; perspective-origin: 50% 0%; padding-bottom: 2%; }
 .snl.tilted { --tilt: 26deg; transform: rotateX(var(--tilt)); transform-origin: 50% 100%; transform-style: preserve-3d; margin-top: -4%; box-shadow: inset 0 2px 0 rgba(255, 236, 200, 0.45), 0 40px 40px -20px rgba(0, 0, 0, 0.55); }
 .snl.tilted::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: clamp(10px, 3.2cqw, 22px); transform-origin: 50% 100%; transform: rotateX(-90deg); border-radius: 0 0 8px 8px; background: linear-gradient(#7a451c, #4d2a0f); }
 .snl.tilted .snl-frame, .snl.tilted .snl-token, .snl.tilted .snl-fan, .snl.tilted .snl-target { transform-style: preserve-3d; }
 /* Its own layer, drawn whole: otherwise Chrome can leave the far rows unpainted after a scroll. */
 .snl.tilted .snl-art { will-change: transform; }
+/* …and everything over it is lifted a hair off it, or that layer would sit on top of them and take their taps. */
+.snl.tilted .snl-light, .snl.tilted .snl-start, .snl.tilted .snl-flash { transform: translateZ(1px); }
+.snl.tilted .snl-target { transform: translateZ(2px); }
+.snl.tilted .snl-token { transform: translateZ(3px); }
+.snl.tilted .snl-podium { transform: translateZ(4px) rotateX(calc(-1 * var(--tilt))); }
 .snl.tilted .snl-stand { transform: rotateX(calc(-1 * var(--tilt))); transform-origin: 50% 80%; transform-style: preserve-3d; }
 .snl.tilted .snl-hop { width: 74%; translate: 0 -30%; }
 .snl.tilted .snl-ground { width: 60%; height: 22%; top: 78%; }
@@ -2062,6 +2067,71 @@ html[data-motion="off"] .track .cube { animation: none; transition: none; }
 @keyframes snl-cheer-3d { 0%, 100% { translate: 0 -30%; rotate: y 0deg; } 50% { translate: 0 -70%; rotate: y 180deg; } }
 .snl.tilted .snl-token.winner .snl-hop { animation-name: snl-cheer-3d; }
 @media (min-width: 900px) { .snl.tilted { --tilt: 32deg; } }
+
+/* The camera: on a phone it leans in on a counter while it moves (SnakesBoard's `aim`), and the
+   lens clips the board to its own box while it does. */
+.snl-cam { transform-origin: 0 0; }
+.snl-lens.zoomed { overflow: hidden; border-radius: clamp(10px, 3%, 20px); }
+.snl-probe { position: absolute; width: 10%; height: calc(100% / 11); visibility: hidden; pointer-events: none; }
+
+/* Footprints: the squares the last move hopped over. */
+.snl-steps circle { opacity: 0.4; }
+
+/* A wild board's squares: a gold star, a silver shield, a swirling portal. */
+.snl-special.star { fill: #ffd84d; stroke: #b07d00; stroke-width: 3; stroke-linejoin: round; filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.3)); }
+.snl-special.shield { fill: #cfd8e3; stroke: #4a5b70; stroke-width: 3.5; stroke-linejoin: round; }
+.snl-special.portal .rim { fill: #3b1d6e; stroke: #c49bff; stroke-width: 4; }
+.snl-special.portal .swirl path { fill: none; stroke: #e7d4ff; stroke-width: 4; stroke-linecap: round; }
+.snl-special.portal .swirl { transform-box: fill-box; transform-origin: center; animation: snl-swirl 2.4s linear infinite; }
+@keyframes snl-swirl { to { rotate: 360deg; } }
+.snl-flash.portal { background: radial-gradient(circle, rgba(225, 200, 255, 0.95) 0 16%, rgba(140, 80, 230, 0.55) 34%, transparent 64%); animation: snl-burst 0.7s ease-out forwards; }
+.snl-target.via-portal .snl-ring { border-color: #7b3fe4; box-shadow: 0 0 0 max(2px, 0.4cqw) #fffdf3, 0 0 max(8px, 2.4cqw) #7b3fe4; }
+.snl-target.via-portal .snl-chip { background: #7b3fe4; }
+
+/* The parts store: kraft boxes taped across, steel shelf ladders, rubber hoses with brass fittings, a steel frame. */
+.snl.store { background: linear-gradient(145deg, #9aa3ab, #5f6870 55%, #434a51); }
+.snl.store .snl-art { background: #8d8a85; }
+.snl-tape { fill: rgba(245, 232, 200, 0.55); }
+.snl.store .snl-ladder .wood .rail { stroke: #59626a; }
+.snl.store .snl-ladder .wood .rung { stroke: #8f99a2; }
+.snl.store .snl-ladder .wood .rail-shine { stroke: #dfe5ea; }
+.snl-snake.hose .spots { fill: none; stroke: var(--spot); stroke-width: 4; stroke-linecap: round; opacity: 1; }
+.snl-snake.hose .gloss { stroke: rgba(255, 255, 255, 0.3); }
+.snl-snake .fitting rect, .snl-snake .fitting path { fill: #d4ac2b; stroke: #7a5c06; stroke-width: 2.5; stroke-linejoin: round; }
+.snl-snake .fitting .bore { fill: #3a2a05; }
+.snl.store.tilted::after { background: linear-gradient(#4b5259, #2c3136); }
+.snl.store .snl-start-word { color: #eef2f5; }
+
+/* A new game: the ladders and snakes drop onto the board one after another. */
+.snl.revealing .snl-ladder, .snl.revealing .snl-snake { transform-box: fill-box; transform-origin: 50% 50%; animation: snl-drop 0.6s cubic-bezier(.3, 1.4, .5, 1) both; animation-delay: calc(var(--i, 0) * 80ms + 150ms); }
+@keyframes snl-drop { from { transform: translateY(-80px) scale(1.15); opacity: 0; } }
+
+/* The winner on the podium, over the top of the board. */
+.snl-podium { position: absolute; z-index: 8; left: 50%; top: 4%; translate: -50% 0; width: 46%; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; transform-origin: 50% 100%; }
+.snl-podium-pawn { width: 44%; animation: snl-cheer 0.8s ease-in-out infinite; filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.4)); }
+.snl-podium-step { width: 70%; padding: 4px 0 6px; text-align: center; font: 900 clamp(16px, 6cqw, 34px)/1 Georgia, serif; color: #6b4405; border-radius: 6px 6px 2px 2px; background: linear-gradient(#ffe98f, #e6b422 60%, #b98510); box-shadow: 0 6px 12px rgba(0, 0, 0, 0.35), inset 0 2px 0 rgba(255, 255, 255, 0.6); }
+.snl-podium-line { white-space: nowrap; padding: 3px 10px; border-radius: 999px; font: 700 clamp(10px, 2.8cqw, 14px)/1.2 system-ui, sans-serif; color: #fffdf3; background: rgba(20, 14, 6, 0.75); }
+
+/* Picking your counter, under the board. */
+.snl-pick { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; margin-top: 8px; }
+.snl-pick button { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.25); background: rgba(0, 0, 0, 0.22); color: var(--cream); font: 600 var(--ui-s) system-ui, sans-serif; cursor: pointer; }
+.snl-pick button .snl-pawn { width: 22px; height: auto; }
+.snl-pick .snl-pick-one { padding: 4px; width: 38px; height: 38px; justify-content: center; }
+.snl-pick .snl-pick-one[aria-pressed="true"] { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+
+/* On a phone the board, the dice and the buttons fit on one screen: the rules are under "?". */
+@media (max-width: 640px) {
+  .board-snakes .kit-info { display: none; }
+  .board-snakes .dice { --die: clamp(38px, 11vw, 56px); padding-top: 4px; }
+  .board-snakes .center-info { gap: 4px; }
+}
+
+/* True 3-D (board/snakes3d-gl.ts): the canvas takes the painted board's place once the scene is up. */
+.snl-outer { position: relative; }
+.snl-gl { position: absolute; left: 0; top: 0; width: 100%; aspect-ratio: 1 / 0.86; opacity: 0; pointer-events: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.snl-outer.gl .snl-gl { position: relative; display: block; opacity: 1; pointer-events: auto; animation: snl-fade 0.5s ease-out; }
+.snl-outer.gl .snl-lens { display: none; }
+@keyframes snl-fade { from { opacity: 0; } }
 
 .board-snakes .dice { padding-top: 6px; }
 .board-snakes .kit-choices.row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }

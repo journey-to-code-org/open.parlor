@@ -330,7 +330,7 @@ export function BoardTable({ view, names, act, onLeave, banner, watching, togeth
               // Snakes & Ladders has a painted board of its own, which walks each move.
               return (
                 <div key={grid.id} className="snl-wrap">
-                  <SnakesBoard grid={grid} view={view} names={names} scale={motionScale(settings?.value.pace)} watching={watching || looking} onMove={(from, to) => putDown(grid, from, to)} />
+                  <SnakesBoard grid={grid} view={view} names={names} scale={motionScale(settings?.value.pace)} watching={watching || looking} onMove={(from, to) => putDown(grid, from, to)} onSend={(move) => void send(move, true)} />
                 </div>
               );
             return isPointsTrack(grid) ? (

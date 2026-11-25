@@ -16,6 +16,7 @@ import "@open-parlor/ui/zubra-ui/text-field.zb";
 import "@open-parlor/ui/zubra-ui/toggle-switch.zb";
 import { CARDS, COLUMNS, EXTRA_ROW, ITEMS, ROWS, SEGMENTS, TABS, VARIANTS } from "../shared/fixture";
 import "../shared/styles.css";
+import { glide } from "@zubra/runtime/motion";
 
 type Props = Record<string, unknown>;
 /** An element with attributes (strings), properties (anything else) and children. */
@@ -211,6 +212,16 @@ document.getElementById("app")!.append(
       el("seat-badge", { "data-t": "seat", name: "Nobody", tricks: 0, active: true }),
       el("bid-pad", { "data-t": "bid", onbid: (e: Event) => show("bid-out", detail<number | string>(e)) }),
       output("bid-out"),
+    ),
+    section(
+      "Motion",
+      // Zubra's glide (@zubra/runtime/motion), as the parlor's boards use it: a box moved from one
+      // side to the other is animated from where it was, unless less motion is asked for.
+      el("div", { "data-t": "glide-track", style: "position: relative; height: 32px;" }, el("span", { "data-t": "glide-box", style: "position: absolute; left: 0; width: 24px; height: 24px; background: #2f78e4; --zb-move-duration: 400ms;" })),
+      button("glide", "Move it", () => {
+        const box = t("glide-box");
+        glide([box], () => (box.style.left = box.style.left === "200px" ? "0px" : "200px"));
+      }),
     ),
     section(
       "Coming and going",

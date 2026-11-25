@@ -15,8 +15,8 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import { EASE_OUT } from "../motion";
 
 /** The games whose pieces are drawn in the layer. Each is moved over once it has been looked at in a table. */
-// Snakes & Ladders moved to a board of its own (SnakesBoard.tsx), which walks each move square by square.
-const GLIDES: ReadonlySet<string> = new Set<string>();
+// Ludo since Snakes & Ladders moved to a board of its own (SnakesBoard.tsx).
+const GLIDES: ReadonlySet<string> = new Set<string>(["ludo"]);
 export const glides = (game: string) => GLIDES.has(game);
 /** Whether this piece is drawn in the layer and not in its cell. */
 export const inLayer = (piece: BoardPiece | null | undefined): piece is BoardPiece => !!piece && piece.owner !== null && (piece.id !== undefined || !!piece.ids?.length);

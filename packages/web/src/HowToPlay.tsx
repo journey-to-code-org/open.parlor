@@ -42,7 +42,7 @@ export function controls(game: string): string[] {
     case "ludo":
       return ["Press Roll, then tap one of your tokens to move it that many squares. The ones that can move wear a gold ring.", "A token in your yard needs a six to come out."];
     case "snakes":
-      return ["Press Roll. With two dice you choose how far to go: one die, the other, or both. The squares you can reach glow on the board; tap one, or a button under the dice.", "A green ring is the foot of a ladder and a red one a snake's head: the chip says where it takes you. Point at a ring to see the way there."];
+      return ["Press Roll. With two dice you choose how far to go: one die, the other, or both. The squares you can reach glow on the board; tap one, or a button under the dice.", "A green ring is the foot of a ladder, a red one a snake's head and a purple one a portal: the chip says where it takes you. Point at a ring to see the way there.", "Tap Your counter under the board to be a rook, a duck, a robot, a rocket or a cat. In 3D (⚙︎, The table is drawn) the board is a real scene: tap a glowing square to move there."];
     case "chinesecheckers":
       return ["Tap one of your pegs, then the hole it should go to. The dots show where it can reach, jumps and all.", "Your pegs start nearest you and are heading for the point straight across."];
     case "mancala":

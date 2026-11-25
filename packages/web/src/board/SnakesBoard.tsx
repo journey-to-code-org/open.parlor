@@ -20,6 +20,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { play } from "../feedback/sounds";
 import { named } from "../kit/named";
 import { useWants3d } from "../display";
+import { loadSnakes3d, type SnakesScene3d } from "./snakes3d";
 
 /** The board is ten squares by ten, with the start in an eleventh row below. */
 const COLS = 10;
@@ -119,13 +120,67 @@ export interface SnakesBoardProps {
   watching?: boolean;
   /** Move the counter from one cell to the square a count reaches. */
   onMove: (from: number, to: number) => void;
+  /** Send any other move: picking a counter. */
+  onSend: (move: Record<string, unknown>) => void;
 }
 
-export function SnakesBoard({ grid, view, names, scale, watching, onMove }: SnakesBoardProps) {
+/** The counters a seat can be, as the engine names them, and what each is called on its button. */
+const TOKENS: [string, string][] = [
+  ["pawn", "Pawn"],
+  ["rook", "Rook"],
+  ["duck", "Duck"],
+  ["robot", "Robot"],
+  ["rocket", "Rocket"],
+  ["cat", "Cat"],
+];
+
+/** How a store board looks: kraft boxes for squares, steel shelf ladders, hoses for snakes. */
+const STORE_TINTS = ["#d8b98b", "#cfa874", "#e2c89f", "#c7a06c", "#dcc095", "#bf9762"];
+const HOSES = [
+  { skin: "#2a2a2a", dark: "#0d0d0d", spot: "#4a4a4a", belly: "#5a5a5a" },
+  { skin: "#c0362c", dark: "#6e140f", spot: "#e2594d", belly: "#f08a7f" },
+  { skin: "#2b2b2b", dark: "#0d0d0d", spot: "#4a4a4a", belly: "#5a5a5a" },
+  { skin: "#e0b116", dark: "#7a5b00", spot: "#f5d250", belly: "#fbe48a" },
+  { skin: "#24477f", dark: "#0e1f3d", spot: "#3f66a8", belly: "#7f9fd6" },
+  { skin: "#2a2a2a", dark: "#0d0d0d", spot: "#4a4a4a", belly: "#5a5a5a" },
+];
+
+export function SnakesBoard({ grid, view, names, scale, watching, onMove, onSend }: SnakesBoardProps) {
+  const store = grid.look === "store";
   // In 3-D (the table's "drawn in 3D" setting) the board leans back and the pawns stand up on it.
   const tilted = useWants3d("snakes");
   const root = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLDivElement>(null);
+  /** The camera: on a phone it leans in on a counter while it moves. `lens` clips what it shows. */
+  const lens = useRef<HTMLDivElement>(null);
+  const cam = useRef<HTMLDivElement>(null);
+  const probe = useRef<HTMLSpanElement>(null);
+  const [zoomed, setZoomed] = useState(false);
+  // True 3-D, where WebGL works: a three.js scene draws everything and walks the moves, and the
+  // painted board below is kept as the fallback.
+  const glCanvas = useRef<HTMLCanvasElement>(null);
+  const [gl, setGl] = useState<SnakesScene3d | null>(null);
+  const [glMoving, setGlMoving] = useState(false);
+  const pick = useRef<(cell: number) => void>(() => undefined);
+  useEffect(() => {
+    if (!tilted || !glCanvas.current) return;
+    let live = true;
+    let scene: SnakesScene3d | null = null;
+    void loadSnakes3d(glCanvas.current, {
+      onTarget: (cell) => pick.current(cell),
+      onHover: (cell) => setPreview(cell),
+      onMoving: (m) => setGlMoving(m),
+    }).then((made) => {
+      if (!live) return made?.dispose();
+      scene = made;
+      setGl(made);
+    });
+    return () => {
+      live = false;
+      scene?.dispose();
+      setGl(null);
+    };
+  }, [tilted]);
   const squareOf = (cell: number) => Number(grid.tags?.[cell] ?? 0);
   const cellOfSquare = useMemo(() => {
     const out = new Map<number, number>();
@@ -143,7 +198,10 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
       }),
     [grid.links],
   );
-  const linkFrom = useMemo(() => new Map(links.map((l) => [l.from, l] as const)), [links]);
+  const linkFrom = useMemo(() => new Map(links.flatMap((l) => (l.kind === "portal" ? [[l.from, l] as const, [l.to, { ...l, from: l.to, to: l.from, a: l.b, b: l.a }] as const] : [[l.from, l] as const]))), [links]);
+  // Special squares on a wild board: stars, shields, portals.
+  const specials = useMemo(() => grid.cells.flatMap((p, cell) => (p && p.owner === null && (p.kind === "star" || p.kind === "shield" || p.kind === "portal") ? [{ cell, kind: p.kind }] : [])), [grid.cells]);
+  const tokenOf = (seat: number) => view.players[seat]?.piece?.kind ?? "pawn";
 
   // The counters, from the cells: a stack is everyone's ids on one cell.
   const tokens = useMemo(() => {
@@ -169,7 +227,10 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
     const lands = link ? link.to : cell;
     // Someone else standing where it would end: at a table that swaps, they'd be sent back.
     const swap = swaps && tokens.some((t) => t.cell === lands && t.seat !== view.me);
-    return { cell, by, hint: option?.hint ?? `Square ${squareOf(cell)}`, link, swap };
+    const label = option?.label ?? `+${by}`;
+    // The button says how it goes ("+3 🪜 39"); the ring takes its colour from that.
+    const via = label.includes("🪜") ? "ladder" : label.includes("🐍") ? "snake" : label.includes("◎") ? "portal" : null;
+    return { cell, by, hint: option?.hint ?? `Square ${squareOf(cell)}`, link, swap, label, via };
   });
   const [preview, setPreview] = useState<number | null>(null);
   useEffect(() => setPreview(null), [source?.to.join()]);
@@ -204,7 +265,7 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
     const fresh = !!trail && trail.key !== animated.current;
     animated.current = trail?.key ?? null;
     const me = ++run.current;
-    if (first || !fresh || scale === 0) {
+    if (first || !fresh || scale === 0 || gl) {
       setMoving(false);
       return settle();
     }
@@ -219,6 +280,35 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
     }
     setMoving(true);
     const live = () => run.current === me;
+    // The camera, on a narrow screen: where each cell the move goes through is with it pulled
+    // back, measured now, so each step can be aimed at.
+    const camera = cam.current;
+    const close = !!camera && camera.offsetWidth < 560;
+    const spots = new Map<number, { x: number; y: number }>();
+    if (camera && close && probe.current) {
+      camera.style.transition = "none";
+      camera.style.transform = "";
+      const box = camera.getBoundingClientRect();
+      for (const cell of new Set(trail.paths.flatMap((p) => p.cells))) {
+        put(probe.current, cell);
+        const r = probe.current.getBoundingClientRect();
+        spots.set(cell, { x: r.left + r.width / 2 - box.left, y: r.top + r.height / 2 - box.top });
+      }
+    }
+    /** Lean in on a cell (or pull back, for null) over `d` ms. */
+    const aim = (cell: number | null, d: number) => {
+      if (!camera || !close) return;
+      const spot = cell === null ? undefined : spots.get(cell);
+      camera.style.transition = `transform ${d}ms cubic-bezier(.3,.7,.4,1)`;
+      if (!spot) return void (camera.style.transform = "");
+      const z = 1.7;
+      const w = camera.offsetWidth;
+      const h = camera.offsetHeight;
+      const x = Math.min(0, Math.max(w - z * w, w / 2 - z * spot.x));
+      const y = Math.min(0, Math.max(h - z * h, h / 2 - z * spot.y));
+      camera.style.transform = `translate(${x}px, ${y}px) scale(${z})`;
+      setZoomed(true);
+    };
     const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
     const unit = () => (frame.current?.clientWidth ?? 300) / COLS;
     const ms = (base: number) => Math.round(base * Math.max(0.5, scale));
@@ -246,6 +336,8 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
       const [mover, ...swapped] = trail!.paths;
       const el = mover && els.current.get(mover.id);
       if (!mover || !el) return;
+      aim(mover.cells[0]!, ms(420));
+      await wait(ms(300));
       for (let i = 0; i < mover.by.length && live(); i++) {
         const to = mover.cells[i + 1]!;
         const kind = mover.by[i]!;
@@ -255,6 +347,7 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
         const ground = el.querySelector<HTMLElement>(".snl-ground");
         if (kind === "step") {
           const d = ms(170);
+          aim(to, d + 120);
           slide(el, to, d, end?.k, end?.n);
           hop?.animate([{ translate: "0 0", scale: "1 1" }, { translate: "0 -42%", scale: "0.96 1.06", offset: 0.45 }, { translate: "0 0", scale: "1.08 0.9", offset: 0.85 }, { translate: "0 0", scale: "1 1" }], { duration: d, easing: "ease-out" });
           ground?.animate([{ scale: "1" }, { scale: "0.6", opacity: 0.5, offset: 0.45 }, { scale: "1" }], { duration: d, easing: "ease-out" });
@@ -264,6 +357,7 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
           const d = ms(780);
           await wait(ms(120));
           play("climb");
+          aim(to, d);
           slide(el, to, d, end?.k, end?.n, "cubic-bezier(.45,.05,.4,1)");
           hop?.animate([{ rotate: "0deg" }, { rotate: "-9deg" }, { rotate: "9deg" }, { rotate: "-9deg" }, { rotate: "9deg" }, { rotate: "0deg" }], { duration: d, easing: "linear" });
           await wait(d);
@@ -275,6 +369,7 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
           play("slither");
           root.current?.querySelector(`[data-snake="${mover.cells[i]}"]`)?.classList.add("biting");
           root.current?.animate([{ translate: "0 0" }, { translate: "-3px 0" }, { translate: "3px 0" }, { translate: "-2px 0" }, { translate: "0 0" }], { duration: 260 });
+          aim(to, d);
           put(el, to, end?.k, end?.n);
           const b = centre(to);
           const u = unit();
@@ -288,6 +383,20 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
           await wait(d);
           root.current?.querySelector(`[data-snake="${mover.cells[i]}"]`)?.classList.remove("biting");
           if (live()) setFlash({ cell: to, kind: "snake", key: me });
+        } else if (kind === "portal") {
+          // Into the portal, and out of the other one.
+          const d = ms(380);
+          await wait(ms(100));
+          play("zap");
+          await hop?.animate([{ scale: "1", rotate: "y 0deg" }, { scale: "0", rotate: "y 360deg" }], { duration: d, easing: "ease-in", fill: "forwards" }).finished.catch(() => undefined);
+          if (!live()) return;
+          setFlash({ cell: mover.cells[i]!, kind: "portal", key: me });
+          aim(to, d);
+          put(el, to, end?.k, end?.n);
+          await wait(ms(200));
+          setFlash({ cell: to, kind: "portal", key: me + 0.5 });
+          await hop?.animate([{ scale: "0", rotate: "y 0deg" }, { scale: "1", rotate: "y 360deg" }], { duration: d, easing: "ease-out" }).finished.catch(() => undefined);
+          hop?.getAnimations().forEach((a) => a.cancel());
         }
       }
       // Anyone landed on goes back to where the mover came from, the two passing each other.
@@ -301,14 +410,27 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
         other.querySelector<HTMLElement>(".snl-hop")?.animate([{ translate: "0 0" }, { translate: "0 -70%", offset: 0.5 }, { translate: "0 0" }], { duration: d, easing: "ease-in-out" });
       }
       if (swapped.length) await wait(ms(560));
+      if (close && live()) {
+        await wait(ms(350));
+        aim(null, 520);
+        await wait(520);
+      }
     }
     void walk().finally(() => {
       if (!live()) return;
       settle();
       setMoving(false);
+      setZoomed(false);
     });
-  }, [where, grid.trail?.key, scale, tilted]);
+  }, [where, grid.trail?.key, scale, tilted, gl]);
   useEffect(() => () => void run.current++, []);
+  // A new game: the ladders and snakes drop onto the board one after another.
+  const [revealing, setRevealing] = useState(() => (view.dice?.roll ?? 0) === 0 && scale > 0);
+  useEffect(() => {
+    if (!revealing) return;
+    const t = setTimeout(() => setRevealing(false), 2400);
+    return () => clearTimeout(t);
+  }, [revealing]);
   useEffect(() => {
     if (!flash) return;
     const t = setTimeout(() => setFlash(null), 900);
@@ -322,9 +444,10 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
         const square = squareOf(cell);
         const r = Math.floor(cell / COLS);
         const c = cell % COLS;
-        return { cell, square, r, c, tint: TINTS[(c + r * 2) % TINTS.length]!, dark: (r + c) % 2 === 1 };
+        const tints = store ? STORE_TINTS : TINTS;
+        return { cell, square, r, c, tint: tints[(c + r * 2 + (store ? r * c : 0)) % tints.length]!, dark: (r + c) % 2 === 1 };
       }),
-    [grid.tags],
+    [grid.tags, store],
   );
   const turn = view.turn;
   const over = !!view.over;
@@ -333,9 +456,50 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
   const previewTarget = targets.find((t) => t.cell === preview);
   const previewPath = previewTarget ? [from!, ...stepsOf(fromSquare, previewTarget.by).map((sq) => cellOfSquare.get(sq)!), ...(previewTarget.link ? [previewTarget.link.to] : [])].map(centre) : null;
   const mySeat = SEATS[view.me % SEATS.length]!;
+  // The way the last move went, left as footprints once it has been walked.
+  const steps = !moving && grid.trail?.paths[0] ? grid.trail.paths[0] : null;
+  const stepSeat = steps ? Number(steps.id.split("-").pop()) : 0;
+  const [picking, setPicking] = useState(false);
+  const mine = tokenOf(view.me);
+  pick.current = (cell: number) => from !== null && onMove(from, cell);
+  const previewCells = previewTarget ? [from!, ...stepsOf(fromSquare, previewTarget.by).map((sq) => cellOfSquare.get(sq)!), ...(previewTarget.link ? [previewTarget.link.to] : [])] : null;
+  useEffect(() => {
+    gl?.update({
+      store,
+      seats: view.seats,
+      tiles: squares.map((q) => ({ cell: q.cell, square: q.square, tint: q.tint })),
+      links: links.map((l) => ({ kind: l.kind, from: l.from, to: l.to, spine: l.spine })),
+      specials,
+      tokens: tokens.map((t) => ({ ...t, shape: tokenOf(t.seat) })),
+      targets: targets.map((t) => ({ cell: t.cell, label: t.label, via: t.via })),
+      preview: previewCells,
+      steps: grid.trail?.paths[0] ? { seat: Number(grid.trail.paths[0].id.split("-").pop()), cells: grid.trail.paths[0].cells } : null,
+      turn: view.turn,
+      me: view.me,
+      winner: winner ?? null,
+      trail: grid.trail ?? null,
+      roll: view.dice?.roll ?? 0,
+      speed: scale,
+      reveal: (view.dice?.roll ?? 0) === 0,
+    });
+  });
 
   return (
-    <div className={`snl${moving ? " moving" : ""}${over ? " over" : ""}${tilted ? " tilted" : ""}`} ref={root} role="group" aria-label={`Snakes and Ladders board, ${view.seats} players`} style={{ "--seat-body": mySeat.body, "--seat-light": mySeat.light } as React.CSSProperties}>
+    <div className={`snl-outer${gl ? " gl" : ""}${glMoving ? " gl-moving" : ""}`}>
+    {tilted && <canvas ref={glCanvas} className="snl-gl" role="img" aria-label={`Snakes and Ladders board in 3D, ${view.seats} players`} />}
+    {gl && !glMoving && targets.length > 0 && (
+      // The board in 3-D is a picture: for the keyboard and screen readers, the squares as buttons.
+      <div className="sr-only" role="group" aria-label="Where you can go">
+        {targets.map((t) => (
+          <button key={t.cell} type="button" onClick={() => from !== null && onMove(from, t.cell)}>
+            {t.hint}
+          </button>
+        ))}
+      </div>
+    )}
+    <div className={`snl-lens${zoomed ? " zoomed" : ""}`} ref={lens}>
+    <div className="snl-cam" ref={cam}>
+    <div className={`snl${moving ? " moving" : ""}${over ? " over" : ""}${tilted ? " tilted" : ""}${store ? " store" : ""}${revealing ? " revealing" : ""}`} ref={root} role="group" aria-label={`Snakes and Ladders board, ${view.seats} players`} style={{ "--seat-body": mySeat.body, "--seat-light": mySeat.light } as React.CSSProperties}>
       <div className="snl-frame" ref={frame}>
         <svg className="snl-art" viewBox={`0 0 ${COLS * 100} ${COLS * 100}`} aria-hidden>
           <defs>
@@ -371,18 +535,24 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
                   START
                 </text>
               )}
+              {store && s.square !== END && <rect x={s.c * U + 3} y={s.r * U + 44} width={94} height={12} className="snl-tape" />}
             </g>
           ))}
+
+          {specials.map((p) => {
+            const at = centre(p.cell);
+            return <Special key={p.cell} kind={p.kind} x={at.x * U} y={at.y * U + 8} />;
+          })}
 
           {links
             .filter((l) => l.kind === "ladder")
             .map((l) => (
-              <Ladder key={l.i} a={l.a} b={l.b} />
+              <Ladder key={l.i} a={l.a} b={l.b} i={l.i} />
             ))}
           {links
             .filter((l) => l.kind === "snake")
             .map((l, n) => (
-              <Snake key={l.i} spine={l.spine!} skin={SKINS[n % SKINS.length]!} from={l.from} />
+              <Snake key={l.i} spine={l.spine!} skin={(store ? HOSES : SKINS)[n % SKINS.length]!} from={l.from} hose={store} i={l.i} />
             ))}
 
           {/* The numbers go over the ladders and snakes, so every square can be read. */}
@@ -393,6 +563,15 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
               </text>
             ))}
           </g>
+
+          {steps && (
+            <g className="snl-steps" style={{ fill: SEATS[stepSeat % SEATS.length]!.body }}>
+              {steps.cells.slice(1, -1).map((cell, k) => {
+                const at = centre(cell);
+                return <circle key={k} cx={at.x * U} cy={at.y * U + 22} r={6} />;
+              })}
+            </g>
+          )}
 
           {previewPath && (
             <g className="snl-preview">
@@ -413,6 +592,21 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
           <span className="snl-start-word">← Start</span>
         </div>
 
+        <span className="snl-probe" ref={probe} aria-hidden />
+        {over && winner !== undefined && (
+          // The winner on the podium, with the game's luckiest ladder and worst snake.
+          <div className="snl-podium" aria-hidden>
+            <span className="snl-podium-pawn">
+              <Pawn seat={SEATS[winner % SEATS.length]!} id={`podium-${winner}`} shape={tokenOf(winner)} />
+            </span>
+            <span className="snl-podium-step">1</span>
+            {view.info.map((line, i) => (
+              <span key={i} className="snl-podium-line">
+                {named(line, names)}
+              </span>
+            ))}
+          </div>
+        )}
         {flash && <span key={flash.key} className={`snl-flash ${flash.kind}`} style={{ left: `${(centre(flash.cell).x / COLS) * 100}%`, top: `${(centre(flash.cell).y / ROWS) * 100}%` }} aria-hidden />}
 
         {/* The squares a count reaches: tap one to go there. */}
@@ -425,7 +619,7 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
               <button
                 key={t.cell}
                 type="button"
-                className={`snl-target${t.link ? ` via-${t.link.kind}` : ""}${below ? " chip-below" : ""}`}
+                className={`snl-target${t.via ? ` via-${t.via}` : ""}${below ? " chip-below" : ""}`}
                 style={{ left: `${((at.x - 0.5) / COLS) * 100}%`, top: `${((at.y - 0.5) / ROWS) * 100}%` }}
                 aria-label={t.hint}
                 onPointerEnter={() => setPreview(t.cell)}
@@ -437,8 +631,7 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
                 <span className="snl-ring" />
                 <span className="snl-stand chip-stand">
                 <span className="snl-chip">
-                  +{t.by}
-                  {t.link && <b>{t.link.kind === "ladder" ? `↑${squareOf(t.link.to)}` : `↓${squareOf(t.link.to)}`}</b>}
+                  {t.label}
                   {t.swap && <b title="Swap places">⇄</b>}
                 </span>
                 </span>
@@ -463,7 +656,7 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
               <span className="snl-fan">
                 <span className="snl-stand">
                   <span className="snl-hop">
-                    <Pawn seat={seat} id={t.id} />
+                    <Pawn seat={seat} id={t.id} shape={tokenOf(t.seat)} />
                   </span>
                 </span>
               </span>
@@ -475,14 +668,121 @@ export function SnakesBoard({ grid, view, names, scale, watching, onMove }: Snak
         {view.players.map((p, i) => `${names[i] ?? `Seat ${i + 1}`} ${named(p.line, names)}`).join(". ")}
       </p>
     </div>
+    </div>
+    </div>
+    {!watching && (
+      // What your counter is: a pawn, a rook, a duck… Anyone can change it at any time.
+      <div className="snl-pick" role="group" aria-label="Your counter">
+        <button type="button" className="snl-pick-open" aria-expanded={picking} onClick={() => setPicking((p) => !p)}>
+          <Pawn seat={mySeat} id="pick-mine" shape={mine} />
+          <span>{picking ? "Done" : "Your counter"}</span>
+        </button>
+        {picking &&
+          TOKENS.map(([shape, label]) => (
+            <button key={shape} type="button" className="snl-pick-one" aria-pressed={shape === mine} aria-label={label} onClick={() => onSend({ type: "token", token: shape })}>
+              <Pawn seat={mySeat} id={`pick-${shape}`} shape={shape} />
+            </button>
+          ))}
+      </div>
+    )}
+    </div>
   );
 }
 
-/** A counter: a glossy pawn in its seat's colour. */
-function Pawn({ seat, id }: { seat: Seat; id: string }) {
-  const g = `snl-pawn-${id}`;
+/** A special square's mark: a star, a shield, or a portal's swirl. */
+function Special({ kind, x, y }: { kind: string; x: number; y: number }) {
+  if (kind === "star")
+    return <path className="snl-special star" transform={`translate(${x} ${y})`} d="M0 -26 L7.6 -8.3 L26.6 -7.6 L12.2 4.6 L16.4 23 L0 13 L-16.4 23 L-12.2 4.6 L-26.6 -7.6 L-7.6 -8.3 Z" />;
+  if (kind === "shield")
+    return <path className="snl-special shield" transform={`translate(${x} ${y})`} d="M0 -26 L22 -18 C22 4 14 18 0 26 C-14 18 -22 4 -22 -18 Z M0 -16 L0 16" />;
   return (
-    <svg className="snl-pawn" viewBox="0 0 40 52">
+    <g className="snl-special portal" transform={`translate(${x} ${y})`}>
+      <circle r={28} className="rim" />
+      <g className="swirl">
+        <path d="M0 -20 A20 20 0 0 1 20 0 M0 20 A20 20 0 0 1 -20 0 M-10 -6 A12 12 0 0 1 10 6" />
+      </g>
+    </g>
+  );
+}
+
+/** A counter in its seat's colour: a pawn, a rook, a duck, a robot, a rocket or a cat, all glossy. */
+function Pawn({ seat, id, shape = "pawn" }: { seat: Seat; id: string; shape?: string }) {
+  const g = `snl-pawn-${id}`;
+  const fill = `url(#${g})`;
+  const line = { stroke: seat.dark, strokeWidth: 1.2, strokeLinejoin: "round" as const };
+  const base = <ellipse cx="20" cy="46.5" rx="14" ry="4" fill={fill} {...line} />;
+  const shine = <ellipse cx="15.5" cy="11" rx="3.6" ry="2.4" fill="#fff" opacity="0.7" />;
+  const body = (() => {
+    switch (shape) {
+      case "rook":
+        return (
+          <>
+            <path d="M10 46 L12 22 L28 22 L30 46 Z" fill={fill} {...line} />
+            <path d="M8 22 L8 9 L13 9 L13 13 L17.5 13 L17.5 9 L22.5 9 L22.5 13 L27 13 L27 9 L32 9 L32 22 Z" fill={fill} {...line} />
+            {base}
+            <rect x="12" y="15" width="3" height="5" rx="1" fill="#fff" opacity="0.5" />
+          </>
+        );
+      case "duck":
+        return (
+          <>
+            <path d="M5 34 C5 26 12 23 20 24 C24 24 28 26 33 22 C35 30 33 42 20 44 C10 44 5 40 5 34 Z" fill={fill} {...line} />
+            <circle cx="27" cy="15" r="8.5" fill={fill} {...line} />
+            <path d="M34 14 L40 16 L34 19 Z" fill="#f59e0b" stroke="#b45309" strokeWidth="1" strokeLinejoin="round" />
+            <circle cx="29" cy="13" r="1.6" fill="#14110d" />
+            <path d="M10 32 C14 28 20 30 22 34" fill="none" stroke={seat.dark} strokeWidth="1.2" opacity="0.6" />
+            <ellipse cx="24" cy="11" rx="2.6" ry="1.6" fill="#fff" opacity="0.7" />
+          </>
+        );
+      case "robot":
+        return (
+          <>
+            <rect x="10" y="24" width="20" height="20" rx="3" fill={fill} {...line} />
+            <rect x="9" y="6" width="22" height="16" rx="4" fill={fill} {...line} />
+            <line x1="20" y1="6" x2="20" y2="1.5" {...line} />
+            <circle cx="20" cy="1.5" r="1.8" fill="#ffe066" stroke={seat.dark} strokeWidth="1" />
+            <circle cx="15" cy="14" r="2.6" fill="#e9fbff" stroke={seat.dark} strokeWidth="1" />
+            <circle cx="25" cy="14" r="2.6" fill="#e9fbff" stroke={seat.dark} strokeWidth="1" />
+            <rect x="15" y="30" width="10" height="4" rx="1" fill="#fff" opacity="0.55" />
+            {base}
+          </>
+        );
+      case "rocket":
+        return (
+          <>
+            <path d="M20 2 C29 10 29 28 26 40 L14 40 C11 28 11 10 20 2 Z" fill={fill} {...line} />
+            <path d="M14 30 L7 42 L14 40 Z M26 30 L33 42 L26 40 Z" fill={seat.dark} />
+            <circle cx="20" cy="18" r="4" fill="#e9fbff" stroke={seat.dark} strokeWidth="1.2" />
+            <path d="M16 41 C17 47 23 47 24 41 Z" fill="#f59e0b" />
+            <ellipse cx="17" cy="12" rx="1.8" ry="3.6" fill="#fff" opacity="0.6" />
+          </>
+        );
+      case "cat":
+        return (
+          <>
+            <path d="M9 46 C8 36 12 28 20 28 C28 28 32 36 31 46 Z" fill={fill} {...line} />
+            <path d="M31 42 C38 40 38 30 34 28" fill="none" stroke={seat.dark} strokeWidth="2.6" strokeLinecap="round" />
+            <path d="M8 22 L9 4 L16 11 C18 10 22 10 24 11 L31 4 L32 22 C32 29 27 32 20 32 C13 32 8 29 8 22 Z" fill={fill} {...line} />
+            <circle cx="15.5" cy="19" r="1.8" fill="#14110d" />
+            <circle cx="24.5" cy="19" r="1.8" fill="#14110d" />
+            <path d="M18.5 23 L21.5 23 L20 25 Z" fill="#f472b6" />
+            <ellipse cx="14" cy="13" rx="2.4" ry="1.5" fill="#fff" opacity="0.6" />
+          </>
+        );
+      default:
+        return (
+          <>
+            <path d="M8 46 C8 40 13 37 15 33 C12 31 11 28 13 25 L27 25 C29 28 28 31 25 33 C27 37 32 40 32 46 Z" fill={fill} {...line} />
+            {base}
+            <rect x="11" y="23" width="18" height="4" rx="2" fill={seat.body} {...line} />
+            <circle cx="20" cy="14" r="10" fill={fill} {...line} />
+            {shine}
+          </>
+        );
+    }
+  })();
+  return (
+    <svg className={`snl-pawn shape-${shape}`} viewBox="0 0 40 52">
       <defs>
         <radialGradient id={g} cx="0.35" cy="0.25" r="0.85">
           <stop offset="0" stopColor={seat.light} />
@@ -490,17 +790,13 @@ function Pawn({ seat, id }: { seat: Seat; id: string }) {
           <stop offset="1" stopColor={seat.dark} />
         </radialGradient>
       </defs>
-      <path d="M8 46 C8 40 13 37 15 33 C12 31 11 28 13 25 L27 25 C29 28 28 31 25 33 C27 37 32 40 32 46 Z" fill={`url(#${g})`} stroke={seat.dark} strokeWidth="1.2" />
-      <ellipse cx="20" cy="46.5" rx="14" ry="4" fill={`url(#${g})`} stroke={seat.dark} strokeWidth="1.2" />
-      <rect x="11" y="23" width="18" height="4" rx="2" fill={seat.body} stroke={seat.dark} strokeWidth="1.2" />
-      <circle cx="20" cy="14" r="10" fill={`url(#${g})`} stroke={seat.dark} strokeWidth="1.2" />
-      <ellipse cx="16.5" cy="10" rx="3.6" ry="2.4" fill="#fff" opacity="0.7" />
+      {body}
     </svg>
   );
 }
 
 /** Two wooden rails from foot to top, rungs between, and a shadow on the board under it. */
-function Ladder({ a, b }: { a: Pt; b: Pt }) {
+function Ladder({ a, b, i }: { a: Pt; b: Pt; i: number }) {
   const len = Math.hypot(b.x - a.x, b.y - a.y);
   const ux = (b.x - a.x) / len;
   const uy = (b.y - a.y) / len;
@@ -525,7 +821,7 @@ function Ladder({ a, b }: { a: Pt; b: Pt }) {
     </>
   );
   return (
-    <g className="snl-ladder">
+    <g className="snl-ladder" style={{ "--i": i } as React.CSSProperties}>
       <g className="shadow" transform="translate(10 17)" filter="url(#snl-blur)">
         {body}
       </g>
@@ -535,13 +831,15 @@ function Ladder({ a, b }: { a: Pt; b: Pt }) {
 }
 
 /** A snake: a tapering body with diamonds down its back, a head with eyes, and a tongue that flicks. */
-function Snake({ spine, skin, from }: { spine: Pt[]; skin: (typeof SKINS)[number]; from: number }) {
+function Snake({ spine, skin, from, hose, i }: { spine: Pt[]; skin: (typeof SKINS)[number]; from: number; hose: boolean; i: number }) {
   const n = spine.length - 1;
+  // A hose is the same width all the way down; a snake tapers to its tail.
+  const wid = (t: number) => (hose ? 0.19 : widthAt(t));
   const left: string[] = [];
   const right: string[] = [];
   spine.forEach((p, k) => {
     const d = along(spine, k);
-    const w = widthAt(k / n) / 2;
+    const w = wid(k / n) / 2;
     left.push(`${f(p.x - d.y * w)},${f(p.y + d.x * w)}`);
     right.push(`${f(p.x + d.y * w)},${f(p.y - d.x * w)}`);
   });
@@ -550,7 +848,7 @@ function Snake({ spine, skin, from }: { spine: Pt[]; skin: (typeof SKINS)[number
     .slice(3)
     .map((p, k) => {
       const d = along(spine, k + 3);
-      const w = widthAt((k + 3) / n) * 0.22;
+      const w = wid((k + 3) / n) * 0.22;
       return `${f(p.x + d.y * w)},${f(p.y - d.x * w)}`;
     })
     .join(" ");
@@ -559,15 +857,23 @@ function Snake({ spine, skin, from }: { spine: Pt[]; skin: (typeof SKINS)[number
     .slice(2, -6)
     .map((p, k) => {
       const d = along(spine, k + 2);
-      const w = widthAt((k + 2) / n) * 0.26;
+      const w = wid((k + 2) / n) * 0.26;
       return `${f(p.x - d.y * w)},${f(p.y + d.x * w)}`;
     })
     .join(" ");
   const diamonds = [];
-  for (let k = 7; k < n - 4; k += 5) {
+  // A hose has ribs across it where a snake has diamonds.
+  if (hose)
+    for (let k = 6; k < n - 3; k += 4) {
+      const p = spine[k]!;
+      const d = along(spine, k);
+      const w = wid(k / n) * 0.5;
+      diamonds.push(`M${f(p.x - d.y * w)},${f(p.y + d.x * w)} L${f(p.x + d.y * w)},${f(p.y - d.x * w)}`);
+    }
+  for (let k = 7; !hose && k < n - 4; k += 5) {
     const p = spine[k]!;
     const d = along(spine, k);
-    const w = widthAt(k / n);
+    const w = wid(k / n);
     const l = w * 0.42;
     const c = w * 0.26;
     diamonds.push(`M${f(p.x + d.x * l)},${f(p.y + d.y * l)} L${f(p.x - d.y * c)},${f(p.y + d.x * c)} L${f(p.x - d.x * l)},${f(p.y - d.y * l)} L${f(p.x + d.y * c)},${f(p.y - d.x * c)} Z`);
@@ -577,14 +883,28 @@ function Snake({ spine, skin, from }: { spine: Pt[]; skin: (typeof SKINS)[number
   const back = along(spine, 2);
   const angle = (Math.atan2(-back.y, -back.x) * 180) / Math.PI;
   return (
-    <g className="snl-snake" data-snake={from} style={{ "--skin": skin.skin, "--dark": skin.dark, "--spot": skin.spot, "--belly": skin.belly } as React.CSSProperties}>
+    <g className={`snl-snake${hose ? " hose" : ""}`} data-snake={from} style={{ "--skin": skin.skin, "--dark": skin.dark, "--spot": skin.spot, "--belly": skin.belly, "--i": i } as React.CSSProperties}>
       <path className="shadow" d={outline} transform="translate(10 16)" filter="url(#snl-blur)" />
       <path className="body" d={outline} />
       <path className="shade" d={outline} />
       <polyline className="belly" points={belly} />
       <polyline className="gloss" points={gloss} />
       <path className="spots" d={diamonds.join(" ")} />
-      <g transform={`translate(${f(head.x)} ${f(head.y)}) rotate(${angle.toFixed(1)})`}>
+      {hose && (
+        // Brass at both ends: a hex fitting at the top, a crimped one at the bottom.
+        <>
+          <g transform={`translate(${f(spine[n]!.x)} ${f(spine[n]!.y)}) rotate(${((Math.atan2(along(spine, n - 1).y, along(spine, n - 1).x) * 180) / Math.PI).toFixed(1)})`} className="fitting">
+            <rect x={-14} y={-12} width={22} height={24} rx={3} />
+            <rect x={8} y={-7} width={8} height={14} rx={2} />
+          </g>
+          <g transform={`translate(${f(head.x)} ${f(head.y)}) rotate(${angle.toFixed(1)})`} className="fitting">
+            <rect x={-16} y={-13} width={14} height={26} rx={3} />
+            <path d="M-2 -18 L14 -18 L22 0 L14 18 L-2 18 Z" />
+            <circle cx={9} cy={0} r={6} className="bore" />
+          </g>
+        </>
+      )}
+      {!hose && <g transform={`translate(${f(head.x)} ${f(head.y)}) rotate(${angle.toFixed(1)})`}>
         <g className="tongue">
           <path d="M20 0 L36 0 M36 0 L43 -5 M36 0 L43 5" />
         </g>
@@ -599,7 +919,7 @@ function Snake({ spine, skin, from }: { spine: Pt[]; skin: (typeof SKINS)[number
           <circle cx={22} cy={-4.5} r={1.2} className="nostril" />
           <circle cx={22} cy={4.5} r={1.2} className="nostril" />
         </g>
-      </g>
+      </g>}
     </g>
   );
 }

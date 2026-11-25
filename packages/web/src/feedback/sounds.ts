@@ -328,6 +328,9 @@ export const BUZZES: Partial<Record<SoundName, number | number[]>> = {
   won: [30, 60, 30, 60, 80],
   nope: [15, 30, 15],
   slither: [30, 40, 30],
+  hop: 6,
+  climb: [10, 30, 10, 30, 10],
+  swap: 20,
   hurry: [12, 200, 12],
 };
 
