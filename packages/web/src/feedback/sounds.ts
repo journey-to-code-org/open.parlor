@@ -34,7 +34,11 @@ export type SoundName =
   | "bigBoom"
   | "thud"
   | "zap"
-  | "sizzle";
+  | "sizzle"
+  | "hop"
+  | "climb"
+  | "slither"
+  | "swap";
 
 type Ctx = BaseAudioContext;
 type Play = (ctx: Ctx, out: AudioNode, t: number) => void;
@@ -283,6 +287,26 @@ export const SOUNDS: Record<SoundName, Play> = {
     glide(ctx, out, t, 1100, 900, { peak: 0.12, decay: 0.05, type: "triangle" });
     glide(ctx, out, t + 0.22, 1100, 900, { peak: 0.12, decay: 0.05, type: "triangle" });
   },
+  /** A counter hopping onto the next square: a light wooden tick, a little higher each time at random. */
+  hop: (ctx, out, t) => {
+    glide(ctx, out, t, 760 + Math.random() * 140, 420, { peak: 0.18, decay: 0.045, type: "triangle" });
+    swish(ctx, out, t, { freq: 2200, q: 1.4, peak: 0.07, decay: 0.02 });
+  },
+  /** Up a ladder: a quick run of rising notes, one per rung. */
+  climb: (ctx, out, t) => {
+    [N.C5, N.E5, N.G5, N.C6, N.E6].forEach((f, i) => bell(ctx, out, t + i * 0.085, f, { peak: 0.12, decay: 0.28 }));
+  },
+  /** Down a snake: a hiss, and a slide whistle falling away. */
+  slither: (ctx, out, t) => {
+    swish(ctx, out, t, { freq: 5200, q: 0.6, peak: 0.12, decay: 0.35, type: "highpass" });
+    glide(ctx, out, t + 0.05, 900, 160, { peak: 0.16, decay: 0.8, type: "sine" });
+  },
+  /** Two counters swapping places: a whoosh past each other. */
+  swap: (ctx, out, t) => {
+    glide(ctx, out, t, 300, 700, { peak: 0.12, decay: 0.18, type: "sine" });
+    glide(ctx, out, t + 0.12, 700, 300, { peak: 0.12, decay: 0.18, type: "sine" });
+    swish(ctx, out, t, { freq: 1400, q: 0.5, peak: 0.12, decay: 0.3 });
+  },
   /** That move isn't allowed: a short low buzz. */
   nope: (ctx, out, t) => {
     glide(ctx, out, t, 180, 140, { peak: 0.1, decay: 0.12, type: "square" });
@@ -303,6 +327,10 @@ export const BUZZES: Partial<Record<SoundName, number | number[]>> = {
   set: 60,
   won: [30, 60, 30, 60, 80],
   nope: [15, 30, 15],
+  slither: [30, 40, 30],
+  hop: 6,
+  climb: [10, 30, 10, 30, 10],
+  swap: 20,
   hurry: [12, 200, 12],
 };
 
@@ -312,6 +340,7 @@ export const LENGTHS: Record<SoundName, number> = {
   nilMade: 0.9, set: 1.0, handDone: 1.3, won: 2.0, lost: 1.3, nope: 0.35, message: 0.15, hurry: 0.35,
   bowl: 1.1, pins: 0.7, strike: 1.2,
   cannon: 0.3, boom: 0.5, bigBoom: 1.2, thud: 0.3, zap: 0.3, sizzle: 0.6,
+  hop: 0.1, climb: 0.75, slither: 0.95, swap: 0.4,
 };
 
 /** Overall level, into a limiter. Phone speakers are small: the loudest sound peaks near -3 dB. */
