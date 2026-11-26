@@ -1,0 +1,147 @@
+// What is on Peekaboo's board, and how it changes. Every change is an event; both ends of a call
+// apply the same events in the same way, so their boards stay alike. `apply` also says what should
+// be heard for each event, and the screen plays it (only on the device with the baby, in a call:
+// the other parent hears it through the call).
+import { goodNight, pageText } from "./story";
+import { thatsThe, whereIs, type Mine, type Mode, type Person, type Settings, type Thing } from "./things";
+
+export type BoardEvent =
+  /** A picture pops up where a finger touched (x and y are fractions of the board). */
+  | { t: "pop"; id: string; x: number; y: number; key: number }
+  /** A picture on the board is poked: it jiggles and is named again (saying it again is how it sticks). */
+  | { t: "poke"; key: number }
+  /** Peekaboo: a new picture goes under the blanket. */
+  | { t: "hide"; id: string }
+  /** Peekaboo: the blanket comes off. */
+  | { t: "peek" }
+  /** Where's the…?: a new question. */
+  | { t: "ask"; target: string; choices: string[] }
+  /** Where's the…?: a picture was tapped. */
+  | { t: "pick"; id: string }
+  /** Where's the…?: tapped somewhere else; ask again. */
+  | { t: "again" }
+  /** The grown-ups changed what is played. */
+  | { t: "settings"; settings: Settings }
+  /** The family, from the device with the baby. */
+  | { t: "family"; family: Person[] }
+  /** In a call: the other parent hides behind a blanket, then "Peekaboo!". */
+  | { t: "face" }
+  /** The grown-ups' own pictures, from the device with the baby. */
+  | { t: "mine"; mine: Mine[] }
+  /** Sing-along: a verse about this animal starts (`key` tells one singing from the next). */
+  | { t: "verse"; id: string; key: number }
+  /** Sing-along: the verse is over. */
+  | { t: "sung"; key: number }
+  /** Dance: the theme song starts, or is over. */
+  | { t: "dance"; on: boolean }
+  /** Storytime: a new book of these pictures, open at its first page. */
+  | { t: "book"; pages: string[]; read: boolean }
+  /** Storytime: turn to page `n` (the page after the last picture is good night). `read`: the device reads it out. */
+  | { t: "page"; n: number; read: boolean };
+
+export interface Popped {
+  id: string;
+  x: number;
+  y: number;
+  key: number;
+  /** How many times it has been poked. */
+  pokes?: number;
+}
+
+export interface BoardState {
+  mode: Mode;
+  popped: Popped[];
+  hidden: { id: string; open: boolean } | null;
+  round: { target: string; choices: string[]; misses: number; found: boolean; wrong: string | null } | null;
+  verse: { id: string; key: number } | null;
+  book: { pages: string[]; page: number } | null;
+  dancing: boolean;
+}
+
+export interface Heard {
+  text: string;
+  /** The picture whose recording, if there is one, says it instead. */
+  key?: string;
+  sound?: "pop" | "cheer" | "boop" | "swish" | "boing";
+}
+
+export const MAX_POPPED = 4;
+export const emptyBoard = (mode: Mode): BoardState => ({ mode, popped: [], hidden: null, round: null, verse: null, book: null, dancing: false });
+
+export function apply(state: BoardState, event: BoardEvent, thing: (id: string) => Thing | undefined, settings: Settings): { state: BoardState; heard: Heard | null } {
+  const spoken = (th: Thing): Heard => ({ text: settings.sounds ? th.say : `${th.word}!`, key: th.id });
+  switch (event.t) {
+    case "pop": {
+      const th = thing(event.id);
+      if (!th) return { state, heard: null };
+      const popped = [...state.popped, { id: event.id, x: event.x, y: event.y, key: event.key }].slice(-MAX_POPPED);
+      return { state: { ...state, popped }, heard: { ...spoken(th), sound: "pop" } };
+    }
+    case "poke": {
+      const poked = state.popped.find((p) => p.key === event.key);
+      const th = poked && thing(poked.id);
+      if (!poked || !th) return { state, heard: null };
+      // It goes to the end of the line, so it stays a while longer.
+      return { state: { ...state, popped: [...state.popped.filter((p) => p !== poked), { ...poked, pokes: (poked.pokes ?? 0) + 1 }] }, heard: { ...spoken(th), sound: "boing" } };
+    }
+    case "hide":
+      return thing(event.id) ? { state: { ...state, hidden: { id: event.id, open: false } }, heard: null } : { state, heard: null };
+    case "peek": {
+      if (!state.hidden || state.hidden.open) return { state, heard: null };
+      const th = thing(state.hidden.id);
+      return { state: { ...state, hidden: { ...state.hidden, open: true } }, heard: th ? { text: `Peekaboo! ${spoken(th).text}`, key: th.id, sound: "swish" } : null };
+    }
+    case "ask": {
+      const th = thing(event.target);
+      if (!th || !event.choices.includes(event.target) || event.choices.some((id) => !thing(id))) return { state, heard: null };
+      return { state: { ...state, round: { target: event.target, choices: event.choices, misses: 0, found: false, wrong: null } }, heard: { text: whereIs(th) } };
+    }
+    case "again": {
+      const round = state.round;
+      const th = round && !round.found ? thing(round.target) : undefined;
+      return { state, heard: th ? { text: whereIs(th) } : null };
+    }
+    case "pick": {
+      const round = state.round;
+      if (!round || round.found || !round.choices.includes(event.id)) return { state, heard: null };
+      const target = thing(round.target);
+      const picked = thing(event.id);
+      if (!target || !picked) return { state, heard: null };
+      if (event.id === round.target) {
+        return { state: { ...state, round: { ...round, found: true, wrong: null } }, heard: { text: `Yay! ${spoken(target).text}`, key: target.id, sound: "cheer" } };
+      }
+      // Not it: name what was tapped (that's learning too), and ask again. No buzzer.
+      return { state: { ...state, round: { ...round, misses: round.misses + 1, wrong: event.id } }, heard: { text: `${thatsThe(picked)} ${whereIs(target)}`, sound: "boop" } };
+    }
+    case "settings":
+      return { state: event.settings.mode === state.mode ? state : emptyBoard(event.settings.mode), heard: null };
+    case "family":
+    case "mine":
+      return { state, heard: null };
+    case "dance":
+      return state.mode === "dance" && state.dancing !== event.on ? { state: { ...state, dancing: event.on }, heard: null } : { state, heard: null };
+    case "verse":
+      return thing(event.id) && !state.verse ? { state: { ...state, verse: { id: event.id, key: event.key } }, heard: null } : { state, heard: null };
+    case "sung":
+      return state.verse?.key === event.key ? { state: { ...state, verse: null }, heard: null } : { state, heard: null };
+    case "book": {
+      const pages = event.pages.filter((id) => thing(id)).slice(0, 12);
+      return pages.length ? { state: { ...state, book: { pages, page: 0 } }, heard: event.read ? { text: pageText(thing(pages[0]!)!) } : null } : { state, heard: null };
+    }
+    case "page": {
+      const book = state.book;
+      if (!book) return { state, heard: null };
+      const n = Math.max(0, Math.min(book.pages.length, Math.floor(event.n)));
+      if (n === book.page) return { state, heard: null };
+      const next = { ...state, book: { ...book, page: n } };
+      if (!event.read) return { state: next, heard: { text: "", sound: "swish" } };
+      const text = n === book.pages.length ? goodNight(book.pages.map((id) => thing(id)!)) : pageText(thing(book.pages[n]!)!);
+      return { state: next, heard: { text, sound: "swish" } };
+    }
+    case "face":
+      return { state, heard: { text: "Peekaboo!", sound: "swish" } };
+  }
+}
+
+/** Whether a picture in a "Where's the…?" round should glow, as a hint, after two tries that weren't it. */
+export const hint = (state: BoardState) => !!state.round && !state.round.found && state.round.misses >= 2;

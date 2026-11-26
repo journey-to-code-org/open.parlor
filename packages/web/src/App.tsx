@@ -40,6 +40,7 @@ const Shootout = lazyScreen(() => import("./drive/Shootout").then((m) => m.Shoot
 const ArcadeTable = lazyScreen(() => import("./arcade/ArcadeTable").then((m) => m.ArcadeTable));
 const AirHockeyTable = lazyScreen(() => import("./arcade/AirHockeyTable").then((m) => m.AirHockeyTable));
 const QuestTable = lazyScreen(() => import("./quest/QuestTable").then((m) => m.QuestTable));
+const Peekaboo = lazyScreen(() => import("./peekaboo/Peekaboo").then((m) => m.Peekaboo));
 const CounterTable = lazyScreen(() => import("./counter/CounterTable").then((m) => m.CounterTable));
 const CourseEditor = lazyScreen(() => import("./golf/editors").then((m) => m.CourseEditor));
 const LaneEditor = lazyScreen(() => import("./golf/editors").then((m) => m.LaneEditor));
@@ -55,6 +56,8 @@ type Screen =
   | { kind: "wifi-host"; game: KitGameId; name: string; /** The other people playing at the host's device. */ others?: string[]; rules: unknown; seats: number; seed: number }
   | { kind: "wifi-join" }
   | { kind: "move" }
+  /** Peekaboo, the baby game: played here, or a video call joined from its link (`?peekaboo=join#code`). */
+  | { kind: "peekaboo" }
   | { kind: "arcade"; game: ArcadeGameId; rules: ArcadeRules; seats: number; seed: number; autofire: boolean; rival?: { name: string; score: number } }
   | { kind: "golf"; id: string }
   | { kind: "lane"; id: string }
@@ -79,6 +82,7 @@ function fromUrl(): Screen {
   if (q.get("wifi")) return { kind: "wifi-join" };
   // The same player on another device: its QR code is a link here, with the code after the #.
   if (q.get("me")) return { kind: "move" };
+  if (q.get("peekaboo")) return { kind: "peekaboo" };
   const golf = q.get("golf");
   if (golf) return { kind: "golf", id: golf };
   const lane = q.get("lane");
@@ -249,6 +253,7 @@ export function App() {
   if (screen.kind === "local-palace") return <LocalPalace key={screen.seed} {...screen} onLeave={home} />;
   if (screen.kind === "wifi-host") return <WifiHost key={screen.seed} {...screen} onLeave={() => setScreen({ kind: "setup" })} />;
   if (screen.kind === "wifi-join") return <WifiJoin onLeave={home} />;
+  if (screen.kind === "peekaboo") return <Peekaboo onLeave={home} />;
   if (screen.kind === "move") return <MoveDevice onLeave={home} onOpenHouse={openHouse} />;
   if (screen.kind === "sketchbook") return <Sketchbook onLeave={() => pickGame("drawguess")} />;
   if (screen.kind === "local-kit")
