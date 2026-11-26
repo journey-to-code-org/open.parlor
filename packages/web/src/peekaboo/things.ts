@@ -2,8 +2,8 @@
 // functions, so it is the same on both ends of a call and can be tested without a screen.
 
 export type Category = "animals" | "vehicles" | "things" | "shapes" | "colors" | "family";
-export type Mode = "tap" | "peek" | "find" | "sing" | "story";
-export const MODE_IDS: Mode[] = ["tap", "peek", "find", "sing", "story"];
+export type Mode = "tap" | "peek" | "find" | "sing" | "story" | "dance";
+export const MODE_IDS: Mode[] = ["tap", "peek", "find", "sing", "story", "dance"];
 
 export interface Thing {
   id: string;
@@ -181,9 +181,11 @@ export interface Settings {
   snaps: boolean;
   /** Play each picture's own sound effect after its name (a moo, a beep, a boing). */
   effects: boolean;
+  /** Play a little of the theme song when the game starts. */
+  theme: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { mode: "tap", categories: ["animals"], few: true, choices: 2, sounds: true, snaps: false, effects: true };
+export const DEFAULT_SETTINGS: Settings = { mode: "tap", categories: ["animals"], few: true, choices: 2, sounds: true, snaps: false, effects: true, theme: true };
 export const FEW = 6;
 
 /** Settings as saved, made safe: anything missing or odd falls back to the default. */
@@ -198,6 +200,7 @@ export function tidySettings(raw: unknown): Settings {
     sounds: typeof r.sounds === "boolean" ? r.sounds : DEFAULT_SETTINGS.sounds,
     snaps: typeof r.snaps === "boolean" ? r.snaps : DEFAULT_SETTINGS.snaps,
     effects: typeof r.effects === "boolean" ? r.effects : DEFAULT_SETTINGS.effects,
+    theme: typeof r.theme === "boolean" ? r.theme : DEFAULT_SETTINGS.theme,
   };
 }
 

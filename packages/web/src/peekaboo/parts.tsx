@@ -10,6 +10,7 @@ export const MODES: { id: Mode; name: string; emoji: string; what: string }[] = 
   { id: "peek", name: "Peekaboo", emoji: "🙈", what: "Something is under the blanket: tap to find it." },
   { id: "find", name: "Where's…?", emoji: "🔎", what: "Two pictures: tap the one asked for." },
   { id: "sing", name: "Sing", emoji: "🎵", what: "Old MacDonald, a verse for each animal: tap for the next. Sing along with the words." },
+  { id: "dance", name: "Dance", emoji: "💃", what: "The theme song, Little Feet Go Stomp: tap to start it. His pictures dance, and every tap throws stars." },
   { id: "story", name: "Story", emoji: "📖", what: "A little book of his pictures: tap the right side for the next page, the left to go back." },
 ];
 

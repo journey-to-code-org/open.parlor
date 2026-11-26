@@ -1253,3 +1253,63 @@
     animation: none !important;
   }
 }
+
+/* Dance: the theme song plays and his pictures dance in time (the song is about 120 beats a minute). */
+.pk-dance {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4cqmin;
+  animation: pk-disco 4s linear infinite;
+}
+.pk-dance-title {
+  margin: 0;
+  font-size: max(22px, 7.5cqmin);
+  font-weight: 900;
+  color: #e8559a;
+  text-shadow: 0 0.5cqmin 0 #fff;
+  animation: pk-stomp 1s ease-in-out infinite;
+}
+.pk-dancers {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 3cqmin 5cqmin;
+}
+.pk-dancer {
+  animation: pk-dance 1s ease-in-out infinite;
+}
+/* Every other one leans the other way. */
+.pk-dancer:nth-child(even) {
+  animation-delay: -0.5s;
+}
+.pk-dancer .pk-emoji {
+  font-size: 19cqmin;
+}
+.pk-dancer .pk-drawn,
+.pk-dancer .pk-picture img {
+  width: 19cqmin;
+  height: 19cqmin;
+}
+.pk-dancer .pk-word {
+  font-size: max(13px, 3.6cqmin);
+}
+@keyframes pk-stomp {
+  0%, 50%, 100% { scale: 1; }
+  10%, 60% { scale: 1.12 0.9; }
+}
+@keyframes pk-disco {
+  0%, 100% { background: rgba(255, 143, 177, 0.16); }
+  25% { background: rgba(255, 214, 102, 0.2); }
+  50% { background: rgba(110, 198, 255, 0.18); }
+  75% { background: rgba(160, 140, 255, 0.16); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pk-dance,
+  .pk-dance-title,
+  .pk-dancer {
+    animation: none !important;
+  }
+}

@@ -83,7 +83,7 @@ describe("the pictures", () => {
 
   it("reads saved settings safely", () => {
     expect(tidySettings(null)).toEqual(DEFAULT_SETTINGS);
-    expect(tidySettings({ mode: "find", categories: ["vehicles", "nope", "vehicles"], few: false, choices: 3, sounds: false, snaps: true, effects: false })).toEqual({ mode: "find", categories: ["vehicles"], few: false, choices: 3, sounds: false, snaps: true, effects: false });
+    expect(tidySettings({ mode: "find", categories: ["vehicles", "nope", "vehicles"], few: false, choices: 3, sounds: false, snaps: true, effects: false, theme: false })).toEqual({ mode: "find", categories: ["vehicles"], few: false, choices: 3, sounds: false, snaps: true, effects: false, theme: false });
     expect(tidySettings({}).effects).toBe(true);
     expect(tidySettings({ mode: "story" }).mode).toBe("story");
     expect(tidySettings({ mode: "rm -rf", categories: [] }).mode).toBe("tap");
@@ -264,5 +264,17 @@ describe("poking a picture", () => {
     expect(poked.heard).toEqual({ text: "Cow! Moo!", key: cow_, sound: "boing" });
     expect(poked.state.popped.map((p) => [p.key, p.pokes ?? 0])).toEqual([[2, 0], [1, 1]]);
     expect(apply(poked.state, { t: "poke", key: 99 }, thing, settings).state).toBe(poked.state);
+  });
+});
+
+describe("the dance", () => {
+  it("starts and stops once, and only in its own mode", () => {
+    const settings = DEFAULT_SETTINGS;
+    const on = apply(emptyBoard("dance"), { t: "dance", on: true }, thing, settings).state;
+    expect(on.dancing).toBe(true);
+    expect(apply(on, { t: "dance", on: true }, thing, settings).state).toBe(on);
+    expect(apply(on, { t: "dance", on: false }, thing, settings).state.dancing).toBe(false);
+    const tap = emptyBoard("tap");
+    expect(apply(tap, { t: "dance", on: true }, thing, settings).state).toBe(tap);
   });
 });

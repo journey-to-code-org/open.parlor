@@ -20,7 +20,8 @@ import { playTune, singable, timing, verse } from "./song";
 import { makeBook, pageText } from "./story";
 import { loadJson, saveJson } from "./store";
 import { CATEGORIES, createBag, familyThings, findRound, inPlay, mineThings, placeAt, randomFrom, THINGS, tidyMine, whereIs, type Category, type Mine, type Person, type Settings, type Thing } from "./things";
-import { audioContext, dataUrl, loadFamily, loadSettings, playData, quiet, recording, saveFamily, saveSettings, say, sayAnd, sounds, tidyFamily } from "./voice";
+import theme from "./little-feet-go-stomp.mp3";
+import { audioContext, dataUrl, loadFamily, loadSettings, playData, playSong, quiet, stopSong, recording, saveFamily, saveSettings, say, sayAnd, sounds, tidyFamily } from "./voice";
 import "./peekaboo.css";
 
 /** A tap closer than this to the one before is the same slap: babies hit the screen with a whole hand, again and again. */
@@ -161,6 +162,13 @@ function useGame({ settings, family, mine, practice, speaks, leads, reads, send,
         } else setTimeout(end, length);
         return;
       }
+      if (event.t === "dance" && state !== before) {
+        // The theme song, on the device that makes the sounds; when it has played through, the dance is over.
+        if (!speaks) return;
+        if (!event.on) return stopSong(700);
+        void playSong(theme, 0.85).ended.then((played) => played && run({ t: "dance", on: false }, true));
+        return;
+      }
       hear(heard);
       if (event.t === "pop" && state !== before) fxRef.current?.burst(event.x, event.y);
       if (heard?.sound === "cheer") fxRef.current?.confetti();
@@ -171,12 +179,19 @@ function useGame({ settings, family, mine, practice, speaks, leads, reads, send,
     [thing, hear, send, speaks],
   );
 
-  useEffect(() => () => stopTune.current(), []);
+  useEffect(
+    () => () => {
+      stopTune.current();
+      if (speaks) stopSong(200);
+    },
+    [speaks],
+  );
 
   // A new mode starts on an empty board.
   useEffect(() => {
     if (boardRef.current.mode !== settings.mode) {
       stopTune.current();
+      if (speaks && boardRef.current.dancing) stopSong(500);
       set(emptyBoard(settings.mode));
     }
   }, [settings.mode]);
@@ -247,6 +262,11 @@ function useGame({ settings, family, mine, practice, speaks, leads, reads, send,
         setJump((j) => j + 1);
         const animal = thing(b.verse.id);
         if (speaks && animal && settingsRef.current.effects) playEffect(animal);
+      } else if (b.mode === "dance" && !b.dancing) run({ t: "dance", on: true }, true);
+      else if (b.mode === "dance") {
+        // While the song plays, every tap is a jump and a burst of stars.
+        setJump((j) => j + 1);
+        fxRef.current?.burst(x, y);
       } else if (b.mode === "story") turn(x < 0.5 ? -1 : 1);
       else return false;
       return true;
@@ -264,7 +284,7 @@ function useGame({ settings, family, mine, practice, speaks, leads, reads, send,
         since = lastTouch.current;
         calls = 0;
       }
-      if (calls >= IDLE_CALLS || boardRef.current.verse || performance.now() - since < IDLE_MS * (calls + 1)) return;
+      if (calls >= IDLE_CALLS || boardRef.current.verse || boardRef.current.dancing || performance.now() - since < IDLE_MS * (calls + 1)) return;
       calls++;
       sounds.twinkle();
       fxRef.current?.burst(0.2 + Math.random() * 0.6, 0.25 + Math.random() * 0.5);
@@ -391,6 +411,31 @@ function Board({ game, children }: { game: ReturnType<typeof useGame>; children?
           <div className="pk-sing-invite" aria-hidden="true">
             <span>🚜</span>
             <p>🎵 Tap to sing!</p>
+          </div>
+        ))}
+      {board.mode === "dance" &&
+        (board.dancing ? (
+          <div className="pk-dance">
+            <div className="pk-notes" aria-hidden="true">
+              {["🎵", "🎶", "🎵", "🎶", "🎵"].map((n, i) => (
+                <span key={i} style={{ ["--i" as string]: i }}>
+                  {n}
+                </span>
+              ))}
+            </div>
+            <p className="pk-dance-title">Little Feet Go Stomp!</p>
+            <div key={game.jump} className={`pk-dancers${game.jump ? " pk-jump" : ""}`}>
+              {game.playing.slice(0, 6).map((th, i) => (
+                <div key={th.id} className="pk-dancer" style={{ ["--i" as string]: i }}>
+                  <Picture thing={th} />
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="pk-sing-invite" aria-hidden="true">
+            <span>💃</span>
+            <p>🎶 Tap to dance!</p>
           </div>
         ))}
       {board.mode === "story" && book && (
@@ -651,12 +696,20 @@ function WithBaby({ onLeave }: { onLeave: () => void }) {
     // A grown-up's tap: the one that lets the page make sounds and go full screen.
     sounds.pop();
     void say("Hi!");
+    // A little of the theme song to open with, until he touches the screen (or a quarter of a minute).
+    if (!started && settings.theme && settings.mode !== "dance") {
+      const { token } = playSong(theme, 0.4);
+      const hush = () => stopSong(900, token);
+      setTimeout(() => addEventListener("pointerdown", hush, { once: true }), 400);
+      setTimeout(hush, 15_000);
+    }
     void document.documentElement.requestFullscreen?.().catch(() => {});
     setStarted(true);
     setPanel(false);
   };
   const leave = () => {
     quiet();
+    stopSong(200);
     void call?.hangUp();
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
     onLeave();
@@ -740,6 +793,9 @@ function WithBaby({ onLeave }: { onLeave: () => void }) {
               </label>
               <label className="pk-check">
                 <input type="checkbox" checked={settings.effects} onChange={(e) => changeSettings({ ...settings, effects: e.target.checked })} /> Play each one's own sound after its name (a moo, a beep-beep, a boing)
+              </label>
+              <label className="pk-check">
+                <input type="checkbox" checked={settings.theme} onChange={(e) => changeSettings({ ...settings, theme: e.target.checked })} /> 🎶 Play a little of the theme song when the game starts
               </label>
               {settings.mode === "find" && (
                 <label className="pk-check">

@@ -67,6 +67,41 @@ export function playData(url: string): Promise<void> {
   });
 }
 
+// The theme song (or any long music): one at a time, apart from the voice, so naming things doesn't stop it.
+let song: { el: HTMLAudioElement; token: number } | null = null;
+let songs = 0;
+/** Stop the song, fading it out. With a token, only if that song is still the one playing. */
+export function stopSong(fadeMs = 500, token?: number) {
+  const now = song;
+  if (!now || (token !== undefined && token !== now.token)) return;
+  song = null;
+  const from = now.el.volume;
+  const began = performance.now();
+  const fade = setInterval(() => {
+    const t = (performance.now() - began) / Math.max(1, fadeMs);
+    if (t >= 1) {
+      clearInterval(fade);
+      now.el.pause();
+    } else now.el.volume = from * (1 - t);
+  }, 40);
+}
+/** Play a song from its address. `ended` resolves true when it played to its end, false when it was stopped. */
+export function playSong(url: string, volume = 0.8): { token: number; ended: Promise<boolean> } {
+  stopSong(150);
+  const el = new Audio(url);
+  el.volume = volume;
+  const token = ++songs;
+  song = { el, token };
+  const ended = new Promise<boolean>((done) => {
+    el.addEventListener("ended", () => (song?.token === token && (song = null), done(true)), { once: true });
+    // A song that plays to its end is paused by the browser just before "ended": that is not being stopped.
+    el.addEventListener("pause", () => !el.ended && done(false));
+    el.addEventListener("error", () => (song?.token === token && (song = null), done(false)), { once: true });
+  });
+  void el.play().catch(() => {});
+  return { token, ended };
+}
+
 /** A blob as a data URL, for sending. */
 export const dataUrl = (blob: Blob) =>
   new Promise<string>((yes, no) => {

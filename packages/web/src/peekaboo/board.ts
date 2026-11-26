@@ -32,6 +32,8 @@ export type BoardEvent =
   | { t: "verse"; id: string; key: number }
   /** Sing-along: the verse is over. */
   | { t: "sung"; key: number }
+  /** Dance: the theme song starts, or is over. */
+  | { t: "dance"; on: boolean }
   /** Storytime: a new book of these pictures, open at its first page. */
   | { t: "book"; pages: string[]; read: boolean }
   /** Storytime: turn to page `n` (the page after the last picture is good night). `read`: the device reads it out. */
@@ -53,6 +55,7 @@ export interface BoardState {
   round: { target: string; choices: string[]; misses: number; found: boolean; wrong: string | null } | null;
   verse: { id: string; key: number } | null;
   book: { pages: string[]; page: number } | null;
+  dancing: boolean;
 }
 
 export interface Heard {
@@ -63,7 +66,7 @@ export interface Heard {
 }
 
 export const MAX_POPPED = 4;
-export const emptyBoard = (mode: Mode): BoardState => ({ mode, popped: [], hidden: null, round: null, verse: null, book: null });
+export const emptyBoard = (mode: Mode): BoardState => ({ mode, popped: [], hidden: null, round: null, verse: null, book: null, dancing: false });
 
 export function apply(state: BoardState, event: BoardEvent, thing: (id: string) => Thing | undefined, settings: Settings): { state: BoardState; heard: Heard | null } {
   const spoken = (th: Thing): Heard => ({ text: settings.sounds ? th.say : `${th.word}!`, key: th.id });
@@ -115,6 +118,8 @@ export function apply(state: BoardState, event: BoardEvent, thing: (id: string) 
     case "family":
     case "mine":
       return { state, heard: null };
+    case "dance":
+      return state.mode === "dance" && state.dancing !== event.on ? { state: { ...state, dancing: event.on }, heard: null } : { state, heard: null };
     case "verse":
       return thing(event.id) && !state.verse ? { state: { ...state, verse: { id: event.id, key: event.key } }, heard: null } : { state, heard: null };
     case "sung":
