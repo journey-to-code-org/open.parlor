@@ -2,7 +2,8 @@
 // apply the same events in the same way, so their boards stay alike. `apply` also says what should
 // be heard for each event, and the screen plays it (only on the device with the baby, in a call:
 // the other parent hears it through the call).
-import { thatsThe, whereIs, type Mode, type Person, type Settings, type Thing } from "./things";
+import { goodNight, pageText } from "./story";
+import { thatsThe, whereIs, type Mine, type Mode, type Person, type Settings, type Thing } from "./things";
 
 export type BoardEvent =
   /** A picture pops up where a finger touched (x and y are fractions of the board). */
@@ -22,7 +23,17 @@ export type BoardEvent =
   /** The family, from the device with the baby. */
   | { t: "family"; family: Person[] }
   /** In a call: the other parent hides behind a blanket, then "Peekaboo!". */
-  | { t: "face" };
+  | { t: "face" }
+  /** The grown-ups' own pictures, from the device with the baby. */
+  | { t: "mine"; mine: Mine[] }
+  /** Sing-along: a verse about this animal starts (`key` tells one singing from the next). */
+  | { t: "verse"; id: string; key: number }
+  /** Sing-along: the verse is over. */
+  | { t: "sung"; key: number }
+  /** Storytime: a new book of these pictures, open at its first page. */
+  | { t: "book"; pages: string[]; read: boolean }
+  /** Storytime: turn to page `n` (the page after the last picture is good night). `read`: the device reads it out. */
+  | { t: "page"; n: number; read: boolean };
 
 export interface Popped {
   id: string;
@@ -36,6 +47,8 @@ export interface BoardState {
   popped: Popped[];
   hidden: { id: string; open: boolean } | null;
   round: { target: string; choices: string[]; misses: number; found: boolean; wrong: string | null } | null;
+  verse: { id: string; key: number } | null;
+  book: { pages: string[]; page: number } | null;
 }
 
 export interface Heard {
@@ -46,7 +59,7 @@ export interface Heard {
 }
 
 export const MAX_POPPED = 4;
-export const emptyBoard = (mode: Mode): BoardState => ({ mode, popped: [], hidden: null, round: null });
+export const emptyBoard = (mode: Mode): BoardState => ({ mode, popped: [], hidden: null, round: null, verse: null, book: null });
 
 export function apply(state: BoardState, event: BoardEvent, thing: (id: string) => Thing | undefined, settings: Settings): { state: BoardState; heard: Heard | null } {
   const spoken = (th: Thing): Heard => ({ text: settings.sounds ? th.say : `${th.word}!`, key: th.id });
@@ -89,7 +102,26 @@ export function apply(state: BoardState, event: BoardEvent, thing: (id: string) 
     case "settings":
       return { state: event.settings.mode === state.mode ? state : emptyBoard(event.settings.mode), heard: null };
     case "family":
+    case "mine":
       return { state, heard: null };
+    case "verse":
+      return thing(event.id) && !state.verse ? { state: { ...state, verse: { id: event.id, key: event.key } }, heard: null } : { state, heard: null };
+    case "sung":
+      return state.verse?.key === event.key ? { state: { ...state, verse: null }, heard: null } : { state, heard: null };
+    case "book": {
+      const pages = event.pages.filter((id) => thing(id)).slice(0, 12);
+      return pages.length ? { state: { ...state, book: { pages, page: 0 } }, heard: event.read ? { text: pageText(thing(pages[0]!)!) } : null } : { state, heard: null };
+    }
+    case "page": {
+      const book = state.book;
+      if (!book) return { state, heard: null };
+      const n = Math.max(0, Math.min(book.pages.length, Math.floor(event.n)));
+      if (n === book.page) return { state, heard: null };
+      const next = { ...state, book: { ...book, page: n } };
+      if (!event.read) return { state: next, heard: { text: "", sound: "swish" } };
+      const text = n === book.pages.length ? goodNight(book.pages.map((id) => thing(id)!)) : pageText(thing(book.pages[n]!)!);
+      return { state: next, heard: { text, sound: "swish" } };
+    }
     case "face":
       return { state, heard: { text: "Peekaboo!", sound: "swish" } };
   }

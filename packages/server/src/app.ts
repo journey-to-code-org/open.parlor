@@ -12,6 +12,7 @@ import { PAGE_MOUNTS, createPages, publicOrigin } from "./pages.js";
 import { createChallenges } from "./challenges.js";
 import { createDevices } from "./devices.js";
 import { createCalls, type CallOptions } from "./calls.js";
+import { createSurprises } from "./surprises.js";
 import { createSpectate } from "./spectate.js";
 import { createTv } from "./tv.js";
 import type { Backups } from "./backup.js";
@@ -181,6 +182,8 @@ export function createCardRoom(
   const devices = createDevices({ housesOf: async (player) => (await houses.all()).filter((h) => h.members.some((m) => m.player === player)).map((h) => ({ slug: h.slug, name: h.name })) });
   // Peekaboo's video calls: the server passes the two browsers' handshake, nothing more (calls.ts).
   const calls = createCalls(options.calls);
+  // Peekaboo's surprise box: surprises sent to the baby from someone else's phone (surprises.ts).
+  const surprises = createSurprises(rooms.sync);
   const lobby = createLobby(rooms, { push, gameOn: catalogue.isOn, ...options.lobby });
   const spectate = createSpectate(rooms, catalogue, options.spectate);
   // A television as the table and the phones as controllers (tv.ts).
@@ -217,7 +220,7 @@ export function createCardRoom(
   }
 
   /** Everything a blocked player may not do: sit, move, talk, make houses, challenges or designs. Reading is left alone. */
-  const ACTS = ["/rooms", "/houses", "/_zb/chat", "/challenges", "/lobby", "/designs", "/courses", "/push", "/spectate", "/tv", "/bugs", "/me"];
+  const ACTS = ["/rooms", "/houses", "/_zb/chat", "/challenges", "/lobby", "/designs", "/courses", "/push", "/spectate", "/tv", "/bugs", "/me", "/surprises"];
   /** A table's chat (tablechat.ts): the parlor's, under the rooms kit's address. */
   const TABLE_CHAT = /^\/rooms\/[^/]+\/(chat|say)$/;
   const under = (pathname: string, mounts: string[]) => mounts.some((m) => pathname === m || pathname.startsWith(`${m}/`));
@@ -227,7 +230,7 @@ export function createCardRoom(
   }
   /** The routes that aren't the rooms kit's own. */
   const ours = async (request: Request) =>
-    (await refusal(request)) ?? (await github.fetch(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await news.fetch(request)) ?? (await designs.fetch(request)) ?? (await courses.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await tunables.fetch(request)) ?? (await pages.fetch(request)) ?? (await spectate.fetch(request)) ?? (await tv.fetch(request)) ?? (await challenges.fetch(request)) ?? (await devices.fetch(request)) ?? (await calls.fetch(request)) ?? (await lobby.fetch(request)) ?? (await tables.fetch(request)) ?? (await houses.fetch(request));
+    (await refusal(request)) ?? (await github.fetch(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await news.fetch(request)) ?? (await designs.fetch(request)) ?? (await courses.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await tunables.fetch(request)) ?? (await pages.fetch(request)) ?? (await spectate.fetch(request)) ?? (await tv.fetch(request)) ?? (await challenges.fetch(request)) ?? (await devices.fetch(request)) ?? (await calls.fetch(request)) ?? (await surprises.fetch(request)) ?? (await lobby.fetch(request)) ?? (await tables.fetch(request)) ?? (await houses.fetch(request));
 
   return {
     rooms,
@@ -300,7 +303,7 @@ export function createCardRoom(
         req.headers.cookie = as.cookie;
         return this.handle(req, res);
       }
-      if (TABLE_CHAT.test(url.pathname) || under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/tunables", "/spectate", "/tv", "/bugs", "/news", "/me", "/calls", ...PAGE_MOUNTS])) {
+      if (TABLE_CHAT.test(url.pathname) || under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/tunables", "/spectate", "/tv", "/bugs", "/news", "/me", "/calls", "/surprises", ...PAGE_MOUNTS])) {
         const chunks: Buffer[] = [];
         let size = 0;
         for await (const chunk of req) {
