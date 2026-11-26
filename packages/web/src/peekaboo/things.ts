@@ -179,9 +179,11 @@ export interface Settings {
   sounds: boolean;
   /** Take a photo of his face when he finds one, lifts the blanket, or opens a surprise. */
   snaps: boolean;
+  /** Play each picture's own sound effect after its name (a moo, a beep, a boing). */
+  effects: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { mode: "tap", categories: ["animals"], few: true, choices: 2, sounds: true, snaps: false };
+export const DEFAULT_SETTINGS: Settings = { mode: "tap", categories: ["animals"], few: true, choices: 2, sounds: true, snaps: false, effects: true };
 export const FEW = 6;
 
 /** Settings as saved, made safe: anything missing or odd falls back to the default. */
@@ -195,6 +197,7 @@ export function tidySettings(raw: unknown): Settings {
     choices: r.choices === 3 ? 3 : 2,
     sounds: typeof r.sounds === "boolean" ? r.sounds : DEFAULT_SETTINGS.sounds,
     snaps: typeof r.snaps === "boolean" ? r.snaps : DEFAULT_SETTINGS.snaps,
+    effects: typeof r.effects === "boolean" ? r.effects : DEFAULT_SETTINGS.effects,
   };
 }
 

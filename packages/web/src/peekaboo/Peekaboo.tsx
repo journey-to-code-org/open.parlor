@@ -10,10 +10,12 @@ import { ShareQr } from "../ShareQr";
 import { stayAwake } from "../wifi/link";
 import { apply, emptyBoard, hint, type BoardEvent, type BoardState, type Heard } from "./board";
 import { joinLink, PeekabooCall, type CallState } from "./call";
+import { FxLayer, type Fx } from "./fx";
 import { frame, keepSnap, loadWords, saveWords, type Box, type Words } from "./keep";
 import { Album, Family, MyPictures, restoreBox, SurpriseBox, Voices, WordsDiary } from "./panels";
 import { HoldButton, MODES, ModePicker, Picture, Video } from "./parts";
 import { SendSurprise } from "./SendSurprise";
+import { effect } from "./sfx";
 import { playTune, singable, timing, verse } from "./song";
 import { makeBook, pageText } from "./story";
 import { loadJson, saveJson } from "./store";
@@ -48,6 +50,8 @@ type Wire =
   | { t: "sync"; settings: Settings; family: Person[]; mine: Mine[]; board: BoardState }
   /** A photo taken on one end, kept in both albums. */
   | { t: "snap"; photo: string; caption: string; at: number }
+  /** A finger on the other end's board: it sparkles here too, so each sees where the other touches. */
+  | { t: "touch"; x: number; y: number }
   /** A surprise being opened on the baby's screen (without its sound: that comes through the call). */
   | { t: "gift"; gift: Omit<Gift, "audio"> | null };
 
@@ -65,12 +69,24 @@ interface GameOptions {
   send: (w: Wire) => void;
   /** A moment worth a photo of his face. */
   onMoment?: (caption: string) => void;
+  /** The baby is playing now (the settings are shut): a sparkle and a chime now and then if nobody touches. */
+  awake?: boolean;
 }
 
-function useGame({ settings, family, mine, practice, speaks, leads, reads, send, onMoment }: GameOptions) {
+/** A picture's own sound effect; shapes and colours take a note each from where they come in their kind. */
+const playEffect = (th: Thing) => effect(th, Math.max(0, THINGS.filter((x) => x.category === th.category).indexOf(th)));
+/** How long nobody has to touch before the board calls for attention, and how many times it does. */
+const IDLE_MS = 12_000;
+const IDLE_CALLS = 3;
+
+function useGame({ settings, family, mine, practice, speaks, leads, reads, send, onMoment, awake = false }: GameOptions) {
   const [board, setBoard] = useState<BoardState>(() => emptyBoard(settings.mode));
   const [face, setFace] = useState(false);
   const [verseStart, setVerseStart] = useState(0);
+  const [jump, setJump] = useState(0);
+  const fxRef = useRef<Fx | null>(null);
+  const said = useRef(0);
+  const lastTouch = useRef(performance.now());
   const boardRef = useRef(board);
   boardRef.current = board;
   const all = useMemo(() => new Map([...THINGS, ...familyThings(family), ...mineThings(mine)].map((th) => [th.id, th])), [family, mine]);
@@ -90,9 +106,16 @@ function useGame({ settings, family, mine, practice, speaks, leads, reads, send,
     (heard: Heard | null) => {
       if (!heard || !speaks) return;
       if (heard.sound) sounds[heard.sound]();
-      if (heard.text) void say(heard.text, heard.key);
+      const token = ++said.current;
+      if (!heard.text) return;
+      const th = heard.key ? thing(heard.key) : undefined;
+      // Its name first, then its own sound (a moo, a beep), unless something else has been said since.
+      const patience = new Promise<void>((done) => setTimeout(done, 1500 + heard.text.length * 90));
+      void sayAnd(heard.text, heard.key)
+        .then((over) => Promise.race([over, patience]))
+        .then(() => th && settingsRef.current.effects && said.current === token && playEffect(th));
     },
-    [speaks],
+    [speaks, thing],
   );
 
   const set = (state: BoardState) => {
@@ -139,6 +162,9 @@ function useGame({ settings, family, mine, practice, speaks, leads, reads, send,
         return;
       }
       hear(heard);
+      if (event.t === "pop" && state !== before) fxRef.current?.burst(event.x, event.y);
+      if (heard?.sound === "cheer") fxRef.current?.confetti();
+      if (event.t === "peek" && heard) fxRef.current?.confetti(0.5, 0.5);
       if (heard?.sound === "cheer" && event.t === "pick") momentRef.current?.(`Found the ${thing(event.id)?.word.toLowerCase()}!`);
       if (event.t === "peek" && heard) momentRef.current?.(`Peekaboo, ${thing(before.hidden!.id)?.word.toLowerCase()}!`);
     },
@@ -191,23 +217,62 @@ function useGame({ settings, family, mine, practice, speaks, leads, reads, send,
     [run, playing, reads],
   );
 
-  /** A tap on the board (x and y as fractions of it), or on a picture. */
-  const tap = useCallback(
-    (x: number, y: number, on?: string) => {
-      const now = performance.now();
-      if (now - lastTap.current < TAP_GAP_MS) return;
-      lastTap.current = now;
-      const b = boardRef.current;
-      if (b.mode === "tap" && playing.length) run({ t: "pop", id: bag.next().id, ...placeAt(x, y), key: Math.floor(Math.random() * 2 ** 31) }, true);
-      else if (b.mode === "peek" && b.hidden && !b.hidden.open) run({ t: "peek" }, true);
-      else if (b.mode === "find" && b.round && !b.round.found) run(on ? { t: "pick", id: on } : { t: "again" }, true);
-      else if (b.mode === "sing" && !b.verse) run({ t: "verse", id: singBag.next().id, key: Math.floor(Math.random() * 2 ** 31) }, true);
-      else if (b.mode === "story") turn(x < 0.5 ? -1 : 1);
+  /** Any touch at all: sparkles at once, here and on the other end, whatever else it does. */
+  const touch = useCallback(
+    (x: number, y: number) => {
+      lastTouch.current = performance.now();
+      fxRef.current?.ripple(x, y);
+      send({ t: "touch", x, y });
     },
-    [playing, bag, singBag, run, turn],
+    [send],
   );
 
-  return { board, setBoard, boardRef, face, thing, run, tap, turn, playing, verseStart };
+  /** A tap on the board (x and y as fractions of it), on a choice, or on a picture that popped up. Answers whether it did anything. */
+  const tap = useCallback(
+    (x: number, y: number, on?: string, popped?: number): boolean => {
+      const now = performance.now();
+      if (now - lastTap.current < TAP_GAP_MS) return false;
+      lastTap.current = now;
+      const b = boardRef.current;
+      if (b.mode === "tap" && playing.length) {
+        // A picture poked says its name again, twice; after that a new one takes its place (babies hit one spot over and over).
+        const poked = popped === undefined ? undefined : b.popped.find((p) => p.key === popped);
+        if (poked && (poked.pokes ?? 0) < 2) run({ t: "poke", key: poked.key }, true);
+        else run({ t: "pop", id: bag.next().id, ...placeAt(x, y), key: Math.floor(Math.random() * 2 ** 31) }, true);
+      } else if (b.mode === "peek" && b.hidden && !b.hidden.open) run({ t: "peek" }, true);
+      else if (b.mode === "find" && b.round && !b.round.found) run(on ? { t: "pick", id: on } : { t: "again" }, true);
+      else if (b.mode === "sing" && !b.verse) run({ t: "verse", id: singBag.next().id, key: Math.floor(Math.random() * 2 ** 31) }, true);
+      else if (b.mode === "sing" && b.verse) {
+        // Mid-verse, a tap makes the animal jump and call out.
+        setJump((j) => j + 1);
+        const animal = thing(b.verse.id);
+        if (speaks && animal && settingsRef.current.effects) playEffect(animal);
+      } else if (b.mode === "story") turn(x < 0.5 ? -1 : 1);
+      else return false;
+      return true;
+    },
+    [playing, bag, singBag, run, turn, thing, speaks],
+  );
+
+  // Nobody has touched for a while: a sparkle and a soft chime, a few times, then it waits quietly.
+  useEffect(() => {
+    if (!awake || !speaks) return;
+    let calls = 0;
+    let since = (lastTouch.current = performance.now());
+    const timer = setInterval(() => {
+      if (lastTouch.current !== since) {
+        since = lastTouch.current;
+        calls = 0;
+      }
+      if (calls >= IDLE_CALLS || boardRef.current.verse || performance.now() - since < IDLE_MS * (calls + 1)) return;
+      calls++;
+      sounds.twinkle();
+      fxRef.current?.burst(0.2 + Math.random() * 0.6, 0.25 + Math.random() * 0.5);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [awake, speaks]);
+
+  return { board, setBoard, boardRef, face, thing, run, tap, touch, turn, playing, verseStart, fxRef, jump, speaks };
 }
 
 /** The words of the verse being sung, the line being sung now the biggest. */
@@ -239,11 +304,27 @@ function Lyrics({ animal, start }: { animal: Thing; start: number }) {
 function Board({ game, children }: { game: ReturnType<typeof useGame>; children?: React.ReactNode }) {
   const { board, thing, tap } = game;
   const el = useRef<HTMLDivElement>(null);
-  const down = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if ((e.target as HTMLElement).closest("[data-own-tap]")) return;
+  const at = (e: ReactPointerEvent<HTMLDivElement>) => {
     const box = el.current!.getBoundingClientRect();
-    const on = (e.target as HTMLElement).closest<HTMLElement>("[data-thing]")?.dataset.thing;
-    tap((e.clientX - box.left) / box.width, (e.clientY - box.top) / box.height, on);
+    return [(e.clientX - box.left) / box.width, (e.clientY - box.top) / box.height] as const;
+  };
+  const down = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const hit = e.target as HTMLElement;
+    if (hit.closest("[data-own-tap]")) return;
+    const [x, y] = at(e);
+    game.touch(x, y);
+    const on = hit.closest<HTMLElement>("[data-thing]")?.dataset.thing;
+    const popped = hit.closest<HTMLElement>("[data-pop]")?.dataset.pop;
+    const did = tap(x, y, on, popped === undefined ? undefined : Number(popped));
+    if (game.speaks) {
+      if (!did) sounds.tick();
+      navigator.vibrate?.(8);
+    }
+  };
+  /** A finger dragged across the board leaves a trail of stars. */
+  const move = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "mouse" && !e.buttons) return;
+    game.fxRef.current?.trail(...at(e));
   };
   const target = board.round ? thing(board.round.target) : undefined;
   const hidden = board.hidden ? thing(board.hidden.id) : undefined;
@@ -251,12 +332,13 @@ function Board({ game, children }: { game: ReturnType<typeof useGame>; children?
   const book = board.book;
   const page = book && book.page < book.pages.length ? thing(book.pages[book.page]!) : undefined;
   return (
-    <div ref={el} className={`pk-board pk-mode-${board.mode}`} onPointerDown={down} role="application" aria-label="The baby's board: tap anywhere">
+    <div ref={el} className={`pk-board pk-mode-${board.mode}`} onPointerDown={down} onPointerMove={move} role="application" aria-label="The baby's board: tap anywhere">
+      <div className="pk-sky" aria-hidden="true" />
       {board.mode === "tap" && !board.popped.length && <p className="pk-invite" aria-hidden="true">👋</p>}
       {board.popped.map((p) => {
         const th = thing(p.id);
         return th ? (
-          <div key={p.key} className="pk-pop" style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%` }}>
+          <div key={`${p.key}:${p.pokes ?? 0}`} data-pop={p.key} className={`pk-pop ${p.pokes ? "pk-poked" : `pk-in-${th.category}`}`} style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%` }}>
             <Picture thing={th} />
           </div>
         ) : null;
@@ -264,6 +346,9 @@ function Board({ game, children }: { game: ReturnType<typeof useGame>; children?
       {board.mode === "peek" && hidden && (
         <div className={`pk-peek${board.hidden!.open ? " pk-open" : ""}`}>
           <Picture thing={hidden} />
+          <span className="pk-eyes" aria-hidden="true">
+            👀
+          </span>
           <div className="pk-blanket" aria-hidden="true" />
         </div>
       )}
@@ -288,8 +373,17 @@ function Board({ game, children }: { game: ReturnType<typeof useGame>; children?
       {board.mode === "sing" &&
         (singing ? (
           <div className="pk-sing" key={board.verse!.key}>
+            <div className="pk-notes" aria-hidden="true">
+              {["🎵", "🎶", "🎵", "🎶", "🎵"].map((n, i) => (
+                <span key={i} style={{ ["--i" as string]: i }}>
+                  {n}
+                </span>
+              ))}
+            </div>
             <div className="pk-bounce">
-              <Picture thing={singing} />
+              <div key={game.jump} className={game.jump ? "pk-jump" : ""}>
+                <Picture thing={singing} />
+              </div>
             </div>
             <Lyrics animal={singing} start={game.verseStart} />
           </div>
@@ -331,6 +425,7 @@ function Board({ game, children }: { game: ReturnType<typeof useGame>; children?
         </div>
       )}
       {children}
+      <FxLayer ref={game.fxRef} />
     </div>
   );
 }
@@ -434,7 +529,8 @@ function WithBaby({ onLeave }: { onLeave: () => void }) {
     [send],
   );
 
-  const game = useGame({ settings, family, mine, practice: words.practice, speaks: true, leads: true, reads: !connected, send, onMoment });
+  const awakeNow = started && !panel && !opened;
+  const game = useGame({ settings, family, mine, practice: words.practice, speaks: true, leads: true, reads: !connected, send, onMoment, awake: awakeNow });
 
   const changeSettings = (next: Settings) => {
     setSettings(next);
@@ -477,6 +573,7 @@ function WithBaby({ onLeave }: { onLeave: () => void }) {
       call.on("open", () => call.send({ t: "sync", settings: settingsRef.current, family: familyRef.current, mine: mineRef.current, board: game.boardRef.current })),
       call.on("message", (w) => {
         if (w.t === "sync" || w.t === "family" || w.t === "mine" || w.t === "gift") return; // these are this device's to say
+        if (w.t === "touch") return game.fxRef.current?.ripple(w.x, w.y);
         if (w.t === "snap") {
           void fetch(w.photo)
             .then((r) => r.blob())
@@ -496,7 +593,7 @@ function WithBaby({ onLeave }: { onLeave: () => void }) {
     ];
     setCallState(call.state);
     return () => offs.forEach((off) => off());
-  }, [call, game.run, game.boardRef]);
+  }, [call, game.run, game.boardRef, game.fxRef]);
 
   // Surprises from Grammi: looked for when the game starts or the settings close, and every so often while it's played.
   useEffect(() => {
@@ -526,6 +623,7 @@ function WithBaby({ onLeave }: { onLeave: () => void }) {
     const { audio: _audio, ...shown } = gift;
     send({ t: "gift", gift: shown });
     sounds.cheer();
+    game.fxRef.current?.confetti();
     void fetch(`/surprises/boxes/${box!.box}/${gift.id}/opened`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: box!.key }) }).catch(() => {});
     onMoment(`A surprise from ${gift.from}!`);
     const th = gift.picture ? game.thing(gift.picture) : undefined;
@@ -640,6 +738,9 @@ function WithBaby({ onLeave }: { onLeave: () => void }) {
               <label className="pk-check">
                 <input type="checkbox" checked={settings.sounds} onChange={(e) => changeSettings({ ...settings, sounds: e.target.checked })} /> Say the sound too ("Cow! Moo!")
               </label>
+              <label className="pk-check">
+                <input type="checkbox" checked={settings.effects} onChange={(e) => changeSettings({ ...settings, effects: e.target.checked })} /> Play each one's own sound after its name (a moo, a beep-beep, a boing)
+              </label>
               {settings.mode === "find" && (
                 <label className="pk-check">
                   <input type="checkbox" checked={settings.choices === 3} onChange={(e) => changeSettings({ ...settings, choices: e.target.checked ? 3 : 2 })} /> Three to choose from (harder)
@@ -740,7 +841,11 @@ function JoinCall({ code, onLeave }: { code: string; onLeave: () => void }) {
         if (w.t === "settings") return setSettings(w.settings);
         if (w.t === "family") return setFamily(tidyFamily(w.family));
         if (w.t === "mine") return setMine(tidyMine(w.mine));
-        if (w.t === "gift") return setGift(w.gift);
+        if (w.t === "touch") return game.fxRef.current?.ripple(w.x, w.y);
+        if (w.t === "gift") {
+          if (w.gift) game.fxRef.current?.confetti();
+          return setGift(w.gift);
+        }
         if (w.t === "snap") {
           void fetch(w.photo)
             .then((r) => r.blob())
@@ -754,7 +859,7 @@ function JoinCall({ code, onLeave }: { code: string; onLeave: () => void }) {
     ];
     setState(call.state);
     return () => offs.forEach((off) => off());
-  }, [call, game.run, game.boardRef, game.setBoard]);
+  }, [call, game.run, game.boardRef, game.setBoard, game.fxRef]);
   useEffect(() => (call ? stayAwake() : undefined), [call]);
   useEffect(() => () => void callRef.current?.hangUp(), []);
 

@@ -8,6 +8,8 @@ import { thatsThe, whereIs, type Mine, type Mode, type Person, type Settings, ty
 export type BoardEvent =
   /** A picture pops up where a finger touched (x and y are fractions of the board). */
   | { t: "pop"; id: string; x: number; y: number; key: number }
+  /** A picture on the board is poked: it jiggles and is named again (saying it again is how it sticks). */
+  | { t: "poke"; key: number }
   /** Peekaboo: a new picture goes under the blanket. */
   | { t: "hide"; id: string }
   /** Peekaboo: the blanket comes off. */
@@ -40,6 +42,8 @@ export interface Popped {
   x: number;
   y: number;
   key: number;
+  /** How many times it has been poked. */
+  pokes?: number;
 }
 
 export interface BoardState {
@@ -55,7 +59,7 @@ export interface Heard {
   text: string;
   /** The picture whose recording, if there is one, says it instead. */
   key?: string;
-  sound?: "pop" | "cheer" | "boop" | "swish";
+  sound?: "pop" | "cheer" | "boop" | "swish" | "boing";
 }
 
 export const MAX_POPPED = 4;
@@ -69,6 +73,13 @@ export function apply(state: BoardState, event: BoardEvent, thing: (id: string) 
       if (!th) return { state, heard: null };
       const popped = [...state.popped, { id: event.id, x: event.x, y: event.y, key: event.key }].slice(-MAX_POPPED);
       return { state: { ...state, popped }, heard: { ...spoken(th), sound: "pop" } };
+    }
+    case "poke": {
+      const poked = state.popped.find((p) => p.key === event.key);
+      const th = poked && thing(poked.id);
+      if (!poked || !th) return { state, heard: null };
+      // It goes to the end of the line, so it stays a while longer.
+      return { state: { ...state, popped: [...state.popped.filter((p) => p !== poked), { ...poked, pokes: (poked.pokes ?? 0) + 1 }] }, heard: { ...spoken(th), sound: "boing" } };
     }
     case "hide":
       return thing(event.id) ? { state: { ...state, hidden: { id: event.id, open: false } }, heard: null } : { state, heard: null };

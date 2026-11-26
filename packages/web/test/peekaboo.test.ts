@@ -83,7 +83,8 @@ describe("the pictures", () => {
 
   it("reads saved settings safely", () => {
     expect(tidySettings(null)).toEqual(DEFAULT_SETTINGS);
-    expect(tidySettings({ mode: "find", categories: ["vehicles", "nope", "vehicles"], few: false, choices: 3, sounds: false, snaps: true })).toEqual({ mode: "find", categories: ["vehicles"], few: false, choices: 3, sounds: false, snaps: true });
+    expect(tidySettings({ mode: "find", categories: ["vehicles", "nope", "vehicles"], few: false, choices: 3, sounds: false, snaps: true, effects: false })).toEqual({ mode: "find", categories: ["vehicles"], few: false, choices: 3, sounds: false, snaps: true, effects: false });
+    expect(tidySettings({}).effects).toBe(true);
     expect(tidySettings({ mode: "story" }).mode).toBe("story");
     expect(tidySettings({ mode: "rm -rf", categories: [] }).mode).toBe("tap");
   });
@@ -251,5 +252,17 @@ describe("singing on the board", () => {
     expect(apply(on, { t: "verse", id: dog, key: 2 }, thing, settings).state).toBe(on);
     expect(apply(on, { t: "sung", key: 2 }, thing, settings).state).toBe(on);
     expect(apply(on, { t: "sung", key: 1 }, thing, settings).state.verse).toBeNull();
+  });
+});
+
+describe("poking a picture", () => {
+  it("names it again with a boing, and keeps it on the board longest", () => {
+    const settings = DEFAULT_SETTINGS;
+    let state = emptyBoard("tap");
+    for (const [id, key] of [[cow_, 1], [dog, 2]] as const) state = apply(state, { t: "pop", id, x: 0.5, y: 0.5, key }, thing, settings).state;
+    const poked = apply(state, { t: "poke", key: 1 }, thing, settings);
+    expect(poked.heard).toEqual({ text: "Cow! Moo!", key: cow_, sound: "boing" });
+    expect(poked.state.popped.map((p) => [p.key, p.pokes ?? 0])).toEqual([[2, 0], [1, 1]]);
+    expect(apply(poked.state, { t: "poke", key: 99 }, thing, settings).state).toBe(poked.state);
   });
 });

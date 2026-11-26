@@ -1,59 +1,10 @@
-// Peekaboo's sounds: the voice that names each picture (a grown-up's own recording when there is
-// one, the device's speech otherwise), a pop when a picture appears and a little tune for a find.
+// Peekaboo's voice: what names each picture (a grown-up's own recording when there is one, the
+// device's speech otherwise). The sound effects are sfx.ts.
 // Recordings are kept in this browser (IndexedDB) and never leave it.
 import { inStore } from "./store";
 import { DEFAULT_FAMILY, tidySettings, type Person, type Settings } from "./things";
 
-let audio: AudioContext | null = null;
-const context = () => {
-  if (!audio) {
-    const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctor) return null;
-    audio = new Ctor();
-  }
-  if (audio.state === "suspended") void audio.resume().catch(() => {});
-  return audio;
-};
-
-function tone(freq: number, start: number, length: number, type: OscillatorType = "sine", volume = 0.18, slideTo?: number) {
-  const ctx = context();
-  if (!ctx) return;
-  const at = ctx.currentTime + start;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, at);
-  if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, at + length);
-  gain.gain.setValueAtTime(0.0001, at);
-  gain.gain.exponentialRampToValueAtTime(volume, at + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, at + length);
-  osc.connect(gain).connect(ctx.destination);
-  osc.start(at);
-  osc.stop(at + length + 0.05);
-}
-
-/** The page's one audio context, woken if it was asleep. */
-export const audioContext = () => context();
-
-export const sounds = {
-  /** A soft bubble pop, a little higher or lower each time. */
-  pop() {
-    const base = 380 + Math.random() * 260;
-    tone(base, 0, 0.18, "sine", 0.2, base * 2.2);
-  },
-  /** Three rising notes: you found it. */
-  cheer() {
-    [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.11, 0.28, "triangle", 0.16));
-  },
-  /** A gentle "boop" for a try that wasn't it: no buzzer, nothing that sounds like losing. */
-  boop() {
-    tone(330, 0, 0.22, "sine", 0.12, 260);
-  },
-  /** A rising swish, for the blanket coming off. */
-  swish() {
-    tone(200, 0, 0.3, "triangle", 0.1, 900);
-  },
-};
+export { audioContext, sounds } from "./sfx";
 
 // The device's own voice, a little slower and higher than usual, as people talk to babies.
 let chosen: SpeechSynthesisVoice | null | undefined;
