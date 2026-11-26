@@ -51,6 +51,8 @@ export function controls(game: string): string[] {
       return ["Your tiles are under the line. Tap one that matches an end of the line to lay it.", "If it could go at either end, buttons ask which. Tap the tile again to put it back.", "When nothing matches, a button draws from the boneyard, or passes."];
     case "liarsdice":
       return ["Your dice are yours alone: nobody else sees them.", "Tap a bid to make it, or Liar! to call the last one.", "After a call everyone's dice are shown. Press Next round when you've looked."];
+    case "telephone":
+      return ["Everyone plays at once. Each screen asks one thing: write something, draw what you were given, or say what the drawing is. Then press Pass it on.", "Stuck? Give me an idea fills in something to write. Drawing: pick a pen colour and size under the page; Undo takes back the last line.", "When every chain has been round, whoever started each one turns it over, a step at a time. Nothing is scored."];
     case "drawguess":
       return ["When it's your turn to draw, pick one of three words and draw it with your finger. Pick a pen colour and size under the canvas.", "Otherwise, type what you think the drawing is. The sooner you get it, the more it scores."];
   }

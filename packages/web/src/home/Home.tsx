@@ -104,6 +104,8 @@ const BOARDS: Record<string, MiniBoard> = {
   // The word, hidden, and one guessed.
   // Draw & Guess is a drawing game: a sheet of paper with a house on it, not letter tiles.
   drawguess: { cols: 1, cells: [], sketch: true },
+  // Pass the Picture is a drawing game too.
+  telephone: { cols: 1, cells: [], sketch: true },
   hangman: { cols: 5, shade: "words", cells: [...tiles("_a__a", "phpph"), ...tiles("zqk__", "mmm")] },
   tictactoe: { cols: 3, cells: [X, O, null, null, X, O, O, null, X] },
   // A token in each corner's colour, and the cross between them.
