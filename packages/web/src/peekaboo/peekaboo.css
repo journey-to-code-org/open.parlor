@@ -45,6 +45,15 @@
   line-height: 1;
   filter: drop-shadow(0 1.2cqmin 1.5cqmin rgba(60, 40, 0, 0.2));
 }
+.pk-drawn {
+  width: 30cqmin;
+  height: 30cqmin;
+  filter: drop-shadow(0 1.2cqmin 1.5cqmin rgba(60, 40, 0, 0.2));
+}
+.pk-choices .pk-drawn {
+  width: 24cqmin;
+  height: 24cqmin;
+}
 .pk-picture img {
   width: 34cqmin;
   height: 34cqmin;

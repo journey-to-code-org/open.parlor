@@ -23,6 +23,19 @@ describe("the pictures", () => {
     expect(whereIs(thing(dog)!)).toBe("Where's the dog?");
   });
 
+  it("has shapes and colours, drawn, and named without a stray \"the\" for a colour", () => {
+    const shapes = THINGS.filter((t) => t.category === "shapes");
+    const colors = THINGS.filter((t) => t.category === "colors");
+    expect(shapes.map((t) => t.word)).toEqual(["Circle", "Square", "Triangle", "Star", "Heart", "Diamond", "Oval", "Rectangle"]);
+    expect(colors).toHaveLength(10);
+    expect([...shapes, ...colors].every((t) => t.draw && /^#[0-9a-f]{6}$/.test(t.draw.fill))).toBe(true);
+    expect(thing("colors:red")?.say).toBe("Red! Like an apple!");
+    expect(whereIs(thing("colors:red")!)).toBe("Where's red?");
+    expect(whereIs(thing("shapes:circle")!)).toBe("Where's the circle?");
+    // One word, one picture: no two things share a name a question could ask for.
+    expect(new Set(THINGS.map((t) => t.word)).size).toBe(THINGS.length);
+  });
+
   it("plays a few at a time when asked, the family always among them", () => {
     const settings: Settings = { ...DEFAULT_SETTINGS, categories: ["animals", "family"], few: true };
     const few = inPlay(settings, [{ name: "Mama", emoji: "👩" }], randomFrom(7));
@@ -49,6 +62,18 @@ describe("the pictures", () => {
       expect(round.choices).toContain(round.target);
       expect(round.target).not.toBe(some[0]!.id);
     }
+  });
+
+  it("asks among pictures of the same kind when there are enough", () => {
+    const mixed = THINGS.filter((t) => t.category === "shapes" || t.category === "colors");
+    for (let seed = 1; seed < 40; seed++) {
+      const round = findRound(mixed, 3, randomFrom(seed));
+      const kind = thing(round.target)!.category;
+      expect(round.choices.every((id) => thing(id)!.category === kind)).toBe(true);
+    }
+    // Only one of its kind: the others come from elsewhere.
+    const lone = [thing("colors:red")!, thing(cow)!, thing(dog)!];
+    expect(findRound(lone, 2, () => 0).choices).toHaveLength(2);
   });
 
   it("keeps a picture tapped at the edge wholly on the board", () => {

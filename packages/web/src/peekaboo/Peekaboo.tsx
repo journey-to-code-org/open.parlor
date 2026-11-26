@@ -9,7 +9,7 @@ import { ShareQr } from "../ShareQr";
 import { stayAwake } from "../wifi/link";
 import { apply, emptyBoard, hint, type BoardEvent, type BoardState, type Heard } from "./board";
 import { joinLink, PeekabooCall, type CallState } from "./call";
-import { CATEGORIES, createBag, familyThings, findRound, inPlay, placeAt, randomFrom, THINGS, type Category, type Mode, type Person, type Settings, type Thing } from "./things";
+import { CATEGORIES, createBag, whereIs, familyThings, findRound, inPlay, placeAt, randomFrom, THINGS, type Category, type Mode, type Person, type Settings, type Thing } from "./things";
 import { dropRecording, keepRecording, loadFamily, loadSettings, quiet, record, recordedKeys, saveFamily, saveSettings, say, smallPhoto, sounds, tidyFamily } from "./voice";
 import "./peekaboo.css";
 
@@ -135,10 +135,49 @@ function Video({ stream, muted, mirror, className, label }: { stream: MediaStrea
   return <video ref={ref} className={`${className ?? ""}${mirror ? " pk-mirror" : ""}`} autoPlay playsInline muted={muted} aria-label={label} />;
 }
 
+/** Points around the middle of a 100-unit square, `n` of them, alternating between two radii. */
+const around = (n: number, outer: number, inner: number, turn = -90) =>
+  Array.from({ length: n * 2 }, (_, i) => {
+    const r = i % 2 ? inner : outer;
+    const a = ((turn + (i * 180) / n) * Math.PI) / 180;
+    return [50 + r * Math.cos(a), 50 + r * Math.sin(a)] as const;
+  });
+const STAR = around(5, 47, 20).map((p) => p.join(",")).join(" ");
+/** A splash of paint: a blob with soft bumps, drawn through the midpoints between points. */
+const SPLASH = (() => {
+  const pts = around(7, 46, 36, -70);
+  const mid = (i: number) => {
+    const [a, b] = [pts[i % pts.length]!, pts[(i + 1) % pts.length]!];
+    return `${(a[0] + b[0]) / 2},${(a[1] + b[1]) / 2}`;
+  };
+  return `M${mid(0)} ` + pts.map((_, i) => `Q${pts[(i + 1) % pts.length]!.join(",")} ${mid(i + 1)}`).join(" ") + "Z";
+})();
+
+/** A shape in its colour, or a splash of a colour, drawn so it is the same everywhere. */
+function Drawn({ draw }: { draw: NonNullable<Thing["draw"]> }) {
+  const paint = { fill: draw.fill, stroke: draw.fill === "#ffffff" ? "#cfc8e8" : "rgba(0,0,0,0.12)", strokeWidth: 2.5, strokeLinejoin: "round" as const };
+  const shape = {
+    circle: <circle cx="50" cy="50" r="44" {...paint} />,
+    square: <rect x="8" y="8" width="84" height="84" rx="5" {...paint} />,
+    triangle: <polygon points="50,6 95,90 5,90" {...paint} />,
+    star: <polygon points={STAR} {...paint} />,
+    heart: <path d="M50 88 C18 66 4 48 6 30 C8 13 30 6 50 24 C70 6 92 13 94 30 C96 48 82 66 50 88Z" {...paint} />,
+    diamond: <polygon points="50,4 92,50 50,96 8,50" {...paint} />,
+    oval: <ellipse cx="50" cy="50" rx="30" ry="45" {...paint} />,
+    rectangle: <rect x="4" y="24" width="92" height="52" rx="4" {...paint} />,
+    splash: <path d={SPLASH} {...paint} />,
+  }[draw.shape];
+  return (
+    <svg className="pk-drawn" viewBox="0 0 100 100" aria-hidden="true">
+      {shape}
+    </svg>
+  );
+}
+
 function Picture({ thing, className }: { thing: Thing; className?: string }) {
   return (
     <div className={`pk-picture ${className ?? ""}`}>
-      {thing.photo ? <img src={thing.photo} alt="" draggable={false} /> : <span className="pk-emoji" aria-hidden="true">{thing.emoji}</span>}
+      {thing.photo ? <img src={thing.photo} alt="" draggable={false} /> : thing.draw ? <Drawn draw={thing.draw} /> : <span className="pk-emoji" aria-hidden="true">{thing.emoji}</span>}
       <span className="pk-word">{thing.word}</span>
     </div>
   );
@@ -174,7 +213,7 @@ function Board({ game, children }: { game: ReturnType<typeof useGame>; children?
       )}
       {board.mode === "find" && board.round && target && (
         <>
-          <p className="pk-question">{target.category === "family" ? `Where's ${target.word}?` : `Where's the ${target.word.toLowerCase()}?`}</p>
+          <p className="pk-question">{whereIs(target)}</p>
           <div className="pk-choices">
             {board.round.choices.map((id) => {
               const th = thing(id);

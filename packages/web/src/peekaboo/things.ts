@@ -1,7 +1,7 @@
 // Peekaboo's pictures and the rules for which comes next. Everything here is plain data and pure
 // functions, so it is the same on both ends of a call and can be tested without a screen.
 
-export type Category = "animals" | "vehicles" | "things" | "family";
+export type Category = "animals" | "vehicles" | "things" | "shapes" | "colors" | "family";
 export type Mode = "tap" | "peek" | "find";
 
 export interface Thing {
@@ -13,8 +13,27 @@ export interface Thing {
   /** The picture: a big emoji (the device's own colour font), or a family member's photo. */
   emoji: string;
   photo?: string;
+  /** Shapes and colours are drawn, not emoji: a shape in its colour, or a splash of the colour. */
+  draw?: { shape: Shape | "splash"; fill: string };
   category: Category;
 }
+
+export type Shape = "circle" | "square" | "triangle" | "star" | "heart" | "diamond" | "oval" | "rectangle";
+
+/** Colours as a baby sees them named: bright, and far enough apart to tell. */
+export const COLORS = {
+  red: "#e53935",
+  orange: "#fb8c00",
+  yellow: "#fdd835",
+  green: "#43a047",
+  blue: "#1e88e5",
+  purple: "#8e24aa",
+  pink: "#f06292",
+  brown: "#8d6e63",
+  black: "#262626",
+  white: "#ffffff",
+} as const;
+export type ColorName = keyof typeof COLORS;
 
 const t = (category: Category, emoji: string, word: string, sound?: string): Thing => ({
   id: `${category}:${word.toLowerCase().replace(/[^a-z]+/g, "-")}`,
@@ -57,13 +76,42 @@ export const THINGS: Thing[] = [
   t("things", "🧸", "Teddy bear", "Hug!"),
   t("things", "🌙", "Moon", "Night night!"),
   t("things", "☀️", "Sun"),
-  t("things", "⭐", "Star", "Twinkle!"),
+  // Shapes, each always in the same colour so it is the shape that's new, not the colour.
+  ...(
+    [
+      ["circle", "Circle", "Round and round!", "red", "🔴"],
+      ["square", "Square", "Like a box!", "blue", "🟦"],
+      ["triangle", "Triangle", "Pointy!", "green", "🔺"],
+      ["star", "Star", "Twinkle twinkle!", "yellow", "⭐"],
+      ["heart", "Heart", "I love you!", "pink", "💗"],
+      ["diamond", "Diamond", "Sparkle!", "purple", "🔷"],
+      ["oval", "Oval", "Like an egg!", "orange", "🥚"],
+      ["rectangle", "Rectangle", "Like a door!", "brown", "▬"],
+    ] as const
+  ).map(([shape, word, sound, color, emoji]) => ({ ...t("shapes", emoji, word, sound), draw: { shape, fill: COLORS[color] } })),
+  // Colours, each with something a baby knows that is that colour.
+  ...(
+    [
+      ["red", "Like an apple!", "🔴"],
+      ["orange", "Like an orange!", "🟠"],
+      ["yellow", "Like a banana!", "🟡"],
+      ["green", "Like a frog!", "🟢"],
+      ["blue", "Like the sky!", "🔵"],
+      ["purple", "Like grapes!", "🟣"],
+      ["pink", "Like a piggy!", "🩷"],
+      ["brown", "Like a teddy bear!", "🟤"],
+      ["black", "Like the night!", "⚫"],
+      ["white", "Like snow!", "⚪"],
+    ] as const
+  ).map(([color, sound, emoji]) => ({ ...t("colors", emoji, color[0]!.toUpperCase() + color.slice(1), sound), draw: { shape: "splash" as const, fill: COLORS[color] } })),
 ];
 
 export const CATEGORIES: { id: Category; name: string; emoji: string }[] = [
   { id: "animals", name: "Animals", emoji: "🐮" },
   { id: "vehicles", name: "Things that go", emoji: "🚗" },
   { id: "things", name: "Everyday things", emoji: "⚽" },
+  { id: "shapes", name: "Shapes", emoji: "🔺" },
+  { id: "colors", name: "Colors", emoji: "🎨" },
   { id: "family", name: "Family", emoji: "👪" },
 ];
 
@@ -78,6 +126,8 @@ export interface Person {
 export const DEFAULT_FAMILY: Person[] = [
   { name: "Mama", emoji: "👩" },
   { name: "Dada", emoji: "👨" },
+  // The baby himself: babies love their own name and their own face. The grown-ups put his name in.
+  { name: "Baby", emoji: "👶" },
 ];
 
 export const familyThings = (family: Person[]): Thing[] =>
@@ -165,20 +215,23 @@ export function createBag(things: readonly Thing[], random: () => number) {
   };
 }
 
-/** A "Where's the…?" round: the picture asked for, and the others it's shown beside, in a shuffled order. */
+/** A "Where's the…?" round: the picture asked for, and the others it's shown beside (of its own kind first), in a shuffled order. */
 export function findRound(things: readonly Thing[], choices: number, random: () => number, avoid?: string): { target: string; choices: string[] } {
   const pool = things.length > 1 && avoid ? things.filter((th) => th.id !== avoid) : [...things];
   const target = pool[Math.floor(random() * pool.length)]!;
-  const others = shuffle(
-    things.filter((th) => th.id !== target.id),
-    random,
-  ).slice(0, Math.max(0, choices - 1));
+  // The others are of the same kind where there are enough of them: "Where's red?" among colours,
+  // not beside a green triangle, which is green too.
+  const rest = things.filter((th) => th.id !== target.id);
+  const alike = rest.filter((th) => th.category === target.category);
+  const others = [...shuffle(alike, random), ...shuffle(rest.filter((th) => th.category !== target.category), random)].slice(0, Math.max(0, choices - 1));
   return { target: target.id, choices: shuffle([target.id, ...others.map((o) => o.id)], random) };
 }
 
 /** What the voice says for a "Where's the…?" question (a family member's name has no "the"). */
-export const whereIs = (thing: Thing) => (thing.category === "family" ? `Where's ${thing.word}?` : `Where's the ${thing.word.toLowerCase()}?`);
-export const thatsThe = (thing: Thing) => (thing.category === "family" ? `That's ${thing.word}!` : `That's the ${thing.word.toLowerCase()}!`);
+/** A name ("Mama") or a colour ("red") is said without "the"; everything else with it. */
+const bare = (thing: Thing) => thing.category === "family" || thing.category === "colors";
+export const whereIs = (thing: Thing) => (bare(thing) ? `Where's ${thing.category === "colors" ? thing.word.toLowerCase() : thing.word}?` : `Where's the ${thing.word.toLowerCase()}?`);
+export const thatsThe = (thing: Thing) => (bare(thing) ? `That's ${thing.category === "colors" ? thing.word.toLowerCase() : thing.word}!` : `That's the ${thing.word.toLowerCase()}!`);
 
 /**
  * Where a picture lands when tapped: where the finger was, pulled in from the edges so the whole
