@@ -9,5 +9,6 @@
   { "id": "counter", "name": "Delbie's Counter", "blurb": "A shift at the parts counter", "entries": ["src/counter/CounterTable.tsx"] },
   { "id": "idle", "name": "Delbie's Daycare & Geriatrics", "blurb": "The store that carries on while you're away", "entries": ["src/idle/IdleTable.tsx"] },
   { "id": "editors", "name": "Course and lane editors", "blurb": "For making Mini Golf courses and bowling lanes, with the computer players that try them out", "entries": ["src/golf/editors.tsx"] },
+  { "id": "peekaboo", "name": "Peekaboo", "blurb": "The baby game, with its theme song", "entries": ["src/peekaboo/Peekaboo.tsx"] },
   { "id": "3d", "name": "3D tables and scenes", "blurb": "Without it, the same games are drawn flat", "match": "-gl\\.ts$" }
 ]

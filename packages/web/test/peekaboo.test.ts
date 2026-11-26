@@ -1,7 +1,7 @@
 // Peekaboo's rules: which picture comes next, the questions, and how the board changes.
 import { describe, expect, it } from "vitest";
 import { apply, emptyBoard, hint, MAX_POPPED, type BoardState } from "../src/peekaboo/board";
-import { createBag, DEFAULT_SETTINGS, familyThings, FEW, findRound, inPlay, placeAt, randomFrom, THINGS, tidySettings, whereIs, type Settings } from "../src/peekaboo/things";
+import { createBag, mineThings, tidyMine, DEFAULT_SETTINGS, familyThings, FEW, findRound, inPlay, placeAt, randomFrom, THINGS, tidySettings, whereIs, type Settings } from "../src/peekaboo/things";
 
 const byId = new Map(THINGS.map((t) => [t.id, t]));
 const thing = (id: string) => byId.get(id);
@@ -83,7 +83,9 @@ describe("the pictures", () => {
 
   it("reads saved settings safely", () => {
     expect(tidySettings(null)).toEqual(DEFAULT_SETTINGS);
-    expect(tidySettings({ mode: "find", categories: ["vehicles", "nope", "vehicles"], few: false, choices: 3, sounds: false })).toEqual({ mode: "find", categories: ["vehicles"], few: false, choices: 3, sounds: false });
+    expect(tidySettings({ mode: "find", categories: ["vehicles", "nope", "vehicles"], few: false, choices: 3, sounds: false, snaps: true, effects: false, theme: false })).toEqual({ mode: "find", categories: ["vehicles"], few: false, choices: 3, sounds: false, snaps: true, effects: false, theme: false });
+    expect(tidySettings({}).effects).toBe(true);
+    expect(tidySettings({ mode: "story" }).mode).toBe("story");
     expect(tidySettings({ mode: "rm -rf", categories: [] }).mode).toBe("tap");
   });
 });
@@ -142,5 +144,137 @@ describe("the board", () => {
     const busy = run(emptyBoard("tap"), { t: "pop", id: cow, x: 0.5, y: 0.5, key: 1 });
     expect(apply(busy, { t: "settings", settings: { ...settings, mode: "peek" } }, thing, settings).state).toEqual(emptyBoard("peek"));
     expect(apply(busy, { t: "settings", settings }, thing, settings).state).toBe(busy);
+  });
+});
+
+import { heSaid, togglePractice, tidyWords, unsay } from "../src/peekaboo/keep";
+import { singable, timing, verse } from "../src/peekaboo/song";
+import { goodNight, makeBook, pageText, PAGES } from "../src/peekaboo/story";
+
+describe("their own pictures", () => {
+  const mine = tidyMine([{ id: "cup1", word: "Cup", category: "things", photo: "data:image/jpeg;base64,x", sound: "Drink!" }, { word: "Dog", category: "animals", photo: "data:image/jpeg;base64,y" }, { word: "No photo", category: "things", photo: "" }, { word: "Bad", category: "zzz", photo: "javascript:x" }]);
+
+  it("keeps only what is safe, and makes pictures of the ones with a photo and a name", () => {
+    expect(mine[3]).toMatchObject({ category: "things", photo: "" });
+    const things = mineThings(mine);
+    expect(things.map((t) => t.word)).toEqual(["Cup", "Dog"]);
+    expect(things[0]).toMatchObject({ id: "mine:cup1", say: "Cup! Drink!", category: "things" });
+  });
+
+  it("always plays them, and the words being practised, among the few", () => {
+    const settings = { ...DEFAULT_SETTINGS, categories: ["animals", "things"] as Settings["categories"], few: true };
+    for (let seed = 1; seed < 10; seed++) {
+      const ids = inPlay(settings, [], randomFrom(seed), mine, ["animals:owl"]).map((t) => t.id);
+      expect(ids).toEqual(expect.arrayContaining(["mine:cup1", "animals:owl"]));
+      expect(ids.length).toBe(FEW);
+    }
+  });
+
+  it("shows a word being practised twice as often", () => {
+    const some = THINGS.slice(0, 4);
+    const bag = createBag(some, randomFrom(9), [some[0]!.id]);
+    const seen = Array.from({ length: 50 }, () => bag.next().id);
+    expect(seen.filter((id) => id === some[0]!.id).length).toBe(20);
+    for (let i = 1; i < seen.length; i++) expect(seen[i]).not.toBe(seen[i - 1]);
+  });
+});
+
+describe("his words", () => {
+  it("keeps the day he first said each, and stops practising it", () => {
+    let words = togglePractice(tidyWords(null), "animals:dog");
+    expect(words.practice).toEqual(["animals:dog"]);
+    words = heSaid(words, "Dog", "animals:dog", 1000);
+    words = heSaid(words, "dog", "animals:dog", 2000);
+    words = heSaid(words, "  uh-oh ", undefined, 3000);
+    expect(words.said).toEqual([{ word: "Dog", id: "animals:dog", at: 1000 }, { word: "uh-oh", at: 3000 }]);
+    expect(words.practice).toEqual([]);
+    expect(unsay(words, "Dog").said).toHaveLength(1);
+    expect(tidyWords({ said: [{ word: "", at: 1 }, { word: "Ball", at: 5 }, "junk"], practice: [1, "x"] })).toEqual({ said: [{ word: "Ball", at: 5 }], practice: ["x"] });
+  });
+});
+
+describe("Old MacDonald", () => {
+  it("sings each animal's own sound, with a or an", () => {
+    const cow = verse(thing(cow_)!);
+    expect(cow[2]!.text).toBe("And on that farm he had a cow,");
+    expect(cow[4]!.text).toBe("With a moo moo here, and a moo moo there,");
+    expect(verse(thing("animals:owl")!)[2]!.text).toBe("And on that farm he had an owl,");
+    expect(singable(THINGS).every((t) => t.category === "animals" && t.sing)).toBe(true);
+    expect(singable(THINGS)).toHaveLength(12);
+  });
+
+  it("times each line by its notes", () => {
+    const { starts, length } = timing(verse(thing(cow_)!), 100);
+    expect(starts[0]).toBe(0);
+    expect(starts[1]).toBe(800);
+    expect(length).toBe(starts[7]! + 800);
+  });
+});
+const cow_ = "animals:cow";
+
+describe("storytime", () => {
+  it("says something fitting on each page, and good night to all", () => {
+    expect(pageText(thing(cow_)!)).toBe("Here is the cow. The cow says moo!");
+    expect(pageText(thing("vehicles:train")!)).toBe("Here comes the train! Choo choo!");
+    expect(pageText(thing("colors:red")!)).toBe("Look at red! Like an apple!");
+    expect(pageText(familyThings([{ name: "Grammi", emoji: "👵" }])[0]!)).toBe("Here is Grammi! Hi, Grammi!");
+    expect(goodNight([thing(cow_)!, familyThings([{ name: "Mama", emoji: "👩" }])[0]!])).toBe("Good night, cow. Good night, Mama. Good night!");
+  });
+
+  it("makes a book of up to eight, family first", () => {
+    const family = familyThings([{ name: "Mama", emoji: "👩" }]);
+    const book = makeBook([...THINGS, ...family], randomFrom(4));
+    expect(book).toHaveLength(PAGES);
+    expect(book[0]).toBe(family[0]!.id);
+  });
+
+  it("turns pages, reads them only when asked, and ends with good night", () => {
+    const settings = DEFAULT_SETTINGS;
+    const opened = apply(emptyBoard("story"), { t: "book", pages: [cow_, dog], read: true }, thing, settings);
+    expect(opened.state.book).toEqual({ pages: [cow_, dog], page: 0 });
+    expect(opened.heard?.text).toBe("Here is the cow. The cow says moo!");
+    expect(apply(emptyBoard("story"), { t: "book", pages: [cow_], read: false }, thing, settings).heard).toBeNull();
+    const next = apply(opened.state, { t: "page", n: 1, read: false }, thing, settings);
+    expect(next.state.book?.page).toBe(1);
+    expect(next.heard).toEqual({ text: "", sound: "swish" });
+    const night = apply(next.state, { t: "page", n: 9, read: true }, thing, settings);
+    expect(night.state.book?.page).toBe(2);
+    expect(night.heard?.text).toBe("Good night, cow. Good night, dog. Good night!");
+    expect(apply(night.state, { t: "page", n: -3, read: true }, thing, settings).state.book?.page).toBe(0);
+  });
+});
+
+describe("singing on the board", () => {
+  it("sings one verse at a time", () => {
+    const settings = DEFAULT_SETTINGS;
+    const on = apply(emptyBoard("sing"), { t: "verse", id: cow_, key: 1 }, thing, settings).state;
+    expect(on.verse).toEqual({ id: cow_, key: 1 });
+    expect(apply(on, { t: "verse", id: dog, key: 2 }, thing, settings).state).toBe(on);
+    expect(apply(on, { t: "sung", key: 2 }, thing, settings).state).toBe(on);
+    expect(apply(on, { t: "sung", key: 1 }, thing, settings).state.verse).toBeNull();
+  });
+});
+
+describe("poking a picture", () => {
+  it("names it again with a boing, and keeps it on the board longest", () => {
+    const settings = DEFAULT_SETTINGS;
+    let state = emptyBoard("tap");
+    for (const [id, key] of [[cow_, 1], [dog, 2]] as const) state = apply(state, { t: "pop", id, x: 0.5, y: 0.5, key }, thing, settings).state;
+    const poked = apply(state, { t: "poke", key: 1 }, thing, settings);
+    expect(poked.heard).toEqual({ text: "Cow! Moo!", key: cow_, sound: "boing" });
+    expect(poked.state.popped.map((p) => [p.key, p.pokes ?? 0])).toEqual([[2, 0], [1, 1]]);
+    expect(apply(poked.state, { t: "poke", key: 99 }, thing, settings).state).toBe(poked.state);
+  });
+});
+
+describe("the dance", () => {
+  it("starts and stops once, and only in its own mode", () => {
+    const settings = DEFAULT_SETTINGS;
+    const on = apply(emptyBoard("dance"), { t: "dance", on: true }, thing, settings).state;
+    expect(on.dancing).toBe(true);
+    expect(apply(on, { t: "dance", on: true }, thing, settings).state).toBe(on);
+    expect(apply(on, { t: "dance", on: false }, thing, settings).state.dancing).toBe(false);
+    const tap = emptyBoard("tap");
+    expect(apply(tap, { t: "dance", on: true }, thing, settings).state).toBe(tap);
   });
 });

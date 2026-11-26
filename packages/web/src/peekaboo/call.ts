@@ -24,6 +24,15 @@ interface Ticket {
   ice: RTCIceServer[];
 }
 
+/** The largest piece sent over the board's channel at once (browsers take about 256 KB; this stays well under). */
+const PIECE = 60_000;
+interface Piece {
+  __piece: string;
+  i: number;
+  n: number;
+  s: string;
+}
+
 const error = async (r: Response) => ((await r.json().catch(() => ({}))) as { error?: string }).error ?? `The server said ${r.status}`;
 
 /** The link the other parent opens to join. */
@@ -116,10 +125,15 @@ export class PeekabooCall<M = unknown> {
     return () => set.delete(heard);
   }
 
+  /** Send to the other end. A big message (photos) goes in pieces, put back together there. */
   send(message: M) {
     if (this.channel?.readyState !== "open") return;
+    const text = JSON.stringify(message);
     try {
-      this.channel.send(JSON.stringify(message));
+      if (text.length <= PIECE) return this.channel.send(text);
+      const id = Math.random().toString(36).slice(2);
+      const n = Math.ceil(text.length / PIECE);
+      for (let i = 0; i < n; i++) this.channel.send(JSON.stringify({ __piece: id, i, n, s: text.slice(i * PIECE, (i + 1) * PIECE) }));
     } catch {}
   }
 
@@ -250,11 +264,22 @@ export class PeekabooCall<M = unknown> {
   private useChannel(channel: RTCDataChannel) {
     this.channel = channel;
     channel.addEventListener("open", () => this.channel === channel && this.listeners.open.forEach((l) => l()));
+    const pieces = new Map<string, string[]>();
     channel.addEventListener("message", (e) => {
       if (this.channel !== channel) return;
       try {
-        const m = JSON.parse(String(e.data)) as M;
-        this.listeners.message.forEach((l) => l(m));
+        let m = JSON.parse(String(e.data)) as M | Piece;
+        if (m && typeof m === "object" && "__piece" in m) {
+          const p = m as Piece;
+          if (p.n > 200 || p.i >= p.n) return;
+          const got = pieces.get(p.__piece) ?? Array<string>(p.n);
+          got[p.i] = p.s;
+          pieces.set(p.__piece, got);
+          if (got.filter((x) => x !== undefined).length < p.n) return;
+          pieces.delete(p.__piece);
+          m = JSON.parse(got.join("")) as M;
+        }
+        this.listeners.message.forEach((l) => l(m as M));
       } catch {}
     });
   }

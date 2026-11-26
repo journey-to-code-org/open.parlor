@@ -22,6 +22,26 @@
   container-type: size;
   background: radial-gradient(circle at 30% 20%, #fff3c4 0, transparent 45%), radial-gradient(circle at 80% 85%, #d6f0ff 0, transparent 50%), #fff8ec;
 }
+/* Soft colours drifting behind everything, slowly. */
+.pk-sky {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 25% 30%, rgba(255, 214, 102, 0.35) 0, transparent 30%),
+    radial-gradient(circle at 75% 25%, rgba(255, 143, 177, 0.22) 0, transparent 28%),
+    radial-gradient(circle at 60% 80%, rgba(110, 198, 255, 0.3) 0, transparent 32%),
+    radial-gradient(circle at 20% 75%, rgba(160, 140, 255, 0.2) 0, transparent 26%);
+  animation: pk-drift 26s ease-in-out infinite alternate;
+}
+.pk-fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 4;
+}
 .pk-invite {
   position: absolute;
   inset: 0;
@@ -72,7 +92,18 @@
 .pk-pop {
   position: absolute;
   translate: -50% -50%;
-  animation: pk-pop 520ms var(--ease-back, ease-out) both, pk-fade 600ms ease-in 4.4s forwards;
+  /* Each kind of picture arrives its own way; then it fades after a while. */
+  animation: var(--in, pk-pop) 650ms var(--ease-back, ease-out) both, pk-fade 600ms ease-in 4.4s forwards;
+}
+.pk-in-animals { --in: pk-hop; }
+.pk-in-vehicles { --in: pk-zoom; }
+.pk-in-shapes { --in: pk-spin; }
+.pk-in-colors { --in: pk-splat; }
+.pk-in-family { --in: pk-hello; }
+.pk-poked { --in: pk-jiggle; }
+/* Once it has landed it keeps gently moving: something alive holds a baby's eye. */
+.pk-pop .pk-picture {
+  animation: pk-bob 2.2s ease-in-out 650ms infinite;
 }
 
 /* Peekaboo: the picture under a blanket that slides up and off. */
@@ -91,6 +122,20 @@
   opacity: 1;
   scale: 1.15;
 }
+/* Somebody is under there: eyes peep over the top of the blanket, and duck down again. */
+.pk-eyes {
+  position: absolute;
+  top: calc(50% - 30cqmin - 11cqmin);
+  left: 50%;
+  font-size: 16cqmin;
+  line-height: 1;
+  translate: -50% 13cqmin;
+  animation: pk-peep 3.2s ease-in-out 600ms infinite;
+  pointer-events: none;
+}
+.pk-peek.pk-open .pk-eyes {
+  display: none;
+}
 .pk-blanket {
   position: absolute;
   background:
@@ -103,7 +148,7 @@
 .pk-peek .pk-blanket {
   width: 60cqmin;
   height: 60cqmin;
-  animation: pk-breathe 2.2s ease-in-out infinite;
+  animation: pk-breathe 2.2s ease-in-out infinite, pk-shiver 3.2s ease-in-out 600ms infinite;
 }
 .pk-peek.pk-open .pk-blanket {
   translate: 0 -120cqh;
@@ -115,8 +160,9 @@
 .pk-question {
   position: absolute;
   top: 3cqh;
-  left: 0;
-  right: 0;
+  /* Clear of the grown-ups' button in the corner. */
+  left: 68px;
+  right: 68px;
   margin: 0;
   text-align: center;
   font-size: max(20px, 6cqmin);
@@ -151,6 +197,19 @@
 .pk-choice.pk-found {
   scale: 1.25;
   background: #fff1a8;
+}
+.pk-choice.pk-found .pk-picture {
+  animation: pk-dance 0.7s ease-in-out infinite;
+}
+/* The choices sway a little, out of step, so both look alive and neither looks like the answer. */
+.pk-choice:not(.pk-found):not(.pk-faded) .pk-picture {
+  animation: pk-bob 2.4s ease-in-out infinite;
+}
+.pk-choice:nth-child(2) .pk-picture {
+  animation-delay: -0.8s;
+}
+.pk-choice:nth-child(3) .pk-picture {
+  animation-delay: -1.6s;
 }
 .pk-choice.pk-faded {
   opacity: 0.15;
@@ -535,10 +594,6 @@
   color: #2d2a4a;
 }
 
-@keyframes pk-pop {
-  from { scale: 0.2; opacity: 0; }
-  to { scale: 1; opacity: 1; }
-}
 @keyframes pk-fade {
   to { opacity: 0; scale: 0.8; }
 }
@@ -573,5 +628,688 @@
   .pk-peek .pk-blanket,
   .pk-stars span {
     animation-duration: 1ms !important;
+  }
+}
+
+/* Folding sections in the settings. */
+.pk-fold summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+.pk-fold summary::-webkit-details-marker {
+  display: none;
+}
+.pk-fold summary::before {
+  content: "▸";
+  color: #7b6cf6;
+  transition: rotate 150ms;
+}
+.pk-fold[open] summary::before {
+  rotate: 90deg;
+}
+.pk-fold summary h3 {
+  margin: 0;
+}
+.pk-fold-note {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: #8a83a8;
+}
+.pk-fold-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+}
+.pk-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pk-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.pk-list-name {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 8em;
+}
+.pk-thumb {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  object-fit: cover;
+  display: inline-grid;
+  place-items: center;
+  font-size: 22px;
+  flex: none;
+}
+.pk-thumb-big {
+  width: 64px;
+  height: 64px;
+}
+.pk-list input[type="text"],
+.pk-list select,
+.pk-grow {
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid #d9d2fb;
+  font: inherit;
+  min-width: 0;
+}
+.pk-list li > input[type="text"],
+.pk-grow {
+  flex: 1;
+}
+.pk-mine-fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pk-file-button {
+  position: relative;
+  overflow: hidden;
+  align-self: flex-start;
+  cursor: pointer;
+}
+.pk-file-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.pk-said {
+  font-size: 0.85rem;
+  color: #2e7d32;
+  font-weight: 700;
+}
+.pk-waiting {
+  font-size: 0.85rem;
+  color: #8a83a8;
+}
+.pk-star-on {
+  background: #fff3b0 !important;
+}
+.pk-sub {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+}
+.pk-diary {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pk-diary li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.pk-diary .fine {
+  text-align: left;
+}
+.pk-diary-n {
+  min-width: 1.6em;
+  height: 1.6em;
+  border-radius: 50%;
+  background: #7b6cf6;
+  color: #fff;
+  font-size: 0.75rem;
+  display: inline-grid;
+  place-items: center;
+}
+.pk-link-button {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: #8a83a8;
+}
+.pk-album {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+}
+.pk-album-item {
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  aspect-ratio: 1;
+}
+.pk-album-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pk-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  background: rgba(20, 18, 40, 0.92);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+}
+.pk-viewer img {
+  max-width: 100%;
+  max-height: 70vh;
+  border-radius: 12px;
+}
+.pk-viewer .secondary {
+  color: #fff;
+}
+.pk-hidden-camera {
+  position: fixed;
+  width: 2px;
+  height: 2px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Sing-along. */
+.pk-sing,
+.pk-sing-invite {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3cqmin;
+}
+.pk-sing-invite span {
+  font-size: 26cqmin;
+  animation: pk-wave 2.4s ease-in-out infinite;
+}
+.pk-sing-invite p {
+  margin: 0;
+  font-size: max(20px, 7cqmin);
+  font-weight: 800;
+  color: #3b2f8f;
+}
+.pk-bounce {
+  animation: pk-beat 0.96s ease-in-out infinite;
+}
+.pk-sing .pk-emoji {
+  font-size: 26cqmin;
+}
+.pk-lyrics {
+  text-align: center;
+  padding: 0 4cqw;
+}
+.pk-lyrics p {
+  margin: 0.4em 0;
+  font-size: max(14px, 3.6cqmin);
+  color: #8a83a8;
+  transition: font-size 200ms, color 200ms;
+}
+.pk-lyrics p.pk-now {
+  font-size: max(19px, 5.6cqmin);
+  font-weight: 800;
+  color: #3b2f8f;
+}
+.pk-lyrics p.pk-now.pk-sound {
+  color: #e8559a;
+}
+
+/* Storytime. */
+.pk-book {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2cqmin;
+  padding: 4cqmin 10cqw 8cqmin;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.04), transparent 6%, transparent 94%, rgba(0, 0, 0, 0.04));
+  animation: pk-page 450ms var(--ease-out, ease-out) both;
+}
+.pk-page-text {
+  margin: 0;
+  text-align: center;
+  font-size: max(20px, 6cqmin);
+  font-weight: 800;
+  color: #3b2f8f;
+  line-height: 1.25;
+}
+.pk-book .pk-word {
+  display: none;
+}
+.pk-goodnight {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2cqmin;
+}
+.pk-goodnight .pk-emoji {
+  font-size: 12cqmin;
+}
+.pk-goodnight .pk-drawn,
+.pk-goodnight .pk-picture img {
+  width: 12cqmin;
+  height: 12cqmin;
+}
+.pk-dots {
+  position: absolute;
+  bottom: 3cqmin;
+  display: flex;
+  gap: 1.5cqmin;
+}
+.pk-dots span {
+  width: 2cqmin;
+  height: 2cqmin;
+  border-radius: 50%;
+  background: #d9d2fb;
+}
+.pk-dots span.pk-on {
+  background: #7b6cf6;
+}
+.pk-turn {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  font-size: 12cqmin;
+  color: rgba(59, 47, 143, 0.18);
+}
+.pk-turn-back {
+  left: 2cqw;
+}
+.pk-turn-next {
+  right: 2cqw;
+}
+.pk-story-row {
+  justify-content: space-between;
+}
+.pk-story-row .fine {
+  flex: 1;
+  text-align: center;
+  color: #6b6487;
+}
+
+/* The surprise: a present that wiggles, and what comes out of it. */
+.pk-gift {
+  position: absolute;
+  left: 4cqmin;
+  bottom: 4cqmin;
+  z-index: 2;
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 22cqmin;
+  line-height: 1;
+  animation: pk-gift 1.4s ease-in-out infinite;
+  filter: drop-shadow(0 2cqmin 2cqmin rgba(120, 20, 60, 0.3));
+}
+.pk-gift-open {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2cqmin;
+  background: radial-gradient(circle, #fff6d6 0, #ffe0ef 60%, #f6d8ff 100%);
+  animation: pk-pop 600ms var(--ease-back, ease-out) both;
+}
+.pk-gift-photo {
+  width: 56cqmin;
+  height: 56cqmin;
+  object-fit: cover;
+  border-radius: 6cqmin;
+  border: 1.5cqmin solid #fff;
+  box-shadow: 0 2cqmin 5cqmin rgba(120, 20, 60, 0.25);
+}
+.pk-gift-from {
+  margin: 0;
+  font-size: max(22px, 7cqmin);
+  font-weight: 800;
+  color: #b0306f;
+}
+.pk-gift-note {
+  margin: 0;
+  max-width: 80%;
+  text-align: center;
+  font-size: max(16px, 4.5cqmin);
+  color: #3b2f8f;
+}
+.pk-flash::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  animation: pk-fade 300ms ease-out forwards;
+}
+
+/* Grammi's page. */
+.pk-send {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 20px 14px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: #fff8ec;
+  color: #2d2a4a;
+  min-height: 100dvh;
+  font-family: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, sans-serif;
+}
+.pk-send h1,
+.pk-send h2,
+.pk-send h3 {
+  font-family: inherit;
+  color: #2d2a4a;
+  margin: 0;
+}
+.pk-send h1 {
+  text-align: center;
+}
+.pk-send h2 {
+  font-size: 1.1rem;
+}
+.pk-send h3 {
+  font-size: 0.9rem;
+  color: #6b6487;
+  margin-top: 6px;
+}
+.pk-send .fine {
+  color: #6b6487;
+  text-align: left;
+}
+.pk-send .secondary {
+  border-radius: 12px;
+  padding: 8px 14px;
+  color: #3b2f8f;
+}
+.pk-send-lead {
+  margin: 0;
+  text-align: center;
+  color: #4d4770;
+}
+.pk-send-card {
+  background: #fffdf8;
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 6px 24px rgba(60, 40, 100, 0.1);
+}
+.pk-send-done {
+  text-align: center;
+}
+.pk-send-big {
+  font-size: 2rem;
+  margin: 0;
+}
+.pk-send-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+.pk-send-field input {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #d9d2fb;
+  font: inherit;
+  font-size: 1rem;
+}
+.pk-send-photo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  border: 2px dashed #d9d2fb;
+  border-radius: 16px;
+  color: #6b6487;
+  text-align: center;
+  padding: 10px;
+  cursor: pointer;
+}
+.pk-send-photo img {
+  max-width: 100%;
+  max-height: 260px;
+  border-radius: 12px;
+}
+.pk-send-photo input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.pk-send-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 6px;
+}
+.pk-send-grid button {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  border: 2px solid #ece6f7;
+  background: #fff;
+  font-size: 28px;
+  padding: 0;
+}
+.pk-send-grid button.pk-on {
+  border-color: #7b6cf6;
+  background: #efecff;
+}
+.pk-send-chosen {
+  margin: 4px 0 0;
+  font-weight: 700;
+}
+
+@keyframes pk-beat {
+  0%, 100% { translate: 0 0; rotate: -4deg; }
+  50% { translate: 0 -3cqmin; rotate: 4deg; }
+}
+@keyframes pk-page {
+  from { opacity: 0; translate: 6cqw 0; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes pk-gift {
+  0%, 100% { rotate: 0deg; scale: 1; }
+  20% { rotate: -10deg; scale: 1.06; }
+  40% { rotate: 10deg; }
+  60% { rotate: -6deg; scale: 1.03; }
+  80% { rotate: 4deg; }
+}
+
+/* Notes floating up while a verse is sung, and a jump when he taps the animal's screen. */
+.pk-notes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.pk-notes span {
+  position: absolute;
+  bottom: 30%;
+  left: calc(12% + var(--i) * 19%);
+  font-size: 8cqmin;
+  opacity: 0;
+  animation: pk-note 3.4s ease-in infinite;
+  animation-delay: calc(var(--i) * 0.7s);
+}
+.pk-jump {
+  animation: pk-leap 550ms var(--ease-back, ease-out);
+}
+.pk-book .pk-picture {
+  animation: pk-bob 2.6s ease-in-out infinite;
+}
+.pk-gift-open .pk-picture,
+.pk-gift-photo {
+  animation: pk-dance 0.9s ease-in-out infinite;
+}
+
+@keyframes pk-pop {
+  0% { scale: 0.1; opacity: 0; }
+  55% { scale: 1.2 0.88; opacity: 1; }
+  75% { scale: 0.94 1.07; }
+  100% { scale: 1; opacity: 1; }
+}
+@keyframes pk-hop {
+  0% { translate: -50% 40cqmin; scale: 0.5 0.3; opacity: 0; }
+  45% { translate: -50% -68%; scale: 0.92 1.12; opacity: 1; }
+  70% { translate: -50% -50%; scale: 1.14 0.86; }
+  85% { translate: -50% -56%; scale: 0.98 1.03; }
+  100% { translate: -50% -50%; scale: 1; opacity: 1; }
+}
+@keyframes pk-zoom {
+  0% { translate: -160cqw -50%; rotate: -8deg; opacity: 1; }
+  60% { translate: -44% -50%; rotate: 4deg; }
+  80% { translate: -53% -50%; rotate: -2deg; }
+  100% { translate: -50% -50%; rotate: 0deg; opacity: 1; }
+}
+@keyframes pk-spin {
+  0% { rotate: -300deg; scale: 0.1; opacity: 0; }
+  70% { rotate: 12deg; scale: 1.12; opacity: 1; }
+  100% { rotate: 0deg; scale: 1; opacity: 1; }
+}
+@keyframes pk-splat {
+  0% { scale: 0; opacity: 1; }
+  40% { scale: 1.4 0.7; }
+  60% { scale: 0.8 1.25; }
+  80% { scale: 1.08 0.95; }
+  100% { scale: 1; opacity: 1; }
+}
+@keyframes pk-hello {
+  0% { scale: 0.2; rotate: -14deg; opacity: 0; }
+  50% { scale: 1.15; rotate: 8deg; opacity: 1; }
+  75% { rotate: -5deg; }
+  100% { scale: 1; rotate: 0deg; opacity: 1; }
+}
+@keyframes pk-jiggle {
+  0%, 100% { scale: 1; rotate: 0deg; opacity: 1; }
+  20% { scale: 1.25 0.8; rotate: -9deg; }
+  45% { scale: 0.85 1.2; rotate: 9deg; }
+  70% { scale: 1.1 0.95; rotate: -4deg; }
+}
+@keyframes pk-bob {
+  0%, 100% { translate: 0 0; rotate: -2.5deg; }
+  50% { translate: 0 -1.6cqmin; rotate: 2.5deg; }
+}
+@keyframes pk-dance {
+  0%, 100% { rotate: -9deg; translate: 0 0; scale: 1; }
+  25% { translate: 0 -3cqmin; scale: 1.06 0.96; }
+  50% { rotate: 9deg; translate: 0 0; scale: 1; }
+  75% { translate: 0 -3cqmin; scale: 1.06 0.96; }
+}
+@keyframes pk-peep {
+  0%, 18%, 62%, 100% { translate: -50% 13cqmin; }
+  28%, 50% { translate: -50% 0; }
+  36% { translate: -46% 0; }
+  43% { translate: -54% 0; }
+}
+@keyframes pk-shiver {
+  0%, 60%, 100% { rotate: 0deg; }
+  66% { rotate: -3deg; }
+  72% { rotate: 3deg; }
+  78% { rotate: -2deg; }
+  84% { rotate: 0deg; }
+}
+@keyframes pk-drift {
+  from { translate: -4% -3%; rotate: -3deg; }
+  to { translate: 4% 3%; rotate: 4deg; }
+}
+@keyframes pk-note {
+  0% { translate: 0 0; opacity: 0; rotate: -10deg; }
+  15% { opacity: 0.85; }
+  100% { translate: 4cqw -42cqh; opacity: 0; rotate: 16deg; }
+}
+@keyframes pk-leap {
+  0%, 100% { translate: 0 0; scale: 1; }
+  30% { translate: 0 -9cqmin; scale: 0.92 1.1; }
+  70% { translate: 0 0; scale: 1.12 0.88; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pk-sky,
+  .pk-eyes,
+  .pk-notes span,
+  .pk-pop .pk-picture,
+  .pk-choice .pk-picture,
+  .pk-book .pk-picture,
+  .pk-gift-open .pk-picture,
+  .pk-gift-photo {
+    animation: none !important;
+  }
+}
+
+/* Dance: the theme song plays and his pictures dance in time (the song is about 120 beats a minute). */
+.pk-dance {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4cqmin;
+  animation: pk-disco 4s linear infinite;
+}
+.pk-dance-title {
+  margin: 0;
+  font-size: max(22px, 7.5cqmin);
+  font-weight: 900;
+  color: #e8559a;
+  text-shadow: 0 0.5cqmin 0 #fff;
+  animation: pk-stomp 1s ease-in-out infinite;
+}
+.pk-dancers {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 3cqmin 5cqmin;
+}
+.pk-dancer {
+  animation: pk-dance 1s ease-in-out infinite;
+}
+/* Every other one leans the other way. */
+.pk-dancer:nth-child(even) {
+  animation-delay: -0.5s;
+}
+.pk-dancer .pk-emoji {
+  font-size: 19cqmin;
+}
+.pk-dancer .pk-drawn,
+.pk-dancer .pk-picture img {
+  width: 19cqmin;
+  height: 19cqmin;
+}
+.pk-dancer .pk-word {
+  font-size: max(13px, 3.6cqmin);
+}
+@keyframes pk-stomp {
+  0%, 50%, 100% { scale: 1; }
+  10%, 60% { scale: 1.12 0.9; }
+}
+@keyframes pk-disco {
+  0%, 100% { background: rgba(255, 143, 177, 0.16); }
+  25% { background: rgba(255, 214, 102, 0.2); }
+  50% { background: rgba(110, 198, 255, 0.18); }
+  75% { background: rgba(160, 140, 255, 0.16); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pk-dance,
+  .pk-dance-title,
+  .pk-dancer {
+    animation: none !important;
   }
 }

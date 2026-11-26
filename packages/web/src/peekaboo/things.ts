@@ -2,7 +2,8 @@
 // functions, so it is the same on both ends of a call and can be tested without a screen.
 
 export type Category = "animals" | "vehicles" | "things" | "shapes" | "colors" | "family";
-export type Mode = "tap" | "peek" | "find";
+export type Mode = "tap" | "peek" | "find" | "sing" | "story" | "dance";
+export const MODE_IDS: Mode[] = ["tap", "peek", "find", "sing", "story", "dance"];
 
 export interface Thing {
   id: string;
@@ -13,6 +14,8 @@ export interface Thing {
   /** The picture: a big emoji (the device's own colour font), or a family member's photo. */
   emoji: string;
   photo?: string;
+  /** What an animal says in Old MacDonald ("moo"). */
+  sing?: string;
   /** Shapes and colours are drawn, not emoji: a shape in its colour, or a splash of the colour. */
   draw?: { shape: Shape | "splash"; fill: string };
   category: Category;
@@ -35,28 +38,29 @@ export const COLORS = {
 } as const;
 export type ColorName = keyof typeof COLORS;
 
-const t = (category: Category, emoji: string, word: string, sound?: string): Thing => ({
+const t = (category: Category, emoji: string, word: string, sound?: string, sing?: string): Thing => ({
   id: `${category}:${word.toLowerCase().replace(/[^a-z]+/g, "-")}`,
   word,
   say: sound ? `${word}! ${sound}` : `${word}!`,
   emoji,
   category,
+  ...(sing ? { sing } : {}),
 });
 
 /** The built-in pictures: everyday things a one-year-old meets, with the sounds they make. */
 export const THINGS: Thing[] = [
-  t("animals", "🐶", "Dog", "Woof woof!"),
-  t("animals", "🐱", "Cat", "Meow!"),
-  t("animals", "🐮", "Cow", "Moo!"),
-  t("animals", "🦆", "Duck", "Quack quack!"),
-  t("animals", "🐷", "Pig", "Oink oink!"),
-  t("animals", "🐑", "Sheep", "Baa!"),
-  t("animals", "🐴", "Horse", "Neigh!"),
-  t("animals", "🐔", "Chicken", "Cluck cluck!"),
-  t("animals", "🐸", "Frog", "Ribbit!"),
-  t("animals", "🦉", "Owl", "Hoo hoo!"),
-  t("animals", "🦁", "Lion", "Roar!"),
-  t("animals", "🐝", "Bee", "Buzz!"),
+  t("animals", "🐶", "Dog", "Woof woof!", "woof"),
+  t("animals", "🐱", "Cat", "Meow!", "meow"),
+  t("animals", "🐮", "Cow", "Moo!", "moo"),
+  t("animals", "🦆", "Duck", "Quack quack!", "quack"),
+  t("animals", "🐷", "Pig", "Oink oink!", "oink"),
+  t("animals", "🐑", "Sheep", "Baa!", "baa"),
+  t("animals", "🐴", "Horse", "Neigh!", "neigh"),
+  t("animals", "🐔", "Chicken", "Cluck cluck!", "cluck"),
+  t("animals", "🐸", "Frog", "Ribbit!", "ribbit"),
+  t("animals", "🦉", "Owl", "Hoo hoo!", "hoo"),
+  t("animals", "🦁", "Lion", "Roar!", "roar"),
+  t("animals", "🐝", "Bee", "Buzz!", "buzz"),
   t("vehicles", "🚗", "Car", "Beep beep!"),
   t("vehicles", "🚚", "Truck", "Vroom!"),
   t("vehicles", "🚌", "Bus", "Beep beep!"),
@@ -130,6 +134,35 @@ export const DEFAULT_FAMILY: Person[] = [
   { name: "Baby", emoji: "👶" },
 ];
 
+/** A picture of their own the grown-ups added: a photo of his cup, the dog, the car. */
+export interface Mine {
+  id: string;
+  word: string;
+  category: "animals" | "vehicles" | "things";
+  photo: string;
+  /** What it says or does ("Woof!"), if anything. */
+  sound?: string;
+}
+
+export const mineThings = (mine: Mine[]): Thing[] =>
+  mine
+    .filter((m) => m.word.trim() && m.photo)
+    .map((m) => ({ id: `mine:${m.id}`, word: m.word.trim(), say: m.sound?.trim() ? `${m.word.trim()}! ${m.sound.trim()}` : `${m.word.trim()}!`, emoji: "📷", photo: m.photo, category: m.category }));
+
+export function tidyMine(raw: unknown): Mine[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((m): m is Record<string, unknown> => !!m && typeof m === "object")
+    .slice(0, 40)
+    .map((m) => ({
+      id: String(m.id ?? "").replace(/[^a-z0-9]/gi, "").slice(0, 16) || Math.random().toString(36).slice(2, 10),
+      word: String(m.word ?? "").slice(0, 24),
+      category: m.category === "animals" || m.category === "vehicles" ? m.category : ("things" as const),
+      photo: typeof m.photo === "string" && m.photo.startsWith("data:image/") && m.photo.length < 120_000 ? m.photo : "",
+      sound: String(m.sound ?? "").slice(0, 40),
+    }));
+}
+
 export const familyThings = (family: Person[]): Thing[] =>
   family
     .filter((p) => p.name.trim())
@@ -144,9 +177,15 @@ export interface Settings {
   choices: 2 | 3;
   /** Say each picture's sound as well as its name. */
   sounds: boolean;
+  /** Take a photo of his face when he finds one, lifts the blanket, or opens a surprise. */
+  snaps: boolean;
+  /** Play each picture's own sound effect after its name (a moo, a beep, a boing). */
+  effects: boolean;
+  /** Play a little of the theme song when the game starts. */
+  theme: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { mode: "tap", categories: ["animals"], few: true, choices: 2, sounds: true };
+export const DEFAULT_SETTINGS: Settings = { mode: "tap", categories: ["animals"], few: true, choices: 2, sounds: true, snaps: false, effects: true, theme: true };
 export const FEW = 6;
 
 /** Settings as saved, made safe: anything missing or odd falls back to the default. */
@@ -154,11 +193,14 @@ export function tidySettings(raw: unknown): Settings {
   const r = (raw && typeof raw === "object" ? raw : {}) as Partial<Record<keyof Settings, unknown>>;
   const kinds = Array.isArray(r.categories) ? r.categories.filter((c): c is Category => CATEGORIES.some((k) => k.id === c)) : [];
   return {
-    mode: r.mode === "peek" || r.mode === "find" || r.mode === "tap" ? r.mode : DEFAULT_SETTINGS.mode,
+    mode: MODE_IDS.includes(r.mode as Mode) ? (r.mode as Mode) : DEFAULT_SETTINGS.mode,
     categories: kinds.length ? [...new Set(kinds)] : DEFAULT_SETTINGS.categories,
     few: typeof r.few === "boolean" ? r.few : DEFAULT_SETTINGS.few,
     choices: r.choices === 3 ? 3 : 2,
     sounds: typeof r.sounds === "boolean" ? r.sounds : DEFAULT_SETTINGS.sounds,
+    snaps: typeof r.snaps === "boolean" ? r.snaps : DEFAULT_SETTINGS.snaps,
+    effects: typeof r.effects === "boolean" ? r.effects : DEFAULT_SETTINGS.effects,
+    theme: typeof r.theme === "boolean" ? r.theme : DEFAULT_SETTINGS.theme,
   };
 }
 
@@ -182,16 +224,41 @@ export function shuffle<T>(items: readonly T[], random: () => number): T[] {
   return out;
 }
 
-/** The pictures in play: the chosen kinds, and only the first few of them when "a few" is on. Family always counts in full. */
-export function inPlay(settings: Settings, family: Person[], random: () => number): Thing[] {
-  const all = [...THINGS, ...familyThings(family)].filter((th) => settings.categories.includes(th.category));
+/**
+ * The pictures in play: the chosen kinds, and only a few of them when "a few" is on. The ones that
+ * matter most always come: family, the grown-ups' own photos, and the words being practised.
+ */
+export function inPlay(settings: Settings, family: Person[], random: () => number, mine: Mine[] = [], practice: readonly string[] = []): Thing[] {
+  const all = [...THINGS, ...familyThings(family), ...mineThings(mine)].filter((th) => settings.categories.includes(th.category));
   if (!settings.few) return all;
-  const people = all.filter((th) => th.category === "family");
+  const first = all.filter((th) => th.category === "family" || th.id.startsWith("mine:") || practice.includes(th.id)).slice(0, 8);
   const rest = shuffle(
-    all.filter((th) => th.category !== "family"),
+    all.filter((th) => !first.includes(th)),
     random,
-  ).slice(0, Math.max(0, FEW - Math.min(people.length, 2)));
-  return [...people, ...rest];
+  ).slice(0, Math.max(0, FEW - Math.min(first.length, 3)));
+  return [...first, ...rest];
+}
+
+/**
+ * Put a shuffled round in an order where the same picture never comes twice in a row (where
+ * anything else can go between): each next one is the first in the shuffle that differs from the
+ * one before, taking first whichever picture has the most copies left, so the round never ends on
+ * two of the same.
+ */
+function spread(order: Thing[], last: Thing | null): Thing[] {
+  const left = [...order];
+  const out: Thing[] = [];
+  let before = last?.id;
+  while (left.length) {
+    const count = (id: string) => left.filter((x) => x.id === id).length;
+    const options = left.filter((x) => x.id !== before);
+    const most = Math.max(0, ...options.map((x) => count(x.id)));
+    const pick = options.find((x) => count(x.id) === most) ?? left[0]!;
+    left.splice(left.indexOf(pick), 1);
+    out.push(pick);
+    before = pick.id;
+  }
+  return out;
 }
 
 /**
@@ -199,15 +266,16 @@ export function inPlay(settings: Settings, family: Person[], random: () => numbe
  * shuffle bag), and never the same one twice in a row across the end of one round and the start of
  * the next.
  */
-export function createBag(things: readonly Thing[], random: () => number) {
+export function createBag(things: readonly Thing[], random: () => number, practice: readonly string[] = []) {
+  // A word being practised goes in twice a round.
+  const round = [...things, ...things.filter((th) => practice.includes(th.id))];
   let order: Thing[] = [];
   let last: Thing | null = null;
   return {
     next(): Thing {
       if (!things.length) throw new Error("No pictures to show");
       if (!order.length) {
-        order = shuffle(things, random);
-        if (order.length > 1 && order[0]!.id === last?.id) order.push(order.shift()!);
+        order = spread(shuffle(round, random), last);
       }
       last = order.shift()!;
       return last;

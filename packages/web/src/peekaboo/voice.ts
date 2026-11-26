@@ -1,55 +1,10 @@
-// Peekaboo's sounds: the voice that names each picture (a grown-up's own recording when there is
-// one, the device's speech otherwise), a pop when a picture appears and a little tune for a find.
+// Peekaboo's voice: what names each picture (a grown-up's own recording when there is one, the
+// device's speech otherwise). The sound effects are sfx.ts.
 // Recordings are kept in this browser (IndexedDB) and never leave it.
+import { inStore } from "./store";
 import { DEFAULT_FAMILY, tidySettings, type Person, type Settings } from "./things";
 
-let audio: AudioContext | null = null;
-const context = () => {
-  if (!audio) {
-    const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctor) return null;
-    audio = new Ctor();
-  }
-  if (audio.state === "suspended") void audio.resume().catch(() => {});
-  return audio;
-};
-
-function tone(freq: number, start: number, length: number, type: OscillatorType = "sine", volume = 0.18, slideTo?: number) {
-  const ctx = context();
-  if (!ctx) return;
-  const at = ctx.currentTime + start;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, at);
-  if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, at + length);
-  gain.gain.setValueAtTime(0.0001, at);
-  gain.gain.exponentialRampToValueAtTime(volume, at + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, at + length);
-  osc.connect(gain).connect(ctx.destination);
-  osc.start(at);
-  osc.stop(at + length + 0.05);
-}
-
-export const sounds = {
-  /** A soft bubble pop, a little higher or lower each time. */
-  pop() {
-    const base = 380 + Math.random() * 260;
-    tone(base, 0, 0.18, "sine", 0.2, base * 2.2);
-  },
-  /** Three rising notes: you found it. */
-  cheer() {
-    [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.11, 0.28, "triangle", 0.16));
-  },
-  /** A gentle "boop" for a try that wasn't it: no buzzer, nothing that sounds like losing. */
-  boop() {
-    tone(330, 0, 0.22, "sine", 0.12, 260);
-  },
-  /** A rising swish, for the blanket coming off. */
-  swish() {
-    tone(200, 0, 0.3, "triangle", 0.1, 900);
-  },
-};
+export { audioContext, sounds } from "./sfx";
 
 // The device's own voice, a little slower and higher than usual, as people talk to babies.
 let chosen: SpeechSynthesisVoice | null | undefined;
@@ -65,50 +20,104 @@ function voice(): SpeechSynthesisVoice | null {
 let playing: HTMLAudioElement | null = null;
 /** Say something. With a recording for `key`, that is played instead of the spoken words. */
 export async function say(text: string, key?: string): Promise<void> {
+  const ended = await sayAnd(text, key);
+  void ended;
+}
+
+/** Say something, and know when it has finished being said. */
+export async function sayAnd(text: string, key?: string): Promise<Promise<void>> {
   playing?.pause();
   if (typeof speechSynthesis !== "undefined") speechSynthesis.cancel();
   const clip = key ? await recording(key).catch(() => null) : null;
   if (clip) {
     const url = URL.createObjectURL(clip);
     playing = new Audio(url);
-    playing.addEventListener("ended", () => URL.revokeObjectURL(url), { once: true });
-    await playing.play().catch(() => {});
-    return;
+    const clip_ = playing;
+    const over = new Promise<void>((done) => {
+      clip_.addEventListener("ended", () => (URL.revokeObjectURL(url), done()), { once: true });
+      clip_.addEventListener("pause", () => done(), { once: true });
+    });
+    await clip_.play().catch(() => {});
+    return over;
   }
-  if (typeof speechSynthesis === "undefined") return;
+  if (typeof speechSynthesis === "undefined") return Promise.resolve();
   const words = new SpeechSynthesisUtterance(text);
   words.rate = 0.85;
   words.pitch = 1.25;
   const v = voice();
   if (v) words.voice = v;
+  const over = new Promise<void>((done) => {
+    words.onend = () => done();
+    words.onerror = () => done();
+  });
   speechSynthesis.speak(words);
+  return over;
 }
+
+/** Play a sound (a recorded message, say) from a data URL; resolves when it ends. */
+export function playData(url: string): Promise<void> {
+  quiet();
+  playing = new Audio(url);
+  const clip = playing;
+  return new Promise<void>((done) => {
+    clip.addEventListener("ended", () => done(), { once: true });
+    clip.addEventListener("pause", () => done(), { once: true });
+    clip.addEventListener("error", () => done(), { once: true });
+    void clip.play().catch(() => done());
+  });
+}
+
+// The theme song (or any long music): one at a time, apart from the voice, so naming things doesn't stop it.
+let song: { el: HTMLAudioElement; token: number } | null = null;
+let songs = 0;
+/** Stop the song, fading it out. With a token, only if that song is still the one playing. */
+export function stopSong(fadeMs = 500, token?: number) {
+  const now = song;
+  if (!now || (token !== undefined && token !== now.token)) return;
+  song = null;
+  const from = now.el.volume;
+  const began = performance.now();
+  const fade = setInterval(() => {
+    const t = (performance.now() - began) / Math.max(1, fadeMs);
+    if (t >= 1) {
+      clearInterval(fade);
+      now.el.pause();
+    } else now.el.volume = from * (1 - t);
+  }, 40);
+}
+/** Play a song from its address. `ended` resolves true when it played to its end, false when it was stopped. */
+export function playSong(url: string, volume = 0.8): { token: number; ended: Promise<boolean> } {
+  stopSong(150);
+  const el = new Audio(url);
+  el.volume = volume;
+  const token = ++songs;
+  song = { el, token };
+  const ended = new Promise<boolean>((done) => {
+    el.addEventListener("ended", () => (song?.token === token && (song = null), done(true)), { once: true });
+    // A song that plays to its end is paused by the browser just before "ended": that is not being stopped.
+    el.addEventListener("pause", () => !el.ended && done(false));
+    el.addEventListener("error", () => (song?.token === token && (song = null), done(false)), { once: true });
+  });
+  void el.play().catch(() => {});
+  return { token, ended };
+}
+
+/** A blob as a data URL, for sending. */
+export const dataUrl = (blob: Blob) =>
+  new Promise<string>((yes, no) => {
+    const reader = new FileReader();
+    reader.onload = () => yes(String(reader.result));
+    reader.onerror = () => no(reader.error);
+    reader.readAsDataURL(blob);
+  });
 
 export function quiet() {
   playing?.pause();
   if (typeof speechSynthesis !== "undefined") speechSynthesis.cancel();
 }
 
-// Recordings: one clip per picture, keyed by the picture's id.
-const DB = "peekaboo";
-const STORE = "voices";
-function db(): Promise<IDBDatabase> {
-  return new Promise((yes, no) => {
-    if (typeof indexedDB === "undefined") return no(new Error("No storage here"));
-    const open = indexedDB.open(DB, 1);
-    open.onupgradeneeded = () => open.result.createObjectStore(STORE);
-    open.onsuccess = () => yes(open.result);
-    open.onerror = () => no(open.error);
-  });
-}
-async function store<T>(mode: IDBTransactionMode, act: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-  const d = await db();
-  return new Promise((yes, no) => {
-    const req = act(d.transaction(STORE, mode).objectStore(STORE));
-    req.onsuccess = () => yes(req.result);
-    req.onerror = () => no(req.error);
-  });
-}
+// Recordings: one clip per picture, keyed by the picture's id (and a sung verse by "song:" and its id).
+const store = <T,>(mode: IDBTransactionMode, act: (s: IDBObjectStore) => IDBRequest<T>) => inStore<T>("voices", mode, act);
 const cache = new Map<string, Blob | null>();
 export async function recording(key: string): Promise<Blob | null> {
   if (cache.has(key)) return cache.get(key)!;
@@ -128,8 +137,8 @@ export async function recordedKeys(): Promise<string[]> {
   return ((await store("readonly", (s) => s.getAllKeys()).catch(() => [])) as IDBValidKey[]).map(String);
 }
 
-/** Record from the microphone until `stop` is called (or ten seconds pass). */
-export async function record(): Promise<{ stop(): Promise<Blob> }> {
+/** Record from the microphone until `stop` is called (or `most` milliseconds pass). */
+export async function record(most = 10_000): Promise<{ stop(): Promise<Blob>; done: Promise<Blob> }> {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
   const recorder = new MediaRecorder(stream);
   const parts: Blob[] = [];
@@ -141,8 +150,9 @@ export async function record(): Promise<{ stop(): Promise<Blob> }> {
     }),
   );
   recorder.start();
-  const timer = setTimeout(() => recorder.state !== "inactive" && recorder.stop(), 10_000);
+  const timer = setTimeout(() => recorder.state !== "inactive" && recorder.stop(), most);
   return {
+    done,
     stop() {
       clearTimeout(timer);
       if (recorder.state !== "inactive") recorder.stop();
@@ -190,13 +200,13 @@ export function saveFamily(family: Person[]) {
   } catch {}
 }
 
-/** A photo, made small (a square of 320 pixels) so it keeps in the browser and goes across a call. */
-export async function smallPhoto(file: File): Promise<string> {
+/** A photo, made small (a square, 320 pixels by default) so it keeps in the browser and goes across a call. */
+export async function smallPhoto(file: Blob, size = 320): Promise<string> {
   const bitmap = await createImageBitmap(file);
   const side = Math.min(bitmap.width, bitmap.height);
   const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = 320;
-  canvas.getContext("2d")!.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, 320, 320);
+  canvas.width = canvas.height = size;
+  canvas.getContext("2d")!.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, size, size);
   bitmap.close();
   return canvas.toDataURL("image/jpeg", 0.8);
 }
