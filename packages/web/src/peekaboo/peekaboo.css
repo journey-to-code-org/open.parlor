@@ -1,0 +1,568 @@
+/* Peekaboo: big, soft, bright, and nothing a baby's hand can do by accident. */
+.pk-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff8ec;
+  color: #2d2a4a;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+  font-family: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, sans-serif;
+  z-index: 50;
+}
+
+.pk-board {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  container-type: size;
+  background: radial-gradient(circle at 30% 20%, #fff3c4 0, transparent 45%), radial-gradient(circle at 80% 85%, #d6f0ff 0, transparent 50%), #fff8ec;
+}
+.pk-invite {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  font-size: 24cqmin;
+  opacity: 0.35;
+  animation: pk-wave 2.4s ease-in-out infinite;
+}
+
+.pk-picture {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1cqmin;
+  pointer-events: none;
+}
+.pk-emoji {
+  font-size: 30cqmin;
+  line-height: 1;
+  filter: drop-shadow(0 1.2cqmin 1.5cqmin rgba(60, 40, 0, 0.2));
+}
+.pk-picture img {
+  width: 34cqmin;
+  height: 34cqmin;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 1.5cqmin solid #fff;
+  box-shadow: 0 1.2cqmin 3cqmin rgba(60, 40, 0, 0.25);
+}
+.pk-word {
+  font-size: max(18px, 7cqmin);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #3b2f8f;
+}
+
+.pk-pop {
+  position: absolute;
+  translate: -50% -50%;
+  animation: pk-pop 520ms var(--ease-back, ease-out) both, pk-fade 600ms ease-in 4.4s forwards;
+}
+
+/* Peekaboo: the picture under a blanket that slides up and off. */
+.pk-peek {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.pk-peek .pk-picture {
+  opacity: 0;
+  scale: 0.7;
+  transition: opacity 300ms, scale 500ms var(--ease-back, ease-out);
+}
+.pk-peek.pk-open .pk-picture {
+  opacity: 1;
+  scale: 1.15;
+}
+.pk-blanket {
+  position: absolute;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.25) 0 4cqmin, transparent 4cqmin 8cqmin),
+    linear-gradient(180deg, #ff8fb1, #e85d8a);
+  border-radius: 6cqmin 6cqmin 3cqmin 3cqmin;
+  box-shadow: inset 0 -2cqmin 0 rgba(0, 0, 0, 0.12), 0 2cqmin 4cqmin rgba(120, 20, 60, 0.25);
+  transition: translate 650ms var(--ease-in, ease-in), rotate 650ms, opacity 650ms;
+}
+.pk-peek .pk-blanket {
+  width: 60cqmin;
+  height: 60cqmin;
+  animation: pk-breathe 2.2s ease-in-out infinite;
+}
+.pk-peek.pk-open .pk-blanket {
+  translate: 0 -120cqh;
+  rotate: -12deg;
+  animation: none;
+}
+
+/* Where's the…? */
+.pk-question {
+  position: absolute;
+  top: 3cqh;
+  left: 0;
+  right: 0;
+  margin: 0;
+  text-align: center;
+  font-size: max(20px, 6cqmin);
+  font-weight: 800;
+  color: #3b2f8f;
+}
+.pk-choices {
+  position: absolute;
+  inset: 12cqh 2cqw 2cqh;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 4cqmin;
+}
+.pk-choice {
+  padding: 3cqmin;
+  border: 0;
+  border-radius: 8cqmin;
+  background: #ffffffb0;
+  box-shadow: 0 1cqmin 3cqmin rgba(60, 40, 0, 0.12);
+  animation: pk-pop 520ms var(--ease-back, ease-out) both;
+  transition: scale 400ms var(--ease-back, ease-out), opacity 400ms;
+}
+.pk-choices .pk-emoji {
+  font-size: 24cqmin;
+}
+.pk-choices .pk-picture img {
+  width: 26cqmin;
+  height: 26cqmin;
+}
+.pk-choice.pk-found {
+  scale: 1.25;
+  background: #fff1a8;
+}
+.pk-choice.pk-faded {
+  opacity: 0.15;
+  scale: 0.85;
+}
+.pk-choice.pk-wiggle {
+  animation: pk-wiggle 500ms ease-in-out;
+}
+.pk-choice.pk-hint {
+  animation: pk-glow 1.2s ease-in-out infinite;
+}
+.pk-stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.pk-stars span {
+  position: absolute;
+  left: 50%;
+  top: 55%;
+  font-size: 8cqmin;
+  animation: pk-star 1.3s ease-out both;
+  animation-delay: calc(var(--i) * 40ms);
+  --a: calc(var(--i) * 51deg);
+}
+
+/* In a call, on the baby's screen: the other parent's face, in a bubble that taps pass through. */
+.pk-face {
+  position: absolute;
+  bottom: 3cqmin;
+  right: 3cqmin;
+  width: 34cqmin;
+  height: 34cqmin;
+  border-radius: 50%;
+  overflow: hidden;
+  pointer-events: none;
+  background: #d8d2ff;
+  display: grid;
+  place-items: center;
+  border: 1.2cqmin solid #fff;
+  box-shadow: 0 1.5cqmin 4cqmin rgba(40, 30, 90, 0.3);
+}
+.pk-face-video,
+.pk-self-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pk-face-wait {
+  font-size: 12cqmin;
+  animation: pk-wave 1.6s ease-in-out infinite;
+}
+.pk-face .pk-blanket,
+.pk-self .pk-blanket {
+  inset: 0;
+  border-radius: 0;
+  translate: 0 -105%;
+}
+.pk-face-hidden .pk-blanket {
+  translate: 0 0;
+  transition-timing-function: var(--ease-out, ease-out);
+}
+.pk-mirror {
+  scale: -1 1;
+}
+
+/* The grown-ups' button: small, quiet, in a corner, and it must be held. */
+.pk-hold {
+  position: fixed;
+  top: max(8px, env(safe-area-inset-top));
+  left: max(8px, env(safe-area-inset-left));
+  z-index: 3;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(45, 42, 74, 0.08);
+  color: #2d2a4a;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+  opacity: 0.55;
+  touch-action: none;
+}
+.pk-hold small {
+  font-size: 10px;
+}
+.pk-hold.pk-holding {
+  opacity: 1;
+  background: conic-gradient(#7b6cf6 var(--pk-fill, 0%), rgba(45, 42, 74, 0.12) 0);
+  animation: pk-fill 1.5s linear forwards;
+}
+@property --pk-fill {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
+/* The grown-ups' settings. */
+.pk-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow-y: auto;
+  touch-action: pan-y;
+  user-select: text;
+  -webkit-user-select: text;
+  background: rgba(30, 26, 60, 0.55);
+  backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) 12px 24px;
+}
+.pk-panel-inner {
+  width: min(560px, 100%);
+  height: max-content;
+  background: #fffdf8;
+  border-radius: 24px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+.pk-panel h2,
+.pk-join h1 {
+  margin: 0;
+  text-align: center;
+}
+.pk-panel h2,
+.pk-panel h3,
+.pk-join h1 {
+  font-family: inherit;
+  color: #2d2a4a;
+}
+.pk-panel h3 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+.pk-panel .fine,
+.pk-join .fine {
+  color: #6b6487;
+  text-align: left;
+}
+.pk-section {
+  border-top: 1px solid #ece6f7;
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pk-go {
+  font-size: 1.3rem;
+  font-weight: 800;
+  padding: 14px;
+  border: 0;
+  border-radius: 16px;
+  background: #7b6cf6;
+  color: #fff;
+}
+.pk-root .secondary,
+.pk-join .secondary {
+  border-radius: 12px;
+  padding: 8px 14px;
+  color: #3b2f8f;
+}
+.pk-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pk-modes button {
+  flex: 1;
+  min-width: 7em;
+  padding: 10px;
+  border-radius: 12px;
+  border: 2px solid #d9d2fb;
+  background: #fff;
+  color: #2d2a4a;
+  font-weight: 700;
+}
+.pk-modes button.pk-on {
+  background: #7b6cf6;
+  border-color: #7b6cf6;
+  color: #fff;
+}
+.pk-kinds {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11em, 1fr));
+  gap: 4px;
+}
+.pk-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pk-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.pk-link {
+  width: 100%;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid #d9d2fb;
+  font: inherit;
+  font-size: 0.85rem;
+}
+.pk-call-state {
+  font-weight: 700;
+  margin: 0;
+}
+.pk-problem {
+  color: #b3261e !important;
+}
+.pk-voices,
+.pk-family {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pk-voices li,
+.pk-family li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pk-voice-name {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pk-voice-name img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.pk-recording {
+  border: 0;
+  border-radius: 12px;
+  padding: 8px 14px;
+  background: #e5484d;
+  color: #fff;
+  animation: pk-glow 1s ease-in-out infinite;
+}
+.pk-family input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid #d9d2fb;
+  font: inherit;
+}
+.pk-photo {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #f1edff;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  overflow: hidden;
+  cursor: pointer;
+  flex: none;
+}
+.pk-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pk-photo input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* The other parent's phone: the baby above, the board below, the buttons at the foot. */
+.pk-remote {
+  background: #1e1b36;
+}
+.pk-stage {
+  position: relative;
+  flex: 0 0 42%;
+  background: #110f22;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.pk-baby {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pk-stage .pk-call-state {
+  color: #fff;
+}
+.pk-stage .pk-over {
+  position: absolute;
+  bottom: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 4px 10px;
+  border-radius: 10px;
+}
+.pk-self {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 26%;
+  aspect-ratio: 3 / 4;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid #fff;
+  background: #2d2a4a;
+}
+.pk-remote .pk-board {
+  flex: 1;
+}
+.pk-controls {
+  background: #fffdf8;
+  padding: 8px 10px max(10px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pk-peekaboo {
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 16px;
+  background: #ff8fb1;
+  color: #fff;
+  font-weight: 800;
+}
+.pk-hangup {
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 16px;
+  background: #e5484d;
+  color: #fff;
+  font-weight: 700;
+  margin-left: auto;
+}
+@media (min-aspect-ratio: 5/4) {
+  .pk-remote {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .pk-remote .pk-stage {
+    flex: 0 0 45%;
+    height: calc(100% - 64px);
+  }
+  .pk-remote .pk-board {
+    flex: 1 0 55%;
+    height: calc(100% - 64px);
+  }
+  .pk-controls {
+    flex: 0 0 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+.pk-join {
+  min-height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 32px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  justify-content: center;
+  text-align: center;
+  background: #fff8ec;
+  color: #2d2a4a;
+}
+
+@keyframes pk-pop {
+  from { scale: 0.2; opacity: 0; }
+  to { scale: 1; opacity: 1; }
+}
+@keyframes pk-fade {
+  to { opacity: 0; scale: 0.8; }
+}
+@keyframes pk-wave {
+  0%, 100% { rotate: 0deg; }
+  50% { rotate: 14deg; }
+}
+@keyframes pk-breathe {
+  0%, 100% { scale: 1; }
+  50% { scale: 1.04 0.97; }
+}
+@keyframes pk-wiggle {
+  0%, 100% { rotate: 0deg; }
+  25% { rotate: -8deg; }
+  75% { rotate: 8deg; }
+}
+@keyframes pk-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(123, 108, 246, 0.6); }
+  50% { box-shadow: 0 0 0 4cqmin rgba(123, 108, 246, 0); }
+}
+@keyframes pk-star {
+  from { translate: -50% -50%; opacity: 1; scale: 0.4; }
+  to { translate: calc(-50% + cos(var(--a)) * 38cqmin) calc(-50% + sin(var(--a)) * 38cqmin); opacity: 0; scale: 1.3; }
+}
+@keyframes pk-fill {
+  to { --pk-fill: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pk-pop,
+  .pk-choice,
+  .pk-invite,
+  .pk-peek .pk-blanket,
+  .pk-stars span {
+    animation-duration: 1ms !important;
+  }
+}

@@ -76,6 +76,9 @@ const cardRoom = createCardRoom({
   // CARDROOM_AI_KEY is the parlor's own key: with it, every table's bots talk through a model.
   // Computer players think in worker threads: as many as CARDROOM_BOT_WORKERS says (0 for none), or
   // what suits the machine. The workers start, and warm up, while the server is already listening.
+  // Peekaboo's video calls connect browser to browser. A STUN server finds most ways through; a TURN
+  // server (CARDROOM_TURN_URL, _USERNAME, _CREDENTIAL) carries the calls that can't connect directly.
+  calls: { ice: [{ urls: "stun:stun.l.google.com:19302" }, ...(setting("TURN_URL") ? [{ urls: setting("TURN_URL")!.split(",").map((u) => u.trim()), username: setting("TURN_USERNAME"), credential: setting("TURN_CREDENTIAL") }] : [])] },
   bots: { workers: workersFrom(setting("BOT_WORKERS")), budgetMs: Number(setting("BOT_BUDGET")) || undefined, ceilingMs: Number(setting("BOT_CEILING")) || undefined },
   ai: { secret: setting("SECRET"), shared: { key: setting("AI_KEY"), provider: setting("AI_PROVIDER"), model: setting("AI_MODEL"), daily: Number(setting("AI_DAILY")) || undefined, adminModel: setting("ADMIN_AI_MODEL"), adminDaily: Number(setting("ADMIN_AI_DAILY")) || undefined } },
 });
