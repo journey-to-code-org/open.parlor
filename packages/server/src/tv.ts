@@ -25,6 +25,8 @@ import type { Catalogue } from "./catalogue.js";
 import { gameEmoji, gameName, type GameId } from "./games.js";
 import { kitOptions } from "./kit.js";
 import { standing } from "./spectate.js";
+import { Picture, rgb } from "./paint.js";
+import { CANVAS_COLORS, CANVAS_SIZES } from "@journey-to-code/games";
 
 interface Docs {
   get(collection: string, key: string): Record<string, unknown> | undefined;
@@ -39,7 +41,7 @@ interface Rooms {
 }
 
 /** The games a television can show, each with the way its board is drawn there. */
-export const TV_GAMES: GameId[] = ["readtheroom" as GameId];
+export const TV_GAMES: GameId[] = ["readtheroom", "telephone"] as GameId[];
 
 /** Letters nobody misreads across a room: no vowels (no words), no I, O or 0. */
 const LETTERS = "BCDFGHJKLMNPQRSTVWXZ";
@@ -61,8 +63,8 @@ const seatScores = (view: Any, seats: number): number[] => {
 };
 
 export interface TvScreen {
-  /** Which of the television's layouts: waiting for players, a question, the room's answer, the end, or a plain scoreboard. */
-  layout: "lobby" | "question" | "room" | "over" | "scores";
+  /** Which of the television's layouts: waiting for players, a question, the room's answer, the end, a plain scoreboard, or Pass the Picture's. */
+  layout: "lobby" | "question" | "room" | "over" | "scores" | "pass";
   title: string;
   count: string;
   question: string;
@@ -73,6 +75,63 @@ export interface TvScreen {
   max: number;
   unit: string;
   narration: string;
+  /** Pass the Picture: where the chains are, and the one being turned over. */
+  pass?: PassScreen;
+}
+
+/** One step of a chain on the television: words, or a drawing the server paints (its picture's address). */
+export interface PassItem {
+  who: string;
+  verb: string;
+  text: string;
+  img: string;
+}
+export interface PassScreen {
+  phase: "play" | "reveal" | "over";
+  step: number;
+  steps: number;
+  /** "Write", "Draw" or "Guess", for each step of a chain. */
+  kinds: string[];
+  chain: null | { owner: string; index: number; of: number; length: number; shown: number; done: boolean; prev: PassItem | null; last: PassItem | null; first: string; end: string };
+}
+
+/** Pass the Picture's watch view, as the television draws it. Nothing secret is in it: what each phone is drawing or guessing stays on the phone. */
+function passThePicture(view: Any, names: string[], seats: RoomDoc<unknown>["seats"], drawing: (owner: number, k: number) => string): TvScreen {
+  const info = (view.info as string[] | undefined) ?? [];
+  const at = info.map((l) => /^Step (\d+) of (\d+)$/.exec(l)).find(Boolean);
+  const chain = (view.chain as { owner: number; index: number; of: number; length: number; steps: { by: number; text?: string; strokes?: unknown[] }[] } | null | undefined) ?? null;
+  const steps = at ? Number(at[2]) : (chain?.length ?? 0);
+  const item = (k: number): PassItem | null => {
+    const st = chain?.steps[k];
+    if (!chain || !st) return null;
+    const who = names[st.by] ?? `Player ${st.by + 1}`;
+    if (st.text !== undefined) return { who, verb: k === 0 ? "wrote" : "thought it was", text: st.text, img: "" };
+    return { who, verb: "drew", text: "", img: drawing(chain.owner, k) };
+  };
+  const shown = chain?.steps.length ?? 0;
+  const texts = (chain?.steps ?? []).filter((x) => x.text !== undefined).map((x) => x.text!);
+  const phase = view.over ? "over" : chain ? "reveal" : "play";
+  return {
+    layout: "pass",
+    title: gameName("telephone" as GameId),
+    count: phase === "play" && at ? `Step ${at[1]} of ${at[2]}` : chain ? `Chain ${chain.index} of ${chain.of}` : "",
+    question: "",
+    players: ((view.players as { done?: boolean; line?: string }[] | undefined) ?? []).map((p, seat) => ({ name: names[seat] ?? `Player ${seat + 1}`, done: !!p.done, score: 0, gained: 0, bot: !!seats[seat]?.bot })),
+    headline: "",
+    bars: [],
+    max: 1,
+    unit: "",
+    narration: named(view.narration, names),
+    pass: {
+      phase,
+      step: at ? Number(at[1]) : 0,
+      steps,
+      kinds: Array.from({ length: steps }, (_, i) => (i === 0 ? "Write" : i % 2 === 1 ? "Draw" : "Guess")),
+      chain: chain
+        ? { owner: names[chain.owner] ?? `Player ${chain.owner + 1}`, index: chain.index, of: chain.of, length: chain.length, shown, done: shown >= chain.length, prev: item(shown - 2), last: item(shown - 1), first: texts[0] ?? "", end: texts[texts.length - 1] ?? "" }
+        : null,
+    },
+  };
 }
 
 /** Read the Room's watch view, as the television draws it. */
@@ -98,14 +157,29 @@ function readTheRoom(view: Any, names: string[], seats: RoomDoc<unknown>["seats"
 }
 
 /** The screen for any game, from its watch view: its own layout where it has one, else the scores. */
-export function tvScreen(game: GameId, view: unknown, room: RoomDoc<unknown>): TvScreen {
+export function tvScreen(game: GameId, view: unknown, room: RoomDoc<unknown>, drawing: (owner: number, k: number) => string = () => ""): TvScreen {
   const names = room.seats.map((s, i) => s.name ?? `Player ${i + 1}`);
   const base: TvScreen = { layout: "lobby", title: gameName(game), count: "", question: "", players: room.seats.map((s, i) => ({ name: s.name ?? "", done: !!s.name, score: 0, gained: 0, bot: s.bot })), headline: "", bars: [], max: 1, unit: "", narration: "" };
   if (!room.started || !view) return base;
   if (game === "readtheroom") return readTheRoom(view as Any, names, room.seats);
+  if (game === "telephone") return passThePicture(view as Any, names, room.seats, drawing);
   const v = view as Any;
   const scores = seatScores(v, names.length);
   return { ...base, layout: v.over ? "over" : "scores", count: standing(room.summary, names), players: names.map((name, i) => ({ name, done: false, score: scores[i] ?? 0, gained: 0, bot: !!room.seats[i]?.bot })), narration: named(v.narration, names) };
+}
+
+/** A drawing from a drawing game (points 0 to 1000 across a square page), painted `px` pixels a side. */
+export function paintDrawing(strokes: { points: number[]; color: number; size: number }[], px: number): Picture {
+  const pic = new Picture(px, px, [255, 255, 255]);
+  const k = px / 1000;
+  for (const st of strokes) {
+    const c = rgb(CANVAS_COLORS[st.color] ?? "#1d1a16");
+    const w = Math.max(2, (CANVAS_SIZES[st.size] ?? 10) * k);
+    const p = st.points;
+    if (p.length === 2) pic.circle(p[0]! * k, p[1]! * k, w / 2, c);
+    for (let i = 2; i + 1 < p.length; i += 2) pic.line(p[i - 2]! * k, p[i - 1]! * k, p[i]! * k, p[i + 1]! * k, w, c);
+  }
+  return pic;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -239,6 +313,16 @@ export function createTv(rooms: Rooms, catalogue: Catalogue, { origin, wait = (m
     const token = input.token ?? url.searchParams.get("token");
     if (token !== tv.token) return json({ error: "This isn't your table." }, 403);
 
+    // GET /tv/tables/:id/drawing.png?c&k → a drawing of the chain being turned over, painted for the television
+    if (parts[3] === "drawing.png" && request.method === "GET") {
+      const watch = (await docs).get("views", `${id}/watch`) as { view?: { chain?: { owner: number; steps: { strokes?: { points: number[]; color: number; size: number }[] }[] } | null } } | undefined;
+      const chain = watch?.view?.chain;
+      const k = Number(url.searchParams.get("k"));
+      const strokes = chain && chain.owner === Number(url.searchParams.get("c")) ? chain.steps[k]?.strokes : undefined;
+      if (!strokes) return json({ error: "No such drawing." }, 404);
+      return new Response(new Uint8Array(paintDrawing(strokes, 640).png()), { headers: { "content-type": "image/png", "cache-control": "private, max-age=86400" } });
+    }
+
     // GET /tv/tables/:id?after=<stamp> → the screen, once it differs from `after` (or after a while, as it is)
     if (parts.length === 3 && request.method === "GET") {
       const after = url.searchParams.get("after");
@@ -261,7 +345,7 @@ export function createTv(rooms: Rooms, catalogue: Catalogue, { origin, wait = (m
         short: `${host}/tv/${tv.code}`,
         host: host.replace(/^https?:\/\//, ""),
         free: room.seats.filter((s) => !s.name).length,
-        screen: tvScreen(tv.game, room.started ? (watch?.view ?? null) : null, room),
+        screen: tvScreen(tv.game, room.started ? (watch?.view ?? null) : null, room, (owner, k) => `/tv/tables/${encodeURIComponent(id)}/drawing.png?token=${encodeURIComponent(tv.token)}&c=${owner}&k=${k}`),
       });
     }
 
