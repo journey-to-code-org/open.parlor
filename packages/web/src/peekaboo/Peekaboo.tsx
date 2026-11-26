@@ -195,7 +195,7 @@ function Board({ game, children }: { game: ReturnType<typeof useGame>; children?
   const target = board.round ? thing(board.round.target) : undefined;
   const hidden = board.hidden ? thing(board.hidden.id) : undefined;
   return (
-    <div ref={el} className={`pk-board pk-${board.mode}`} onPointerDown={down} role="application" aria-label="The baby's board: tap anywhere">
+    <div ref={el} className={`pk-board pk-mode-${board.mode}`} onPointerDown={down} role="application" aria-label="The baby's board: tap anywhere">
       {board.mode === "tap" && !board.popped.length && <p className="pk-invite" aria-hidden="true">👋</p>}
       {board.popped.map((p) => {
         const th = thing(p.id);
