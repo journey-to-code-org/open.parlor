@@ -111,6 +111,8 @@
 }
 .fh-tile {
   position: relative;
+  /* A container, so a card's writing can be sized by the tile it is on. */
+  container-type: inline-size;
   aspect-ratio: 4 / 3;
   border-radius: var(--radius);
   overflow: hidden;
@@ -356,4 +358,22 @@
   color: var(--ink);
   font-size: 0.75rem;
   font-weight: 700;
+}
+
+/* A card on a forehead: placed by the player's face, and gliding between the dozen places a second
+   it is told. Its writing is sized by the forehead (see cardStyle). */
+.fh-card.fh-on-face {
+  transform-origin: 50% 100%;
+  max-width: 96%;
+  padding: 0.15em 0.6em;
+  transition: left 140ms linear, top 140ms linear, transform 140ms linear, font-size 300ms linear;
+}
+.fh-card.fh-on-face .fh-card-name {
+  font-size: 1em;
+}
+.fh-card.fh-on-face .fh-card-hint {
+  font-size: 0.6em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fh-card.fh-on-face { transition: none; }
 }

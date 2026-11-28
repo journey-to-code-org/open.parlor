@@ -41,6 +41,9 @@ export default defineConfig({
   build: { manifest: true },
   // The practice tables' bot worker (src/kit/bot.worker.ts) is a module, like the page.
   worker: { format: "es" },
+  // Forehead's face detector is only imported once a game starts: named here, the dev server prepares
+  // it up front rather than reloading the page when it first turns up.
+  optimizeDeps: { include: ["@mediapipe/tasks-vision"] },
   // `npm run dev -w @open-parlor/server` serves the rooms and the sync log on 8787.
   server: { proxy: Object.fromEntries(["/rooms", "/_zb", "/houses", "/challenges", "/lobby", "/push", "/bugs", "/designs", "/courses", "/moderation", "/catalogue", "/tunables", "/spectate", "/tv", "/me", "/second", "/news", "/calls", "/foreheads", "/surprises"].map((p) => [p, "http://localhost:8787"] as [string, string | { target: string; ws: boolean }]).concat([["/live", { target: "http://localhost:8787", ws: true }]])) },
   resolve: {

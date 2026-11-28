@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error a build script, in plain JavaScript
-import { closure, sortFiles } from "../scripts/packs.mjs";
+import { closure, keptOffline, sortFiles } from "../scripts/packs.mjs";
 import { PACKS, bytesKept, megabytes } from "../src/offline/choice";
 import packs from "../src/offline/packs.json";
 
@@ -201,5 +201,12 @@ describe("the service worker", () => {
     await sw.fire("install");
     expect((await sw.say("offline-status?")).available).toBe(false);
     expect(await sw.say({ type: "offline-choice", all: false, packs: [] })).toBeUndefined();
+  });
+});
+
+describe("what is never kept offline", () => {
+  it("leaves out Forehead's face detector, which only an online game uses", () => {
+    expect(["assets/vision_wasm_internal-Ab12.wasm", "assets/vision_wasm_internal-Cd34.js", "assets/vision_wasm_nosimd_internal-X.wasm", "assets/blaze-face-short-range-Ef56.tflite"].filter(keptOffline)).toEqual([]);
+    expect(["assets/Forehead-Gh78.js", "assets/vision-Ij90.js", "index.html", "assets/quest.wasm"].filter(keptOffline)).toHaveLength(4);
   });
 });

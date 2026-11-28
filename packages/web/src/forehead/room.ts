@@ -5,9 +5,14 @@
 // a seat its own card. The call is a mesh: this browser holds one WebRTC connection to each other
 // player, and the server only carries their handshakes.
 //
+// Beside the picture and sound, each connection has a little channel for where that player's
+// forehead is (face.ts), so their card can sit on it.
+//
 // Of any two players, the one in the lower seat makes the offer. The other asks for one ("hello")
 // when it arrives or when its connection fails. Offers are numbered, so a late message for an old
 // connection is ignored.
+
+import { packPose, unpackPose, type Pose } from "./face";
 
 export interface Rules {
   rounds: number;
@@ -93,7 +98,12 @@ interface Peer {
   retry: ReturnType<typeof setTimeout> | null;
   /** When this side last asked the other for an offer. */
   asked: number;
+  /** The channel that carries where each of the two foreheads is. */
+  face: RTCDataChannel | null;
 }
+
+/** How long a forehead is believed without word of it (the tracker says it at least once a second). */
+const FACE_STALE_MS = 2500;
 
 const error = async (r: Response) => ((await r.json().catch(() => ({}))) as { error?: string }).error ?? `The server said ${r.status}`;
 const post = (path: string, body: unknown, keepalive = false) => fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), keepalive }).catch(() => null);
@@ -144,6 +154,11 @@ export class ForeheadRoom {
   view: RoomView;
   /** Everyone else's picture and sound, by seat. */
   streams = new Map<number, MediaStream>();
+  /** Where everyone's forehead is, by seat (this player's own too), as their camera last showed it. */
+  faces = new Map<number, Pose>();
+  private faceAt = new Map<number, number>();
+  private faceTimer: ReturnType<typeof setInterval> | null = null;
+  private faceNews: ReturnType<typeof setTimeout> | null = null;
   ended: string | null = null;
   private version: number;
   private after = 0;
@@ -151,7 +166,7 @@ export class ForeheadRoom {
   /** Whether the player wants their microphone on. A silent room overrides it while it lasts. */
   private micWanted = true;
   private peers = new Map<number, Peer>();
-  private listeners = { view: new Set<(v: RoomView) => void>(), streams: new Set<(s: Map<number, MediaStream>) => void>(), ended: new Set<(why: string) => void>() };
+  private listeners = { view: new Set<(v: RoomView) => void>(), streams: new Set<(s: Map<number, MediaStream>) => void>(), faces: new Set<(f: Map<number, Pose>) => void>(), ended: new Set<(why: string) => void>() };
 
   private constructor(
     private readonly ticket: Ticket,
@@ -165,6 +180,16 @@ export class ForeheadRoom {
     this.applyMicrophone();
     this.sync();
     void this.hear();
+    // A forehead nobody has heard of for a while (the tracker stopped, the connection is stuck) is forgotten.
+    this.faceTimer = setInterval(() => {
+      let gone = false;
+      for (const [seat, at] of this.faceAt)
+        if (Date.now() - at > FACE_STALE_MS && seat !== this.seat) {
+          this.faceAt.delete(seat);
+          gone = this.faces.delete(seat) || gone;
+        }
+      if (gone) this.tellFaces();
+    }, 1000);
   }
 
   get code() {
@@ -194,6 +219,7 @@ export class ForeheadRoom {
 
   on(event: "view", heard: (v: RoomView) => void): () => void;
   on(event: "streams", heard: (s: Map<number, MediaStream>) => void): () => void;
+  on(event: "faces", heard: (f: Map<number, Pose>) => void): () => void;
   on(event: "ended", heard: (why: string) => void): () => void;
   on(event: keyof ForeheadRoom["listeners"], heard: (x: never) => void) {
     const set = this.listeners[event] as Set<typeof heard>;
@@ -220,6 +246,53 @@ export class ForeheadRoom {
     const on = this.micWanted && !this.view.game?.silent;
     this.local.getAudioTracks().forEach((t) => (t.enabled = on));
   }
+  /** Where this player's forehead is now (null: no face, or not tracking). Goes to everyone on the call. */
+  setFace(pose: Pose | null) {
+    if (this.stopped) return;
+    this.setFaceOf(this.seat, pose);
+    const wire = JSON.stringify(packPose(pose));
+    for (const peer of this.peers.values()) if (peer.face?.readyState === "open") peer.face.send(wire);
+  }
+
+  private setFaceOf(seat: number, pose: Pose | null) {
+    if (pose) {
+      this.faces.set(seat, pose);
+      this.faceAt.set(seat, Date.now());
+    } else {
+      this.faceAt.delete(seat);
+      if (!this.faces.delete(seat)) return;
+    }
+    this.tellFaces();
+  }
+  /**
+   * At most twenty times a second: five players at a dozen a second each would otherwise be sixty
+   * redraws. (Not once a frame: a window in the background gets few frames or none, and its cards
+   * would stand still.)
+   */
+  private tellFaces() {
+    if (this.faceNews) return;
+    this.faceNews = setTimeout(() => {
+      this.faceNews = null;
+      this.listeners.faces.forEach((l) => l(this.faces));
+    }, 50);
+  }
+
+  private useFace(seat: number, channel: RTCDataChannel) {
+    const peer = this.peers.get(seat);
+    if (!peer) return channel.close();
+    peer.face = channel;
+    channel.addEventListener("open", () => {
+      const mine = this.faces.get(this.seat);
+      if (peer.face === channel && mine) channel.send(JSON.stringify(packPose(mine)));
+    });
+    channel.addEventListener("message", (e) => {
+      if (peer.face !== channel || this.stopped || typeof e.data !== "string" || e.data.length > 200) return;
+      try {
+        this.setFaceOf(seat, unpackPose(JSON.parse(e.data)));
+      } catch {}
+    });
+  }
+
   setCamera(on: boolean) {
     this.local.getVideoTracks().forEach((t) => (t.enabled = on));
   }
@@ -241,6 +314,8 @@ export class ForeheadRoom {
   private finish(why: string) {
     if (this.stopped) return;
     this.stopped = true;
+    if (this.faceTimer) clearInterval(this.faceTimer);
+    if (this.faceNews) clearTimeout(this.faceNews);
     this.local.getTracks().forEach((t) => t.stop());
     for (const seat of [...this.peers.keys()]) this.drop(seat);
     this.ended = why;
@@ -301,7 +376,7 @@ export class ForeheadRoom {
 
   private peer(seat: number): Peer {
     let peer = this.peers.get(seat);
-    if (!peer) this.peers.set(seat, (peer = { pc: null, gen: 0, pending: [], retry: null, asked: 0 }));
+    if (!peer) this.peers.set(seat, (peer = { pc: null, gen: 0, pending: [], retry: null, asked: 0, face: null }));
     return peer;
   }
   private drop(seat: number) {
@@ -311,6 +386,7 @@ export class ForeheadRoom {
     peer.pc?.close();
     this.peers.delete(seat);
     if (this.streams.delete(seat)) this.listeners.streams.forEach((l) => l(this.streams));
+    this.setFaceOf(seat, null);
   }
   /** Ask the lower seat for an offer, not more often than every few seconds. */
   private ask(seat: number) {
@@ -358,6 +434,7 @@ export class ForeheadRoom {
     const peer = this.peer(seat);
     peer.pc?.close();
     peer.pending = [];
+    peer.face = null;
     const gen = peer.gen;
     const pc = new RTCPeerConnection({ iceServers: this.ticket.ice });
     peer.pc = pc;
@@ -376,6 +453,9 @@ export class ForeheadRoom {
       this.streams.set(seat, stream);
       this.listeners.streams.forEach((l) => l(this.streams));
     });
+    // Where the foreheads are: the lower seat opens the channel, as it makes the offer. Late is no use, so nothing is sent twice.
+    if (this.seat < seat) this.useFace(seat, pc.createDataChannel("face", { ordered: false, maxRetransmits: 0 }));
+    else pc.addEventListener("datachannel", (e) => current() && e.channel.label === "face" && this.useFace(seat, e.channel));
     pc.addEventListener("connectionstatechange", () => {
       if (!current()) return;
       if (pc.connectionState !== "failed" && pc.connectionState !== "disconnected") return;

@@ -5,15 +5,21 @@
 // The server deals and never sends a player their own card (packages/server/src/foreheads.ts); the
 // call is browser to browser (room.ts). This is the screen: the tiles with their cards, the guess,
 // the clock and the buzzer.
-import { useEffect, useRef, useState, type FormEvent } from "react";
+//
+// Each card sits on its player's forehead and follows it: every browser finds its own player's
+// face (tracker.ts) and tells the others where it is (face.ts). Until it knows, or for someone with
+// no camera, the card sits at the top of the tile.
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { ShareQr } from "../ShareQr";
 import { loadName, saveName } from "../storage";
 import { stayAwake } from "../wifi/link";
 import { buzzLine, clock, placed } from "./words";
+import { onTile, type Pose } from "./face";
 import { ForeheadRoom, hasSeat, joinLink, type Buzz, type RoomView, type Rules, type SeatView } from "./room";
 import "./forehead.css";
 
-function Video({ stream, muted = false, mirror = false, label }: { stream: MediaStream | null; muted?: boolean; mirror?: boolean; label: string }) {
+/** A tile's picture. `onShape` is told its width over height, once it is known and whenever it changes. */
+function Video({ stream, muted = false, mirror = false, label, onShape }: { stream: MediaStream | null; muted?: boolean; mirror?: boolean; label: string; onShape?: (shape: number) => void }) {
   const ref = useRef<HTMLVideoElement | null>(null);
   useEffect(() => {
     const video = ref.current;
@@ -21,7 +27,71 @@ function Video({ stream, muted = false, mirror = false, label }: { stream: Media
     video.srcObject = stream;
     if (stream) void video.play().catch(() => {});
   }, [stream]);
-  return <video ref={ref} className={`fh-video${mirror ? " fh-mirror" : ""}`} autoPlay playsInline muted={muted} aria-label={label} />;
+  const shape = () => {
+    const video = ref.current;
+    if (video?.videoWidth && video.videoHeight) onShape?.(video.videoWidth / video.videoHeight);
+  };
+  return <video ref={ref} className={`fh-video${mirror ? " fh-mirror" : ""}`} autoPlay playsInline muted={muted} aria-label={label} onLoadedMetadata={shape} onResize={shape} />;
+}
+
+/** The shape of a tile, width over height (forehead.css gives them all this one). */
+const TILE = 4 / 3;
+const FOLLOW_KEY = "forehead:follow";
+const loadFollow = () => {
+  try {
+    return localStorage.getItem(FOLLOW_KEY) !== "off";
+  } catch {
+    return true;
+  }
+};
+
+/** A card's place on a tile from its player's forehead; none, and it sits at the top. */
+function cardStyle(pose: Pose | undefined, shape: number | undefined, mirror: boolean): CSSProperties | undefined {
+  if (!pose) return undefined;
+  const at = onTile(pose, shape ?? TILE, TILE, mirror);
+  return {
+    left: `${(at.left * 100).toFixed(2)}%`,
+    top: `${(at.top * 100).toFixed(2)}%`,
+    // Standing on the brow: its bottom edge's middle is the point, and it tilts about that point.
+    transform: `translate(-50%, -100%) rotate(${at.angle.toFixed(3)}rad)`,
+    // The writing grows with the forehead (the tile is a container: 1cqw is a hundredth of its width).
+    fontSize: `clamp(0.8rem, ${(at.width * 15).toFixed(2)}cqw, 2.2rem)`,
+  };
+}
+
+/**
+ * Find this player's face while the game is on, and tell the others where it is. Resolves the
+ * state of it for the screen: "loading", "on", or "failed" (the detector can't run here).
+ */
+function useTracking(room: ForeheadRoom, on: boolean): "off" | "loading" | "on" | "failed" {
+  const [state, setState] = useState<"off" | "loading" | "on" | "failed">("off");
+  const camera = room.local.getVideoTracks().length > 0;
+  useEffect(() => {
+    if (!on || !camera) {
+      setState("off");
+      room.setFace(null);
+      return;
+    }
+    let stop: (() => void) | null = null;
+    let gone = false;
+    setState("loading");
+    import("./tracker")
+      .then(({ trackFace }) => trackFace(room.local, (pose) => room.setFace(pose)))
+      .then(
+        (stopper) => {
+          if (gone) return stopper();
+          stop = stopper;
+          setState("on");
+        },
+        () => !gone && setState("failed"),
+      );
+    return () => {
+      gone = true;
+      stop?.();
+      room.setFace(null);
+    };
+  }, [room, on, camera]);
+  return state;
 }
 
 /** The buzzer's sound: two low, rude notes. */
@@ -51,16 +121,18 @@ function soundBuzzer() {
 function useRoom(room: ForeheadRoom | null) {
   const [view, setView] = useState<RoomView | null>(room?.view ?? null);
   const [streams, setStreams] = useState<Map<number, MediaStream>>(new Map());
+  const [faces, setFaces] = useState<Map<number, Pose>>(new Map());
   const [ended, setEnded] = useState<string | null>(room?.ended ?? null);
   useEffect(() => {
     if (!room) return;
     setView(room.view);
     setStreams(new Map(room.streams));
+    setFaces(new Map(room.faces));
     setEnded(room.ended);
-    const offs = [room.on("view", setView), room.on("streams", (s) => setStreams(new Map(s))), room.on("ended", setEnded)];
+    const offs = [room.on("view", setView), room.on("streams", (s) => setStreams(new Map(s))), room.on("faces", (f) => setFaces(new Map(f))), room.on("ended", setEnded)];
     return () => offs.forEach((off) => off());
   }, [room]);
-  return { view, streams, ended };
+  return { view, streams, faces, ended };
 }
 
 /** How long is left in the round, counted against the server's clock. */
@@ -208,7 +280,17 @@ function BuzzPad({ who, others, whose, onBuzz, onClose }: { who: string; others:
 }
 
 function Table({ room, onLeave }: { room: ForeheadRoom; onLeave: () => void }) {
-  const { view, streams, ended } = useRoom(room);
+  const { view, streams, faces, ended } = useRoom(room);
+  const [follow, setFollow] = useState(loadFollow);
+  const tracking = useTracking(room, follow && !!view?.game);
+  const [shapes, setShapes] = useState<Record<number, number>>({});
+  const toggleFollow = () => {
+    const next = !follow;
+    setFollow(next);
+    try {
+      localStorage.setItem(FOLLOW_KEY, next ? "on" : "off");
+    } catch {}
+  };
   const left = useTimeLeft(view);
   const [problem, setProblem] = useState<string | null>(room.note);
   const [guess, setGuess] = useState("");
@@ -304,7 +386,7 @@ function Table({ room, onLeave }: { room: ForeheadRoom; onLeave: () => void }) {
           const hasPicture = !!stream?.getVideoTracks().length;
           return (
             <article key={p.seat} className={`fh-tile${buzzed?.seat === p.seat ? " fh-buzzed" : ""}${game?.asker === p.seat ? " fh-asking" : ""}${g?.won != null ? " fh-won" : ""}${p.here ? "" : " fh-away"}`}>
-              <Video stream={stream} muted={self} mirror={self} label={self ? "You" : p.name} />
+              <Video stream={stream} muted={self} mirror={self} label={self ? "You" : p.name} onShape={(shape) => setShapes((was) => (was[p.seat] === shape ? was : { ...was, [p.seat]: shape }))} />
               {!hasPicture && (
                 <span className="fh-face" aria-hidden="true">
                   {p.here ? "🙂" : "💤"}
@@ -312,7 +394,7 @@ function Table({ room, onLeave }: { room: ForeheadRoom; onLeave: () => void }) {
               )}
               {game?.asker === p.seat && <span className="fh-turn">{self ? "Your turn to ask" : "Asking"}</span>}
               {g?.wearing && (
-                <div className={`fh-card${g.card === null ? " fh-hidden" : ""}`}>
+                <div className={`fh-card${g.card === null ? " fh-hidden" : ""}${follow && faces.has(p.seat) ? " fh-on-face" : ""}`} style={follow && hasPicture ? cardStyle(faces.get(p.seat), shapes[p.seat], self) : undefined}>
                   {g.card === null ? (
                     <>
                       <span className="fh-card-name">?</span>
@@ -528,6 +610,9 @@ function Table({ room, onLeave }: { room: ForeheadRoom; onLeave: () => void }) {
           }}
         >
           {cam ? "📷 Camera off" : "🚫 Camera on"}
+        </button>
+        <button type="button" className="secondary" aria-pressed={follow} onClick={toggleFollow} title={tracking === "failed" ? "This browser can't find faces, so the cards stay at the top" : undefined}>
+          📌 Cards on foreheads{!follow ? ": off" : tracking === "loading" ? ": finding your face…" : tracking === "failed" ? ": not in this browser" : ""}
         </button>
         <button
           type="button"
