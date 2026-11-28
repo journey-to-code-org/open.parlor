@@ -111,6 +111,26 @@ arrives or its connection fails. The ICE servers are Peekaboo's: a STUN server, 
 from `CARDROOM_TURN_URL`, `_USERNAME` and `_CREDENTIAL` if they are set. Without a TURN server,
 players on some mobile and office networks won't connect to each other.
 
+### When the call won't connect
+
+Each tile says how the call to its player is doing: "Connecting to Wife…", and after 15 seconds,
+or if the browser gives up, "Can't connect to Wife" with **Try again** and **Why?**. Why? gives the
+likely reason and the ways each device found to be reached: on this network, through the internet
+(found with the STUN server), through a relay.
+
+Two devices side by side on one wifi are the case most likely to need a relay. Some routers keep
+devices on the wifi from reaching each other (a guest network, "client isolation", some mesh and
+ISP routers), and many won't send a connection out to the internet and straight back in. With
+no relay server, those calls can't connect. The fix is a TURN server, set on the parlor's server
+with `CARDROOM_TURN_URL`, `CARDROOM_TURN_USERNAME` and `CARDROOM_TURN_CREDENTIAL` (Peekaboo's calls
+use it too). Until then, one of the two phones on mobile data gets round it.
+
+A browser that won't start the others' sound until the page is tapped gets a **Tap to see and hear
+everyone** button.
+
+The handshake messages to each player are sent one at a time, in order: sent side by side, an
+address could reach the server before the offer it belongs to and be thrown away.
+
 ## The cards
 
 237 of them, in six kinds: animals, jobs, things, food, places and people from stories. They are

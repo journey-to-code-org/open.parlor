@@ -377,3 +377,48 @@
 @media (prefers-reduced-motion: reduce) {
   .fh-card.fh-on-face { transition: none; }
 }
+
+/* A call to a player that isn't up yet, over their tile. */
+.fh-link {
+  position: absolute;
+  inset: auto 6px 30px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.72);
+  font-size: 0.78rem;
+  line-height: 1.25;
+  z-index: 2;
+}
+.fh-link.fh-stuck {
+  max-height: calc(100% - 36px);
+  overflow: auto;
+  background: rgba(60, 10, 8, 0.88);
+}
+.fh-link-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fh-link-buttons button {
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 0;
+  background: var(--gold);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+.fh-link-buttons button.secondary {
+  background: transparent;
+  color: var(--cream);
+  border: 1px solid var(--cream);
+}
+.fh-link-details {
+  color: #e9dcc8;
+}
+.fh-unblock {
+  align-self: center;
+}
