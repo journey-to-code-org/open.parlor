@@ -1,0 +1,379 @@
+/* Forehead: a video call with a card on every forehead. The tiles fill the screen; the card sits
+   across the top of each, big enough to read at a glance on a phone. */
+.fh-door {
+  max-width: 30rem;
+  margin: 0 auto;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.fh-door h1 {
+  margin: 0;
+  text-align: center;
+}
+.fh-door form,
+.fh-guess {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fh-door label,
+.fh-guess label,
+.fh-rules label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--ui-s);
+}
+.fh-door input,
+.fh-guess input,
+.fh-rules select {
+  font: inherit;
+  font-size: 1.05rem;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 2px solid var(--felt-light);
+  background: var(--cream);
+  color: var(--ink);
+}
+.fh-go {
+  font-size: var(--ui-l);
+  font-weight: 700;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--gold);
+  color: var(--ink);
+}
+.fh-go:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.fh-problem {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: rgba(179, 38, 30, 0.25);
+  border: 1px solid var(--red);
+}
+
+.fh-root {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  max-width: var(--table-max);
+  margin: 0 auto;
+}
+.fh-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 14px;
+  font-size: var(--ui-s);
+}
+.fh-bar strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: var(--ui-l);
+}
+.fh-clock {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--felt-light);
+  font-variant-numeric: tabular-nums;
+}
+.fh-clock.fh-low {
+  background: var(--red);
+}
+.fh-host {
+  color: var(--gold);
+}
+
+.fh-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.fh-count-1 .fh-tiles {
+  grid-template-columns: minmax(0, 24rem);
+  justify-content: center;
+}
+@media (min-width: 720px) {
+  .fh-count-3 .fh-tiles,
+  .fh-count-5 .fh-tiles,
+  .fh-count-6 .fh-tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.fh-tile {
+  position: relative;
+  /* A container, so a card's writing can be sized by the tile it is on. */
+  container-type: inline-size;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #0d241b;
+  box-shadow: var(--elev-1);
+}
+.fh-tile.fh-won {
+  outline: 3px solid var(--gold);
+}
+.fh-tile.fh-away .fh-video {
+  opacity: 0.3;
+}
+.fh-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.fh-mirror {
+  transform: scaleX(-1);
+}
+.fh-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 3rem;
+  opacity: 0.6;
+}
+/* The card: a strip of paper across the forehead. */
+.fh-card {
+  position: absolute;
+  top: 6%;
+  left: 50%;
+  transform: translateX(-50%) rotate(-2deg);
+  max-width: 88%;
+  padding: 4px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--cream);
+  color: var(--ink);
+  border-radius: 4px;
+  box-shadow: var(--elev-2);
+  text-align: center;
+  line-height: 1.15;
+}
+.fh-card-name {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  font-size: clamp(1rem, 4.4vw, 1.5rem);
+}
+.fh-card.fh-hidden {
+  background: var(--gold);
+}
+.fh-card-hint {
+  font-size: var(--ui-s);
+}
+.fh-tile footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 8px 5px;
+  font-size: var(--ui-s);
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
+}
+.fh-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fh-score {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.fh-said {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 30px;
+  margin: 0;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fh-buzz {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 50%;
+  border: 3px solid #5e100c;
+  background: radial-gradient(circle at 35% 30%, #ff6a5e, var(--red) 65%);
+  color: #fff;
+  font-weight: 800;
+  font-size: var(--ui-s);
+  box-shadow: 0 4px 0 #5e100c, var(--elev-2);
+}
+.fh-buzz:active {
+  transform: translateY(calc(-50% + 3px));
+  box-shadow: 0 1px 0 #5e100c;
+}
+.fh-tile.fh-buzzed {
+  outline: 4px solid var(--red);
+  animation: fh-shake 0.5s var(--ease-out) 2;
+}
+@keyframes fh-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px) rotate(-1deg); }
+  40% { transform: translateX(6px) rotate(1deg); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fh-tile.fh-buzzed { animation: none; }
+}
+.fh-buzz-line {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--red);
+  color: #fff;
+  font-weight: 700;
+  text-align: center;
+}
+
+.fh-pad,
+.fh-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius);
+  background: var(--felt);
+}
+.fh-pad {
+  border: 2px solid var(--red);
+}
+.fh-pad p,
+.fh-panel p {
+  margin: 0;
+}
+.fh-pad-choices,
+.fh-invite,
+.fh-rules,
+.fh-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+}
+.fh-pad-choices button:not(.secondary) {
+  padding: 10px 14px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--red);
+  color: #fff;
+  font-weight: 700;
+}
+.fh-rules label {
+  flex: 1;
+  min-width: 7rem;
+}
+.fh-scores {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fh-scores b {
+  float: right;
+}
+.fh-controls {
+  justify-content: center;
+  padding-bottom: 8px;
+}
+
+/* Picking the round's game: the list a host chooses from. */
+.fh-modes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 8px;
+}
+.fh-modes button,
+.fh-modes div {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  text-align: left;
+  border-radius: var(--radius);
+  border: 2px solid var(--felt-light);
+  background: var(--felt-dark);
+  color: var(--cream);
+}
+.fh-modes button {
+  border-color: var(--gold);
+}
+.fh-modes span {
+  font-size: var(--ui-s);
+}
+.fh-rule {
+  padding: 8px 10px;
+  border-left: 4px solid var(--gold);
+  background: var(--felt-dark);
+  border-radius: 4px;
+}
+.fh-asker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fh-tile.fh-asking {
+  outline: 3px solid var(--them);
+}
+.fh-turn {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--them);
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* A card on a forehead: placed by the player's face, and gliding between the dozen places a second
+   it is told. Its writing is sized by the forehead (see cardStyle). */
+.fh-card.fh-on-face {
+  transform-origin: 50% 100%;
+  max-width: 96%;
+  padding: 0.15em 0.6em;
+  transition: left 140ms linear, top 140ms linear, transform 140ms linear, font-size 300ms linear;
+}
+.fh-card.fh-on-face .fh-card-name {
+  font-size: 1em;
+}
+.fh-card.fh-on-face .fh-card-hint {
+  font-size: 0.6em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fh-card.fh-on-face { transition: none; }
+}

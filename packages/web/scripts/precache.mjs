@@ -2,7 +2,7 @@
 // keep a copy of them on the device and the games that need no server start with no connection.
 //
 // It runs after everything else has been written to dist/, and leaves out what isn't the app: the
-// blog embed (other sites load that), the link-preview images (og.jpg, and og/ for each game), and the worker itself. The version is
+// blog embed (other sites load that), the link-preview images (og.jpg, and og/ for each game), the worker itself, and what only an online game uses (ONLINE_ONLY in packs.mjs). The version is
 // a hash of the files, so a build that changes nothing keeps the copy people already have.
 //
 // The files are sorted into the core, which is always kept, and a pack for each kind of game
@@ -11,7 +11,7 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { sortFiles } from "./packs.mjs";
+import { keptOffline, sortFiles } from "./packs.mjs";
 
 const dist = join(dirname(fileURLToPath(import.meta.url)), "../dist");
 const SKIP_DIRS = new Set(["embed", "designer", "watch", "admin", ".vite", "og"]);
@@ -25,7 +25,7 @@ function walk(dir) {
   });
 }
 
-const files = walk(dist).map((path) => relative(dist, path).split(sep).join("/")).sort();
+const files = walk(dist).map((path) => relative(dist, path).split(sep).join("/")).filter(keptOffline).sort();
 if (!files.includes("index.html")) throw new Error("precache: dist/index.html is missing; run vite build first");
 const hash = createHash("sha256");
 for (const file of files) hash.update(file).update("\0").update(readFileSync(join(dist, file)));

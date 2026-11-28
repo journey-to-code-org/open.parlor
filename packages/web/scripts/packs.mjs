@@ -6,6 +6,14 @@
 //
 // Anything nobody claims goes in the core: a file is never left out by accident.
 
+/**
+ * Files of the app that are never kept for playing offline: they belong to games that need the
+ * internet anyway. Forehead's face detector is eleven megabytes, and would otherwise be kept on
+ * every device that visits.
+ */
+export const ONLINE_ONLY = [/(^|\/)vision_wasm[a-z_]*internal[^/]*\.(js|wasm)$/, /\.tflite$/];
+export const keptOffline = (file) => !ONLINE_ONLY.some((pattern) => pattern.test(file));
+
 /** Every file a chunk needs to run: its own, its styles, its workers, and the same of every chunk it imports outright. */
 export function closure(manifest, key, seen = new Set()) {
   const chunk = manifest[key];

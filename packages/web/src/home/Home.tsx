@@ -193,7 +193,7 @@ const EMPTY_SCREEN: MiniScreen = { ship: [50, 82], foes: [], bullets: [] };
  * leave out, having no table in the parlor. One with `needs` is a page the parlor's server draws,
  * and is on the shelf only where there is a server that draws it.
  */
-const ELSEWHERE: { id: string; name: string; emoji: string; blurb: string; category: "arcade" | "board" | "cards"; group: undefined; seats: [number, number]; teams: boolean; fan: object[]; screen: MiniScreen | undefined; dice: undefined; board: MiniBoard | undefined; table: undefined; href: string; needs?: "daily" }[] = [
+const ELSEWHERE: { id: string; name: string; emoji: string; blurb: string; category: "arcade" | "board" | "cards" | "party"; group: undefined; seats: [number, number]; teams: boolean; fan: object[]; screen: MiniScreen | undefined; dice: undefined; board: MiniBoard | undefined; table: undefined; href: string; needs?: "daily" }[] = [
   {
     id: "delbies-doomsday",
     name: "Delbie's Doomsday",
@@ -257,6 +257,22 @@ const ELSEWHERE: { id: string; name: string; emoji: string; blurb: string; categ
     board: undefined,
     table: undefined,
     href: "?peekaboo=play",
+  },
+  {
+    id: "forehead",
+    name: "Forehead",
+    emoji: "🏷️",
+    blurb: "On a video call, for three to six: everyone has a card on their forehead that the others can read and they can't. Guess yours from how the room treats you. The host has a buzzer for anyone who says a card out loud.",
+    category: "party",
+    group: undefined,
+    seats: [3, 6],
+    teams: false,
+    fan: [],
+    screen: undefined,
+    dice: undefined,
+    board: undefined,
+    table: undefined,
+    href: "?forehead=play",
   },
   {
     id: "daily-sudoku",

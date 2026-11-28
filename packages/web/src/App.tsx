@@ -41,6 +41,7 @@ const ArcadeTable = lazyScreen(() => import("./arcade/ArcadeTable").then((m) => 
 const AirHockeyTable = lazyScreen(() => import("./arcade/AirHockeyTable").then((m) => m.AirHockeyTable));
 const QuestTable = lazyScreen(() => import("./quest/QuestTable").then((m) => m.QuestTable));
 const Peekaboo = lazyScreen(() => import("./peekaboo/Peekaboo").then((m) => m.Peekaboo));
+const Forehead = lazyScreen(() => import("./forehead/Forehead").then((m) => m.Forehead));
 const CounterTable = lazyScreen(() => import("./counter/CounterTable").then((m) => m.CounterTable));
 const CourseEditor = lazyScreen(() => import("./golf/editors").then((m) => m.CourseEditor));
 const LaneEditor = lazyScreen(() => import("./golf/editors").then((m) => m.LaneEditor));
@@ -58,6 +59,8 @@ type Screen =
   | { kind: "move" }
   /** Peekaboo, the baby game: played here, or a video call joined from its link (`?peekaboo=join#code`). */
   | { kind: "peekaboo" }
+  /** Forehead, the video-call guessing game: a call started here, or joined from its link (`?forehead=join#code`). */
+  | { kind: "forehead" }
   | { kind: "arcade"; game: ArcadeGameId; rules: ArcadeRules; seats: number; seed: number; autofire: boolean; rival?: { name: string; score: number } }
   | { kind: "golf"; id: string }
   | { kind: "lane"; id: string }
@@ -83,6 +86,7 @@ function fromUrl(): Screen {
   // The same player on another device: its QR code is a link here, with the code after the #.
   if (q.get("me")) return { kind: "move" };
   if (q.get("peekaboo")) return { kind: "peekaboo" };
+  if (q.get("forehead")) return { kind: "forehead" };
   const golf = q.get("golf");
   if (golf) return { kind: "golf", id: golf };
   const lane = q.get("lane");
@@ -254,6 +258,7 @@ export function App() {
   if (screen.kind === "wifi-host") return <WifiHost key={screen.seed} {...screen} onLeave={() => setScreen({ kind: "setup" })} />;
   if (screen.kind === "wifi-join") return <WifiJoin onLeave={home} />;
   if (screen.kind === "peekaboo") return <Peekaboo onLeave={home} />;
+  if (screen.kind === "forehead") return <Forehead onLeave={home} />;
   if (screen.kind === "move") return <MoveDevice onLeave={home} onOpenHouse={openHouse} />;
   if (screen.kind === "sketchbook") return <Sketchbook onLeave={() => pickGame("drawguess")} />;
   if (screen.kind === "local-kit")
