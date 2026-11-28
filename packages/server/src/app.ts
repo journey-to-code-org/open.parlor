@@ -12,6 +12,7 @@ import { PAGE_MOUNTS, createPages, publicOrigin } from "./pages.js";
 import { createChallenges } from "./challenges.js";
 import { createDevices } from "./devices.js";
 import { createCalls, type CallOptions } from "./calls.js";
+import { createForeheads, type ForeheadOptions } from "./foreheads.js";
 import { createSurprises } from "./surprises.js";
 import { createSpectate } from "./spectate.js";
 import { createTv } from "./tv.js";
@@ -36,7 +37,7 @@ import { createFlights, isFlight, type Flights, type FlightState, type Flyer } f
 import { secondAllowed, secondCookie, secondPath, secondSearch } from "./second.js";
 
 export function createCardRoom(
-  options: { log?: Log; botDelay?: number; talk?: boolean; push?: PushOptions; ai?: AiOptions; lobby?: LobbyOptions; /** Turns moderation on (see moderation.ts). */ adminToken?: string; /** Signing in to the admin app with GitHub (see github-login.ts). */ github?: GithubLoginOptions; /** Opening pull requests for tuned numbers (see promote.ts). */ promote?: PromoteOptions; bugs?: BugOptions; /** Copies of the database (see backup.ts), for the admin app to report and hand out. */ backups?: Backups; /** Road to the Shootout's published pack (see packs.ts), for the admin app to set. */ packs?: Packs; /** Worker threads for the computer players' thinking (see bots.ts). Without it they think on the main thread. */ bots?: BotOptions; /** The games flown live (see flight.ts): one a caller made, for tests that play them by hand. Without it they play by the clock. */ flights?: Flights; /** The clock, for tests. */ spectate?: { now?: () => number }; /** How long a television waits for a change, for tests. */ tv?: { longPoll?: number }; /** Peekaboo's video calls (see calls.ts): the ICE servers, and the wait, for tests. */ calls?: CallOptions } = {},
+  options: { log?: Log; botDelay?: number; talk?: boolean; push?: PushOptions; ai?: AiOptions; lobby?: LobbyOptions; /** Turns moderation on (see moderation.ts). */ adminToken?: string; /** Signing in to the admin app with GitHub (see github-login.ts). */ github?: GithubLoginOptions; /** Opening pull requests for tuned numbers (see promote.ts). */ promote?: PromoteOptions; bugs?: BugOptions; /** Copies of the database (see backup.ts), for the admin app to report and hand out. */ backups?: Backups; /** Road to the Shootout's published pack (see packs.ts), for the admin app to set. */ packs?: Packs; /** Worker threads for the computer players' thinking (see bots.ts). Without it they think on the main thread. */ bots?: BotOptions; /** The games flown live (see flight.ts): one a caller made, for tests that play them by hand. Without it they play by the clock. */ flights?: Flights; /** The clock, for tests. */ spectate?: { now?: () => number }; /** How long a television waits for a change, for tests. */ tv?: { longPoll?: number }; /** Peekaboo's video calls (see calls.ts): the ICE servers, and the wait, for tests. */ calls?: CallOptions; /** Forehead, the video-call guessing game (see foreheads.ts): the wait and the clock, for tests. Its ICE servers are the calls'. */ foreheads?: ForeheadOptions } = {},
 ) {
   const talking = options.talk ?? true;
   const flights = options.flights ?? createFlights({ every: 16 });
@@ -182,6 +183,8 @@ export function createCardRoom(
   const devices = createDevices({ housesOf: async (player) => (await houses.all()).filter((h) => h.members.some((m) => m.player === player)).map((h) => ({ slug: h.slug, name: h.name })) });
   // Peekaboo's video calls: the server passes the two browsers' handshake, nothing more (calls.ts).
   const calls = createCalls(options.calls);
+  // Forehead: the server deals each player everyone's card but their own, and carries the call's handshakes (foreheads.ts).
+  const foreheads = createForeheads({ ...options.calls, ...options.foreheads });
   // Peekaboo's surprise box: surprises sent to the baby from someone else's phone (surprises.ts).
   const surprises = createSurprises(rooms.sync);
   const lobby = createLobby(rooms, { push, gameOn: catalogue.isOn, ...options.lobby });
@@ -230,7 +233,7 @@ export function createCardRoom(
   }
   /** The routes that aren't the rooms kit's own. */
   const ours = async (request: Request) =>
-    (await refusal(request)) ?? (await github.fetch(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await news.fetch(request)) ?? (await designs.fetch(request)) ?? (await courses.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await tunables.fetch(request)) ?? (await pages.fetch(request)) ?? (await spectate.fetch(request)) ?? (await tv.fetch(request)) ?? (await challenges.fetch(request)) ?? (await devices.fetch(request)) ?? (await calls.fetch(request)) ?? (await surprises.fetch(request)) ?? (await lobby.fetch(request)) ?? (await tables.fetch(request)) ?? (await houses.fetch(request));
+    (await refusal(request)) ?? (await github.fetch(request)) ?? (await moderation.fetch(request)) ?? (await pushRoutes(request)) ?? (await bugs.fetch(request)) ?? (await news.fetch(request)) ?? (await designs.fetch(request)) ?? (await courses.fetch(request)) ?? (await catalogue.fetch(request)) ?? (await tunables.fetch(request)) ?? (await pages.fetch(request)) ?? (await spectate.fetch(request)) ?? (await tv.fetch(request)) ?? (await challenges.fetch(request)) ?? (await devices.fetch(request)) ?? (await calls.fetch(request)) ?? (await foreheads.fetch(request)) ?? (await surprises.fetch(request)) ?? (await lobby.fetch(request)) ?? (await tables.fetch(request)) ?? (await houses.fetch(request));
 
   return {
     rooms,
@@ -303,7 +306,7 @@ export function createCardRoom(
         req.headers.cookie = as.cookie;
         return this.handle(req, res);
       }
-      if (TABLE_CHAT.test(url.pathname) || under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/tunables", "/spectate", "/tv", "/bugs", "/news", "/me", "/calls", "/surprises", ...PAGE_MOUNTS])) {
+      if (TABLE_CHAT.test(url.pathname) || under(url.pathname, ["/houses", "/challenges", "/lobby", "/push", "/designs", "/courses", "/moderation", "/catalogue", "/tunables", "/spectate", "/tv", "/bugs", "/news", "/me", "/calls", "/foreheads", "/surprises", ...PAGE_MOUNTS])) {
         const chunks: Buffer[] = [];
         let size = 0;
         for await (const chunk of req) {
