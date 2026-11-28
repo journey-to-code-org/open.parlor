@@ -1,7 +1,7 @@
 // Forehead on the page: the clock, a buzz, the placings, and where a card sits on a forehead.
 import { describe, expect, it } from "vitest";
 import { ABOVE_EYES, ACROSS, foreheadOf, moved, onTile, packPose, settle, unpackPose } from "../src/forehead/face";
-import { buzzLine, clock, placed } from "../src/forehead/words";
+import { buzzLine, clock, linkWords, placed, STUCK_MS } from "../src/forehead/words";
 
 const name = (seat: number) => ["Mikey", "Grammi", "Delbie"][seat]!;
 
@@ -83,5 +83,19 @@ describe("a card on a forehead", () => {
     expect(moved(pose, { ...pose, x: pose.x + 0.01 })).toBe(true);
     expect(moved(null, pose)).toBe(true);
     expect(moved(null, null)).toBe(false);
+  });
+});
+
+describe("a call that isn't up yet", () => {
+  const link = { state: "connecting" as const, since: 1000, route: null, mine: ["host", "srflx"], theirs: ["host"] };
+  it("says it is connecting, then that it can't, and why", () => {
+    expect(linkWords({ ...link, state: "connected" }, "Wife", false, 99_000)).toBeNull();
+    expect(linkWords(link, "Wife", false, 2000)).toMatchObject({ title: "Connecting to Wife…", stuck: false, why: null });
+    const stuck = linkWords(link, "Wife", false, 1000 + STUCK_MS)!;
+    expect(stuck).toMatchObject({ title: "Can't connect to Wife", stuck: true });
+    expect(stuck.why).toMatch(/no relay server/);
+    expect(stuck.details).toBe("Ways this device found: on this network, through the internet. Ways Wife's found: on this network. This parlor has no relay server (TURN).");
+    expect(linkWords({ ...link, state: "failed" }, "Wife", true, 2000)!.why).toMatch(/even through the parlor's relay/);
+    expect(linkWords({ ...link, theirs: [] }, "Wife", false, 1000 + STUCK_MS)!.why).toMatch(/Nothing has come back/);
   });
 });

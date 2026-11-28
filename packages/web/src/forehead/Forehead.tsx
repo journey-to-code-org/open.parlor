@@ -15,18 +15,22 @@ import { loadName, saveName } from "../storage";
 import { stayAwake } from "../wifi/link";
 import { buzzLine, clock, placed } from "./words";
 import { onTile, type Pose } from "./face";
-import { ForeheadRoom, hasSeat, joinLink, type Buzz, type RoomView, type Rules, type SeatView } from "./room";
+import { ForeheadRoom, hasSeat, joinLink, type Buzz, type Link, type RoomView, type Rules, type SeatView } from "./room";
+import { linkWords } from "./words";
 import "./forehead.css";
 
-/** A tile's picture. `onShape` is told its width over height, once it is known and whenever it changes. */
-function Video({ stream, muted = false, mirror = false, label, onShape }: { stream: MediaStream | null; muted?: boolean; mirror?: boolean; label: string; onShape?: (shape: number) => void }) {
+/**
+ * A tile's picture. `onShape` is told its width over height, once it is known and whenever it changes.
+ * `onBlocked` is told if the browser won't start it until the player taps the page.
+ */
+function Video({ stream, muted = false, mirror = false, label, onShape, onBlocked }: { stream: MediaStream | null; muted?: boolean; mirror?: boolean; label: string; onShape?: (shape: number) => void; onBlocked?: () => void }) {
   const ref = useRef<HTMLVideoElement | null>(null);
   useEffect(() => {
     const video = ref.current;
     if (!video || video.srcObject === stream) return;
     video.srcObject = stream;
-    if (stream) void video.play().catch(() => {});
-  }, [stream]);
+    if (stream) void video.play().catch((e: Error) => e?.name === "NotAllowedError" && onBlocked?.());
+  }, [stream, onBlocked]);
   const shape = () => {
     const video = ref.current;
     if (video?.videoWidth && video.videoHeight) onShape?.(video.videoWidth / video.videoHeight);
@@ -122,17 +126,19 @@ function useRoom(room: ForeheadRoom | null) {
   const [view, setView] = useState<RoomView | null>(room?.view ?? null);
   const [streams, setStreams] = useState<Map<number, MediaStream>>(new Map());
   const [faces, setFaces] = useState<Map<number, Pose>>(new Map());
+  const [links, setLinks] = useState<Map<number, Link>>(new Map());
   const [ended, setEnded] = useState<string | null>(room?.ended ?? null);
   useEffect(() => {
     if (!room) return;
     setView(room.view);
     setStreams(new Map(room.streams));
     setFaces(new Map(room.faces));
+    setLinks(new Map(room.links));
     setEnded(room.ended);
-    const offs = [room.on("view", setView), room.on("streams", (s) => setStreams(new Map(s))), room.on("faces", (f) => setFaces(new Map(f))), room.on("ended", setEnded)];
+    const offs = [room.on("view", setView), room.on("streams", (s) => setStreams(new Map(s))), room.on("faces", (f) => setFaces(new Map(f))), room.on("links", (l) => setLinks(new Map(l))), room.on("ended", setEnded)];
     return () => offs.forEach((off) => off());
   }, [room]);
-  return { view, streams, faces, ended };
+  return { view, streams, faces, links, ended };
 }
 
 /** How long is left in the round, counted against the server's clock. */
@@ -279,8 +285,49 @@ function BuzzPad({ who, others, whose, onBuzz, onClose }: { who: string; others:
   );
 }
 
+/** A connection to another player that isn't up yet, on their tile: how long, and if it's stuck, why and what to do. */
+function LinkNote({ link, name, relay, onRetry }: { link: Link; name: string; relay: boolean; onRetry: () => void }) {
+  const [details, setDetails] = useState(false);
+  const words = linkWords(link, name, relay, Date.now());
+  if (!words) return null;
+  return (
+    <div className={`fh-link${words.stuck ? " fh-stuck" : ""}`} role="status">
+      <strong>{words.title}</strong>
+      {words.stuck && (
+        <span className="fh-link-buttons">
+          <button type="button" onClick={onRetry}>
+            Try again
+          </button>
+          <button type="button" className="secondary" aria-expanded={details} onClick={() => setDetails(!details)}>
+            Why?
+          </button>
+        </span>
+      )}
+      {details && (
+        <span className="fh-link-details">
+          {words.why} {words.details}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function Table({ room, onLeave }: { room: ForeheadRoom; onLeave: () => void }) {
-  const { view, streams, faces, ended } = useRoom(room);
+  const { view, streams, faces, links, ended } = useRoom(room);
+  // Ticks while anyone is still connecting, so "connecting" can turn into "can't connect".
+  const [, tick] = useState(0);
+  const waiting = [...links.values()].some((l) => l.state !== "connected");
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(timer);
+  }, [waiting]);
+  const [blocked, setBlocked] = useState(false);
+  const onBlocked = useRef(() => setBlocked(true)).current;
+  const unblock = () => {
+    for (const video of document.querySelectorAll<HTMLVideoElement>(".fh-tile video")) void video.play().catch(() => {});
+    setBlocked(false);
+  };
   const [follow, setFollow] = useState(loadFollow);
   const tracking = useTracking(room, follow && !!view?.game);
   const [shapes, setShapes] = useState<Record<number, number>>({});
@@ -386,7 +433,8 @@ function Table({ room, onLeave }: { room: ForeheadRoom; onLeave: () => void }) {
           const hasPicture = !!stream?.getVideoTracks().length;
           return (
             <article key={p.seat} className={`fh-tile${buzzed?.seat === p.seat ? " fh-buzzed" : ""}${game?.asker === p.seat ? " fh-asking" : ""}${g?.won != null ? " fh-won" : ""}${p.here ? "" : " fh-away"}`}>
-              <Video stream={stream} muted={self} mirror={self} label={self ? "You" : p.name} onShape={(shape) => setShapes((was) => (was[p.seat] === shape ? was : { ...was, [p.seat]: shape }))} />
+              <Video stream={stream} muted={self} mirror={self} label={self ? "You" : p.name} onBlocked={self ? undefined : onBlocked} onShape={(shape) => setShapes((was) => (was[p.seat] === shape ? was : { ...was, [p.seat]: shape }))} />
+              {!self && p.here && links.get(p.seat) && <LinkNote link={links.get(p.seat)!} name={p.name} relay={room.relay} onRetry={() => room.reconnect(p.seat)} />}
               {!hasPicture && (
                 <span className="fh-face" aria-hidden="true">
                   {p.here ? "🙂" : "💤"}
@@ -429,6 +477,11 @@ function Table({ room, onLeave }: { room: ForeheadRoom; onLeave: () => void }) {
         })}
       </section>
 
+      {blocked && (
+        <button type="button" className="fh-go fh-unblock" onClick={unblock}>
+          ▶️ Tap to see and hear everyone
+        </button>
+      )}
       {buzzed && (
         <p className="fh-buzz-line" role="status">
           <span aria-hidden="true">🚨</span> {buzzLine(buzzed, me, theirName)}

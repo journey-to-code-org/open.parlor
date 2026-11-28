@@ -91,16 +91,35 @@ interface Signal {
   sdp?: string;
   candidate?: RTCIceCandidateInit | null;
 }
+/** How a connection to another player is doing, for their tile. */
+export interface Link {
+  state: "connecting" | "connected" | "failed";
+  /** Since when it has been trying (kept across retries), or since when it has been connected. */
+  since: number;
+  /** Once connected, which way: on this network, through the internet, or through a relay server. */
+  route: "here" | "internet" | "relay" | null;
+  /** The kinds of address each side found for this connection: "host" (on this network), "srflx" (as the internet sees it), "relay". */
+  mine: string[];
+  theirs: string[];
+}
+
 interface Peer {
   pc: RTCPeerConnection | null;
   gen: number;
   pending: RTCIceCandidateInit[];
+  /** Addresses for an offer that hasn't arrived yet, by its number. */
+  early: { gen: number; candidate: RTCIceCandidateInit }[];
+  /** Handshake messages to this player go one at a time, so they reach the server in the order they were made. */
+  queue: Promise<unknown>;
   retry: ReturnType<typeof setTimeout> | null;
   /** When this side last asked the other for an offer. */
   asked: number;
   /** The channel that carries where each of the two foreheads is. */
   face: RTCDataChannel | null;
 }
+
+/** The kind of address in an ICE candidate line ("… typ host …"). */
+const kindOf = (candidate: string | undefined) => /\btyp (\w+)/.exec(candidate ?? "")?.[1] ?? null;
 
 /** How long a forehead is believed without word of it (the tracker says it at least once a second). */
 const FACE_STALE_MS = 2500;
@@ -156,6 +175,8 @@ export class ForeheadRoom {
   streams = new Map<number, MediaStream>();
   /** Where everyone's forehead is, by seat (this player's own too), as their camera last showed it. */
   faces = new Map<number, Pose>();
+  /** How the connection to each other player is doing, by seat. */
+  links = new Map<number, Link>();
   private faceAt = new Map<number, number>();
   private faceTimer: ReturnType<typeof setInterval> | null = null;
   private faceNews: ReturnType<typeof setTimeout> | null = null;
@@ -166,7 +187,7 @@ export class ForeheadRoom {
   /** Whether the player wants their microphone on. A silent room overrides it while it lasts. */
   private micWanted = true;
   private peers = new Map<number, Peer>();
-  private listeners = { view: new Set<(v: RoomView) => void>(), streams: new Set<(s: Map<number, MediaStream>) => void>(), faces: new Set<(f: Map<number, Pose>) => void>(), ended: new Set<(why: string) => void>() };
+  private listeners = { view: new Set<(v: RoomView) => void>(), streams: new Set<(s: Map<number, MediaStream>) => void>(), faces: new Set<(f: Map<number, Pose>) => void>(), links: new Set<(l: Map<number, Link>) => void>(), ended: new Set<(why: string) => void>() };
 
   private constructor(
     private readonly ticket: Ticket,
@@ -198,6 +219,49 @@ export class ForeheadRoom {
   get seat() {
     return this.ticket.seat;
   }
+  /** Whether the parlor gave this call a relay server (TURN), for players whose devices can't reach each other. */
+  get relay() {
+    return this.ticket.ice.some((server) => [server.urls].flat().some((url) => /^turns?:/.test(url)));
+  }
+
+  /** Start the connection to that player over, from the beginning. */
+  reconnect(seat: number) {
+    const peer = this.peers.get(seat);
+    if (!peer || this.stopped) return;
+    this.links.delete(seat);
+    if (peer.retry) clearTimeout(peer.retry);
+    peer.retry = null;
+    peer.asked = 0;
+    if (this.seat < seat) void this.offer(seat);
+    else this.ask(seat);
+  }
+
+  private setLink(seat: number, change: Partial<Link>) {
+    const was = this.links.get(seat) ?? { state: "connecting", since: Date.now(), route: null, mine: [], theirs: [] };
+    this.links.set(seat, { ...was, ...change });
+    this.listeners.links.forEach((l) => l(this.links));
+  }
+  private noteAddress(seat: number, side: "mine" | "theirs", candidate: string | undefined) {
+    const kind = kindOf(candidate);
+    const link = this.links.get(seat);
+    if (kind && link && !link[side].includes(kind)) this.setLink(seat, { [side]: [...link[side], kind] });
+  }
+  /** Which way a connection that is up goes, from the pair of addresses it settled on. */
+  private async route(seat: number, pc: RTCPeerConnection) {
+    try {
+      const stats = await pc.getStats();
+      let pair: { localCandidateId?: string; remoteCandidateId?: string } | undefined;
+      stats.forEach((r) => {
+        if (r.type === "transport" && r.selectedCandidatePairId) pair = stats.get(r.selectedCandidatePairId);
+      });
+      stats.forEach((r) => {
+        if (!pair && r.type === "candidate-pair" && r.nominated && r.state === "succeeded") pair = r;
+      });
+      const kinds = [stats.get(pair?.localCandidateId ?? "")?.candidateType, stats.get(pair?.remoteCandidateId ?? "")?.candidateType];
+      const route = kinds.includes("relay") ? "relay" : kinds.includes("srflx") ? "internet" : "here";
+      if (this.peers.get(seat)?.pc === pc && pair) this.setLink(seat, { route });
+    } catch {}
+  }
 
   private static async enter(path: string, body: unknown): Promise<ForeheadRoom> {
     const { stream, note } = await media();
@@ -220,6 +284,7 @@ export class ForeheadRoom {
   on(event: "view", heard: (v: RoomView) => void): () => void;
   on(event: "streams", heard: (s: Map<number, MediaStream>) => void): () => void;
   on(event: "faces", heard: (f: Map<number, Pose>) => void): () => void;
+  on(event: "links", heard: (l: Map<number, Link>) => void): () => void;
   on(event: "ended", heard: (why: string) => void): () => void;
   on(event: keyof ForeheadRoom["listeners"], heard: (x: never) => void) {
     const set = this.listeners[event] as Set<typeof heard>;
@@ -330,8 +395,16 @@ export class ForeheadRoom {
     this.listeners.view.forEach((l) => l(view));
   }
 
+  /**
+   * A handshake message to another player. They go one after another: sent side by side, an
+   * address could reach the server before the offer it belongs to, and be no use when it arrived.
+   */
   private say(to: number, message: Signal) {
-    return post(`/foreheads/${this.code}/say`, { seat: this.seat, token: this.ticket.token, to, message });
+    const peer = this.peer(to);
+    const send = () => post(`/foreheads/${this.code}/say`, { seat: this.seat, token: this.ticket.token, to, message });
+    const sent = peer.queue.then(send, send);
+    peer.queue = sent;
+    return sent;
   }
 
   /** Listen for the room changing and for the others' handshakes, for as long as this tab is in it. */
@@ -376,7 +449,7 @@ export class ForeheadRoom {
 
   private peer(seat: number): Peer {
     let peer = this.peers.get(seat);
-    if (!peer) this.peers.set(seat, (peer = { pc: null, gen: 0, pending: [], retry: null, asked: 0, face: null }));
+    if (!peer) this.peers.set(seat, (peer = { pc: null, gen: 0, pending: [], early: [], queue: Promise.resolve(), retry: null, asked: 0, face: null }));
     return peer;
   }
   private drop(seat: number) {
@@ -385,6 +458,7 @@ export class ForeheadRoom {
     if (peer.retry) clearTimeout(peer.retry);
     peer.pc?.close();
     this.peers.delete(seat);
+    if (this.links.delete(seat)) this.listeners.links.forEach((l) => l(this.links));
     if (this.streams.delete(seat)) this.listeners.streams.forEach((l) => l(this.streams));
     this.setFaceOf(seat, null);
   }
@@ -399,15 +473,18 @@ export class ForeheadRoom {
   private async handle(from: number, m: Signal) {
     if (m.type === "bye") return this.drop(from);
     if (m.type === "hello") {
-      // Unless an offer is already on its way to them.
+      // Unless an offer is already on its way to them, or they're connected (an old hello, overtaken).
       const state = this.peers.get(from)?.pc?.connectionState;
-      if (this.seat < from && state !== "new" && state !== "connecting") await this.offer(from);
+      if (this.seat < from && state !== "new" && state !== "connecting" && state !== "connected") await this.offer(from);
       return;
     }
     const peer = this.peer(from);
     if (m.type === "offer" && this.seat > from && m.sdp && m.gen) {
       peer.gen = m.gen;
       const pc = this.connect(from);
+      // Any of its addresses that came first.
+      peer.pending.push(...peer.early.filter((e) => e.gen === m.gen).map((e) => e.candidate));
+      peer.early = peer.early.filter((e) => e.gen > m.gen!);
       await pc.setRemoteDescription({ type: "offer", sdp: m.sdp });
       await this.flush(peer, pc);
       await pc.setLocalDescription(await pc.createAnswer());
@@ -419,7 +496,13 @@ export class ForeheadRoom {
       await this.flush(peer, peer.pc);
       return;
     }
+    if (m.type === "candidate" && m.candidate && m.gen && m.gen > peer.gen && this.seat > from) {
+      // An address for an offer still on its way: kept for it.
+      if (peer.early.length < 100) peer.early.push({ gen: m.gen, candidate: m.candidate });
+      return;
+    }
     if (m.type === "candidate" && m.gen === peer.gen && m.candidate) {
+      this.noteAddress(from, "theirs", m.candidate.candidate);
       if (peer.pc?.remoteDescription) await peer.pc.addIceCandidate(m.candidate).catch(() => {});
       else peer.pending.push(m.candidate);
     }
@@ -438,13 +521,18 @@ export class ForeheadRoom {
     const gen = peer.gen;
     const pc = new RTCPeerConnection({ iceServers: this.ticket.ice });
     peer.pc = pc;
+    // A retry keeps counting from when it first started trying.
+    const was = this.links.get(seat);
+    this.setLink(seat, { state: "connecting", since: was && was.state !== "connected" ? was.since : Date.now(), route: null, mine: [], theirs: [] });
     const current = () => this.peers.get(seat)?.pc === pc && !this.stopped;
     for (const track of this.local.getTracks()) pc.addTrack(track, this.local);
     // Receive picture and sound even from here, where there may be neither to send.
     if (!this.local.getVideoTracks().length) pc.addTransceiver("video", { direction: "recvonly" });
     if (!this.local.getAudioTracks().length) pc.addTransceiver("audio", { direction: "recvonly" });
     pc.addEventListener("icecandidate", (e) => {
-      if (e.candidate && current()) void this.say(seat, { type: "candidate", gen, candidate: e.candidate.toJSON() });
+      if (!e.candidate || !current()) return;
+      this.noteAddress(seat, "mine", e.candidate.candidate);
+      void this.say(seat, { type: "candidate", gen, candidate: e.candidate.toJSON() });
     });
     pc.addEventListener("track", (e) => {
       if (!current()) return;
@@ -458,6 +546,12 @@ export class ForeheadRoom {
     else pc.addEventListener("datachannel", (e) => current() && e.channel.label === "face" && this.useFace(seat, e.channel));
     pc.addEventListener("connectionstatechange", () => {
       if (!current()) return;
+      if (pc.connectionState === "connected") {
+        this.setLink(seat, { state: "connected", since: Date.now() });
+        void this.route(seat, pc);
+        return;
+      }
+      if (pc.connectionState === "failed") this.setLink(seat, { state: "failed" });
       if (pc.connectionState !== "failed" && pc.connectionState !== "disconnected") return;
       // A brief "disconnected" often comes back by itself; "failed" doesn't.
       if (peer.retry) clearTimeout(peer.retry);
